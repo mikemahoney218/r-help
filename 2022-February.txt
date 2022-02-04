@@ -1302,3 +1302,1854 @@ My goal was to describe what the IEEE and R interpret "careful coding" to be.
 > 
 
 
+From nboeger @end|ng |rom gm@||@com  Wed Feb  2 04:00:44 2022
+From: nboeger @end|ng |rom gm@||@com (Nathan Boeger)
+Date: Wed, 2 Feb 2022 10:00:44 +0700
+Subject: [R] [External]  Funky calculations
+In-Reply-To: <D24231AD-5CBF-4595-962E-2009821BD20B@temple.edu>
+References: <CAFxA6QotuTYyJ8Jz_9SeeGZNR_LRxCXHKXYO+o3JihnQdnQL+g@mail.gmail.com>
+ <20220201193557.308209e8@Tarkus>
+ <D24231AD-5CBF-4595-962E-2009821BD20B@temple.edu>
+Message-ID: <CAFxA6Qq1sGwh9ZwEaV6zvtfd0yq6A1W6U4oDMuy1KXs_CV9ryQ@mail.gmail.com>
+
+Thank you for this explanation!
+
+I have a long background in C/C++ and never realized this was such an issue
+with some languages. At least, with trivial single digit decimals. I
+understand accuracy issues with very large decimals, repeating or
+non-terminating rationals and I have handled them in the past. It makes me
+worried about all the R scripts I have written before (yikes!).
+
+Cheers
+
+-nb
+
+On Wed, 2 Feb 2022 at 02:44, Richard M. Heiberger <rmh at temple.edu> wrote:
+
+> RShowDoc('FAQ')
+>
+> then search for 7.31
+>
+>
+> This statement
+> "If you stop at a 5 or 7 or 8 and back up to the previous digit, you round
+> up. Else you leave the previous result alone."
+> is not quite right.  The recommendation in IEEE 754, and this is how R
+> does arithmetic, is to Round Even.
+>
+> I ilustrate here with decimal, even though R and other programs use binary.
+>
+> > x <- c(1.4, 1.5, 1.6, 2.4, 2.5, 2.6, 3.4, 3.5, 3.6, 4.4, 4.5, 4.6)
+> > r <- round(x)
+> > cbind(x, r)
+>         x r
+>  [1,] 1.4 1
+>  [2,] 1.5 2
+>  [3,] 1.6 2
+>  [4,] 2.4 2
+>  [5,] 2.5 2
+>  [6,] 2.6 3
+>  [7,] 3.4 3
+>  [8,] 3.5 4
+>  [9,] 3.6 4
+> [10,] 4.4 4
+> [11,] 4.5 4
+> [12,] 4.6 5
+> >
+>
+> Numbers whose last digit is not 5 (when in decimal) round to the nearest
+> integer.
+> Numbers who last digit is 5 (1.5, 2.5, 3.5, 4.5 above)
+> round to the nearest EVEN integer.
+> Hence 1.5 and 3.5 round up to the even numbers 2 and 4.
+> 2.5 and 4.5 round down do the even numbers 2 and 4.
+>
+> This way the round ups and downs average out to 0.  If we always went up
+> from .5 we would have
+> an updrift over time.
+>
+> For even more detail click on the link in FAQ 7.31 to my appendix
+> https:// link.springer.com/content/pdf/bbm%3A978-1-4939-2122-5%2F1.pdf
+> and search for "Appendix G".
+>
+> Section G.5 explains Round to Even.
+> Sections G.6 onward illustrate specific examples, such as the one that
+> started this email thread.
+>
+> Rich
+
+	[[alternative HTML version deleted]]
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Wed Feb  2 04:30:19 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Tue, 1 Feb 2022 19:30:19 -0800
+Subject: [R] [External] Funky calculations
+In-Reply-To: <CAFxA6Qq1sGwh9ZwEaV6zvtfd0yq6A1W6U4oDMuy1KXs_CV9ryQ@mail.gmail.com>
+References: <CAFxA6QotuTYyJ8Jz_9SeeGZNR_LRxCXHKXYO+o3JihnQdnQL+g@mail.gmail.com>
+ <20220201193557.308209e8@Tarkus>
+ <D24231AD-5CBF-4595-962E-2009821BD20B@temple.edu>
+ <CAFxA6Qq1sGwh9ZwEaV6zvtfd0yq6A1W6U4oDMuy1KXs_CV9ryQ@mail.gmail.com>
+Message-ID: <CAHqSRuT7KsOnUEKQRz2+Y_Z0ZoE+y3LHm4q9JLzqsSATe-85iA@mail.gmail.com>
+
+The base 2 representation of 0.4 repeats the digit sequence 1001
+infinitely, hence must be rounded.  The problem occurs in C the same as it
+does in R.
+
+bill at Bill-T490:~$ cat a.c
+#include <stdio.h>
+
+int main(int argc, char* argv[])
+{
+    double d = 0.4 + 0.3 + 0.2 + 0.1;
+    printf("0.4+0.3+0.2+0.1 -> %24.17g\n", d);
+    printf("0.4+0.3+0.2+0.1 == 1.0 -> %s\n", d == 1.0 ? "true" : "false");
+    return 0;
+}
+bill at Bill-T490:~$ gcc a.c
+bill at Bill-T490:~$ ./a.out
+0.4+0.3+0.2+0.1 ->      0.99999999999999989
+0.4+0.3+0.2+0.1 == 1.0 -> false
+
+-Bill
+
+On Tue, Feb 1, 2022 at 7:01 PM Nathan Boeger <nboeger at gmail.com> wrote:
+
+> Thank you for this explanation!
+>
+> I have a long background in C/C++ and never realized this was such an issue
+> with some languages. At least, with trivial single digit decimals. I
+> understand accuracy issues with very large decimals, repeating or
+> non-terminating rationals and I have handled them in the past. It makes me
+> worried about all the R scripts I have written before (yikes!).
+>
+> Cheers
+>
+> -nb
+>
+> On Wed, 2 Feb 2022 at 02:44, Richard M. Heiberger <rmh at temple.edu> wrote:
+>
+> > RShowDoc('FAQ')
+> >
+> > then search for 7.31
+> >
+> >
+> > This statement
+> > "If you stop at a 5 or 7 or 8 and back up to the previous digit, you
+> round
+> > up. Else you leave the previous result alone."
+> > is not quite right.  The recommendation in IEEE 754, and this is how R
+> > does arithmetic, is to Round Even.
+> >
+> > I ilustrate here with decimal, even though R and other programs use
+> binary.
+> >
+> > > x <- c(1.4, 1.5, 1.6, 2.4, 2.5, 2.6, 3.4, 3.5, 3.6, 4.4, 4.5, 4.6)
+> > > r <- round(x)
+> > > cbind(x, r)
+> >         x r
+> >  [1,] 1.4 1
+> >  [2,] 1.5 2
+> >  [3,] 1.6 2
+> >  [4,] 2.4 2
+> >  [5,] 2.5 2
+> >  [6,] 2.6 3
+> >  [7,] 3.4 3
+> >  [8,] 3.5 4
+> >  [9,] 3.6 4
+> > [10,] 4.4 4
+> > [11,] 4.5 4
+> > [12,] 4.6 5
+> > >
+> >
+> > Numbers whose last digit is not 5 (when in decimal) round to the nearest
+> > integer.
+> > Numbers who last digit is 5 (1.5, 2.5, 3.5, 4.5 above)
+> > round to the nearest EVEN integer.
+> > Hence 1.5 and 3.5 round up to the even numbers 2 and 4.
+> > 2.5 and 4.5 round down do the even numbers 2 and 4.
+> >
+> > This way the round ups and downs average out to 0.  If we always went up
+> > from .5 we would have
+> > an updrift over time.
+> >
+> > For even more detail click on the link in FAQ 7.31 to my appendix
+> > https:// link.springer.com/content/pdf/bbm%3A978-1-4939-2122-5%2F1.pdf
+> > and search for "Appendix G".
+> >
+> > Section G.5 explains Round to Even.
+> > Sections G.6 onward illustrate specific examples, such as the one that
+> > started this email thread.
+> >
+> > Rich
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Feb  2 04:35:56 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 01 Feb 2022 19:35:56 -0800
+Subject: [R] [External]  Funky calculations
+In-Reply-To: <CAFxA6Qq1sGwh9ZwEaV6zvtfd0yq6A1W6U4oDMuy1KXs_CV9ryQ@mail.gmail.com>
+References: <CAFxA6QotuTYyJ8Jz_9SeeGZNR_LRxCXHKXYO+o3JihnQdnQL+g@mail.gmail.com>
+ <20220201193557.308209e8@Tarkus>
+ <D24231AD-5CBF-4595-962E-2009821BD20B@temple.edu>
+ <CAFxA6Qq1sGwh9ZwEaV6zvtfd0yq6A1W6U4oDMuy1KXs_CV9ryQ@mail.gmail.com>
+Message-ID: <2B4B92D0-499B-4A18-83E7-8F0067E91E50@dcn.davis.ca.us>
+
+Please don't be dense. Not "some languages"... the discussion here has tried very hard to explain why this affects all of them. Including C/C++ (R is written in C). Look at [1] if you don't believe us.
+
+[1] https://0.30000000000000004.com/
+
+
+On February 1, 2022 7:00:44 PM PST, Nathan Boeger <nboeger at gmail.com> wrote:
+>Thank you for this explanation!
+>
+>I have a long background in C/C++ and never realized this was such an issue
+>with some languages. At least, with trivial single digit decimals. I
+>understand accuracy issues with very large decimals, repeating or
+>non-terminating rationals and I have handled them in the past. It makes me
+>worried about all the R scripts I have written before (yikes!).
+>
+>Cheers
+>
+>-nb
+>
+>On Wed, 2 Feb 2022 at 02:44, Richard M. Heiberger <rmh at temple.edu> wrote:
+>
+>> RShowDoc('FAQ')
+>>
+>> then search for 7.31
+>>
+>>
+>> This statement
+>> "If you stop at a 5 or 7 or 8 and back up to the previous digit, you round
+>> up. Else you leave the previous result alone."
+>> is not quite right.  The recommendation in IEEE 754, and this is how R
+>> does arithmetic, is to Round Even.
+>>
+>> I ilustrate here with decimal, even though R and other programs use binary.
+>>
+>> > x <- c(1.4, 1.5, 1.6, 2.4, 2.5, 2.6, 3.4, 3.5, 3.6, 4.4, 4.5, 4.6)
+>> > r <- round(x)
+>> > cbind(x, r)
+>>         x r
+>>  [1,] 1.4 1
+>>  [2,] 1.5 2
+>>  [3,] 1.6 2
+>>  [4,] 2.4 2
+>>  [5,] 2.5 2
+>>  [6,] 2.6 3
+>>  [7,] 3.4 3
+>>  [8,] 3.5 4
+>>  [9,] 3.6 4
+>> [10,] 4.4 4
+>> [11,] 4.5 4
+>> [12,] 4.6 5
+>> >
+>>
+>> Numbers whose last digit is not 5 (when in decimal) round to the nearest
+>> integer.
+>> Numbers who last digit is 5 (1.5, 2.5, 3.5, 4.5 above)
+>> round to the nearest EVEN integer.
+>> Hence 1.5 and 3.5 round up to the even numbers 2 and 4.
+>> 2.5 and 4.5 round down do the even numbers 2 and 4.
+>>
+>> This way the round ups and downs average out to 0.  If we always went up
+>> from .5 we would have
+>> an updrift over time.
+>>
+>> For even more detail click on the link in FAQ 7.31 to my appendix
+>> https:// link.springer.com/content/pdf/bbm%3A978-1-4939-2122-5%2F1.pdf
+>> and search for "Appendix G".
+>>
+>> Section G.5 explains Round to Even.
+>> Sections G.6 onward illustrate specific examples, such as the one that
+>> started this email thread.
+>>
+>> Rich
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From @v|gro@@ @end|ng |rom ver|zon@net  Wed Feb  2 04:45:08 2022
+From: @v|gro@@ @end|ng |rom ver|zon@net (Avi Gross)
+Date: Wed, 2 Feb 2022 03:45:08 +0000 (UTC)
+Subject: [R] [External]  Funky calculations
+In-Reply-To: <1A13EFE0-C500-40D0-9BD0-8546E4EECBEA@temple.edu>
+References: <CAFxA6QotuTYyJ8Jz_9SeeGZNR_LRxCXHKXYO+o3JihnQdnQL+g@mail.gmail.com>
+ <20220201193557.308209e8@Tarkus>
+ <D24231AD-5CBF-4595-962E-2009821BD20B@temple.edu>
+ <1240726547.2663210.1643766132419@mail.yahoo.com>
+ <1A13EFE0-C500-40D0-9BD0-8546E4EECBEA@temple.edu>
+Message-ID: <801628629.2676628.1643773508952@mail.yahoo.com>
+
+This is a discussion forum, Richard, and I welcome requests to clarify what I wrote or to be corrected, especially when my words have been read with an attempt to understand. I do get private responses too and some days i wonder if I am not communicating the way people like!
+
+But let me repeat. The question we started with asked about R. My answer applies to quite a few languages besides R and maybe just about all of them.
+
+I got private email insisting the numbers being added were not irrational so why would they not be represented easily as a sum. I know my answers included parts at various levels of abstraction as well as examples of cases when Decimals notation for a number like 1/7 results in an infinite repeating sequence. So, I think it wise to follow up with what binary looks like and why hardly ANYTHING that looks reasonable is hard to represent exactly.
+
+Consider that binary means POWERS OF TWO. The sequence 1101 before a decimal point means (starting from the right and heading left) that you have one ONES and no TWOS and one FOURS and one EIGHTS. Powers of two ranging from 2 to the zero power to two cubed. You can make any integer whatsoever using as long a sequence of zeros and ones as you like. Compare this to decimal notation where you use powers of ten and of course can use any of 0-9.
+
+But looking at fractional numbers, like 1/7 and 1/10, it gets hard and inexact.
+
+Remember now we are in BINARY. Here are some fractions with everything not shown to the right being zeros and thus not needed to be shown explicitly. Starting with the decimal point, read this from left to right to see the powers in the denominator rising so 1/2 then 1/4 then 1/8 ...:
+
+0.0 would be 0.
+0.1 would be 1/2
+0.101 would be 1/2 + 1/8 or 5/8
+0.11 would be 1/2 + 1/4 or 3/4
+0.111 would be 1/2 + 1/4 + 1/8 or 7/8
+
+We are now using negative powers where 2 raised to the minus one power is one over two raised to the plus one power, or 1/2 and so on. As you head to the right you get to fairly small numbers like 1/2048 ...
+
+Every single binary fraction is thus a possibly infinite sum of negative powers of two, or rather the reciprocals of those in positive terms.
+
+If you want to make 1/7, to some number of decimal places, it looks like this up to some point where I stop:
+
+0.00100100100100100101
+
+So no halves, no quarters, 1/8, no sixteenths, no thirty-seconds, 1/64, and so on. But if you add all that up, and note the sequence was STOPPED before it could continue further, you get this translated into decimal:
+
+0.142857 55157470703125
+
+Recall 1/7 in decimal notation is
+0.142857 142857142857142857...
+
+Note the divergence at the seventh digit after the decimal point. I left a space to show where they diverge. If I used more binary digits, I can get as close as I want but computers these days do not allow too many more digits unless you use highly specialized programs. There are packages that give you access such as "mpfr" but generally nothing can give you infinite precision. R will not handle an infinite number of infinitesimals.
+
+The original problem that began our thread was about numbers like 0.1 and 0.2 and so on. In base ten, they look nice but I repeat in base 2 only powers of TWO reign.
+
+0.1 in base two is about 0.0001100110011001101
+
+that reads as 1/16 + 1/32 + 1/256 + 1/512 + ...
+
+If I convert the above segment, which I repeat was stopped short, I get 0.1000003814697265625 which is a tad over and had I taken the last 1 and changed it to a zero as in 0.0001100110011001100 then we would have a bit under at 0.09999847412109375 
+
+So the only way to write 0.1 exactly is to continue infinitely, again. Do the analysis and understand why most rational numbers will not easily convert to a small number of bits. But the advantages of computers doing operations in binary are huge and need not be explained. You may THINK you are entering numbers in decimal form but they rarely remain that way for long before they simply become binary and often remain binary unless and until you ask to print them out, usually in decimal.
+
+BTW, I used a random web site to do the above conversion calculations:
+
+https://www.rapidtables.com/convert/number/binary-to-decimal.html
+
+Since I am writing in plain text, I cannot show what it says in the box on that page further down under Decimal Calculation Steps so I wonder what the rest of this message looks like:
+
+(0.0001100110011001100)? = (0 ? 2?) + (0 ? 2??) + (0 ? 2??) + (0 ? 2??) + (1 ? 2??) + (1 ? 2??) + (0 ? 2??) + (0 ? 2??) + (1 ? 2??) + (1 ? 2??) + (0 ? 2???) + (0 ? 2???) + (1 ? 2???) + (1 ? 2???) + (0 ? 2???) + (0 ? 2???) + (1 ? 2???) + (1 ? 2???) + (0 ? 2???) + (0 ? 2???) = (0.09999847412109375)??
+
+I think my part in this particular discussion can now finally come to an end. R and everything else can be incomplete. Deal with it!
+
+-----Original Message-----
+From: Richard M. Heiberger <rmh at temple.edu>
+To: Avi Gross <avigross at verizon.net>
+Cc: nboeger at gmail.com <nboeger at gmail.com>; r-help at r-project.org <r-help at r-project.org>
+Sent: Tue, Feb 1, 2022 9:04 pm
+Subject: Re: [External] [R] Funky calculations
+
+
+I apologize if my tone came across wrong.? I enjoy reading your comments on this list.
+
+My goal was to describe what the IEEE and R interpret "careful coding" to be.
+
+
+> On Feb 01, 2022, at 20:42, Avi Gross <avigross at verizon.net> wrote:
+> 
+> Richard,
+> 
+> I think it was fairly clear I was explaining how people do arithmetic manually and often truncate or round to some number of decimal places. I said nothing about what R does or what the IEEE standards say and I do not particularly care when making MY point.
+> 
+> My point is that humans before computers also had trouble writing down any decimals that continue indefinitely. It cannot be expected computer versions of arithmetic can do much better. Different people can opt to do the calculation with the same or different numbers of digits ad when compared to each other they may not match.
+> 
+> I do care what it does in my programs, of course. My goal here was to explain to someone that the anomaly found was not really an anomaly and that careful coding may be required in these situations.
+> 
+> 
+> -----Original Message-----
+> From: Richard M. Heiberger <rmh at temple.edu>
+> To: Avi Gross <avigross at verizon.net>
+> Cc: Nathan Boeger <nboeger at gmail.com>; r-help at r-project.org <r-help at r-project.org>
+> Sent: Tue, Feb 1, 2022 2:44 pm
+> Subject: Re: [External] [R] Funky calculations
+> 
+> 
+> RShowDoc('FAQ') 
+> 
+> 
+> then search for 7.31
+> 
+> 
+> This statement
+> "If you stop at a 5 or 7 or 8 and back up to the previous digit, you round up. Else you leave the previous result alone."
+> is not quite right.? The recommendation in IEEE 754, and this is how R does arithmetic, is to Round Even.
+> 
+> I ilustrate here with decimal, even though R and other programs use binary.
+> 
+>> x <- c(1.4, 1.5, 1.6, 2.4, 2.5, 2.6, 3.4, 3.5, 3.6, 4.4, 4.5, 4.6)
+>> r <- round(x)
+>> cbind(x, r)
+>? ? ? ?  x r
+> [1,] 1.4 1
+> [2,] 1.5 2
+> [3,] 1.6 2
+> [4,] 2.4 2
+> [5,] 2.5 2
+> [6,] 2.6 3
+> [7,] 3.4 3
+> [8,] 3.5 4
+> [9,] 3.6 4
+> [10,] 4.4 4
+> [11,] 4.5 4
+> [12,] 4.6 5
+>> 
+> 
+> Numbers whose last digit is not 5 (when in decimal) round to the nearest integer.
+> Numbers who last digit is 5 (1.5, 2.5, 3.5, 4.5 above) 
+> round to the nearest EVEN integer.
+> Hence 1.5 and 3.5 round up to the even numbers 2 and 4.
+> 2.5 and 4.5 round down do the even numbers 2 and 4.
+> 
+> This way the round ups and downs average out to 0.? If we always went up from .5 we would have
+> an updrift over time.
+> 
+> For even more detail click on the link in FAQ 7.31 to my appendix
+> https:// link.springer.com/content/pdf/bbm%3A978-1-4939-2122-5%2F1.pdf
+> and search for "Appendix G".
+> 
+> Section G.5 explains Round to Even.
+> Sections G.6 onward illustrate specific examples, such as the one that started this email thread.
+> 
+> Rich
+> 
+
+
+ 
+
+
+From nboeger @end|ng |rom gm@||@com  Wed Feb  2 06:06:10 2022
+From: nboeger @end|ng |rom gm@||@com (Nathan Boeger)
+Date: Wed, 2 Feb 2022 12:06:10 +0700
+Subject: [R] [External] Funky calculations
+In-Reply-To: <CAHqSRuT7KsOnUEKQRz2+Y_Z0ZoE+y3LHm4q9JLzqsSATe-85iA@mail.gmail.com>
+References: <CAFxA6QotuTYyJ8Jz_9SeeGZNR_LRxCXHKXYO+o3JihnQdnQL+g@mail.gmail.com>
+ <20220201193557.308209e8@Tarkus>
+ <D24231AD-5CBF-4595-962E-2009821BD20B@temple.edu>
+ <CAFxA6Qq1sGwh9ZwEaV6zvtfd0yq6A1W6U4oDMuy1KXs_CV9ryQ@mail.gmail.com>
+ <CAHqSRuT7KsOnUEKQRz2+Y_Z0ZoE+y3LHm4q9JLzqsSATe-85iA@mail.gmail.com>
+Message-ID: <CAFxA6Qr93D4VYjrZDvvrQgnTnToNQj3RQ21pLYrm8tJFHpA=1Q@mail.gmail.com>
+
+I understand this and with C the data type used is important. For this type
+of calculation, I would normally use a float (basic single precision is all
+I require).
+
+#include <stdio.h>
+
+void main() {
+  float foo = (0.4 + 0.2 + 0.30 + 0.1) ;
+  printf("foo: %f , foo > 1: %s \n", foo, (foo > 1.0 ? "true" : "false"));
+  double bar = (0.4 + 0.2 + 0.30 + 0.1) ;
+  printf("bar: %lf , bar > 1: %s \n", bar, (bar > 1.0 ? "true" : "false"));
+}
+
+gcc  c-check.c -o c-check
+./c-check
+foo: 1.000000 , foo > 1: false
+bar: 1.000000 , bar > 1: true
+
+Again, it was my mistake for not reading the R-FAQ. I had no idea it would
+spark such a long thread.
+
+Cheers
+
+-nb
+
+On Wed, 2 Feb 2022 at 10:30, Bill Dunlap <williamwdunlap at gmail.com> wrote:
+
+> The base 2 representation of 0.4 repeats the digit sequence 1001
+> infinitely, hence must be rounded.  The problem occurs in C the same as it
+> does in R.
+>
+> bill at Bill-T490:~$ cat a.c
+> #include <stdio.h>
+>
+> int main(int argc, char* argv[])
+> {
+>     double d = 0.4 + 0.3 + 0.2 + 0.1;
+>     printf("0.4+0.3+0.2+0.1 -> %24.17g\n", d);
+>     printf("0.4+0.3+0.2+0.1 == 1.0 -> %s\n", d == 1.0 ? "true" : "false");
+>     return 0;
+> }
+> bill at Bill-T490:~$ gcc a.c
+> bill at Bill-T490:~$ ./a.out
+> 0.4+0.3+0.2+0.1 ->      0.99999999999999989
+> 0.4+0.3+0.2+0.1 == 1.0 -> false
+>
+> -Bill
+>
+> On Tue, Feb 1, 2022 at 7:01 PM Nathan Boeger <nboeger at gmail.com> wrote:
+>
+>> Thank you for this explanation!
+>>
+>> I have a long background in C/C++ and never realized this was such an
+>> issue
+>> with some languages. At least, with trivial single digit decimals. I
+>> understand accuracy issues with very large decimals, repeating or
+>> non-terminating rationals and I have handled them in the past. It makes me
+>> worried about all the R scripts I have written before (yikes!).
+>>
+>> Cheers
+>>
+>> -nb
+>>
+>> On Wed, 2 Feb 2022 at 02:44, Richard M. Heiberger <rmh at temple.edu> wrote:
+>>
+>> > RShowDoc('FAQ')
+>> >
+>> > then search for 7.31
+>> >
+>> >
+>> > This statement
+>> > "If you stop at a 5 or 7 or 8 and back up to the previous digit, you
+>> round
+>> > up. Else you leave the previous result alone."
+>> > is not quite right.  The recommendation in IEEE 754, and this is how R
+>> > does arithmetic, is to Round Even.
+>> >
+>> > I ilustrate here with decimal, even though R and other programs use
+>> binary.
+>> >
+>> > > x <- c(1.4, 1.5, 1.6, 2.4, 2.5, 2.6, 3.4, 3.5, 3.6, 4.4, 4.5, 4.6)
+>> > > r <- round(x)
+>> > > cbind(x, r)
+>> >         x r
+>> >  [1,] 1.4 1
+>> >  [2,] 1.5 2
+>> >  [3,] 1.6 2
+>> >  [4,] 2.4 2
+>> >  [5,] 2.5 2
+>> >  [6,] 2.6 3
+>> >  [7,] 3.4 3
+>> >  [8,] 3.5 4
+>> >  [9,] 3.6 4
+>> > [10,] 4.4 4
+>> > [11,] 4.5 4
+>> > [12,] 4.6 5
+>> > >
+>> >
+>> > Numbers whose last digit is not 5 (when in decimal) round to the nearest
+>> > integer.
+>> > Numbers who last digit is 5 (1.5, 2.5, 3.5, 4.5 above)
+>> > round to the nearest EVEN integer.
+>> > Hence 1.5 and 3.5 round up to the even numbers 2 and 4.
+>> > 2.5 and 4.5 round down do the even numbers 2 and 4.
+>> >
+>> > This way the round ups and downs average out to 0.  If we always went up
+>> > from .5 we would have
+>> > an updrift over time.
+>> >
+>> > For even more detail click on the link in FAQ 7.31 to my appendix
+>> > https:// link.springer.com/content/pdf/bbm%3A978-1-4939-2122-5%2F1.pdf
+>> > and search for "Appendix G".
+>> >
+>> > Section G.5 explains Round to Even.
+>> > Sections G.6 onward illustrate specific examples, such as the one that
+>> > started this email thread.
+>> >
+>> > Rich
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Wed Feb  2 14:35:54 2022
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Wed, 2 Feb 2022 08:35:54 -0500
+Subject: [R] [External] Funky calculations
+In-Reply-To: <801628629.2676628.1643773508952@mail.yahoo.com>
+References: <CAFxA6QotuTYyJ8Jz_9SeeGZNR_LRxCXHKXYO+o3JihnQdnQL+g@mail.gmail.com>
+ <20220201193557.308209e8@Tarkus>
+ <D24231AD-5CBF-4595-962E-2009821BD20B@temple.edu>
+ <1240726547.2663210.1643766132419@mail.yahoo.com>
+ <1A13EFE0-C500-40D0-9BD0-8546E4EECBEA@temple.edu>
+ <801628629.2676628.1643773508952@mail.yahoo.com>
+Message-ID: <f7f69f1b-e19c-42e3-863f-27681a8fb618@gmail.com>
+
+I was one of the 31 names on the 1985 IEEE standard. If anyone thinks things are awkward now,
+try looking at the swamp we had beforehand.
+
+What I believe IS useful is to provide examples and to explain them in tutorial fashion.
+We need to recognize that our computations have limitations. Most common computing platforms
+use IEEE binary arithmetic, but not all.
+
+This was much more "in our face" when we used slide rules or hand-crank calculators. I still
+have slide rules and a Monroe "Portable" calculator -- 5 kg! It's worth bringing them out every
+so often and being thankful for the power and speed of modern computing, while remembering to
+watch for the cowpads of REAL and REAL*8 arithmetic.
+
+JN
+
+On 2022-02-01 22:45, Avi Gross via R-help wrote:
+> This is a discussion forum, Richard, and I welcome requests to clarify what I wrote or to be corrected, especially when my words have been read with an attempt to understand. I do get private responses too and some days i wonder if I am not communicating the way people like!
+> 
+> But let me repeat. The question we started with asked about R. My answer applies to quite a few languages besides R and maybe just about all of them.
+> 
+> I got private email insisting the numbers being added were not irrational so why would they not be represented easily as a sum. I know my answers included parts at various levels of abstraction as well as examples of cases when Decimals notation for a number like 1/7 results in an infinite repeating sequence. So, I think it wise to follow up with what binary looks like and why hardly ANYTHING that looks reasonable is hard to represent exactly.
+> 
+> Consider that binary means POWERS OF TWO. The sequence 1101 before a decimal point means (starting from the right and heading left) that you have one ONES and no TWOS and one FOURS and one EIGHTS. Powers of two ranging from 2 to the zero power to two cubed. You can make any integer whatsoever using as long a sequence of zeros and ones as you like. Compare this to decimal notation where you use powers of ten and of course can use any of 0-9.
+> 
+> But looking at fractional numbers, like 1/7 and 1/10, it gets hard and inexact.
+> 
+> Remember now we are in BINARY. Here are some fractions with everything not shown to the right being zeros and thus not needed to be shown explicitly. Starting with the decimal point, read this from left to right to see the powers in the denominator rising so 1/2 then 1/4 then 1/8 ...:
+> 
+> 0.0 would be 0.
+> 0.1 would be 1/2
+> 0.101 would be 1/2 + 1/8 or 5/8
+> 0.11 would be 1/2 + 1/4 or 3/4
+> 0.111 would be 1/2 + 1/4 + 1/8 or 7/8
+> 
+> We are now using negative powers where 2 raised to the minus one power is one over two raised to the plus one power, or 1/2 and so on. As you head to the right you get to fairly small numbers like 1/2048 ...
+> 
+> Every single binary fraction is thus a possibly infinite sum of negative powers of two, or rather the reciprocals of those in positive terms.
+> 
+> If you want to make 1/7, to some number of decimal places, it looks like this up to some point where I stop:
+> 
+> 0.00100100100100100101
+> 
+> So no halves, no quarters, 1/8, no sixteenths, no thirty-seconds, 1/64, and so on. But if you add all that up, and note the sequence was STOPPED before it could continue further, you get this translated into decimal:
+> 
+> 0.142857 55157470703125
+> 
+> Recall 1/7 in decimal notation is
+> 0.142857 142857142857142857...
+> 
+> Note the divergence at the seventh digit after the decimal point. I left a space to show where they diverge. If I used more binary digits, I can get as close as I want but computers these days do not allow too many more digits unless you use highly specialized programs. There are packages that give you access such as "mpfr" but generally nothing can give you infinite precision. R will not handle an infinite number of infinitesimals.
+> 
+> The original problem that began our thread was about numbers like 0.1 and 0.2 and so on. In base ten, they look nice but I repeat in base 2 only powers of TWO reign.
+> 
+> 0.1 in base two is about 0.0001100110011001101
+> 
+> that reads as 1/16 + 1/32 + 1/256 + 1/512 + ...
+> 
+> If I convert the above segment, which I repeat was stopped short, I get 0.1000003814697265625 which is a tad over and had I taken the last 1 and changed it to a zero as in 0.0001100110011001100 then we would have a bit under at 0.09999847412109375
+> 
+> So the only way to write 0.1 exactly is to continue infinitely, again. Do the analysis and understand why most rational numbers will not easily convert to a small number of bits. But the advantages of computers doing operations in binary are huge and need not be explained. You may THINK you are entering numbers in decimal form but they rarely remain that way for long before they simply become binary and often remain binary unless and until you ask to print them out, usually in decimal.
+> 
+> BTW, I used a random web site to do the above conversion calculations:
+> 
+> https://www.rapidtables.com/convert/number/binary-to-decimal.html
+> 
+> Since I am writing in plain text, I cannot show what it says in the box on that page further down under Decimal Calculation Steps so I wonder what the rest of this message looks like:
+> 
+> (0.0001100110011001100)? = (0 ? 2?) + (0 ? 2??) + (0 ? 2??) + (0 ? 2??) + (1 ? 2??) + (1 ? 2??) + (0 ? 2??) + (0 ? 2??) + (1 ? 2??) + (1 ? 2??) + (0 ? 2???) + (0 ? 2???) + (1 ? 2???) + (1 ? 2???) + (0 ? 2???) + (0 ? 2???) + (1 ? 2???) + (1 ? 2???) + (0 ? 2???) + (0 ? 2???) = (0.09999847412109375)??
+> 
+> I think my part in this particular discussion can now finally come to an end. R and everything else can be incomplete. Deal with it!
+> 
+> -----Original Message-----
+> From: Richard M. Heiberger <rmh at temple.edu>
+> To: Avi Gross <avigross at verizon.net>
+> Cc: nboeger at gmail.com <nboeger at gmail.com>; r-help at r-project.org <r-help at r-project.org>
+> Sent: Tue, Feb 1, 2022 9:04 pm
+> Subject: Re: [External] [R] Funky calculations
+> 
+> 
+> I apologize if my tone came across wrong.? I enjoy reading your comments on this list.
+> 
+> My goal was to describe what the IEEE and R interpret "careful coding" to be.
+> 
+> 
+>> On Feb 01, 2022, at 20:42, Avi Gross <avigross at verizon.net> wrote:
+>>
+>> Richard,
+>>
+>> I think it was fairly clear I was explaining how people do arithmetic manually and often truncate or round to some number of decimal places. I said nothing about what R does or what the IEEE standards say and I do not particularly care when making MY point.
+>>
+>> My point is that humans before computers also had trouble writing down any decimals that continue indefinitely. It cannot be expected computer versions of arithmetic can do much better. Different people can opt to do the calculation with the same or different numbers of digits ad when compared to each other they may not match.
+>>
+>> I do care what it does in my programs, of course. My goal here was to explain to someone that the anomaly found was not really an anomaly and that careful coding may be required in these situations.
+>>
+>>
+>> -----Original Message-----
+>> From: Richard M. Heiberger <rmh at temple.edu>
+>> To: Avi Gross <avigross at verizon.net>
+>> Cc: Nathan Boeger <nboeger at gmail.com>; r-help at r-project.org <r-help at r-project.org>
+>> Sent: Tue, Feb 1, 2022 2:44 pm
+>> Subject: Re: [External] [R] Funky calculations
+>>
+>>
+>> RShowDoc('FAQ')
+>>
+>>
+>> then search for 7.31
+>>
+>>
+>> This statement
+>> "If you stop at a 5 or 7 or 8 and back up to the previous digit, you round up. Else you leave the previous result alone."
+>> is not quite right.? The recommendation in IEEE 754, and this is how R does arithmetic, is to Round Even.
+>>
+>> I ilustrate here with decimal, even though R and other programs use binary.
+>>
+>>> x <- c(1.4, 1.5, 1.6, 2.4, 2.5, 2.6, 3.4, 3.5, 3.6, 4.4, 4.5, 4.6)
+>>> r <- round(x)
+>>> cbind(x, r)
+>>  ? ? ? ?  x r
+>> [1,] 1.4 1
+>> [2,] 1.5 2
+>> [3,] 1.6 2
+>> [4,] 2.4 2
+>> [5,] 2.5 2
+>> [6,] 2.6 3
+>> [7,] 3.4 3
+>> [8,] 3.5 4
+>> [9,] 3.6 4
+>> [10,] 4.4 4
+>> [11,] 4.5 4
+>> [12,] 4.6 5
+>>>
+>>
+>> Numbers whose last digit is not 5 (when in decimal) round to the nearest integer.
+>> Numbers who last digit is 5 (1.5, 2.5, 3.5, 4.5 above)
+>> round to the nearest EVEN integer.
+>> Hence 1.5 and 3.5 round up to the even numbers 2 and 4.
+>> 2.5 and 4.5 round down do the even numbers 2 and 4.
+>>
+>> This way the round ups and downs average out to 0.? If we always went up from .5 we would have
+>> an updrift over time.
+>>
+>> For even more detail click on the link in FAQ 7.31 to my appendix
+>> https:// link.springer.com/content/pdf/bbm%3A978-1-4939-2122-5%2F1.pdf
+>> and search for "Appendix G".
+>>
+>> Section G.5 explains Round to Even.
+>> Sections G.6 onward illustrate specific examples, such as the one that started this email thread.
+>>
+>> Rich
+>>
+> 
+> 
+>   
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @@e||ck @end|ng |rom gm@||@com  Wed Feb  2 14:39:09 2022
+From: @@e||ck @end|ng |rom gm@||@com (stephen sefick)
+Date: Wed, 2 Feb 2022 08:39:09 -0500
+Subject: [R] Funky calculations
+In-Reply-To: <CAFxA6QotuTYyJ8Jz_9SeeGZNR_LRxCXHKXYO+o3JihnQdnQL+g@mail.gmail.com>
+References: <CAFxA6QotuTYyJ8Jz_9SeeGZNR_LRxCXHKXYO+o3JihnQdnQL+g@mail.gmail.com>
+Message-ID: <CADKEMqjLh+dcwvusYCCMqhUjqaL8pQaTV04NBptaoKN1aY26fQ@mail.gmail.com>
+
+I have not looked into this, but maybe this is related to floating point
+rounding?
+Kindest regards,
+
+Stephen Sefick, PhD
+
+On Tue, Feb 1, 2022, 11:28 Nathan Boeger <nboeger at gmail.com> wrote:
+
+> Hello,
+>
+> I found something strange and maybe I am going nuts but this does not make
+> sense:
+>
+> >  (0.4 + 0.2 + 0 + 0.3 + 0 + 0.1) > 1
+> [1] TRUE
+>
+> I tried it on my mac M1 (R v4.1.2) and my Linux box (R v4.0.4). If I use
+> other values, it does not work (see below). It seems only that combination,
+> granted I did not try them all.
+>
+> >  (0.4 + 0.2 + 0 + 0.2 + 0 + 0.2) > 1
+> [1] FALSE
+>
+> Am I missing something?
+>
+> Cheers
+>
+> -nb
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Wed Feb  2 15:23:54 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Wed, 2 Feb 2022 06:23:54 -0800
+Subject: [R] [External] Funky calculations
+In-Reply-To: <CAFxA6Qr93D4VYjrZDvvrQgnTnToNQj3RQ21pLYrm8tJFHpA=1Q@mail.gmail.com>
+References: <CAFxA6QotuTYyJ8Jz_9SeeGZNR_LRxCXHKXYO+o3JihnQdnQL+g@mail.gmail.com>
+ <20220201193557.308209e8@Tarkus>
+ <D24231AD-5CBF-4595-962E-2009821BD20B@temple.edu>
+ <CAFxA6Qq1sGwh9ZwEaV6zvtfd0yq6A1W6U4oDMuy1KXs_CV9ryQ@mail.gmail.com>
+ <CAHqSRuT7KsOnUEKQRz2+Y_Z0ZoE+y3LHm4q9JLzqsSATe-85iA@mail.gmail.com>
+ <CAFxA6Qr93D4VYjrZDvvrQgnTnToNQj3RQ21pLYrm8tJFHpA=1Q@mail.gmail.com>
+Message-ID: <CAHqSRuTcqLizbAFy2jRBKoqFTNuV6mi08au6ox2iwbLgWew1QA@mail.gmail.com>
+
+Floats have 23 bits of precision so the rounding is done there instead of
+at 52 bits, hence a different example is needed to show the problem with
+floats.
+
+bill at Bill-T490:~$ cat b.c
+#include <stdio.h>
+
+int main(int argc, char* argv[])
+{
+    float d = 0.4 + 0.4 + 0.4 + 0.4;
+    printf("0.4+0.4+0.4+0.4 -> %24.17g\n", (double)d);
+    printf("0.4+0.4+0.4+0.4 == 1.6 -> %s\n", d == 1.0 ? "true" : "false");
+    return 0;
+}
+bill at Bill-T490:~$ gcc b.c
+bill at Bill-T490:~$ ./a.out
+0.4+0.4+0.4+0.4 ->       1.6000000238418579
+0.4+0.4+0.4+0.4 == 1.6 -> false
+
+There is no getting around the fact that rounding will happen.
+
+-Bill
+
+On Tue, Feb 1, 2022 at 9:06 PM Nathan Boeger <nboeger at gmail.com> wrote:
+
+>
+> I understand this and with C the data type used is important. For this
+> type of calculation, I would normally use a float (basic single precision
+> is all I require).
+>
+> #include <stdio.h>
+>
+> void main() {
+>   float foo = (0.4 + 0.2 + 0.30 + 0.1) ;
+>   printf("foo: %f , foo > 1: %s \n", foo, (foo > 1.0 ? "true" : "false"));
+>   double bar = (0.4 + 0.2 + 0.30 + 0.1) ;
+>   printf("bar: %lf , bar > 1: %s \n", bar, (bar > 1.0 ? "true" : "false"));
+> }
+>
+> gcc  c-check.c -o c-check
+> ./c-check
+> foo: 1.000000 , foo > 1: false
+> bar: 1.000000 , bar > 1: true
+>
+> Again, it was my mistake for not reading the R-FAQ. I had no idea it would
+> spark such a long thread.
+>
+> Cheers
+>
+> -nb
+>
+> On Wed, 2 Feb 2022 at 10:30, Bill Dunlap <williamwdunlap at gmail.com> wrote:
+>
+>> The base 2 representation of 0.4 repeats the digit sequence 1001
+>> infinitely, hence must be rounded.  The problem occurs in C the same as it
+>> does in R.
+>>
+>> bill at Bill-T490:~$ cat a.c
+>> #include <stdio.h>
+>>
+>> int main(int argc, char* argv[])
+>> {
+>>     double d = 0.4 + 0.3 + 0.2 + 0.1;
+>>     printf("0.4+0.3+0.2+0.1 -> %24.17g\n", d);
+>>     printf("0.4+0.3+0.2+0.1 == 1.0 -> %s\n", d == 1.0 ? "true" : "false");
+>>     return 0;
+>> }
+>> bill at Bill-T490:~$ gcc a.c
+>> bill at Bill-T490:~$ ./a.out
+>> 0.4+0.3+0.2+0.1 ->      0.99999999999999989
+>> 0.4+0.3+0.2+0.1 == 1.0 -> false
+>>
+>> -Bill
+>>
+>> On Tue, Feb 1, 2022 at 7:01 PM Nathan Boeger <nboeger at gmail.com> wrote:
+>>
+>>> Thank you for this explanation!
+>>>
+>>> I have a long background in C/C++ and never realized this was such an
+>>> issue
+>>> with some languages. At least, with trivial single digit decimals. I
+>>> understand accuracy issues with very large decimals, repeating or
+>>> non-terminating rationals and I have handled them in the past. It makes
+>>> me
+>>> worried about all the R scripts I have written before (yikes!).
+>>>
+>>> Cheers
+>>>
+>>> -nb
+>>>
+>>> On Wed, 2 Feb 2022 at 02:44, Richard M. Heiberger <rmh at temple.edu>
+>>> wrote:
+>>>
+>>> > RShowDoc('FAQ')
+>>> >
+>>> > then search for 7.31
+>>> >
+>>> >
+>>> > This statement
+>>> > "If you stop at a 5 or 7 or 8 and back up to the previous digit, you
+>>> round
+>>> > up. Else you leave the previous result alone."
+>>> > is not quite right.  The recommendation in IEEE 754, and this is how R
+>>> > does arithmetic, is to Round Even.
+>>> >
+>>> > I ilustrate here with decimal, even though R and other programs use
+>>> binary.
+>>> >
+>>> > > x <- c(1.4, 1.5, 1.6, 2.4, 2.5, 2.6, 3.4, 3.5, 3.6, 4.4, 4.5, 4.6)
+>>> > > r <- round(x)
+>>> > > cbind(x, r)
+>>> >         x r
+>>> >  [1,] 1.4 1
+>>> >  [2,] 1.5 2
+>>> >  [3,] 1.6 2
+>>> >  [4,] 2.4 2
+>>> >  [5,] 2.5 2
+>>> >  [6,] 2.6 3
+>>> >  [7,] 3.4 3
+>>> >  [8,] 3.5 4
+>>> >  [9,] 3.6 4
+>>> > [10,] 4.4 4
+>>> > [11,] 4.5 4
+>>> > [12,] 4.6 5
+>>> > >
+>>> >
+>>> > Numbers whose last digit is not 5 (when in decimal) round to the
+>>> nearest
+>>> > integer.
+>>> > Numbers who last digit is 5 (1.5, 2.5, 3.5, 4.5 above)
+>>> > round to the nearest EVEN integer.
+>>> > Hence 1.5 and 3.5 round up to the even numbers 2 and 4.
+>>> > 2.5 and 4.5 round down do the even numbers 2 and 4.
+>>> >
+>>> > This way the round ups and downs average out to 0.  If we always went
+>>> up
+>>> > from .5 we would have
+>>> > an updrift over time.
+>>> >
+>>> > For even more detail click on the link in FAQ 7.31 to my appendix
+>>> > https:// link.springer.com/content/pdf/bbm%3A978-1-4939-2122-5%2F1.pdf
+>>> > and search for "Appendix G".
+>>> >
+>>> > Section G.5 explains Round to Even.
+>>> > Sections G.6 onward illustrate specific examples, such as the one that
+>>> > started this email thread.
+>>> >
+>>> > Rich
+>>>
+>>>         [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+
+	[[alternative HTML version deleted]]
+
+
+From @v|gro@@ @end|ng |rom ver|zon@net  Wed Feb  2 19:07:02 2022
+From: @v|gro@@ @end|ng |rom ver|zon@net (Avi Gross)
+Date: Wed, 2 Feb 2022 18:07:02 +0000 (UTC)
+Subject: [R] [External] Funky calculations
+In-Reply-To: <f7f69f1b-e19c-42e3-863f-27681a8fb618@gmail.com>
+References: <CAFxA6QotuTYyJ8Jz_9SeeGZNR_LRxCXHKXYO+o3JihnQdnQL+g@mail.gmail.com>
+ <20220201193557.308209e8@Tarkus>
+ <D24231AD-5CBF-4595-962E-2009821BD20B@temple.edu>
+ <1240726547.2663210.1643766132419@mail.yahoo.com>
+ <1A13EFE0-C500-40D0-9BD0-8546E4EECBEA@temple.edu>
+ <801628629.2676628.1643773508952@mail.yahoo.com>
+ <f7f69f1b-e19c-42e3-863f-27681a8fb618@gmail.com>
+Message-ID: <1219089011.2808560.1643825222712@mail.yahoo.com>
+
+JC,
+
+Interesting. People often misunderstand standards and the need for them as well as the way they are a compromise by lots of people representing different interests. You say you were one of 31, but in my experience, many more people are involved than the ones who show up. I had some involvements with standards back in the nineties and sometimes the results made sense and sometimes we ended up with designing a camel with stripes while trying to design a horse.
+
+The issue here that needs repeating is that some things are basically impossible and the best we can do is to go part-way and make it as sane as we can.
+
+Binary is NOT a must but for now it is. Electronic circuits that work in two modes we call zero and one are not the only choices and we may someday work with more complex circuits. Some mechanical devices have been built that work in a decimal manner. But given what we are using, a standard that lets you work with numbers to a reasonable level of representation is the best we can do. As has been pointed out, mathematically, only selected real numbers can be represented exactly in base two, and even fewer if you limit the number of bits you can use.
+
+So floating point can be used with caution. I have seen some problems where it was chosen to deliberately convert all the numbers used to integers by say changing from measuring in continuous ways in meters to measuring in millimeters with no fractional millimeters allowed. All calculations done (excluding standard division) could now be compared to others without ambiguity. But for most cases, this is not necessary or even possible.
+
+-----Original Message-----
+From: J C Nash <profjcnash at gmail.com>
+To: r-help at r-project.org
+Sent: Wed, Feb 2, 2022 8:35 am
+Subject: Re: [R] [External] Funky calculations
+
+
+I was one of the 31 names on the 1985 IEEE standard. If anyone thinks things are awkward now,
+try looking at the swamp we had beforehand.
+
+What I believe IS useful is to provide examples and to explain them in tutorial fashion.
+We need to recognize that our computations have limitations. Most common computing platforms
+use IEEE binary arithmetic, but not all.
+
+This was much more "in our face" when we used slide rules or hand-crank calculators. I still
+have slide rules and a Monroe "Portable" calculator -- 5 kg! It's worth bringing them out every
+so often and being thankful for the power and speed of modern computing, while remembering to
+watch for the cowpads of REAL and REAL*8 arithmetic.
+
+JN
+
+On 2022-02-01 22:45, Avi Gross via R-help wrote:
+> This is a discussion forum, Richard, and I welcome requests to clarify what I wrote or to be corrected, especially when my words have been read with an attempt to understand. I do get private responses too and some days i wonder if I am not communicating the way people like!
+> 
+> But let me repeat. The question we started with asked about R. My answer applies to quite a few languages besides R and maybe just about all of them.
+> 
+> I got private email insisting the numbers being added were not irrational so why would they not be represented easily as a sum. I know my answers included parts at various levels of abstraction as well as examples of cases when Decimals notation for a number like 1/7 results in an infinite repeating sequence. So, I think it wise to follow up with what binary looks like and why hardly ANYTHING that looks reasonable is hard to represent exactly.
+> 
+> Consider that binary means POWERS OF TWO. The sequence 1101 before a decimal point means (starting from the right and heading left) that you have one ONES and no TWOS and one FOURS and one EIGHTS. Powers of two ranging from 2 to the zero power to two cubed. You can make any integer whatsoever using as long a sequence of zeros and ones as you like. Compare this to decimal notation where you use powers of ten and of course can use any of 0-9.
+> 
+> But looking at fractional numbers, like 1/7 and 1/10, it gets hard and inexact.
+> 
+> Remember now we are in BINARY. Here are some fractions with everything not shown to the right being zeros and thus not needed to be shown explicitly. Starting with the decimal point, read this from left to right to see the powers in the denominator rising so 1/2 then 1/4 then 1/8 ...:
+> 
+> 0.0 would be 0.
+> 0.1 would be 1/2
+> 0.101 would be 1/2 + 1/8 or 5/8
+> 0.11 would be 1/2 + 1/4 or 3/4
+> 0.111 would be 1/2 + 1/4 + 1/8 or 7/8
+> 
+> We are now using negative powers where 2 raised to the minus one power is one over two raised to the plus one power, or 1/2 and so on. As you head to the right you get to fairly small numbers like 1/2048 ...
+> 
+> Every single binary fraction is thus a possibly infinite sum of negative powers of two, or rather the reciprocals of those in positive terms.
+> 
+> If you want to make 1/7, to some number of decimal places, it looks like this up to some point where I stop:
+> 
+> 0.00100100100100100101
+> 
+> So no halves, no quarters, 1/8, no sixteenths, no thirty-seconds, 1/64, and so on. But if you add all that up, and note the sequence was STOPPED before it could continue further, you get this translated into decimal:
+> 
+> 0.142857 55157470703125
+> 
+> Recall 1/7 in decimal notation is
+> 0.142857 142857142857142857...
+> 
+> Note the divergence at the seventh digit after the decimal point. I left a space to show where they diverge. If I used more binary digits, I can get as close as I want but computers these days do not allow too many more digits unless you use highly specialized programs. There are packages that give you access such as "mpfr" but generally nothing can give you infinite precision. R will not handle an infinite number of infinitesimals.
+> 
+> The original problem that began our thread was about numbers like 0.1 and 0.2 and so on. In base ten, they look nice but I repeat in base 2 only powers of TWO reign.
+> 
+> 0.1 in base two is about 0.0001100110011001101
+> 
+> that reads as 1/16 + 1/32 + 1/256 + 1/512 + ...
+> 
+> If I convert the above segment, which I repeat was stopped short, I get 0.1000003814697265625 which is a tad over and had I taken the last 1 and changed it to a zero as in 0.0001100110011001100 then we would have a bit under at 0.09999847412109375
+> 
+> So the only way to write 0.1 exactly is to continue infinitely, again. Do the analysis and understand why most rational numbers will not easily convert to a small number of bits. But the advantages of computers doing operations in binary are huge and need not be explained. You may THINK you are entering numbers in decimal form but they rarely remain that way for long before they simply become binary and often remain binary unless and until you ask to print them out, usually in decimal.
+> 
+> BTW, I used a random web site to do the above conversion calculations:
+> 
+> https://www.rapidtables.com/convert/number/binary-to-decimal.html
+> 
+> Since I am writing in plain text, I cannot show what it says in the box on that page further down under Decimal Calculation Steps so I wonder what the rest of this message looks like:
+> 
+> (0.0001100110011001100)? = (0 ? 2?) + (0 ? 2??) + (0 ? 2??) + (0 ? 2??) + (1 ? 2??) + (1 ? 2??) + (0 ? 2??) + (0 ? 2??) + (1 ? 2??) + (1 ? 2??) + (0 ? 2???) + (0 ? 2???) + (1 ? 2???) + (1 ? 2???) + (0 ? 2???) + (0 ? 2???) + (1 ? 2???) + (1 ? 2???) + (0 ? 2???) + (0 ? 2???) = (0.09999847412109375)??
+> 
+> I think my part in this particular discussion can now finally come to an end. R and everything else can be incomplete. Deal with it!
+> 
+> -----Original Message-----
+> From: Richard M. Heiberger <rmh at temple.edu>
+> To: Avi Gross <avigross at verizon.net>
+> Cc: nboeger at gmail.com <nboeger at gmail.com>; r-help at r-project.org <r-help at r-project.org>
+> Sent: Tue, Feb 1, 2022 9:04 pm
+> Subject: Re: [External] [R] Funky calculations
+> 
+> 
+> I apologize if my tone came across wrong.? I enjoy reading your comments on this list.
+> 
+> My goal was to describe what the IEEE and R interpret "careful coding" to be.
+> 
+> 
+>> On Feb 01, 2022, at 20:42, Avi Gross <avigross at verizon.net> wrote:
+>>
+>> Richard,
+>>
+>> I think it was fairly clear I was explaining how people do arithmetic manually and often truncate or round to some number of decimal places. I said nothing about what R does or what the IEEE standards say and I do not particularly care when making MY point.
+>>
+>> My point is that humans before computers also had trouble writing down any decimals that continue indefinitely. It cannot be expected computer versions of arithmetic can do much better. Different people can opt to do the calculation with the same or different numbers of digits ad when compared to each other they may not match.
+>>
+>> I do care what it does in my programs, of course. My goal here was to explain to someone that the anomaly found was not really an anomaly and that careful coding may be required in these situations.
+>>
+>>
+>> -----Original Message-----
+>> From: Richard M. Heiberger <rmh at temple.edu>
+>> To: Avi Gross <avigross at verizon.net>
+>> Cc: Nathan Boeger <nboeger at gmail.com>; r-help at r-project.org <r-help at r-project.org>
+>> Sent: Tue, Feb 1, 2022 2:44 pm
+>> Subject: Re: [External] [R] Funky calculations
+>>
+>>
+>> RShowDoc('FAQ')
+>>
+>>
+>> then search for 7.31
+>>
+>>
+>> This statement
+>> "If you stop at a 5 or 7 or 8 and back up to the previous digit, you round up. Else you leave the previous result alone."
+>> is not quite right.? The recommendation in IEEE 754, and this is how R does arithmetic, is to Round Even.
+>>
+>> I ilustrate here with decimal, even though R and other programs use binary.
+>>
+>>> x <- c(1.4, 1.5, 1.6, 2.4, 2.5, 2.6, 3.4, 3.5, 3.6, 4.4, 4.5, 4.6)
+>>> r <- round(x)
+>>> cbind(x, r)
+>>? ? ? ? ?? x r
+>> [1,] 1.4 1
+>> [2,] 1.5 2
+>> [3,] 1.6 2
+>> [4,] 2.4 2
+>> [5,] 2.5 2
+>> [6,] 2.6 3
+>> [7,] 3.4 3
+>> [8,] 3.5 4
+>> [9,] 3.6 4
+>> [10,] 4.4 4
+>> [11,] 4.5 4
+>> [12,] 4.6 5
+>>>
+>>
+>> Numbers whose last digit is not 5 (when in decimal) round to the nearest integer.
+>> Numbers who last digit is 5 (1.5, 2.5, 3.5, 4.5 above)
+>> round to the nearest EVEN integer.
+>> Hence 1.5 and 3.5 round up to the even numbers 2 and 4.
+>> 2.5 and 4.5 round down do the even numbers 2 and 4.
+>>
+>> This way the round ups and downs average out to 0.? If we always went up from .5 we would have
+>> an updrift over time.
+>>
+>> For even more detail click on the link in FAQ 7.31 to my appendix
+>> https:// link.springer.com/content/pdf/bbm%3A978-1-4939-2122-5%2F1.pdf
+>> and search for "Appendix G".
+>>
+>> Section G.5 explains Round to Even.
+>> Sections G.6 onward illustrate specific examples, such as the one that started this email thread.
+>>
+>> Rich
+
+
+From tebert @end|ng |rom u||@edu  Wed Feb  2 19:27:28 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Wed, 2 Feb 2022 18:27:28 +0000
+Subject: [R] [External] Funky calculations
+In-Reply-To: <f7f69f1b-e19c-42e3-863f-27681a8fb618@gmail.com>
+References: <CAFxA6QotuTYyJ8Jz_9SeeGZNR_LRxCXHKXYO+o3JihnQdnQL+g@mail.gmail.com>
+ <20220201193557.308209e8@Tarkus>
+ <D24231AD-5CBF-4595-962E-2009821BD20B@temple.edu>
+ <1240726547.2663210.1643766132419@mail.yahoo.com>
+ <1A13EFE0-C500-40D0-9BD0-8546E4EECBEA@temple.edu>
+ <801628629.2676628.1643773508952@mail.yahoo.com>
+ <f7f69f1b-e19c-42e3-863f-27681a8fb618@gmail.com>
+Message-ID: <BN6PR2201MB155343686950421C0B16BDFCCF279@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+Punch cards and reams of green and white striped fanfold. A portable Cromemco we called a boat anchor, and hardly used because the Apple II was more in line with our computing tasks/skills. The relevant part is learning assembly and machine language on the Apple. Trying to describe an infinite value in a finite space results in inaccuracy no matter how you work it. The problem applies to all programs in all languages. The problem, while present, does not always matter. One way to identify the limits of accuracy is something like this:
+1 + 1 == 2   #  returns TRUE
+1 + 0.9 == 2 # returns FALSE
+1 + 0.9999999 == 2 should return FALSE
+Keep going and at some point you will get TRUE.
+In my version of R, here is the last time I get FALSE.
+1+ 0.999999999999999 == 2    #15 digits after decimal place
+
+I can do something similar in Excel. In printing Excel rounds up to 1 when 10 nines are present. The if test quits returning FALSE after 14 decimal places. =if(1 + 0.9999999 = 2, "TRUE","FALSE")
+
+One can play the game another way. This matters because it is NOT the number of digits after the decimal point, it is the total number of digits.
+
+Here is the last correct answer in this game:
+999999999999999 == 1000000000000000
+That is 15 digits, add another 9 on the left and a zero on the right and you get TRUE.
+
+123456789 + 0.00000001 == 123456789
+Here is the last FALSE, but note that I have only added a number with 8 decimal places.
+
+There are many other ways to play this game:
+log10(10.00000000000001)==1 # add a zero before the decimal point, how many can one have after?
+
+In statistics it is well know that it is a bad idea to model data that spans many orders of magnitude. At least for me, this is the simplest presentation for why this is the case. For a more exact reason consider the above results when taking the inverse of a matrix with elements that differ by several orders of magnitude.
+
+The issue is well known, and programs like R and SAS and SPSS, (etc...) take care of the issue, up to a point. However, it is not hard to break the system if you try or are not careful. The point at which the system breaks is easy to identify in simple terms. However, just because R's limit is 15 digits does not mean that all packages in R will also have that limit. Just keep in mind that your data range in R needs to be such that the operations on that data all fit within this 15 digit limitation. Other programs may have different limitations, but there is always a limitation.
+
+Tim 
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of J C Nash
+Sent: Wednesday, February 2, 2022 8:36 AM
+To: r-help at r-project.org
+Subject: Re: [R] [External] Funky calculations
+
+[External Email]
+
+I was one of the 31 names on the 1985 IEEE standard. If anyone thinks things are awkward now, try looking at the swamp we had beforehand.
+
+What I believe IS useful is to provide examples and to explain them in tutorial fashion.
+We need to recognize that our computations have limitations. Most common computing platforms use IEEE binary arithmetic, but not all.
+
+This was much more "in our face" when we used slide rules or hand-crank calculators. I still have slide rules and a Monroe "Portable" calculator -- 5 kg! It's worth bringing them out every so often and being thankful for the power and speed of modern computing, while remembering to watch for the cowpads of REAL and REAL*8 arithmetic.
+
+JN
+
+On 2022-02-01 22:45, Avi Gross via R-help wrote:
+> This is a discussion forum, Richard, and I welcome requests to clarify what I wrote or to be corrected, especially when my words have been read with an attempt to understand. I do get private responses too and some days i wonder if I am not communicating the way people like!
+>
+> But let me repeat. The question we started with asked about R. My answer applies to quite a few languages besides R and maybe just about all of them.
+>
+> I got private email insisting the numbers being added were not irrational so why would they not be represented easily as a sum. I know my answers included parts at various levels of abstraction as well as examples of cases when Decimals notation for a number like 1/7 results in an infinite repeating sequence. So, I think it wise to follow up with what binary looks like and why hardly ANYTHING that looks reasonable is hard to represent exactly.
+>
+> Consider that binary means POWERS OF TWO. The sequence 1101 before a decimal point means (starting from the right and heading left) that you have one ONES and no TWOS and one FOURS and one EIGHTS. Powers of two ranging from 2 to the zero power to two cubed. You can make any integer whatsoever using as long a sequence of zeros and ones as you like. Compare this to decimal notation where you use powers of ten and of course can use any of 0-9.
+>
+> But looking at fractional numbers, like 1/7 and 1/10, it gets hard and inexact.
+>
+> Remember now we are in BINARY. Here are some fractions with everything not shown to the right being zeros and thus not needed to be shown explicitly. Starting with the decimal point, read this from left to right to see the powers in the denominator rising so 1/2 then 1/4 then 1/8 ...:
+>
+> 0.0 would be 0.
+> 0.1 would be 1/2
+> 0.101 would be 1/2 + 1/8 or 5/8
+> 0.11 would be 1/2 + 1/4 or 3/4
+> 0.111 would be 1/2 + 1/4 + 1/8 or 7/8
+>
+> We are now using negative powers where 2 raised to the minus one power is one over two raised to the plus one power, or 1/2 and so on. As you head to the right you get to fairly small numbers like 1/2048 ...
+>
+> Every single binary fraction is thus a possibly infinite sum of negative powers of two, or rather the reciprocals of those in positive terms.
+>
+> If you want to make 1/7, to some number of decimal places, it looks like this up to some point where I stop:
+>
+> 0.00100100100100100101
+>
+> So no halves, no quarters, 1/8, no sixteenths, no thirty-seconds, 1/64, and so on. But if you add all that up, and note the sequence was STOPPED before it could continue further, you get this translated into decimal:
+>
+> 0.142857 55157470703125
+>
+> Recall 1/7 in decimal notation is
+> 0.142857 142857142857142857...
+>
+> Note the divergence at the seventh digit after the decimal point. I left a space to show where they diverge. If I used more binary digits, I can get as close as I want but computers these days do not allow too many more digits unless you use highly specialized programs. There are packages that give you access such as "mpfr" but generally nothing can give you infinite precision. R will not handle an infinite number of infinitesimals.
+>
+> The original problem that began our thread was about numbers like 0.1 and 0.2 and so on. In base ten, they look nice but I repeat in base 2 only powers of TWO reign.
+>
+> 0.1 in base two is about 0.0001100110011001101
+>
+> that reads as 1/16 + 1/32 + 1/256 + 1/512 + ...
+>
+> If I convert the above segment, which I repeat was stopped short, I 
+> get 0.1000003814697265625 which is a tad over and had I taken the last 
+> 1 and changed it to a zero as in 0.0001100110011001100 then we would 
+> have a bit under at 0.09999847412109375
+>
+> So the only way to write 0.1 exactly is to continue infinitely, again. Do the analysis and understand why most rational numbers will not easily convert to a small number of bits. But the advantages of computers doing operations in binary are huge and need not be explained. You may THINK you are entering numbers in decimal form but they rarely remain that way for long before they simply become binary and often remain binary unless and until you ask to print them out, usually in decimal.
+>
+> BTW, I used a random web site to do the above conversion calculations:
+>
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__www.rapidtables.c
+> om_convert_number_binary-2Dto-2Ddecimal.html&d=DwIDaQ&c=sJ6xIWYx-zLMB3
+> EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=m7vgw0V3XLMYZ26IDQFrX6s6LeffgRVmWQ
+> d4FGv5GUaI_W1jJ_i7QSJKQrB8fON4&s=_HQxpbll2YuLGvrwfc0AJPK4NAQ9xCcqvfl0c
+> 1i-8Tg&e=
+>
+> Since I am writing in plain text, I cannot show what it says in the box on that page further down under Decimal Calculation Steps so I wonder what the rest of this message looks like:
+>
+> (0.0001100110011001100)? = (0 ? 2?) + (0 ? 2??) + (0 ? 2??) + (0 ? 
+> 2??) + (1 ? 2??) + (1 ? 2??) + (0 ? 2??) + (0 ? 2??) + (1 ? 2??) + (1 
+> ? 2??) + (0 ? 2???) + (0 ? 2???) + (1 ? 2???) + (1 ? 2???) + (0 ? 
+> 2???) + (0 ? 2???) + (1 ? 2???) + (1 ? 2???) + (0 ? 2???) + (0 ? 2???) 
+> = (0.09999847412109375)??
+>
+> I think my part in this particular discussion can now finally come to an end. R and everything else can be incomplete. Deal with it!
+>
+> -----Original Message-----
+> From: Richard M. Heiberger <rmh at temple.edu>
+> To: Avi Gross <avigross at verizon.net>
+> Cc: nboeger at gmail.com <nboeger at gmail.com>; r-help at r-project.org 
+> <r-help at r-project.org>
+> Sent: Tue, Feb 1, 2022 9:04 pm
+> Subject: Re: [External] [R] Funky calculations
+>
+>
+> I apologize if my tone came across wrong.  I enjoy reading your comments on this list.
+>
+> My goal was to describe what the IEEE and R interpret "careful coding" to be.
+>
+>
+>> On Feb 01, 2022, at 20:42, Avi Gross <avigross at verizon.net> wrote:
+>>
+>> Richard,
+>>
+>> I think it was fairly clear I was explaining how people do arithmetic manually and often truncate or round to some number of decimal places. I said nothing about what R does or what the IEEE standards say and I do not particularly care when making MY point.
+>>
+>> My point is that humans before computers also had trouble writing down any decimals that continue indefinitely. It cannot be expected computer versions of arithmetic can do much better. Different people can opt to do the calculation with the same or different numbers of digits ad when compared to each other they may not match.
+>>
+>> I do care what it does in my programs, of course. My goal here was to explain to someone that the anomaly found was not really an anomaly and that careful coding may be required in these situations.
+>>
+>>
+>> -----Original Message-----
+>> From: Richard M. Heiberger <rmh at temple.edu>
+>> To: Avi Gross <avigross at verizon.net>
+>> Cc: Nathan Boeger <nboeger at gmail.com>; r-help at r-project.org 
+>> <r-help at r-project.org>
+>> Sent: Tue, Feb 1, 2022 2:44 pm
+>> Subject: Re: [External] [R] Funky calculations
+>>
+>>
+>> RShowDoc('FAQ')
+>>
+>>
+>> then search for 7.31
+>>
+>>
+>> This statement
+>> "If you stop at a 5 or 7 or 8 and back up to the previous digit, you round up. Else you leave the previous result alone."
+>> is not quite right.  The recommendation in IEEE 754, and this is how R does arithmetic, is to Round Even.
+>>
+>> I ilustrate here with decimal, even though R and other programs use binary.
+>>
+>>> x <- c(1.4, 1.5, 1.6, 2.4, 2.5, 2.6, 3.4, 3.5, 3.6, 4.4, 4.5, 4.6) r 
+>>> <- round(x) cbind(x, r)
+>>           x r
+>> [1,] 1.4 1
+>> [2,] 1.5 2
+>> [3,] 1.6 2
+>> [4,] 2.4 2
+>> [5,] 2.5 2
+>> [6,] 2.6 3
+>> [7,] 3.4 3
+>> [8,] 3.5 4
+>> [9,] 3.6 4
+>> [10,] 4.4 4
+>> [11,] 4.5 4
+>> [12,] 4.6 5
+>>>
+>>
+>> Numbers whose last digit is not 5 (when in decimal) round to the nearest integer.
+>> Numbers who last digit is 5 (1.5, 2.5, 3.5, 4.5 above) round to the 
+>> nearest EVEN integer.
+>> Hence 1.5 and 3.5 round up to the even numbers 2 and 4.
+>> 2.5 and 4.5 round down do the even numbers 2 and 4.
+>>
+>> This way the round ups and downs average out to 0.  If we always went 
+>> up from .5 we would have an updrift over time.
+>>
+>> For even more detail click on the link in FAQ 7.31 to my appendix 
+>> https:// 
+>> link.springer.com/content/pdf/bbm%3A978-1-4939-2122-5%2F1.pdf
+>> and search for "Appendix G".
+>>
+>> Section G.5 explains Round to Even.
+>> Sections G.6 onward illustrate specific examples, such as the one that started this email thread.
+>>
+>> Rich
+>>
+>
+>
+>
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mail
+> man_listinfo_r-2Dhelp&d=DwIDaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAs
+> Rzsn7AkP-g&m=m7vgw0V3XLMYZ26IDQFrX6s6LeffgRVmWQd4FGv5GUaI_W1jJ_i7QSJKQ
+> rB8fON4&s=HX4jIGehR02lpSThBSeyCJjGktkizJEOcq7FpBq2mOY&e=
+> PLEASE do read the posting guide 
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.or
+> g_posting-2Dguide.html&d=DwIDaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeA
+> sRzsn7AkP-g&m=m7vgw0V3XLMYZ26IDQFrX6s6LeffgRVmWQd4FGv5GUaI_W1jJ_i7QSJK
+> QrB8fON4&s=GDNe-9c0Z0dm3zV0Nqlnil_EDvpqQgJybFt5DdfZ3v4&e=
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwIDaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=m7vgw0V3XLMYZ26IDQFrX6s6LeffgRVmWQd4FGv5GUaI_W1jJ_i7QSJKQrB8fON4&s=HX4jIGehR02lpSThBSeyCJjGktkizJEOcq7FpBq2mOY&e=
+PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwIDaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=m7vgw0V3XLMYZ26IDQFrX6s6LeffgRVmWQd4FGv5GUaI_W1jJ_i7QSJKQrB8fON4&s=GDNe-9c0Z0dm3zV0Nqlnil_EDvpqQgJybFt5DdfZ3v4&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+From @v|gro@@ @end|ng |rom ver|zon@net  Wed Feb  2 20:23:47 2022
+From: @v|gro@@ @end|ng |rom ver|zon@net (Avi Gross)
+Date: Wed, 2 Feb 2022 19:23:47 +0000 (UTC)
+Subject: [R] [External] Funky calculations
+In-Reply-To: <BN6PR2201MB155343686950421C0B16BDFCCF279@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <CAFxA6QotuTYyJ8Jz_9SeeGZNR_LRxCXHKXYO+o3JihnQdnQL+g@mail.gmail.com>
+ <20220201193557.308209e8@Tarkus>
+ <D24231AD-5CBF-4595-962E-2009821BD20B@temple.edu>
+ <1240726547.2663210.1643766132419@mail.yahoo.com>
+ <1A13EFE0-C500-40D0-9BD0-8546E4EECBEA@temple.edu>
+ <801628629.2676628.1643773508952@mail.yahoo.com>
+ <f7f69f1b-e19c-42e3-863f-27681a8fb618@gmail.com>
+ <BN6PR2201MB155343686950421C0B16BDFCCF279@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <88067166.2834644.1643829827893@mail.yahoo.com>
+
+As discussed, Tim, your version of R has already built-in all kinds of values and limits and even ways to do approximate tests in the variable .Machine such as:
+
+> .Machine$double.eps
+[1] 2.220446e-16
+> .Machine$sizeof.longdouble
+[1] 16
+> .Machine$double.eps
+[1] 2.220446e-16
+> .Machine$longdouble.eps
+[1] 1.084202e-19
+
+If you can figure out which ones correspond to what you are looking for, you can stay within bounds or set up your code to catch the rare cases when you are in a gray area where comparisons are not reliable and assume all other areas are valid for tests of equality or inequality.
+
+Consider another common problem. You want to multiply two integers that are stored in integer variables of some capacity ranging from a byte to 4 or even more bytes. On many machines, if the multiplication needs even more digits than are available, the result is to return just the bits that fit and toss the others away. Your result is effectively nonsense. You may also throw an error and have to catch it.
+
+But if your program runs portably on many machines, how can you be sure it worked properly if you multiply say a billion by a billion in an integer that only fits the following number on my machine at this time:
+
+> .Machine$integer.max
+[1] 2147483647
+
+The above number is a bit more than 2 billion so clearly multiplying those two numbers will not fit. One solution, and not a great one, is to verify that each number being multiplied is less than the square root of the limit. Another is to do the multiplication and then divide the result by one of the multiplicands and verify the result is the same as the other multiplicand. If not, you had a problem, probably an overflow situation.
+
+It should not be necessary to do this and in some ways it isn't. There are probably R packages supporting larger integers (and I don't mean by converting to floating point) and I know Python integers already are of any length and only limited by available memory.
+
+But it is an example of how real computers using current methods are not mathematically whole and you can not demand they do what is mathematically possible and especially not in areas where things are truly meant to be continuous with no gaps or of infinite duration in various ways. The real world is not the ideal Platonic Realm.
+
+Now I have to think about what may happen with quantum computers and algorithms using them. QBITS have a certain sense of infinity in them and can be a sort of superposition of many quantum states and thus may turn out to allow arbitrary precision, unless they hit some quantum wall.
+
+But that is a topic for some futuristic R.
+
+
+
+-----Original Message-----
+From: Ebert,Timothy Aaron <tebert at ufl.edu>
+To: J C Nash <profjcnash at gmail.com>; r-help at r-project.org <r-help at r-project.org>
+Sent: Wed, Feb 2, 2022 1:27 pm
+Subject: Re: [R] [External] Funky calculations
+
+
+Punch cards and reams of green and white striped fanfold. A portable Cromemco we called a boat anchor, and hardly used because the Apple II was more in line with our computing tasks/skills. The relevant part is learning assembly and machine language on the Apple. Trying to describe an infinite value in a finite space results in inaccuracy no matter how you work it. The problem applies to all programs in all languages. The problem, while present, does not always matter. One way to identify the limits of accuracy is something like this:
+1 + 1 == 2?  #? returns TRUE
+1 + 0.9 == 2 # returns FALSE
+1 + 0.9999999 == 2 should return FALSE
+Keep going and at some point you will get TRUE.
+In my version of R, here is the last time I get FALSE.
+1+ 0.999999999999999 == 2? ? #15 digits after decimal place
+
+I can do something similar in Excel. In printing Excel rounds up to 1 when 10 nines are present. The if test quits returning FALSE after 14 decimal places. =if(1 + 0.9999999 = 2, "TRUE","FALSE")
+
+One can play the game another way. This matters because it is NOT the number of digits after the decimal point, it is the total number of digits.
+
+Here is the last correct answer in this game:
+999999999999999 == 1000000000000000
+That is 15 digits, add another 9 on the left and a zero on the right and you get TRUE.
+
+123456789 + 0.00000001 == 123456789
+Here is the last FALSE, but note that I have only added a number with 8 decimal places.
+
+There are many other ways to play this game:
+log10(10.00000000000001)==1 # add a zero before the decimal point, how many can one have after?
+
+In statistics it is well know that it is a bad idea to model data that spans many orders of magnitude. At least for me, this is the simplest presentation for why this is the case. For a more exact reason consider the above results when taking the inverse of a matrix with elements that differ by several orders of magnitude.
+
+The issue is well known, and programs like R and SAS and SPSS, (etc...) take care of the issue, up to a point. However, it is not hard to break the system if you try or are not careful. The point at which the system breaks is easy to identify in simple terms. However, just because R's limit is 15 digits does not mean that all packages in R will also have that limit. Just keep in mind that your data range in R needs to be such that the operations on that data all fit within this 15 digit limitation. Other programs may have different limitations, but there is always a limitation.
+
+Tim 
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of J C Nash
+Sent: Wednesday, February 2, 2022 8:36 AM
+To: r-help at r-project.org
+Subject: Re: [R] [External] Funky calculations
+
+[External Email]
+
+I was one of the 31 names on the 1985 IEEE standard. If anyone thinks things are awkward now, try looking at the swamp we had beforehand.
+
+What I believe IS useful is to provide examples and to explain them in tutorial fashion.
+We need to recognize that our computations have limitations. Most common computing platforms use IEEE binary arithmetic, but not all.
+
+This was much more "in our face" when we used slide rules or hand-crank calculators. I still have slide rules and a Monroe "Portable" calculator -- 5 kg! It's worth bringing them out every so often and being thankful for the power and speed of modern computing, while remembering to watch for the cowpads of REAL and REAL*8 arithmetic.
+
+JN
+
+On 2022-02-01 22:45, Avi Gross via R-help wrote:
+> This is a discussion forum, Richard, and I welcome requests to clarify what I wrote or to be corrected, especially when my words have been read with an attempt to understand. I do get private responses too and some days i wonder if I am not communicating the way people like!
+>
+> But let me repeat. The question we started with asked about R. My answer applies to quite a few languages besides R and maybe just about all of them.
+>
+> I got private email insisting the numbers being added were not irrational so why would they not be represented easily as a sum. I know my answers included parts at various levels of abstraction as well as examples of cases when Decimals notation for a number like 1/7 results in an infinite repeating sequence. So, I think it wise to follow up with what binary looks like and why hardly ANYTHING that looks reasonable is hard to represent exactly.
+>
+> Consider that binary means POWERS OF TWO. The sequence 1101 before a decimal point means (starting from the right and heading left) that you have one ONES and no TWOS and one FOURS and one EIGHTS. Powers of two ranging from 2 to the zero power to two cubed. You can make any integer whatsoever using as long a sequence of zeros and ones as you like. Compare this to decimal notation where you use powers of ten and of course can use any of 0-9.
+>
+> But looking at fractional numbers, like 1/7 and 1/10, it gets hard and inexact.
+>
+> Remember now we are in BINARY. Here are some fractions with everything not shown to the right being zeros and thus not needed to be shown explicitly. Starting with the decimal point, read this from left to right to see the powers in the denominator rising so 1/2 then 1/4 then 1/8 ...:
+>
+> 0.0 would be 0.
+> 0.1 would be 1/2
+> 0.101 would be 1/2 + 1/8 or 5/8
+> 0.11 would be 1/2 + 1/4 or 3/4
+> 0.111 would be 1/2 + 1/4 + 1/8 or 7/8
+>
+> We are now using negative powers where 2 raised to the minus one power is one over two raised to the plus one power, or 1/2 and so on. As you head to the right you get to fairly small numbers like 1/2048 ...
+>
+> Every single binary fraction is thus a possibly infinite sum of negative powers of two, or rather the reciprocals of those in positive terms.
+>
+> If you want to make 1/7, to some number of decimal places, it looks like this up to some point where I stop:
+>
+> 0.00100100100100100101
+>
+> So no halves, no quarters, 1/8, no sixteenths, no thirty-seconds, 1/64, and so on. But if you add all that up, and note the sequence was STOPPED before it could continue further, you get this translated into decimal:
+>
+> 0.142857 55157470703125
+>
+> Recall 1/7 in decimal notation is
+> 0.142857 142857142857142857...
+>
+> Note the divergence at the seventh digit after the decimal point. I left a space to show where they diverge. If I used more binary digits, I can get as close as I want but computers these days do not allow too many more digits unless you use highly specialized programs. There are packages that give you access such as "mpfr" but generally nothing can give you infinite precision. R will not handle an infinite number of infinitesimals.
+>
+> The original problem that began our thread was about numbers like 0.1 and 0.2 and so on. In base ten, they look nice but I repeat in base 2 only powers of TWO reign.
+>
+> 0.1 in base two is about 0.0001100110011001101
+>
+> that reads as 1/16 + 1/32 + 1/256 + 1/512 + ...
+>
+> If I convert the above segment, which I repeat was stopped short, I 
+> get 0.1000003814697265625 which is a tad over and had I taken the last 
+> 1 and changed it to a zero as in 0.0001100110011001100 then we would 
+> have a bit under at 0.09999847412109375
+>
+> So the only way to write 0.1 exactly is to continue infinitely, again. Do the analysis and understand why most rational numbers will not easily convert to a small number of bits. But the advantages of computers doing operations in binary are huge and need not be explained. You may THINK you are entering numbers in decimal form but they rarely remain that way for long before they simply become binary and often remain binary unless and until you ask to print them out, usually in decimal.
+>
+> BTW, I used a random web site to do the above conversion calculations:
+>
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__www.rapidtables.c
+> om_convert_number_binary-2Dto-2Ddecimal.html&d=DwIDaQ&c=sJ6xIWYx-zLMB3
+> EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=m7vgw0V3XLMYZ26IDQFrX6s6LeffgRVmWQ
+> d4FGv5GUaI_W1jJ_i7QSJKQrB8fON4&s=_HQxpbll2YuLGvrwfc0AJPK4NAQ9xCcqvfl0c
+> 1i-8Tg&e=
+>
+> Since I am writing in plain text, I cannot show what it says in the box on that page further down under Decimal Calculation Steps so I wonder what the rest of this message looks like:
+>
+> (0.0001100110011001100)? = (0 ? 2?) + (0 ? 2??) + (0 ? 2??) + (0 ? 
+> 2??) + (1 ? 2??) + (1 ? 2??) + (0 ? 2??) + (0 ? 2??) + (1 ? 2??) + (1 
+> ? 2??) + (0 ? 2???) + (0 ? 2???) + (1 ? 2???) + (1 ? 2???) + (0 ? 
+> 2???) + (0 ? 2???) + (1 ? 2???) + (1 ? 2???) + (0 ? 2???) + (0 ? 2???) 
+> = (0.09999847412109375)??
+>
+> I think my part in this particular discussion can now finally come to an end. R and everything else can be incomplete. Deal with it!
+>
+> -----Original Message-----
+> From: Richard M. Heiberger <rmh at temple.edu>
+> To: Avi Gross <avigross at verizon.net>
+> Cc: nboeger at gmail.com <nboeger at gmail.com>; r-help at r-project.org 
+> <r-help at r-project.org>
+> Sent: Tue, Feb 1, 2022 9:04 pm
+> Subject: Re: [External] [R] Funky calculations
+>
+>
+> I apologize if my tone came across wrong.? I enjoy reading your comments on this list.
+>
+> My goal was to describe what the IEEE and R interpret "careful coding" to be.
+>
+>
+>> On Feb 01, 2022, at 20:42, Avi Gross <avigross at verizon.net> wrote:
+>>
+>> Richard,
+>>
+>> I think it was fairly clear I was explaining how people do arithmetic manually and often truncate or round to some number of decimal places. I said nothing about what R does or what the IEEE standards say and I do not particularly care when making MY point.
+>>
+>> My point is that humans before computers also had trouble writing down any decimals that continue indefinitely. It cannot be expected computer versions of arithmetic can do much better. Different people can opt to do the calculation with the same or different numbers of digits ad when compared to each other they may not match.
+>>
+>> I do care what it does in my programs, of course. My goal here was to explain to someone that the anomaly found was not really an anomaly and that careful coding may be required in these situations.
+>>
+>>
+>> -----Original Message-----
+>> From: Richard M. Heiberger <rmh at temple.edu>
+>> To: Avi Gross <avigross at verizon.net>
+>> Cc: Nathan Boeger <nboeger at gmail.com>; r-help at r-project.org 
+>> <r-help at r-project.org>
+>> Sent: Tue, Feb 1, 2022 2:44 pm
+>> Subject: Re: [External] [R] Funky calculations
+>>
+>>
+>> RShowDoc('FAQ')
+>>
+>>
+>> then search for 7.31
+>>
+>>
+>> This statement
+>> "If you stop at a 5 or 7 or 8 and back up to the previous digit, you round up. Else you leave the previous result alone."
+>> is not quite right.? The recommendation in IEEE 754, and this is how R does arithmetic, is to Round Even.
+>>
+>> I ilustrate here with decimal, even though R and other programs use binary.
+>>
+>>> x <- c(1.4, 1.5, 1.6, 2.4, 2.5, 2.6, 3.4, 3.5, 3.6, 4.4, 4.5, 4.6) r 
+>>> <- round(x) cbind(x, r)
+>>? ? ? ? ?  x r
+>> [1,] 1.4 1
+>> [2,] 1.5 2
+>> [3,] 1.6 2
+>> [4,] 2.4 2
+>> [5,] 2.5 2
+>> [6,] 2.6 3
+>> [7,] 3.4 3
+>> [8,] 3.5 4
+>> [9,] 3.6 4
+>> [10,] 4.4 4
+>> [11,] 4.5 4
+>> [12,] 4.6 5
+>>>
+>>
+>> Numbers whose last digit is not 5 (when in decimal) round to the nearest integer.
+>> Numbers who last digit is 5 (1.5, 2.5, 3.5, 4.5 above) round to the 
+>> nearest EVEN integer.
+>> Hence 1.5 and 3.5 round up to the even numbers 2 and 4.
+>> 2.5 and 4.5 round down do the even numbers 2 and 4.
+>>
+>> This way the round ups and downs average out to 0.? If we always went 
+>> up from .5 we would have an updrift over time.
+>>
+>> For even more detail click on the link in FAQ 7.31 to my appendix 
+>> https:// 
+>> link.springer.com/content/pdf/bbm%3A978-1-4939-2122-5%2F1.pdf
+>> and search for "Appendix G".
+>>
+>> Section G.5 explains Round to Even.
+>> Sections G.6 onward illustrate specific examples, such as the one that started this email thread.
+>>
+>> Rich
+>>
+>
+>
+>
+
+
+From nboeger @end|ng |rom gm@||@com  Thu Feb  3 03:14:01 2022
+From: nboeger @end|ng |rom gm@||@com (Nathan Boeger)
+Date: Thu, 3 Feb 2022 09:14:01 +0700
+Subject: [R] [External] Funky calculations
+In-Reply-To: <CAHqSRuTcqLizbAFy2jRBKoqFTNuV6mi08au6ox2iwbLgWew1QA@mail.gmail.com>
+References: <CAFxA6QotuTYyJ8Jz_9SeeGZNR_LRxCXHKXYO+o3JihnQdnQL+g@mail.gmail.com>
+ <20220201193557.308209e8@Tarkus>
+ <D24231AD-5CBF-4595-962E-2009821BD20B@temple.edu>
+ <CAFxA6Qq1sGwh9ZwEaV6zvtfd0yq6A1W6U4oDMuy1KXs_CV9ryQ@mail.gmail.com>
+ <CAHqSRuT7KsOnUEKQRz2+Y_Z0ZoE+y3LHm4q9JLzqsSATe-85iA@mail.gmail.com>
+ <CAFxA6Qr93D4VYjrZDvvrQgnTnToNQj3RQ21pLYrm8tJFHpA=1Q@mail.gmail.com>
+ <CAHqSRuTcqLizbAFy2jRBKoqFTNuV6mi08au6ox2iwbLgWew1QA@mail.gmail.com>
+Message-ID: <CAFxA6Qo+Mq0H2Hhdb9K5FKgc_sq9fr1TbZHydN9Pw43DChCrfg@mail.gmail.com>
+
+You have a typo:
+
+   printf("0.4+0.4+0.4+0.4 == 1.6 -> %s\n", d == 1.0 ? "true" : "false");
+
+should be:
+
+   printf("0.4+0.4+0.4+0.4 == 1.6 -> %s\n", d == 1.6 ? "true" : "false");
+
+The comparison was with 1.0 but should be 1.6. I ran it and it has the same
+output as you show above. Very interesting.
+
+-nb
+
+On Wed, 2 Feb 2022 at 21:24, Bill Dunlap <williamwdunlap at gmail.com> wrote:
+
+> Floats have 23 bits of precision so the rounding is done there instead of
+> at 52 bits, hence a different example is needed to show the problem with
+> floats.
+>
+> bill at Bill-T490:~$ cat b.c
+> #include <stdio.h>
+>
+> int main(int argc, char* argv[])
+> {
+>     float d = 0.4 + 0.4 + 0.4 + 0.4;
+>     printf("0.4+0.4+0.4+0.4 -> %24.17g\n", (double)d);
+>     printf("0.4+0.4+0.4+0.4 == 1.6 -> %s\n", d == 1.0 ? "true" : "false");
+>     return 0;
+> }
+> bill at Bill-T490:~$ gcc b.c
+> bill at Bill-T490:~$ ./a.out
+> 0.4+0.4+0.4+0.4 ->       1.6000000238418579
+> 0.4+0.4+0.4+0.4 == 1.6 -> false
+>
+> There is no getting around the fact that rounding will happen.
+>
+> -Bill
+>
+> On Tue, Feb 1, 2022 at 9:06 PM Nathan Boeger <nboeger at gmail.com> wrote:
+>
+>>
+>> I understand this and with C the data type used is important. For this
+>> type of calculation, I would normally use a float (basic single precision
+>> is all I require).
+>>
+>> #include <stdio.h>
+>>
+>> void main() {
+>>   float foo = (0.4 + 0.2 + 0.30 + 0.1) ;
+>>   printf("foo: %f , foo > 1: %s \n", foo, (foo > 1.0 ? "true" : "false"));
+>>   double bar = (0.4 + 0.2 + 0.30 + 0.1) ;
+>>   printf("bar: %lf , bar > 1: %s \n", bar, (bar > 1.0 ? "true" :
+>> "false"));
+>> }
+>>
+>> gcc  c-check.c -o c-check
+>> ./c-check
+>> foo: 1.000000 , foo > 1: false
+>> bar: 1.000000 , bar > 1: true
+>>
+>> Again, it was my mistake for not reading the R-FAQ. I had no idea it
+>> would spark such a long thread.
+>>
+>> Cheers
+>>
+>> -nb
+>>
+>> On Wed, 2 Feb 2022 at 10:30, Bill Dunlap <williamwdunlap at gmail.com>
+>> wrote:
+>>
+>>> The base 2 representation of 0.4 repeats the digit sequence 1001
+>>> infinitely, hence must be rounded.  The problem occurs in C the same as it
+>>> does in R.
+>>>
+>>> bill at Bill-T490:~$ cat a.c
+>>> #include <stdio.h>
+>>>
+>>> int main(int argc, char* argv[])
+>>> {
+>>>     double d = 0.4 + 0.3 + 0.2 + 0.1;
+>>>     printf("0.4+0.3+0.2+0.1 -> %24.17g\n", d);
+>>>     printf("0.4+0.3+0.2+0.1 == 1.0 -> %s\n", d == 1.0 ? "true" :
+>>> "false");
+>>>     return 0;
+>>> }
+>>> bill at Bill-T490:~$ gcc a.c
+>>> bill at Bill-T490:~$ ./a.out
+>>> 0.4+0.3+0.2+0.1 ->      0.99999999999999989
+>>> 0.4+0.3+0.2+0.1 == 1.0 -> false
+>>>
+>>> -Bill
+>>>
+>>> On Tue, Feb 1, 2022 at 7:01 PM Nathan Boeger <nboeger at gmail.com> wrote:
+>>>
+>>>> Thank you for this explanation!
+>>>>
+>>>> I have a long background in C/C++ and never realized this was such an
+>>>> issue
+>>>> with some languages. At least, with trivial single digit decimals. I
+>>>> understand accuracy issues with very large decimals, repeating or
+>>>> non-terminating rationals and I have handled them in the past. It makes
+>>>> me
+>>>> worried about all the R scripts I have written before (yikes!).
+>>>>
+>>>> Cheers
+>>>>
+>>>> -nb
+>>>>
+>>>> On Wed, 2 Feb 2022 at 02:44, Richard M. Heiberger <rmh at temple.edu>
+>>>> wrote:
+>>>>
+>>>> > RShowDoc('FAQ')
+>>>> >
+>>>> > then search for 7.31
+>>>> >
+>>>> >
+>>>> > This statement
+>>>> > "If you stop at a 5 or 7 or 8 and back up to the previous digit, you
+>>>> round
+>>>> > up. Else you leave the previous result alone."
+>>>> > is not quite right.  The recommendation in IEEE 754, and this is how R
+>>>> > does arithmetic, is to Round Even.
+>>>> >
+>>>> > I ilustrate here with decimal, even though R and other programs use
+>>>> binary.
+>>>> >
+>>>> > > x <- c(1.4, 1.5, 1.6, 2.4, 2.5, 2.6, 3.4, 3.5, 3.6, 4.4, 4.5, 4.6)
+>>>> > > r <- round(x)
+>>>> > > cbind(x, r)
+>>>> >         x r
+>>>> >  [1,] 1.4 1
+>>>> >  [2,] 1.5 2
+>>>> >  [3,] 1.6 2
+>>>> >  [4,] 2.4 2
+>>>> >  [5,] 2.5 2
+>>>> >  [6,] 2.6 3
+>>>> >  [7,] 3.4 3
+>>>> >  [8,] 3.5 4
+>>>> >  [9,] 3.6 4
+>>>> > [10,] 4.4 4
+>>>> > [11,] 4.5 4
+>>>> > [12,] 4.6 5
+>>>> > >
+>>>> >
+>>>> > Numbers whose last digit is not 5 (when in decimal) round to the
+>>>> nearest
+>>>> > integer.
+>>>> > Numbers who last digit is 5 (1.5, 2.5, 3.5, 4.5 above)
+>>>> > round to the nearest EVEN integer.
+>>>> > Hence 1.5 and 3.5 round up to the even numbers 2 and 4.
+>>>> > 2.5 and 4.5 round down do the even numbers 2 and 4.
+>>>> >
+>>>> > This way the round ups and downs average out to 0.  If we always went
+>>>> up
+>>>> > from .5 we would have
+>>>> > an updrift over time.
+>>>> >
+>>>> > For even more detail click on the link in FAQ 7.31 to my appendix
+>>>> > https://
+>>>> link.springer.com/content/pdf/bbm%3A978-1-4939-2122-5%2F1.pdf
+>>>> > and search for "Appendix G".
+>>>> >
+>>>> > Section G.5 explains Round to Even.
+>>>> > Sections G.6 onward illustrate specific examples, such as the one that
+>>>> > started this email thread.
+>>>> >
+>>>> > Rich
+>>>>
+>>>>         [[alternative HTML version deleted]]
+>>>>
+>>>> ______________________________________________
+>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>> PLEASE do read the posting guide
+>>>> http://www.R-project.org/posting-guide.html
+>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>>
+>>>
+
+	[[alternative HTML version deleted]]
+
+
