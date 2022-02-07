@@ -3965,3 +3965,439 @@ R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://url
 PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=-AB8wceVe94Vlj5r4Ys5b6hqY2KsI4sq--H-Gl-PqL2ayWSE3H0EGJ3NJxR-_CUq&s=b-P7V72w6IHT7gpAGwzaTN42gMwGRy9jkOWeQ4dX1QI&e=
 and provide commented, minimal, self-contained, reproducible code.
 
+From m@pjg @end|ng |rom br|@to|@@c@uk  Fri Feb  4 11:21:11 2022
+From: m@pjg @end|ng |rom br|@to|@@c@uk (Peter Green)
+Date: Fri, 4 Feb 2022 10:21:11 +0000
+Subject: [R] Using .Fortran in R - how can I use file i/o flexibly OR arrays
+ of variable length as arguments?
+Message-ID: <2a1e95d2-8570-ebb0-f093-8bfbab642287@bristol.ac.uk>
+
+I have a legacy Fortran code many thousands of lines long, a 
+free-standing program that I now want to adapt with minimum re-writing 
+to drive an R package, using .Fortran to pass control to a version of 
+that legacy code re-written as a subroutine. BUT the output I want to 
+return to R is copious, and variable in length, the length being 
+computed within the Fortran code (it is a variable-dimension 
+simulation). I'm looking for a solution general enough to include in a 
+package that would pass CRAN checks.
+
+I can think of two broad approaches
+
+(1) to write this output to files in the Fortran code, to be read back 
+later in R.? Of course I know about realpr, etc., but this is pretty 
+ugly - apparently there's no binary i/o and no way to direct to a named 
+file.
+
+(2) to? dynamically allocate memory in the Fortran code for this output, 
+and find a way for the address of this memory to be available in the 
+result returned to R by .Fortran. The nearest to a possible solution 
+that I can find in "Writing R extensions" involve use of C concepts, 
+poorly explained, and I am not sure whether and how these could be used 
+in my context.
+
+Advice or information please!
+
+-- 
+Peter Green, p.j.green at bristol.ac.uk, peter.green at uts.edu.au
+-- 
+Emeritus Professor of Statistics & Professorial Research Fellow, University
+of Bristol, Bristol BS8 1UG, UK
+Phone: +44 117 428 4845; Fax: +44 117 928 7999
+-- 
+Distinguished Professor of Statistics, University of Technology, Sydney
+Room: CB07.05.051; PO Box 123, Broadway NSW 2007, Australia
+Phone: +61 2 9514 1742; Fax: +61 2 9514 2260
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Feb  5 09:09:25 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 5 Feb 2022 11:09:25 +0300
+Subject: [R] 
+ Using .Fortran in R - how can I use file i/o flexibly OR arrays
+ of variable length as arguments?
+In-Reply-To: <2a1e95d2-8570-ebb0-f093-8bfbab642287@bristol.ac.uk>
+References: <2a1e95d2-8570-ebb0-f093-8bfbab642287@bristol.ac.uk>
+Message-ID: <20220205110925.7e60d6e6@Tarkus>
+
+On Fri, 4 Feb 2022 10:21:11 +0000
+Peter Green <mapjg at bristol.ac.uk> wrote:
+
+> the output I want to return to R is copious, and variable in length,
+> the length being computed within the Fortran code (it is a
+> variable-dimension simulation)
+
+Is there a way to separate the calculation of the output size from the
+rest of the subroutine? If yes, the simplest option would be to pass
+pre-allocated vectors to the .Fortran() call.
+
+Unfortunately, .Fortran() is not expressive enough for more complicated
+use cases. Memory that you intend to return to R must be allocated
+using its own allocator/garbage collector system, which (like any other
+call into R from user code) may longjmp() away from your functions on
+interrupt, error or allocation failure, abandoning any resources the
+garbage collector doesn't know about. In turn, this requires the use of
+C and the PROTECT() macro. In theory, you could use Fortran 2003 "C
+interoperability" to call C entry points, but I expect that to be very
+inconvenient (at least due to the lack of CPP macros).
+
+Since you mention CRAN checks, this might be a better question for
+<r-package-devel at r-project.org>, not R-help.
+
+-- 
+Best regards,
+Ivan
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Feb  5 12:38:41 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 5 Feb 2022 14:38:41 +0300
+Subject: [R] 
+ Using .Fortran in R - how can I use file i/o flexibly OR arrays
+ of variable length as arguments?
+In-Reply-To: <1f6a1df3-50fb-de67-b174-158b5d0fd681@bristol.ac.uk>
+References: <2a1e95d2-8570-ebb0-f093-8bfbab642287@bristol.ac.uk>
+ <20220205110925.7e60d6e6@Tarkus>
+ <1f6a1df3-50fb-de67-b174-158b5d0fd681@bristol.ac.uk>
+Message-ID: <20220205143841.7684e5e1@Tarkus>
+
+On Sat, 5 Feb 2022 09:41:02 +0000
+Peter Green <mapjg at bristol.ac.uk> wrote:
+
+> Any thought on the other route I suggested, that is, binary file i/o 
+> from with the Fortran code (e.g. full use of the connections 
+> functionality), again perhaps via C?
+
+I think that Fortran I/O is only forbidden when it comes to units * and
+6. It should be allowed to open a unit, use unformatted I/O to write an
+array into it and readBin() back on the R side.
+
+On the other hand, the use of connections means that we're calling into
+R, which means that we have to interact with the garbage collector. It's
+easier to just return the values to R in that case.
+
+> I wondered whether you (or anyone) thought there was a way to do this 
+> using C wrapper routines in some way?
+
+I've never done this myself, but I think that the following should work:
+
+/*
+ * We'll need a single pointer to everything returned by the function,
+ * so we'll store the outputs in a struct. If the function returns only
+ * one allocated pointer, we don't need this structure.
+ */
+struct calculation_result {
+ double *a, *b, *c; // ...
+};
+
+/* See WRE 5.13 */
+static void free_calculation_result(SEXP * ptr) {
+ struct calculation_result * res = R_ExternalPtrAddr(ptr);
+ if (!res) return;
+ /*
+  * Call the Fortran function to deallocate a, b, c here, using C
+  * interoperability or the F77_CALL macro.
+  */
+ Free(res);
+ R_ClearExternalPtr(ptr);
+}
+
+/* See WRE 5.10.1 */
+SEXP run_calculation(SEXP arg1, SEXP arg2, ...) {
+ /*
+  * Allocate the result store and make it known to R, including how to
+  * dispose of it.
+  */
+ SEXP sres = PROTECT(R_MakeExternalPtr(NULL, R_NilValue, R_NilValue));
+ R_RegisterCFinalizerEx(sres, free_calculation_result, TRUE);
+ /* NOTE: if Calloc fails, it longjmp()s instead of returning NULL */
+ struct calculation_result * res = Calloc(1, struct calculation_result);
+ R_SetExternalPtrAddr(sres, res);
+
+ /*
+  * Call the Fortran function to perform the calculation here, store the
+  * pointers it returns inside the res structure.
+  */
+
+ /*
+  * It is now safe to call into R again. If an error happens or we're
+  * interrupted, free_calculation_result will prevent a memory leak.
+  * Allocate a result object (e.g. a named list) and store the data from
+  * `res` in R vectors.
+  */
+
+ UNPROTECT(as many as PROTECT() calls above);
+ return the_result_list;
+}
+
+Alternatively, provide some place with a static lifetime for the
+pointers to the calculation results (put them in a COMMON block with
+the SAVE attribute?) and split the code into three functions:
+
+1. Perform the calculations and remember the pointers in variables
+   with static lifetime; return the sizes of the arrays.
+2. Copy the data from the COMMON pointers to the provided arrays.
+3. Deallocate the Fortran-owned COMMON arrays.
+
+Then the R wrapper should do the following:
+
+on.exit(.Fortran('free_fortran_arrays'))
+sizes <- .Fortran('perform_calculations', sizes = integer(k))$sizes
+result <- .Fortran(
+ 'copy_fortran_arrays',
+ a = double(sizes[1]), b = double(sizes[2]), ...
+)
+
+If R is interrupted or has an allocation failure between
+perform_calculations and copy_fortran_arrays, the destructor still runs
+and prevents resource leaks. This makes the code non-reentrant, but so
+is R itself.
+
+A third solution would be to abstract the Fortran code behind a C++
+class and use the magic of Rcpp to return the data as R objects while
+keeping the promise that the destructor eventually runs. This is more
+or less the same as the first solution, but most of the work is done by
+Rcpp.
+
+Now that we both had to mention Writing R Extensions, I think we're
+firmly in the <r-package-devel at r-project.org> territory.
+
+-- 
+Best regards,
+Ivan
+
+
+From m@pjg @end|ng |rom br|@to|@@c@uk  Sat Feb  5 10:41:02 2022
+From: m@pjg @end|ng |rom br|@to|@@c@uk (Peter Green)
+Date: Sat, 5 Feb 2022 09:41:02 +0000
+Subject: [R] 
+ Using .Fortran in R - how can I use file i/o flexibly OR arrays
+ of variable length as arguments?
+In-Reply-To: <20220205110925.7e60d6e6@Tarkus>
+References: <2a1e95d2-8570-ebb0-f093-8bfbab642287@bristol.ac.uk>
+ <20220205110925.7e60d6e6@Tarkus>
+Message-ID: <1f6a1df3-50fb-de67-b174-158b5d0fd681@bristol.ac.uk>
+
+Thank you, Ivan, it's reassuring in a way to learn from your reply that 
+I am not missing something very obvious.
+
+It's unfortunate that a computation that could be done cleanly, using 
+dynamic allocation of memory, within either R or Fortran separately, 
+cannot be split between the two in a way that is optimal for the 
+capabilities of each language, because of the .Fortran bottleneck. I 
+wondered whether you (or anyone) thought there was a way to do this 
+using C wrapper routines in some way? Unfortunately, the ultimate size 
+of the output is something the algorithm would only learn very late in 
+the computation, so pre-calculating that size is not a practical option 
+(else indeed I would do that within R before use of .Fortran).
+
+Any thought on the other route I suggested, that is, binary file i/o 
+from with the Fortran code (e.g. full use of the connections 
+functionality), again perhaps via C?
+
+Although I mentioned CRAN, that was really just to stress I wanted a 
+platform-independent solution ideally.
+
+Peter Green
+
+On 05/02/2022 08:09, Ivan Krylov wrote:
+> On Fri, 4 Feb 2022 10:21:11 +0000
+> Peter Green <mapjg at bristol.ac.uk> wrote:
+>
+>> the output I want to return to R is copious, and variable in length,
+>> the length being computed within the Fortran code (it is a
+>> variable-dimension simulation)
+> Is there a way to separate the calculation of the output size from the
+> rest of the subroutine? If yes, the simplest option would be to pass
+> pre-allocated vectors to the .Fortran() call.
+>
+> Unfortunately, .Fortran() is not expressive enough for more complicated
+> use cases. Memory that you intend to return to R must be allocated
+> using its own allocator/garbage collector system, which (like any other
+> call into R from user code) may longjmp() away from your functions on
+> interrupt, error or allocation failure, abandoning any resources the
+> garbage collector doesn't know about. In turn, this requires the use of
+> C and the PROTECT() macro. In theory, you could use Fortran 2003 "C
+> interoperability" to call C entry points, but I expect that to be very
+> inconvenient (at least due to the lack of CPP macros).
+>
+> Since you mention CRAN checks, this might be a better question for
+> <r-package-devel at r-project.org>, not R-help.
+>
+
+
+From m@pjg @end|ng |rom br|@to|@@c@uk  Sat Feb  5 14:58:46 2022
+From: m@pjg @end|ng |rom br|@to|@@c@uk (Peter Green)
+Date: Sat, 5 Feb 2022 13:58:46 +0000
+Subject: [R] 
+ Using .Fortran in R - how can I use file i/o flexibly OR arrays
+ of variable length as arguments?
+In-Reply-To: <20220205143841.7684e5e1@Tarkus>
+References: <2a1e95d2-8570-ebb0-f093-8bfbab642287@bristol.ac.uk>
+ <20220205110925.7e60d6e6@Tarkus>
+ <1f6a1df3-50fb-de67-b174-158b5d0fd681@bristol.ac.uk>
+ <20220205143841.7684e5e1@Tarkus>
+Message-ID: <84480fe0-7d4e-3ed7-196d-1d74452cfcf1@bristol.ac.uk>
+
+>> Any thought on the other route I suggested, that is, binary file i/o
+>> from with the Fortran code (e.g. full use of the connections
+>> functionality), again perhaps via C?
+> I think that Fortran I/O is only forbidden when it comes to units * and
+> 6. It should be allowed to open a unit, use unformatted I/O to write an
+> array into it and readBin() back on the R side.
+>
+> On the other hand, the use of connections means that we're calling into
+> R, which means that we have to interact with the garbage collector. It's
+> easier to just return the values to R in that case.
+
+Thank you, Ivan - you've detected an unusual example of my 
+over-interpreting, rather than underestimating something in Writing R 
+extensions!
+
+Peter
+
+
+From dscoiby17 m@iii@g oii gm@ii@com  Fri Feb  4 21:31:59 2022
+From: dscoiby17 m@iii@g oii gm@ii@com (dscoiby17 m@iii@g oii gm@ii@com)
+Date: Fri, 4 Feb 2022 15:31:59 -0500
+Subject: [R] [R-pkgs] spacejamr v0.2
+Message-ID: <031e01d81a06$4fa88600$eef99200$@gmail.com>
+
+Dear R users,
+
+ 
+
+I am pleased to announce that v0.2 of the spacejamr package is now available
+on CRAN.  This package enables social network analysis when social network
+data is unavailable. spacejamr simulates points from a spatial point process
+or sequence in a user-specified spatial window, converts distances between
+points into tie formation probabilities, and outputs an igraph object that
+can be analyzed with normal network analysis methods. In addition, the
+package includes plotting methods for spatial boundaries, point processes,
+and social networks.
+
+ 
+
+Some changes to this version are:
+
+ 
+
+            * Users can decide whether to use the coordinate reference
+system in the supplied shapefile or let the as.spacejamr() method find the
+best projected CRS.
+
+    
+
+             * spacejamr no longer depends on the methods package.
+
+    
+
+            * In line with new versions of the spatstat metapackage,
+spacejamr now calls functions from spatstat.random to simulate spatial point
+processes.
+
+ 
+
+Please check it out here:
+
+https://cran.r-project.org/package=spacejamr
+
+ 
+
+For more details on the methodology used in the package see:
+
+Carter T. Butts, (2002, ISBN:978-0-493-72676-2), "Spatial models of
+large-scale interpersonal networks."
+
+ 
+
+Best regards,
+
+ 
+
+Darren Colby
+
+ 
+
+
+	[[alternative HTML version deleted]]
+
+_______________________________________________
+R-packages mailing list
+R-packages at r-project.org
+https://stat.ethz.ch/mailman/listinfo/r-packages
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sun Feb  6 00:37:47 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sat, 05 Feb 2022 15:37:47 -0800
+Subject: [R] 
+ Using .Fortran in R - how can I use file i/o flexibly OR arrays
+ of variable length as arguments?
+In-Reply-To: <1f6a1df3-50fb-de67-b174-158b5d0fd681@bristol.ac.uk>
+References: <2a1e95d2-8570-ebb0-f093-8bfbab642287@bristol.ac.uk>
+ <20220205110925.7e60d6e6@Tarkus>
+ <1f6a1df3-50fb-de67-b174-158b5d0fd681@bristol.ac.uk>
+Message-ID: <DE8E4B32-7E5C-480C-BB6C-FA33BDF9ED85@dcn.davis.ca.us>
+
+This really does belong on r-package-devel. Do reply there if at all.
+
+As regards your whining about dynamic memory... differences of opinion about heap memory handling are pervasive between languages and even between libraries used within the same language, and Fortran was used for many decades without dynamic memory options at all. So this situation is normal, and R can't force other code to conform to its requirements. We live in a world of multi-gigabyte RAM and 100Mflop computation resources... pre-allocate more than you need and fail if it isn't enough. Or figure out a way to provide an estimate of the needed memory as Ivan suggested. Or split your computations into an early (don't know yet but are figuring out out) and late phase (when you do know and can pass in sufficient allocated memory from R).
+
+On February 5, 2022 1:41:02 AM PST, Peter Green <mapjg at bristol.ac.uk> wrote:
+>Thank you, Ivan, it's reassuring in a way to learn from your reply that 
+>I am not missing something very obvious.
+>
+>It's unfortunate that a computation that could be done cleanly, using 
+>dynamic allocation of memory, within either R or Fortran separately, 
+>cannot be split between the two in a way that is optimal for the 
+>capabilities of each language, because of the .Fortran bottleneck. I 
+>wondered whether you (or anyone) thought there was a way to do this 
+>using C wrapper routines in some way? Unfortunately, the ultimate size 
+>of the output is something the algorithm would only learn very late in 
+>the computation, so pre-calculating that size is not a practical option 
+>(else indeed I would do that within R before use of .Fortran).
+>
+>Any thought on the other route I suggested, that is, binary file i/o 
+>from with the Fortran code (e.g. full use of the connections 
+>functionality), again perhaps via C?
+>
+>Although I mentioned CRAN, that was really just to stress I wanted a 
+>platform-independent solution ideally.
+>
+>Peter Green
+>
+>On 05/02/2022 08:09, Ivan Krylov wrote:
+>> On Fri, 4 Feb 2022 10:21:11 +0000
+>> Peter Green <mapjg at bristol.ac.uk> wrote:
+>>
+>>> the output I want to return to R is copious, and variable in length,
+>>> the length being computed within the Fortran code (it is a
+>>> variable-dimension simulation)
+>> Is there a way to separate the calculation of the output size from the
+>> rest of the subroutine? If yes, the simplest option would be to pass
+>> pre-allocated vectors to the .Fortran() call.
+>>
+>> Unfortunately, .Fortran() is not expressive enough for more complicated
+>> use cases. Memory that you intend to return to R must be allocated
+>> using its own allocator/garbage collector system, which (like any other
+>> call into R from user code) may longjmp() away from your functions on
+>> interrupt, error or allocation failure, abandoning any resources the
+>> garbage collector doesn't know about. In turn, this requires the use of
+>> C and the PROTECT() macro. In theory, you could use Fortran 2003 "C
+>> interoperability" to call C entry points, but I expect that to be very
+>> inconvenient (at least due to the lack of CPP macros).
+>>
+>> Since you mention CRAN checks, this might be a better question for
+>> <r-package-devel at r-project.org>, not R-help.
+>>
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
