@@ -15345,3 +15345,171 @@ Rui Barradas
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From r@oknz @end|ng |rom gm@||@com  Sat Feb 19 10:54:13 2022
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Sat, 19 Feb 2022 22:54:13 +1300
+Subject: [R] Why does the print method fail for very small numbers?
+In-Reply-To: <YQXPR01MB6464BBC1C2D6CA826D93959287369@YQXPR01MB6464.CANPRD01.PROD.OUTLOOK.COM>
+References: <YQXPR01MB6464BBC1C2D6CA826D93959287369@YQXPR01MB6464.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <CABcYAdJxqk6sMKJd5acEepzQs2g7KsXCTt4vTjmK5bSwzaX96g@mail.gmail.com>
+
+You say that you already understand IEEE floating point
+arithmetic, but you have placed the problem at the wrong
+end.  The problem is at the INPUT end.  The smallest
+number that can be represented in IEEE double format
+is 4.940656458412465d-324
+but you asked for 2.48e-324.
+The two representable numbers closest to that are
++0.0 and 4.94...e-324.  Of those, 4.94...e-324 is
+a little bit closer.  So 4.94...e-324 was THE BEST
+ANSWER YOU COULD POSSIBLY GET.
+
+The number having been rounded up to the nearest
+representable number, that representable number was
+printed pretty darned well.  So:
+- you have NOT found an error in printing
+- you have NOT found an error in comparison
+- you HAVE found that rounding in the range of
+  denormalised numbers is pretty harsh.
+
+One more time: the print function DID NOT FAIL
+for tiny numbers.  It printed what you gave it
+and printed it well.  The problem was at the
+INPUT end.
+
+On Fri, 18 Feb 2022 at 11:41, Marius Hofert <marius.hofert at uwaterloo.ca>
+wrote:
+
+> Dear expeRts,
+>
+> I'm familiar with IEEE 754. Is there an easy way to explain why even
+> just printing of small numbers fails?
+>
+> 1e-317 # 1e-317 => fine
+> 1e-318 # 9.999987e-319 => gets tricky; seems to call print() =>
+> as.character() => format() => paste()
+> 1e-318 == 9.999987e-319 # TRUE
+> 2.48e-324 # prints 4.940656e-324 for me
+> 2.48e-324 == 4.940656e-324 # TRUE
+> ## Relative error as a plot
+> rel_error <- function(x)
+>     plot(abs((as.numeric(as.character(x)) - x) / x), type = "l",
+>          ylab = "Relative error between x and as.numeric(as.character(x))")
+> rel_error(seq(0.001, 0.001 + .Machine$double.xmin, length.out = 1001)) #
+> fine
+> rel_error(seq(0, .Machine$double.xmin, length.out = 1001)) # printing
+> breaks down
+>
+> Of course, [0,.Machine$double.xmin] is somewhat of a strange set of
+> numbers to consider,
+> and I expect things like "==" to be easily fooled there, but already the
+> print method (?)
+>
+> Thanks & cheers,
+> Marius
+>
+> sessionInfo()
+> R version 4.1.2 (2021-11-01)
+> Platform: x86_64-apple-darwin21.2.0 (64-bit)
+> Running under: macOS Monterey 12.1
+> ...
+>
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From j@zh@o @end|ng |rom ye@h@net  Sat Feb 19 13:46:45 2022
+From: j@zh@o @end|ng |rom ye@h@net (Jinsong Zhao)
+Date: Sat, 19 Feb 2022 20:46:45 +0800
+Subject: [R] x-axis in interaction plot is weird
+Message-ID: <23e9f894-4978-30ab-c15d-d6130aec12fd@yeah.net>
+
+Hi there,
+
+When `xtick = TRUE`, the x-axis in interaction plot is weird:
+
+with(ToothGrowth, {interaction.plot(dose, supp, len, xtick = TRUE)})
+
+you may notice that the x-axis is position at line 1, and the labels at 
+line 2.
+
+And when set
+
+par(mgp = c(-4, -2, -1))
+
+The x-axis is also positioned at line 1, but the labels at line -1.
+
+When `xtick = FALSE`, according the source code of interaction.plot(), 
+the mgp[2] set to 0, however, the labels is also at line 1 instead of 
+line 0.
+
+I don't know whether those behaviors were designed.
+
+Best,
+Jinsong
+
+PS:
+ > sessionInfo()
+R version 4.1.2 (2021-11-01)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 10 x64 (build 19044)
+
+Matrix products: default
+
+locale:
+[1] LC_COLLATE=Chinese (Simplified)_China.936
+[2] LC_CTYPE=Chinese (Simplified)_China.936
+[3] LC_MONETARY=Chinese (Simplified)_China.936
+[4] LC_NUMERIC=C
+[5] LC_TIME=Chinese (Simplified)_China.936
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.1.2 tools_4.1.2
+
+
+From he|mut@@chuetz @end|ng |rom beb@c@@t  Sat Feb 19 16:00:39 2022
+From: he|mut@@chuetz @end|ng |rom beb@c@@t (=?UTF-8?Q?Helmut_Sch=c3=bctz?=)
+Date: Sat, 19 Feb 2022 16:00:39 +0100
+Subject: [R] Why does the print method fail for very small numbers?
+In-Reply-To: <mailman.365853.1.1645268401.59606.r-help@r-project.org>
+References: <mailman.365853.1.1645268401.59606.r-help@r-project.org>
+Message-ID: <db4b5e24-4629-cdb7-5a6c-a63a53f608e7@bebac.at>
+
+Hi Marius,
+
+as others already noted, you request something which is beyond the 
+numeric resolution.
+That's also elaborated in the famous FAQ 7.31 
+(https://cran.r-project.org/doc/FAQ/R-FAQ.html#Why-doesn_0027t-R-think-these-numbers-are-equal_003f).
+As you know - according to IEEE 754 a binary in double precision holds 
+64 bits (where 1 bit is the sign, 11 the exponent, and 52 the mantissa). 
+That translates into ~15.7 digits decimal. Hence, the 16th digit is noise.
+
+IMHO, print(foo, digits = bar) should provide the result but 
+additionally throw for any bar > 15 a message like
+"From the hard-/software to the wetware: We cannot provide what you were 
+asking for."
+
+Helmut
+
+-- 
+Ing. Helmut Sch?tz
+BEBAC?? Consultancy Services for
+Bioequivalence and Bioavailability Studies
+Neubaugasse 36/11
+1070 Vienna, Austria
+W https://bebac.at/
+F https://forum.bebac.at/
+
+
