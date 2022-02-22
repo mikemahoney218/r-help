@@ -15513,3 +15513,262 @@ W https://bebac.at/
 F https://forum.bebac.at/
 
 
+From d@go@t|no|@b| @end|ng |rom gm@||@com  Sat Feb 19 16:38:03 2022
+From: d@go@t|no|@b| @end|ng |rom gm@||@com (Fabio D'Agostino)
+Date: Sat, 19 Feb 2022 16:38:03 +0100
+Subject: [R] '[' vs subset() behaviors when filtering a dataframe with NA
+ values
+Message-ID: <CADUGNTwD_po4q+wuVXGd_YKxjhq8TjVeTHoObAa+-YH-DZT7uw@mail.gmail.com>
+
+Hi All,
+I just have two questions since I did not understand the behavior of
+'['  vs the  subset() function when filtering a dataframe that has NA
+values
+
+I was filtering a dataframe named 'weight' according to values of the
+column named 'weight_rec' ...
+str(weight)
+'data.frame': 17307 obs. of  6 variables:
+ $ ICUSTAY_ID: num  229904 229904 229904 247844 247844 ...
+ $ INTIME    : chr  "2127-08-11 20:43:43 UTC" "2127-08-11 20:43:43
+UTC" "2127-08-11 20:43:43 UTC" "2179-09-29 18:46:50 UTC" ...
+ $ ITEMID    : num  224639 224639 226512 762 762 ...
+ $ VALUENUM  : num  61 59.2 59.8 86 86 86 85.5 93 128 128 ...
+ $ CHARTTIME : chr  "2127-08-14 08:00:00 UTC" "2127-08-13 08:00:00
+UTC" "2127-08-11 21:01:00 UTC" "2179-10-02 19:39:00 UTC" ...
+ $ weight_rec: num  51.3 27.3 -20.7 53.2 -18.8 ...
+
+... using the following script:
+weight[weight$weight_rec <= 24 & weight$weight_rec >= 0, ]   #I get an
+output of 1055 rows
+
+while using:
+subset(weight, weight$weight_rec <= 24 & weight$weight_rec >= 0)   #I
+get an output of 1040 rows
+
+analyzing the values in the column 'weight_rec' I found that
+sum(is.na(weight$weight_rec))
+[1] 15   #15 values are NA
+
+My two questions are:
+1) Why are NA values considered when using '[' ? I only filtered for a
+condition of numeric values (i.e., >=0 & <=24)... and subset() did
+what I expected.
+2) Why are all the values of the columns of that 15 rows equal to NA
+and not only the values of the column named 'weight_rec'?
+
+Thanks in advance for clarifying this!
+Fabio
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sun Feb 20 05:06:36 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sat, 19 Feb 2022 20:06:36 -0800
+Subject: [R] 
+ '[' vs subset() behaviors when filtering a dataframe with NA values
+In-Reply-To: <CADUGNTwD_po4q+wuVXGd_YKxjhq8TjVeTHoObAa+-YH-DZT7uw@mail.gmail.com>
+References: <CADUGNTwD_po4q+wuVXGd_YKxjhq8TjVeTHoObAa+-YH-DZT7uw@mail.gmail.com>
+Message-ID: <A1D40C0E-DE59-4E61-BA8E-E1A45B37B636@dcn.davis.ca.us>
+
+That is how logical indexing works... an NA index returns an NA element. Integer indexing is the same, but the which function returns all of the index positions of TRUE values and ignores NA values as it chooses integer positions, so
+
+weight[ which(weight$weight_rec <= 24 & weight$weight_rec >= 0), ]
+
+will skip the NAs.
+
+BTW: the subset function works best when you let it lookup data in the data frame:
+
+subset(weight, weight_rec <= 24 & weight_rec >= 0)
+
+You can introduce obscure bugs (your logic, not bugs in R) by directly specifying which data frame to look in when using non-standard evaluation functions like subset, with, and within.
+
+On February 19, 2022 7:38:03 AM PST, Fabio D'Agostino <dagostinofabi at gmail.com> wrote:
+>Hi All,
+>I just have two questions since I did not understand the behavior of
+>'['  vs the  subset() function when filtering a dataframe that has NA
+>values
+>
+>I was filtering a dataframe named 'weight' according to values of the
+>column named 'weight_rec' ...
+>str(weight)
+>'data.frame': 17307 obs. of  6 variables:
+> $ ICUSTAY_ID: num  229904 229904 229904 247844 247844 ...
+> $ INTIME    : chr  "2127-08-11 20:43:43 UTC" "2127-08-11 20:43:43
+>UTC" "2127-08-11 20:43:43 UTC" "2179-09-29 18:46:50 UTC" ...
+> $ ITEMID    : num  224639 224639 226512 762 762 ...
+> $ VALUENUM  : num  61 59.2 59.8 86 86 86 85.5 93 128 128 ...
+> $ CHARTTIME : chr  "2127-08-14 08:00:00 UTC" "2127-08-13 08:00:00
+>UTC" "2127-08-11 21:01:00 UTC" "2179-10-02 19:39:00 UTC" ...
+> $ weight_rec: num  51.3 27.3 -20.7 53.2 -18.8 ...
+>
+>... using the following script:
+>weight[weight$weight_rec <= 24 & weight$weight_rec >= 0, ]   #I get an
+>output of 1055 rows
+>
+>while using:
+>subset(weight, weight$weight_rec <= 24 & weight$weight_rec >= 0)   #I
+>get an output of 1040 rows
+>
+>analyzing the values in the column 'weight_rec' I found that
+>sum(is.na(weight$weight_rec))
+>[1] 15   #15 values are NA
+>
+>My two questions are:
+>1) Why are NA values considered when using '[' ? I only filtered for a
+>condition of numeric values (i.e., >=0 & <=24)... and subset() did
+>what I expected.
+>2) Why are all the values of the columns of that 15 rows equal to NA
+>and not only the values of the column named 'weight_rec'?
+>
+>Thanks in advance for clarifying this!
+>Fabio
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From r@oknz @end|ng |rom gm@||@com  Sun Feb 20 09:38:14 2022
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Sun, 20 Feb 2022 21:38:14 +1300
+Subject: [R] SDLC methodology for R and Data science......
+In-Reply-To: <PU4P216MB1568F2EA54E01A098C89FE34C8349@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB156866BF2C8975A1554221FBC8329@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CABcYAdLAm-AgkkEvgfJXTM4nag-T-AojR4ZRVe99KH+9K9uopA@mail.gmail.com>
+ <PU4P216MB1568F2EA54E01A098C89FE34C8349@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <CABcYAd+taCuOVL2awT=MHN8uMSVabs1gnm+PRnShWAbM95V5sw@mail.gmail.com>
+
+Come to think of it, there's a CMU report
+you can get free:
+https://resources.sei.cmu.edu/asset_files/TechnicalReport/2000_005_001_13751.pdf
+The books are "Introduction to the Personal
+Software Process" by Watts S. Humphrey,
+https://www.amazon.com/Introduction-Personal-Software-Process-Humphrey/dp/0201548097
+and "PSP: A Self-Improvement Process for
+Software Engineers",
+https://www.amazon.com/gp/product/B001EWOG8A/ref=dbs_a_def_rwt_bibl_vppi_i0
+
+You might like to look into using R's "testthat"
+package (or some other testing framework), see
+http://rstudio-pubs-static.s3.amazonaws.com/278724_4d8935a2955c49d9934e2113c737e70e.html
+for an introduction.
+
+Way back in 1982(?) when I was getting stuck on
+my PhD thesis, my co-supervisor (Lawrence Byrd)
+said "write an example of using your system, and
+then explain how it does that."  That unstuck me,
+and it was pretty much test-driven development
+in a nutshell (as we put it in those days, program
+by debugging the empty program).
+
+If you're looking for whizzy tools,
+- knitr (documentation, there's a good little book)
+- testthat (testing)
+- lintr (static checking).
+
+
+
+On Wed, 16 Feb 2022 at 05:27, akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+
+> Dear richard,
+>                       I am very grateful for your informative reply.
+>
+> THe fact is, I am doing a project, which is not less complex,(if not more)
+> than those of Microsoft or Accenture or Google , but I am doing it all by
+> myself. Can you please let me the full title of the book by Watts Humphrey?
+> Or any online resources for "personal software process"? Perhaps I can get
+> some tips on how to go about my project ( I've mostly taken into account
+> standard methods of the state of the art, I am looking for something
+> "whizzy" than aids development by one person).
+>
+> Thanks again,
+> Yours sinecerly,
+> AKSHAY M KULKARNI
+> ------------------------------
+> *From:* Richard O'Keefe <raoknz at gmail.com>
+> *Sent:* Monday, February 14, 2022 5:23 AM
+> *To:* akshay kulkarni <akshay_e4 at hotmail.com>
+> *Cc:* R help Mailing list <r-help at r-project.org>
+> *Subject:* Re: [R] SDLC methodology for R and Data science......
+>
+> There are at least two ways to use R.
+> If you have devised a statistical/data science technique
+> and are writing a package to be used by other people,
+> that is normal software development that happens to be
+> using R and the R tool.  Lots of attention to documentation
+> and tests.  Test-Driven Development is one approach.
+>
+> Many R users aren't developing code for other people.
+> They are trying to make sense of some kind of data.
+> This is what used to be called "exploratory programming".
+> And heavyweight development processes aren't really
+> appropriate for this kind of work.  In traditional terms,
+> when you are doing exploratory programming, you spend
+> most of your time in the requirements phase.
+>
+> Perhaps the most important thing here is to keep a log
+> of what you are doing and record things that didn't work,
+> why they didn't work, and what you learned from it.
+> When something DOES give you some insight, you want to
+> be able to do it again.
+>
+> The tricky thing is scaling from exploration to development.
+> After playing around with one data set, you might want to
+> provide a script that other people can use to process
+> similar data sets the same way.
+> Use a light weight process, but make sure you have plenty
+> of tests, and adequate documentation.
+>
+> Watts Humphrey developed something he called the "Personal
+> Software Process" and wrote a book about it.  I don't like
+> his examples for several reasons, but the point about
+> watching what you do and measuring it so you can improve is
+> well made.
+>
+>
+>
+> On Mon, 14 Feb 2022 at 05:33, akshay kulkarni <akshay_e4 at hotmail.com>
+> wrote:
+>
+> dear members,
+>                          I am Stock trader and using R for research.
+>
+> Until now I was coding very haphazardly, but recently I stumbled upon the
+> Software Development Life Cycle (SDLC), which introduced me to principled
+> software design. I am college dropout and don't have in depth knowledge in
+> Software Engineering principles. However, now, I want to go in a structured
+> manner.
+>
+> I googled for a SDLC method (like XP, AGILE and WATERFALL) that suits the
+> R programming language and specifically for data science, but was bootless.
+> Do you people have any idea on which software engineering methodology to
+> use in R and data science, so that I can code efficiently and in a
+> structured manner? The point to note, with regards to R, is that
+> statistical ANALYSIS sometimes takes very little code as compared to other
+> programming languages. Any SDLC method for these types of analysis,
+> besides, rigorous scripting with R?
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
