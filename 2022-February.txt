@@ -19893,3 +19893,1292 @@ On Sun, Feb 27, 2022 at 4:07 PM Micha Silver <silverm at post.bgu.ac.il> wrote:
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From m|ch@e|@bonert @end|ng |rom @|umn|@utoronto@c@  Mon Feb 28 02:02:17 2022
+From: m|ch@e|@bonert @end|ng |rom @|umn|@utoronto@c@ (Michael Bonert)
+Date: Mon, 28 Feb 2022 01:02:17 +0000
+Subject: [R] ggplot2 with an arbitrary number of curves from geom_function +
+ legend?
+Message-ID: <YT3PR01MB97389F056822C68C582DED33A5019@YT3PR01MB9738.CANPRD01.PROD.OUTLOOK.COM>
+
+Dear R-help,
+
+I am trying to create a ggplot with an arbitrary number of curves + legend.
+
+The plot should contain:
+1. data points + a line that is either user defined *or* represents the median of the data points
+2. an arbitrary number of confidence intervals (CIs) around the line, where the CIs are defined by a function
+
+#1: this is easy enough
+#2: I don't know how to combine this with #1
+
+I can write #2 as a loop (see below) but it is then seems to be impossible to get ggplot to do a proper legend.
+
+The challenge I have seems similar to this problem:
+https://stackoverflow.com/questions/12169289/ggplot2-fail-to-apply-color-with-scale-fill-manual-inside-a-loop
+
+I read that one should not use a loop with ggplot ( https://stackoverflow.com/questions/62603533/adding-ggplot2-legend-with-many-lines-using-for-loop ).
+(Interesting: there are probably a half dozen posts on ggplot + loops floating around on the web.  I do not feel alone in my problem... but I also do not think I am close to solving it.)
+(As a user of GNU/Octave ( octave.org ) using a loop seems the intuitive solution. In GNU/Octave one does a "hold on" and then plots however many lines/objects one wants within a figure.)
+
+Is there a way to freeze the 'scale_colour_manual' attribute?
+(The way the code is written: the colour scale seems to be overwritten with the 'fp=fp ...' statement)
+(I have gotten the message: "Scale for 'colour' is already present. Adding another scale for 'colour',
+which will replace the existing scale.")
+
+Loop aside:
+Is there a way to elegantly pipe an arbitrary number of 'geom_function' calls to the 'ggplot'?
+(I wondered whether the '%>%' operator in 'dplyr' is a possible solution -- as suggested here:
+https://stackoverflow.com/questions/30655364/ggplot2-getting-a-color-legend-to-appear-using-stat-function-in-a-for-loop )
+
+
+I could write code to generate a data frame that has the data points and points for arbitrary curves; however,
+this would necessitate writing a function that replicates 'geom_function'.
+
+Is there a way to generate the text string and then execute it?
+( https://stackoverflow.com/questions/1743698/evaluate-expression-given-as-a-string )
+(In my humble opinion: this would be a hack.)
+
+Is there a way to generate a legend with 'override.aes'?
+( https://www.r-bloggers.com/2020/07/controlling-legend-appearance-in-ggplot2-with-override-aes/ )
+
+
+Below is the attempt at creating a legend:
+~~
+  # plot the data points
+  fp = ggplot(df,aes(x=x_var, y=y_var), colour4labels[num_of_funnels+2]) + geom_point(size=4, na.rm = TRUE, alpha = 0.75) + theme(legend.position="bottom") + scale_color_manual(labels = legend_labels, values = colour4labels) + guides(color=guide_legend("Control Limits")) + geom_hline(aes(yintercept = funnel_centre_line, colour = colour4labels[num_of_funnels+1]), linetype = 2) + xlab(x_label) + ylab(y_label) + ggtitle(plot_title) + theme(axis.title=element_text(face="bold"), plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+
+  # add funnel plot curves (limits)
+  for (ci_ctr in 1:length(limits)) {
+    if (ci_ctr==1) {
+      fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), size = 1.1, na.rm = TRUE, linetype = 5) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), size = 1.1, na.rm = TRUE, linetype = 5) + theme(legend.position="bottom") + scale_color_manual(labels = legend_labels, values = colour4labels) + guides(color=guide_legend("Control Limits"))
+
+    } else if (ci_ctr==2) {
+      fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), size = 1.3, na.rm = TRUE) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), size = 1.3, na.rm = TRUE) + theme(legend.position="bottom") + scale_color_manual(labels = legend_labels, values = colour4labels) + guides(color=guide_legend("Control Limits"))
+
+    } else {
+      fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), na.rm = TRUE, linetype = 5) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), na.rm = TRUE, linetype = 5) + theme(legend.position="bottom") + scale_color_manual(labels = legend_labels, values = colour4labels) + guides(color=guide_legend("Control Limits"))
+    }
+  }
+~~
+
+Code without elements to generate a legend (that otherwise does what I want it to):
+~~
+  # plot the data points
+  fp = ggplot(df,aes(x=x_var, y=y_var)) + geom_point(size=4, na.rm = TRUE, colour = "blue", alpha = 0.75) + theme_bw()
+
+  # add centre line, axis labels and plot title
+  fp = fp + geom_hline(aes(yintercept = funnel_centre_line), linetype = 2, colour = "black") + xlab(x_label) + ylab(y_label) + ggtitle(plot_title) + theme(axis.title=element_text(face="bold"), plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+
+  # add funnel plot curves (limits)
+  for (ci_ctr in 1:length(limits)) {
+    if (ci_ctr==1) {
+      fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), colour = colour4labels[ci_ctr], size = 1.1, na.rm = TRUE, linetype = 5) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), colour = colour4labels[ci_ctr], size = 1.1, na.rm = TRUE, linetype = 5)
+
+    } else if (ci_ctr==2) {
+      fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), colour = colour4labels[ci_ctr], size = 1.3, na.rm = TRUE) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), colour = colour4labels[ci_ctr], size = 1.3, na.rm = TRUE)
+
+    } else {
+      fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), colour = colour4labels[ci_ctr], na.rm = TRUE, linetype = 5) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), colour = colour4labels[ci_ctr], na.rm = TRUE, linetype = 5)
+    }
+  }
+~~
+
+Happy to post the complete code. I was thinking it might be a contribution--if deemed non-trivial.
+(I also have a test function that runs the code with a data set already in r-cran.)
+
+Take Care,
+Michael Bonert, BASc, MASc, MD, FRCPC
+
+PS -
+Environment details:
+ R version: 4.0.4 (2021-02-15)
+ Platform: Debian GNU/Linux 11 (stable)
+
+I am trying to generate R code similar to that in this paper: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8219089/
+(If you want to know where I am coming from: it is in that paper.)
+
+The code I wrote is somewhat similar to the package 'FunnelPlotR' ( https://cran.rstudio.com/web/packages/FunnelPlotR/index.html ). I did look at the code in that package.
+
+	[[alternative HTML version deleted]]
+
+
+From @v|gro@@ @end|ng |rom ver|zon@net  Mon Feb 28 07:00:31 2022
+From: @v|gro@@ @end|ng |rom ver|zon@net (Avi Gross)
+Date: Mon, 28 Feb 2022 06:00:31 +0000 (UTC)
+Subject: [R] 
+ ggplot2 with an arbitrary number of curves from geom_function +
+ legend?
+In-Reply-To: <YT3PR01MB97389F056822C68C582DED33A5019@YT3PR01MB9738.CANPRD01.PROD.OUTLOOK.COM>
+References: <YT3PR01MB97389F056822C68C582DED33A5019@YT3PR01MB9738.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <564857273.1641053.1646028031423@mail.yahoo.com>
+
+I would reply but since ggplot was mentioned, I must abstain. ;-)
+
+I will say that you can use ggplot in a loop in some cases if you do this:
+
+p <- ggplot(...) + ...
+
+Then you can in your loop keep adding to p as in:
+
+p <- p + geom_whatever() + ...
+
+You do at some point need to make p print itself and generate a graph. Until then, it can be amended, albeit some changes undo or overwrite earlier ones if not done carefully.
+
+Having said all that, there is often a way to do a kind of looping within ggplot by say grouping your data and having it draw things grouped, or say making multiple vertical (or horizontal) lines by supplying a vector of positions.
+
+But as noted, this is not considered a good place by some to discuss this, so forget I said anything.
+
+
+
+
+-----Original Message-----
+From: Michael Bonert <michael.bonert at alumni.utoronto.ca>
+To: r-help at r-project.org <r-help at r-project.org>
+Sent: Sun, Feb 27, 2022 8:02 pm
+Subject: [R] ggplot2 with an arbitrary number of curves from geom_function + legend?
+
+Dear R-help,
+
+I am trying to create a ggplot with an arbitrary number of curves + legend.
+
+The plot should contain:
+1. data points + a line that is either user defined *or* represents the median of the data points
+2. an arbitrary number of confidence intervals (CIs) around the line, where the CIs are defined by a function
+
+#1: this is easy enough
+#2: I don't know how to combine this with #1
+
+I can write #2 as a loop (see below) but it is then seems to be impossible to get ggplot to do a proper legend.
+
+The challenge I have seems similar to this problem:
+https://stackoverflow.com/questions/12169289/ggplot2-fail-to-apply-color-with-scale-fill-manual-inside-a-loop
+
+I read that one should not use a loop with ggplot ( https://stackoverflow.com/questions/62603533/adding-ggplot2-legend-with-many-lines-using-for-loop ).
+(Interesting: there are probably a half dozen posts on ggplot + loops floating around on the web.? I do not feel alone in my problem... but I also do not think I am close to solving it.)
+(As a user of GNU/Octave ( octave.org ) using a loop seems the intuitive solution. In GNU/Octave one does a "hold on" and then plots however many lines/objects one wants within a figure.)
+
+Is there a way to freeze the 'scale_colour_manual' attribute?
+(The way the code is written: the colour scale seems to be overwritten with the 'fp=fp ...' statement)
+(I have gotten the message: "Scale for 'colour' is already present. Adding another scale for 'colour',
+which will replace the existing scale.")
+
+Loop aside:
+Is there a way to elegantly pipe an arbitrary number of 'geom_function' calls to the 'ggplot'?
+(I wondered whether the '%>%' operator in 'dplyr' is a possible solution -- as suggested here:
+https://stackoverflow.com/questions/30655364/ggplot2-getting-a-color-legend-to-appear-using-stat-function-in-a-for-loop )
+
+
+I could write code to generate a data frame that has the data points and points for arbitrary curves; however,
+this would necessitate writing a function that replicates 'geom_function'.
+
+Is there a way to generate the text string and then execute it?
+( https://stackoverflow.com/questions/1743698/evaluate-expression-given-as-a-string )
+(In my humble opinion: this would be a hack.)
+
+Is there a way to generate a legend with 'override.aes'?
+( https://www.r-bloggers.com/2020/07/controlling-legend-appearance-in-ggplot2-with-override-aes/ )
+
+
+Below is the attempt at creating a legend:
+~~
+? # plot the data points
+? fp = ggplot(df,aes(x=x_var, y=y_var), colour4labels[num_of_funnels+2]) + geom_point(size=4, na.rm = TRUE, alpha = 0.75) + theme(legend.position="bottom") + scale_color_manual(labels = legend_labels, values = colour4labels) + guides(color=guide_legend("Control Limits")) + geom_hline(aes(yintercept = funnel_centre_line, colour = colour4labels[num_of_funnels+1]), linetype = 2) + xlab(x_label) + ylab(y_label) + ggtitle(plot_title) + theme(axis.title=element_text(face="bold"), plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+
+? # add funnel plot curves (limits)
+? for (ci_ctr in 1:length(limits)) {
+? ? if (ci_ctr==1) {
+? ? ? fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), size = 1.1, na.rm = TRUE, linetype = 5) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), size = 1.1, na.rm = TRUE, linetype = 5) + theme(legend.position="bottom") + scale_color_manual(labels = legend_labels, values = colour4labels) + guides(color=guide_legend("Control Limits"))
+
+? ? } else if (ci_ctr==2) {
+? ? ? fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), size = 1.3, na.rm = TRUE) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), size = 1.3, na.rm = TRUE) + theme(legend.position="bottom") + scale_color_manual(labels = legend_labels, values = colour4labels) + guides(color=guide_legend("Control Limits"))
+
+? ? } else {
+? ? ? fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), na.rm = TRUE, linetype = 5) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), na.rm = TRUE, linetype = 5) + theme(legend.position="bottom") + scale_color_manual(labels = legend_labels, values = colour4labels) + guides(color=guide_legend("Control Limits"))
+? ? }
+? }
+~~
+
+Code without elements to generate a legend (that otherwise does what I want it to):
+~~
+? # plot the data points
+? fp = ggplot(df,aes(x=x_var, y=y_var)) + geom_point(size=4, na.rm = TRUE, colour = "blue", alpha = 0.75) + theme_bw()
+
+? # add centre line, axis labels and plot title
+? fp = fp + geom_hline(aes(yintercept = funnel_centre_line), linetype = 2, colour = "black") + xlab(x_label) + ylab(y_label) + ggtitle(plot_title) + theme(axis.title=element_text(face="bold"), plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+
+? # add funnel plot curves (limits)
+? for (ci_ctr in 1:length(limits)) {
+? ? if (ci_ctr==1) {
+? ? ? fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), colour = colour4labels[ci_ctr], size = 1.1, na.rm = TRUE, linetype = 5) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), colour = colour4labels[ci_ctr], size = 1.1, na.rm = TRUE, linetype = 5)
+
+? ? } else if (ci_ctr==2) {
+? ? ? fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), colour = colour4labels[ci_ctr], size = 1.3, na.rm = TRUE) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), colour = colour4labels[ci_ctr], size = 1.3, na.rm = TRUE)
+
+? ? } else {
+? ? ? fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), colour = colour4labels[ci_ctr], na.rm = TRUE, linetype = 5) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), colour = colour4labels[ci_ctr], na.rm = TRUE, linetype = 5)
+? ? }
+? }
+~~
+
+Happy to post the complete code. I was thinking it might be a contribution--if deemed non-trivial.
+(I also have a test function that runs the code with a data set already in r-cran.)
+
+Take Care,
+Michael Bonert, BASc, MASc, MD, FRCPC
+
+PS -
+Environment details:
+ R version: 4.0.4 (2021-02-15)
+ Platform: Debian GNU/Linux 11 (stable)
+
+I am trying to generate R code similar to that in this paper: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8219089/
+(If you want to know where I am coming from: it is in that paper.)
+
+The code I wrote is somewhat similar to the package 'FunnelPlotR' ( https://cran.rstudio.com/web/packages/FunnelPlotR/index.html ). I did look at the code in that package.
+
+??? [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Mon Feb 28 08:53:51 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sun, 27 Feb 2022 23:53:51 -0800
+Subject: [R] 
+ ggplot2 with an arbitrary number of curves from geom_function +
+ legend?
+In-Reply-To: <564857273.1641053.1646028031423@mail.yahoo.com>
+References: <YT3PR01MB97389F056822C68C582DED33A5019@YT3PR01MB9738.CANPRD01.PROD.OUTLOOK.COM>
+ <564857273.1641053.1646028031423@mail.yahoo.com>
+Message-ID: <EAE8B915-DDB1-4124-81E2-10DB81BE80AB@dcn.davis.ca.us>
+
+Well, the ggplot2 CRAN page [1] points people to [2], which in turn points out that support can be found on the RStudio community forums and StackOverflow, so there is a path from here (where contributed packages are off-topic per the Posting Guide) to getting help.
+
+I will point out that the canonical solution is definitely to put all of your data into one long-form data frame and use a factor column to distinguish aesthetics (one google result is [3]) ... loops really don't work well to add layers to ggplots.
+
+But yes, if you have further questions on a contributed package, do follow the breadcrumbs from CRAN for sources of help, and come back when your question is about the R language.
+
+[1] https://cran.r-project.org/web/packages/ggplot2/index.html
+[2] https://ggplot2.tidyverse.org/
+[3] https://stackoverflow.com/questions/64523271/how-to-insert-a-legend-in-a-ggplot-with-multiple-time-series
+
+On February 27, 2022 10:00:31 PM PST, Avi Gross via R-help <r-help at r-project.org> wrote:
+>I would reply but since ggplot was mentioned, I must abstain. ;-)
+>
+>I will say that you can use ggplot in a loop in some cases if you do this:
+>
+>p <- ggplot(...) + ...
+>
+>Then you can in your loop keep adding to p as in:
+>
+>p <- p + geom_whatever() + ...
+>
+>You do at some point need to make p print itself and generate a graph. Until then, it can be amended, albeit some changes undo or overwrite earlier ones if not done carefully.
+>
+>Having said all that, there is often a way to do a kind of looping within ggplot by say grouping your data and having it draw things grouped, or say making multiple vertical (or horizontal) lines by supplying a vector of positions.
+>
+>But as noted, this is not considered a good place by some to discuss this, so forget I said anything.
+>
+>
+>
+>
+>-----Original Message-----
+>From: Michael Bonert <michael.bonert at alumni.utoronto.ca>
+>To: r-help at r-project.org <r-help at r-project.org>
+>Sent: Sun, Feb 27, 2022 8:02 pm
+>Subject: [R] ggplot2 with an arbitrary number of curves from geom_function + legend?
+>
+>Dear R-help,
+>
+>I am trying to create a ggplot with an arbitrary number of curves + legend.
+>
+>The plot should contain:
+>1. data points + a line that is either user defined *or* represents the median of the data points
+>2. an arbitrary number of confidence intervals (CIs) around the line, where the CIs are defined by a function
+>
+>#1: this is easy enough
+>#2: I don't know how to combine this with #1
+>
+>I can write #2 as a loop (see below) but it is then seems to be impossible to get ggplot to do a proper legend.
+>
+>The challenge I have seems similar to this problem:
+>https://stackoverflow.com/questions/12169289/ggplot2-fail-to-apply-color-with-scale-fill-manual-inside-a-loop
+>
+>I read that one should not use a loop with ggplot ( https://stackoverflow.com/questions/62603533/adding-ggplot2-legend-with-many-lines-using-for-loop ).
+>(Interesting: there are probably a half dozen posts on ggplot + loops floating around on the web.? I do not feel alone in my problem... but I also do not think I am close to solving it.)
+>(As a user of GNU/Octave ( octave.org ) using a loop seems the intuitive solution. In GNU/Octave one does a "hold on" and then plots however many lines/objects one wants within a figure.)
+>
+>Is there a way to freeze the 'scale_colour_manual' attribute?
+>(The way the code is written: the colour scale seems to be overwritten with the 'fp=fp ...' statement)
+>(I have gotten the message: "Scale for 'colour' is already present. Adding another scale for 'colour',
+>which will replace the existing scale.")
+>
+>Loop aside:
+>Is there a way to elegantly pipe an arbitrary number of 'geom_function' calls to the 'ggplot'?
+>(I wondered whether the '%>%' operator in 'dplyr' is a possible solution -- as suggested here:
+>https://stackoverflow.com/questions/30655364/ggplot2-getting-a-color-legend-to-appear-using-stat-function-in-a-for-loop )
+>
+>
+>I could write code to generate a data frame that has the data points and points for arbitrary curves; however,
+>this would necessitate writing a function that replicates 'geom_function'.
+>
+>Is there a way to generate the text string and then execute it?
+>( https://stackoverflow.com/questions/1743698/evaluate-expression-given-as-a-string )
+>(In my humble opinion: this would be a hack.)
+>
+>Is there a way to generate a legend with 'override.aes'?
+>( https://www.r-bloggers.com/2020/07/controlling-legend-appearance-in-ggplot2-with-override-aes/ )
+>
+>
+>Below is the attempt at creating a legend:
+>~~
+>? # plot the data points
+>? fp = ggplot(df,aes(x=x_var, y=y_var), colour4labels[num_of_funnels+2]) + geom_point(size=4, na.rm = TRUE, alpha = 0.75) + theme(legend.position="bottom") + scale_color_manual(labels = legend_labels, values = colour4labels) + guides(color=guide_legend("Control Limits")) + geom_hline(aes(yintercept = funnel_centre_line, colour = colour4labels[num_of_funnels+1]), linetype = 2) + xlab(x_label) + ylab(y_label) + ggtitle(plot_title) + theme(axis.title=element_text(face="bold"), plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+>
+>? # add funnel plot curves (limits)
+>? for (ci_ctr in 1:length(limits)) {
+>? ? if (ci_ctr==1) {
+>? ? ? fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), size = 1.1, na.rm = TRUE, linetype = 5) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), size = 1.1, na.rm = TRUE, linetype = 5) + theme(legend.position="bottom") + scale_color_manual(labels = legend_labels, values = colour4labels) + guides(color=guide_legend("Control Limits"))
+>
+>? ? } else if (ci_ctr==2) {
+>? ? ? fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), size = 1.3, na.rm = TRUE) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), size = 1.3, na.rm = TRUE) + theme(legend.position="bottom") + scale_color_manual(labels = legend_labels, values = colour4labels) + guides(color=guide_legend("Control Limits"))
+>
+>? ? } else {
+>? ? ? fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), na.rm = TRUE, linetype = 5) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), aes(colour = colour4labels[ci_ctr]), na.rm = TRUE, linetype = 5) + theme(legend.position="bottom") + scale_color_manual(labels = legend_labels, values = colour4labels) + guides(color=guide_legend("Control Limits"))
+>? ? }
+>? }
+>~~
+>
+>Code without elements to generate a legend (that otherwise does what I want it to):
+>~~
+>? # plot the data points
+>? fp = ggplot(df,aes(x=x_var, y=y_var)) + geom_point(size=4, na.rm = TRUE, colour = "blue", alpha = 0.75) + theme_bw()
+>
+>? # add centre line, axis labels and plot title
+>? fp = fp + geom_hline(aes(yintercept = funnel_centre_line), linetype = 2, colour = "black") + xlab(x_label) + ylab(y_label) + ggtitle(plot_title) + theme(axis.title=element_text(face="bold"), plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+>
+>? # add funnel plot curves (limits)
+>? for (ci_ctr in 1:length(limits)) {
+>? ? if (ci_ctr==1) {
+>? ? ? fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), colour = colour4labels[ci_ctr], size = 1.1, na.rm = TRUE, linetype = 5) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), colour = colour4labels[ci_ctr], size = 1.1, na.rm = TRUE, linetype = 5)
+>
+>? ? } else if (ci_ctr==2) {
+>? ? ? fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), colour = colour4labels[ci_ctr], size = 1.3, na.rm = TRUE) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), colour = colour4labels[ci_ctr], size = 1.3, na.rm = TRUE)
+>
+>? ? } else {
+>? ? ? fp = fp + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 1, trunc_val = 0), colour = colour4labels[ci_ctr], na.rm = TRUE, linetype = 5) + geom_function(fun = calc_fpc, args = list(ci_or_alpha = limits[ci_ctr], probability = funnel_centre_line, upper_or_lower = 2, trunc_val = 0), colour = colour4labels[ci_ctr], na.rm = TRUE, linetype = 5)
+>? ? }
+>? }
+>~~
+>
+>Happy to post the complete code. I was thinking it might be a contribution--if deemed non-trivial.
+>(I also have a test function that runs the code with a data set already in r-cran.)
+>
+>Take Care,
+>Michael Bonert, BASc, MASc, MD, FRCPC
+>
+>PS -
+>Environment details:
+> R version: 4.0.4 (2021-02-15)
+> Platform: Debian GNU/Linux 11 (stable)
+>
+>I am trying to generate R code similar to that in this paper: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8219089/
+>(If you want to know where I am coming from: it is in that paper.)
+>
+>The code I wrote is somewhat similar to the package 'FunnelPlotR' ( https://cran.rstudio.com/web/packages/FunnelPlotR/index.html ). I did look at the code in that package.
+>
+>??? [[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From tebert @end|ng |rom u||@edu  Mon Feb 28 13:36:09 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Mon, 28 Feb 2022 12:36:09 +0000
+Subject: [R] Searching for packages
+Message-ID: <BN6PR2201MB1553B05F97354D89182DE294CF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+If I want help on a package I can usually go to google and type "package.name in r" and I get what I need in the first few hits. Google typically offers suggestions if my spelling is a bit off, and I get hits that are close. I searched for the binGroup package in the usual way and found that it is no longer supported. I asked the authors only to discover that there is a binGroup2 package.
+
+If I search for "tidyv in R" I get tidyverse.
+
+Any idea why I did not get binGroup2 in the binGroup search?
+
+Regards,
+Tim
+
+	[[alternative HTML version deleted]]
+
+
+From @erv|ce @end|ng |rom @hd@w@on@com  Mon Feb 28 13:45:48 2022
+From: @erv|ce @end|ng |rom @hd@w@on@com (Stephen H. Dawson, DSL)
+Date: Mon, 28 Feb 2022 07:45:48 -0500
+Subject: [R] Searching for packages
+In-Reply-To: <BN6PR2201MB1553B05F97354D89182DE294CF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <BN6PR2201MB1553B05F97354D89182DE294CF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <170d7701-6ac1-bca5-182a-bed93dfb4d6d@shdawson.com>
+
+When was binGroup2 released?
+
+When is your last system update?
+
+*Stephen Dawson, DSL*
+/Executive Strategy Consultant/
+Business & Technology
++1 (865) 804-3454
+http://www.shdawson.com
+
+
+On 2/28/22 07:36, Ebert,Timothy Aaron wrote:
+> If I want help on a package I can usually go to google and type "package.name in r" and I get what I need in the first few hits. Google typically offers suggestions if my spelling is a bit off, and I get hits that are close. I searched for the binGroup package in the usual way and found that it is no longer supported. I asked the authors only to discover that there is a binGroup2 package.
+>
+> If I search for "tidyv in R" I get tidyverse.
+>
+> Any idea why I did not get binGroup2 in the binGroup search?
+>
+> Regards,
+> Tim
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Feb 28 13:49:28 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 28 Feb 2022 12:49:28 +0000
+Subject: [R] Searching for packages
+In-Reply-To: <BN6PR2201MB1553B05F97354D89182DE294CF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <BN6PR2201MB1553B05F97354D89182DE294CF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <a299efef-8be2-4f90-9795-485b51884df2@sapo.pt>
+
+Hello,
+
+I don't know why Google couldn't find it but
+
+RSiteSearch("binGroup*")
+
+found binGroup2. It's in the 3rd page but it did find it.
+
+Rui Barradas
+
+?s 12:36 de 28/02/2022, Ebert,Timothy Aaron escreveu:
+> If I want help on a package I can usually go to google and type "package.name in r" and I get what I need in the first few hits. Google typically offers suggestions if my spelling is a bit off, and I get hits that are close. I searched for the binGroup package in the usual way and found that it is no longer supported. I asked the authors only to discover that there is a binGroup2 package.
+> 
+> If I search for "tidyv in R" I get tidyverse.
+> 
+> Any idea why I did not get binGroup2 in the binGroup search?
+> 
+> Regards,
+> Tim
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @erv|ce @end|ng |rom @hd@w@on@com  Mon Feb 28 14:21:57 2022
+From: @erv|ce @end|ng |rom @hd@w@on@com (Stephen H. Dawson, DSL)
+Date: Mon, 28 Feb 2022 08:21:57 -0500
+Subject: [R] tidying up
+In-Reply-To: <1182161945.1594668.1645999181069@mail.yahoo.com>
+References: <336709036.1577552.1645990473450.ref@mail.yahoo.com>
+ <336709036.1577552.1645990473450@mail.yahoo.com>
+ <CA+8X3fWAPtZ9XYmCkiq+P4EEV1Crh0VZG9v9wFc2adKG0902KQ@mail.gmail.com>
+ <1182161945.1594668.1645999181069@mail.yahoo.com>
+Message-ID: <804829ff-f78b-e097-5c7e-53134e124ed7@shdawson.com>
+
+Hi Avi,
+
+
+I thought about your question over the past few days. A new email list 
+may help, but I doubt the help will suffice to solve the problem of 
+forming emails as the existing list prefers.
+
+Here is where I see the source of the problem with using R by way of 
+getting questions answers.
+
+https://cran.r-project.org/doc/manuals/r-release/R-intro.html
+
+This writing is not an introductory learning piece. This work needs to 
+be restructured and expanded. It is evident another author would need to 
+be found who has the writing skills to accomplish the necessary 
+improvements.
+
+
+*Stephen Dawson, DSL*
+/Executive Strategy Consultant/
+Business & Technology
++1 (865) 804-3454
+http://www.shdawson.com
+
+
+On 2/27/22 16:59, Avi Gross via R-help wrote:
+> Indeed, Jim, the hopeful purpose of interactions here is to help people without doing the job for them. As you note, sometimes it is help in getting them to formulate what they are trying to do and maybe see the resolution on their own, or give enough info that others can troubleshoot.
+>
+> I have dealt with people on and off forums like this who know very little and have done some rudimentary search and found something they hope is helpful and then get stuck. Some have no actual interest in learning R or Python or anything and see it as a one-time thing. For them, any sustained interaction is just frustrating. Others may want a tutor, albeit mahy of us here are not willing or able to provide endless hours to volunteer. And some, may be better off spending the money to hire someone and I assume there are places they can be directed.
+>
+>
+>
+>
+> -----Original Message-----
+> From: Jim Lemon <drjimlemon at gmail.com>
+> To: Avi Gross <avigross at verizon.net>
+> Cc: r-help at r-project.org <r-help at r-project.org>
+> Sent: Sun, Feb 27, 2022 4:52 pm
+> Subject: Re: [R] tidying up
+>
+>
+> Hi Avi,
+> I just sent in an answer to a very simple question. In many cases it
+> seems to me that the real problem isn't apparent from the request.
+> ektaraK appears to have almost no experience with R (sorry if I'm
+> wrong). A person in this position may sort of know what they want to
+> do but do not know how to ask the question. What's a reproducible
+> example? So I often submit really dumb looking answers that show the
+> person how to ask the question. If I'm successful, the OP learns how
+> to do some basic operation, but also learns how to ask the next
+> question. Until they get there, most responses just give them a typing
+> exercise.
+>
+> Jim
+>
+>
+> On Mon, Feb 28, 2022 at 6:35 AM Avi Gross via R-help
+> <r-help at r-project.org> wrote:
+>> This mailing list seems to steadily get messages that some see as not relevant to this forum. In particular, some see it as wrong to bring up some things here and keep reminding people of some ground rules.
+>>
+>> So I want to know, briefly, if it is reasonable to ask a person with a question or problem to reproduce their problem another way. If using RSTUDIO or one of many IDE, can they run the code on a naked R interpreter by sourcing the file or copying it in or typing it anew, or perhaps using IDLE which comes by default with many installations of R? If using a library (which I like so I am not really in agreement about the unsuitability) like the tidyverse which is free and available to all even if loosely associated with the RSTUDIO folks and that can be run on any version of R that I am aware of, then some questions may still be fair if they are really about more general R issues as much of the rest of the code may be base R and may be the cause of whatever issue is being reported. And, some simple requests like pointing out a missing comma, ...
+>>
+>> I have stated my thought before and it boils down to the reality that there are some things about earlier versions of R that were far from perfect or complete and a little healthy competition is not a bad thing and may help base R evolve. Not everything in the tidyverse is better and it keeps evolving and deprecating older features, but it cannot really be ignored any longer. If you apply for a job at some company as something of an R expert, you may well be asked by all kinds of people about their programs that use the tidyverse for help or to help them solve a problem. You don't have to like it, but if you cannot read it, you no longer are really qualified in many places.
+>>
+>> Ask yourself if a language like R was created from scratch, what graphics might be built into the base distribution? Would you rather have lattice or ggplot or perhaps both as well as base R graphics? Would you make many of the built-in functions more consistent, so for instance, the data being worked on would be the first argument whenever possible?
+>>
+>> One reason there are so many packages is not so much due to the superiority of R but because people find it lacks quite a bit. Much of that should not be included, of course, if R is meant to be somewhat on the lean side, and yes, packages are a deliberate way to extend it when needed. But when people use it and think they are programming in R, ...
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From tebert @end|ng |rom u||@edu  Mon Feb 28 14:32:02 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Mon, 28 Feb 2022 13:32:02 +0000
+Subject: [R] Searching for packages
+In-Reply-To: <170d7701-6ac1-bca5-182a-bed93dfb4d6d@shdawson.com>
+References: <BN6PR2201MB1553B05F97354D89182DE294CF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <170d7701-6ac1-bca5-182a-bed93dfb4d6d@shdawson.com>
+Message-ID: <BN6PR2201MB15531739A3BF86A9EE3C71B1CF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+binGroup2 (version 1.02) was released 2020-04-07. There was one update on 2021-03-17 (according to available.versions("binGroup2").
+My last system update was (I assume) recent. My system is governed by my University. I get monthly updates, rarely more often. My version of R is 4.1.
+I tried Rui's suggestion (thank you) of searching using R. I read through the list several times but did not find binGroup2, though it is possible that it was there as binGroup.... and I need to open all the documents to find it.
+
+Tim
+
+
+-----Original Message-----
+From: Stephen H. Dawson, DSL <service at shdawson.com> 
+Sent: Monday, February 28, 2022 7:46 AM
+To: Ebert,Timothy Aaron <tebert at ufl.edu>; r-help at r-project.org
+Subject: Re: [R] Searching for packages
+
+[External Email]
+
+When was binGroup2 released?
+
+When is your last system update?
+
+*Stephen Dawson, DSL*
+/Executive Strategy Consultant/
+Business & Technology
++1 (865) 804-3454
+https://urldefense.proofpoint.com/v2/url?u=http-3A__www.shdawson.com&d=DwICaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=WEV48V_ui8Oz-EeQtPAqqF1cRT83c11S15V05P3diVQoJspuLdN1R04nGi2PSLKn&s=J6gEolZqXpDtRFdEzUW6R1ySBhZw3FgsLL2GoKQ1vg0&e=
+
+
+On 2/28/22 07:36, Ebert,Timothy Aaron wrote:
+> If I want help on a package I can usually go to google and type "package.name in r" and I get what I need in the first few hits. Google typically offers suggestions if my spelling is a bit off, and I get hits that are close. I searched for the binGroup package in the usual way and found that it is no longer supported. I asked the authors only to discover that there is a binGroup2 package.
+>
+> If I search for "tidyv in R" I get tidyverse.
+>
+> Any idea why I did not get binGroup2 in the binGroup search?
+>
+> Regards,
+> Tim
+>
+>       [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mail
+> man_listinfo_r-2Dhelp&d=DwICaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAs
+> Rzsn7AkP-g&m=WEV48V_ui8Oz-EeQtPAqqF1cRT83c11S15V05P3diVQoJspuLdN1R04nG
+> i2PSLKn&s=1lwcSxFoUFNj5-s-czuFCrPlhteONuK8xl-a2CkpnVA&e=
+> PLEASE do read the posting guide 
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.or
+> g_posting-2Dguide.html&d=DwICaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeA
+> sRzsn7AkP-g&m=WEV48V_ui8Oz-EeQtPAqqF1cRT83c11S15V05P3diVQoJspuLdN1R04n
+> Gi2PSLKn&s=rVBDL-rnzLnz-rie3bN1-pU8DPfnVxnJMTfbsKzW3nw&e=
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Feb 28 14:43:56 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 28 Feb 2022 13:43:56 +0000
+Subject: [R] Searching for packages
+In-Reply-To: <BN6PR2201MB15531739A3BF86A9EE3C71B1CF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <BN6PR2201MB1553B05F97354D89182DE294CF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <170d7701-6ac1-bca5-182a-bed93dfb4d6d@shdawson.com>
+ <BN6PR2201MB15531739A3BF86A9EE3C71B1CF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <91bdbde3-1134-6620-0e48-8dab9f21a80c@sapo.pt>
+
+Hello,
+
+Actually, I only found it at the second try. The RSiteSearch webpage has 
+a search bar, I've used it search binGroup* and found it on screen 3.
+
+Rui Barradas
+
+?s 13:32 de 28/02/2022, Ebert,Timothy Aaron escreveu:
+> binGroup2 (version 1.02) was released 2020-04-07. There was one update on 2021-03-17 (according to available.versions("binGroup2").
+> My last system update was (I assume) recent. My system is governed by my University. I get monthly updates, rarely more often. My version of R is 4.1.
+> I tried Rui's suggestion (thank you) of searching using R. I read through the list several times but did not find binGroup2, though it is possible that it was there as binGroup.... and I need to open all the documents to find it.
+> 
+> Tim
+> 
+> 
+> -----Original Message-----
+> From: Stephen H. Dawson, DSL <service at shdawson.com>
+> Sent: Monday, February 28, 2022 7:46 AM
+> To: Ebert,Timothy Aaron <tebert at ufl.edu>; r-help at r-project.org
+> Subject: Re: [R] Searching for packages
+> 
+> [External Email]
+> 
+> When was binGroup2 released?
+> 
+> When is your last system update?
+> 
+> *Stephen Dawson, DSL*
+> /Executive Strategy Consultant/
+> Business & Technology
+> +1 (865) 804-3454
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.shdawson.com&d=DwICaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=WEV48V_ui8Oz-EeQtPAqqF1cRT83c11S15V05P3diVQoJspuLdN1R04nGi2PSLKn&s=J6gEolZqXpDtRFdEzUW6R1ySBhZw3FgsLL2GoKQ1vg0&e=
+> 
+> 
+> On 2/28/22 07:36, Ebert,Timothy Aaron wrote:
+>> If I want help on a package I can usually go to google and type "package.name in r" and I get what I need in the first few hits. Google typically offers suggestions if my spelling is a bit off, and I get hits that are close. I searched for the binGroup package in the usual way and found that it is no longer supported. I asked the authors only to discover that there is a binGroup2 package.
+>>
+>> If I search for "tidyv in R" I get tidyverse.
+>>
+>> Any idea why I did not get binGroup2 in the binGroup search?
+>>
+>> Regards,
+>> Tim
+>>
+>>        [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mail
+>> man_listinfo_r-2Dhelp&d=DwICaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAs
+>> Rzsn7AkP-g&m=WEV48V_ui8Oz-EeQtPAqqF1cRT83c11S15V05P3diVQoJspuLdN1R04nG
+>> i2PSLKn&s=1lwcSxFoUFNj5-s-czuFCrPlhteONuK8xl-a2CkpnVA&e=
+>> PLEASE do read the posting guide
+>> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.or
+>> g_posting-2Dguide.html&d=DwICaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeA
+>> sRzsn7AkP-g&m=WEV48V_ui8Oz-EeQtPAqqF1cRT83c11S15V05P3diVQoJspuLdN1R04n
+>> Gi2PSLKn&s=rVBDL-rnzLnz-rie3bN1-pU8DPfnVxnJMTfbsKzW3nw&e=
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Mon Feb 28 16:46:33 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Mon, 28 Feb 2022 07:46:33 -0800
+Subject: [R] Searching for packages
+In-Reply-To: <91bdbde3-1134-6620-0e48-8dab9f21a80c@sapo.pt>
+References: <BN6PR2201MB1553B05F97354D89182DE294CF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <170d7701-6ac1-bca5-182a-bed93dfb4d6d@shdawson.com>
+ <BN6PR2201MB15531739A3BF86A9EE3C71B1CF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <91bdbde3-1134-6620-0e48-8dab9f21a80c@sapo.pt>
+Message-ID: <CAGxFJbSt0m37FMzs7syvaoc+wu-FxEE0qEaeDT95ow1MLaFJSg@mail.gmail.com>
+
+Other places beside google to look for R info:
+
+https://rdrr.io/
+https://www.rdocumentation.org/
+https://rseek.org/
+
+Bert Gunter
+
+"The trouble with having an open mind is that people keep coming along
+and sticking things into it."
+-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+
+
+On Mon, Feb 28, 2022 at 5:44 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>
+> Hello,
+>
+> Actually, I only found it at the second try. The RSiteSearch webpage has
+> a search bar, I've used it search binGroup* and found it on screen 3.
+>
+> Rui Barradas
+>
+> ?s 13:32 de 28/02/2022, Ebert,Timothy Aaron escreveu:
+> > binGroup2 (version 1.02) was released 2020-04-07. There was one update on 2021-03-17 (according to available.versions("binGroup2").
+> > My last system update was (I assume) recent. My system is governed by my University. I get monthly updates, rarely more often. My version of R is 4.1.
+> > I tried Rui's suggestion (thank you) of searching using R. I read through the list several times but did not find binGroup2, though it is possible that it was there as binGroup.... and I need to open all the documents to find it.
+> >
+> > Tim
+> >
+> >
+> > -----Original Message-----
+> > From: Stephen H. Dawson, DSL <service at shdawson.com>
+> > Sent: Monday, February 28, 2022 7:46 AM
+> > To: Ebert,Timothy Aaron <tebert at ufl.edu>; r-help at r-project.org
+> > Subject: Re: [R] Searching for packages
+> >
+> > [External Email]
+> >
+> > When was binGroup2 released?
+> >
+> > When is your last system update?
+> >
+> > *Stephen Dawson, DSL*
+> > /Executive Strategy Consultant/
+> > Business & Technology
+> > +1 (865) 804-3454
+> > https://urldefense.proofpoint.com/v2/url?u=http-3A__www.shdawson.com&d=DwICaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=WEV48V_ui8Oz-EeQtPAqqF1cRT83c11S15V05P3diVQoJspuLdN1R04nGi2PSLKn&s=J6gEolZqXpDtRFdEzUW6R1ySBhZw3FgsLL2GoKQ1vg0&e=
+> >
+> >
+> > On 2/28/22 07:36, Ebert,Timothy Aaron wrote:
+> >> If I want help on a package I can usually go to google and type "package.name in r" and I get what I need in the first few hits. Google typically offers suggestions if my spelling is a bit off, and I get hits that are close. I searched for the binGroup package in the usual way and found that it is no longer supported. I asked the authors only to discover that there is a binGroup2 package.
+> >>
+> >> If I search for "tidyv in R" I get tidyverse.
+> >>
+> >> Any idea why I did not get binGroup2 in the binGroup search?
+> >>
+> >> Regards,
+> >> Tim
+> >>
+> >>        [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mail
+> >> man_listinfo_r-2Dhelp&d=DwICaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAs
+> >> Rzsn7AkP-g&m=WEV48V_ui8Oz-EeQtPAqqF1cRT83c11S15V05P3diVQoJspuLdN1R04nG
+> >> i2PSLKn&s=1lwcSxFoUFNj5-s-czuFCrPlhteONuK8xl-a2CkpnVA&e=
+> >> PLEASE do read the posting guide
+> >> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.or
+> >> g_posting-2Dguide.html&d=DwICaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeA
+> >> sRzsn7AkP-g&m=WEV48V_ui8Oz-EeQtPAqqF1cRT83c11S15V05P3diVQoJspuLdN1R04n
+> >> Gi2PSLKn&s=rVBDL-rnzLnz-rie3bN1-pU8DPfnVxnJMTfbsKzW3nw&e=
+> >> and provide commented, minimal, self-contained, reproducible code.
+> >>
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From tebert @end|ng |rom u||@edu  Mon Feb 28 20:47:45 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Mon, 28 Feb 2022 19:47:45 +0000
+Subject: [R] Searching for packages
+In-Reply-To: <CAGxFJbSt0m37FMzs7syvaoc+wu-FxEE0qEaeDT95ow1MLaFJSg@mail.gmail.com>
+References: <BN6PR2201MB1553B05F97354D89182DE294CF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <170d7701-6ac1-bca5-182a-bed93dfb4d6d@shdawson.com>
+ <BN6PR2201MB15531739A3BF86A9EE3C71B1CF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <91bdbde3-1134-6620-0e48-8dab9f21a80c@sapo.pt>
+ <CAGxFJbSt0m37FMzs7syvaoc+wu-FxEE0qEaeDT95ow1MLaFJSg@mail.gmail.com>
+Message-ID: <BN6PR2201MB1553AADAE42B7F835409BFFBCF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+Thank you for the list.
+
+-----Original Message-----
+From: Bert Gunter <bgunter.4567 at gmail.com> 
+Sent: Monday, February 28, 2022 10:47 AM
+To: Rui Barradas <ruipbarradas at sapo.pt>
+Cc: Ebert,Timothy Aaron <tebert at ufl.edu>; service at shdawson.com; r-help at r-project.org
+Subject: Re: [R] Searching for packages
+
+[External Email]
+
+Other places beside google to look for R info:
+
+https://urldefense.proofpoint.com/v2/url?u=https-3A__rdrr.io_&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=NX0Xg1Ds2e1R_R7VKRbwJ9Nj-9mEmj5NnaA8zGWLlX904sfhElg1hwTnFBnnDpaM&s=oi6J8PKSQJp4dd82zs3hlWnFQWnHaXrfDLawV-2gDkg&e=
+https://urldefense.proofpoint.com/v2/url?u=https-3A__www.rdocumentation.org_&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=NX0Xg1Ds2e1R_R7VKRbwJ9Nj-9mEmj5NnaA8zGWLlX904sfhElg1hwTnFBnnDpaM&s=WlC49B04XegAvmAosdabM_1CYDvQ3QHC6bzZ_-cVU00&e=
+https://urldefense.proofpoint.com/v2/url?u=https-3A__rseek.org_&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=NX0Xg1Ds2e1R_R7VKRbwJ9Nj-9mEmj5NnaA8zGWLlX904sfhElg1hwTnFBnnDpaM&s=3H-rSYG6BgbLVYLsFTZAOZBvPc43aw16HtLgcX4S2_o&e=
+
+Bert Gunter
+
+"The trouble with having an open mind is that people keep coming along and sticking things into it."
+-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+
+
+On Mon, Feb 28, 2022 at 5:44 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>
+> Hello,
+>
+> Actually, I only found it at the second try. The RSiteSearch webpage 
+> has a search bar, I've used it search binGroup* and found it on screen 3.
+>
+> Rui Barradas
+>
+> ?s 13:32 de 28/02/2022, Ebert,Timothy Aaron escreveu:
+> > binGroup2 (version 1.02) was released 2020-04-07. There was one update on 2021-03-17 (according to available.versions("binGroup2").
+> > My last system update was (I assume) recent. My system is governed by my University. I get monthly updates, rarely more often. My version of R is 4.1.
+> > I tried Rui's suggestion (thank you) of searching using R. I read through the list several times but did not find binGroup2, though it is possible that it was there as binGroup.... and I need to open all the documents to find it.
+> >
+> > Tim
+> >
+> >
+> > -----Original Message-----
+> > From: Stephen H. Dawson, DSL <service at shdawson.com>
+> > Sent: Monday, February 28, 2022 7:46 AM
+> > To: Ebert,Timothy Aaron <tebert at ufl.edu>; r-help at r-project.org
+> > Subject: Re: [R] Searching for packages
+> >
+> > [External Email]
+> >
+> > When was binGroup2 released?
+> >
+> > When is your last system update?
+> >
+> > *Stephen Dawson, DSL*
+> > /Executive Strategy Consultant/
+> > Business & Technology
+> > +1 (865) 804-3454
+> > https://urldefense.proofpoint.com/v2/url?u=http-3A__www.shdawson.com
+> > &d=DwICaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=WEV48V
+> > _ui8Oz-EeQtPAqqF1cRT83c11S15V05P3diVQoJspuLdN1R04nGi2PSLKn&s=J6gEolZ
+> > qXpDtRFdEzUW6R1ySBhZw3FgsLL2GoKQ1vg0&e=
+> >
+> >
+> > On 2/28/22 07:36, Ebert,Timothy Aaron wrote:
+> >> If I want help on a package I can usually go to google and type "package.name in r" and I get what I need in the first few hits. Google typically offers suggestions if my spelling is a bit off, and I get hits that are close. I searched for the binGroup package in the usual way and found that it is no longer supported. I asked the authors only to discover that there is a binGroup2 package.
+> >>
+> >> If I search for "tidyv in R" I get tidyverse.
+> >>
+> >> Any idea why I did not get binGroup2 in the binGroup search?
+> >>
+> >> Regards,
+> >> Tim
+> >>
+> >>        [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> >> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_m
+> >> ail 
+> >> man_listinfo_r-2Dhelp&d=DwICaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kV
+> >> eAs 
+> >> Rzsn7AkP-g&m=WEV48V_ui8Oz-EeQtPAqqF1cRT83c11S15V05P3diVQoJspuLdN1R0
+> >> 4nG i2PSLKn&s=1lwcSxFoUFNj5-s-czuFCrPlhteONuK8xl-a2CkpnVA&e=
+> >> PLEASE do read the posting guide
+> >> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject
+> >> .or 
+> >> g_posting-2Dguide.html&d=DwICaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2k
+> >> VeA 
+> >> sRzsn7AkP-g&m=WEV48V_ui8Oz-EeQtPAqqF1cRT83c11S15V05P3diVQoJspuLdN1R
+> >> 04n Gi2PSLKn&s=rVBDL-rnzLnz-rie3bN1-pU8DPfnVxnJMTfbsKzW3nw&e=
+> >> and provide commented, minimal, self-contained, reproducible code.
+> >>
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> > https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_ma
+> > ilman_listinfo_r-2Dhelp&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2k
+> > VeAsRzsn7AkP-g&m=NX0Xg1Ds2e1R_R7VKRbwJ9Nj-9mEmj5NnaA8zGWLlX904sfhElg
+> > 1hwTnFBnnDpaM&s=-RJNhDPRaNYddtXX_a_4NSLl92KUzBAvdX91A0YYgN8&e=
+> > PLEASE do read the posting guide 
+> > https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.
+> > org_posting-2Dguide.html&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2
+> > kVeAsRzsn7AkP-g&m=NX0Xg1Ds2e1R_R7VKRbwJ9Nj-9mEmj5NnaA8zGWLlX904sfhEl
+> > g1hwTnFBnnDpaM&s=-K-KXw7glY_Yz9Sw6qmm_5TT3lkQvpBig2Dpj0m3nS8&e=
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mail
+> man_listinfo_r-2Dhelp&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAs
+> Rzsn7AkP-g&m=NX0Xg1Ds2e1R_R7VKRbwJ9Nj-9mEmj5NnaA8zGWLlX904sfhElg1hwTnF
+> BnnDpaM&s=-RJNhDPRaNYddtXX_a_4NSLl92KUzBAvdX91A0YYgN8&e=
+> PLEASE do read the posting guide 
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.or
+> g_posting-2Dguide.html&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeA
+> sRzsn7AkP-g&m=NX0Xg1Ds2e1R_R7VKRbwJ9Nj-9mEmj5NnaA8zGWLlX904sfhElg1hwTn
+> FBnnDpaM&s=-K-KXw7glY_Yz9Sw6qmm_5TT3lkQvpBig2Dpj0m3nS8&e=
+> and provide commented, minimal, self-contained, reproducible code.
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Mon Feb 28 21:43:51 2022
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Mon, 28 Feb 2022 14:43:51 -0600
+Subject: [R] Searching for packages
+In-Reply-To: <BN6PR2201MB1553AADAE42B7F835409BFFBCF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <BN6PR2201MB1553B05F97354D89182DE294CF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <170d7701-6ac1-bca5-182a-bed93dfb4d6d@shdawson.com>
+ <BN6PR2201MB15531739A3BF86A9EE3C71B1CF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <91bdbde3-1134-6620-0e48-8dab9f21a80c@sapo.pt>
+ <CAGxFJbSt0m37FMzs7syvaoc+wu-FxEE0qEaeDT95ow1MLaFJSg@mail.gmail.com>
+ <BN6PR2201MB1553AADAE42B7F835409BFFBCF019@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <a7ea3eb0-047d-ed45-95d0-c0084cca6867@effectivedefense.org>
+
+	  There is also sos::findFn, discussed in a vignette included in that 
+package.  When I created that package, I felt it was the fastest 
+literature search for anything statistical:  It will identify all help 
+pages that match a search string and sort them by package.  It creates 
+an object so related searches can be combined by union or intersection. 
+  And the print method by default creates two pages in your default 
+browser, one listing the help pages and the second giving the package 
+summary.
+
+
+	  See also:
+
+
+https://en.wikiversity.org/wiki/Searching_R_Packages
+
+
+https://journal.r-project.org/archive/2018/RJ-2018-058/RJ-2018-058.pdf
+
+
+	  sg
+
+
+On 2/28/22 1:47 PM, Ebert,Timothy Aaron wrote:
+> Thank you for the list.
+> 
+> -----Original Message-----
+> From: Bert Gunter <bgunter.4567 at gmail.com>
+> Sent: Monday, February 28, 2022 10:47 AM
+> To: Rui Barradas <ruipbarradas at sapo.pt>
+> Cc: Ebert,Timothy Aaron <tebert at ufl.edu>; service at shdawson.com; r-help at r-project.org
+> Subject: Re: [R] Searching for packages
+> 
+> [External Email]
+> 
+> Other places beside google to look for R info:
+> 
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__rdrr.io_&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=NX0Xg1Ds2e1R_R7VKRbwJ9Nj-9mEmj5NnaA8zGWLlX904sfhElg1hwTnFBnnDpaM&s=oi6J8PKSQJp4dd82zs3hlWnFQWnHaXrfDLawV-2gDkg&e=
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__www.rdocumentation.org_&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=NX0Xg1Ds2e1R_R7VKRbwJ9Nj-9mEmj5NnaA8zGWLlX904sfhElg1hwTnFBnnDpaM&s=WlC49B04XegAvmAosdabM_1CYDvQ3QHC6bzZ_-cVU00&e=
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__rseek.org_&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=NX0Xg1Ds2e1R_R7VKRbwJ9Nj-9mEmj5NnaA8zGWLlX904sfhElg1hwTnFBnnDpaM&s=3H-rSYG6BgbLVYLsFTZAOZBvPc43aw16HtLgcX4S2_o&e=
+> 
+> Bert Gunter
+> 
+> "The trouble with having an open mind is that people keep coming along and sticking things into it."
+> -- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+> 
+> 
+> On Mon, Feb 28, 2022 at 5:44 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>>
+>> Hello,
+>>
+>> Actually, I only found it at the second try. The RSiteSearch webpage
+>> has a search bar, I've used it search binGroup* and found it on screen 3.
+>>
+>> Rui Barradas
+>>
+>> ?s 13:32 de 28/02/2022, Ebert,Timothy Aaron escreveu:
+>>> binGroup2 (version 1.02) was released 2020-04-07. There was one update on 2021-03-17 (according to available.versions("binGroup2").
+>>> My last system update was (I assume) recent. My system is governed by my University. I get monthly updates, rarely more often. My version of R is 4.1.
+>>> I tried Rui's suggestion (thank you) of searching using R. I read through the list several times but did not find binGroup2, though it is possible that it was there as binGroup.... and I need to open all the documents to find it.
+>>>
+>>> Tim
+>>>
+>>>
+>>> -----Original Message-----
+>>> From: Stephen H. Dawson, DSL <service at shdawson.com>
+>>> Sent: Monday, February 28, 2022 7:46 AM
+>>> To: Ebert,Timothy Aaron <tebert at ufl.edu>; r-help at r-project.org
+>>> Subject: Re: [R] Searching for packages
+>>>
+>>> [External Email]
+>>>
+>>> When was binGroup2 released?
+>>>
+>>> When is your last system update?
+>>>
+>>> *Stephen Dawson, DSL*
+>>> /Executive Strategy Consultant/
+>>> Business & Technology
+>>> +1 (865) 804-3454
+>>> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.shdawson.com
+>>> &d=DwICaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=WEV48V
+>>> _ui8Oz-EeQtPAqqF1cRT83c11S15V05P3diVQoJspuLdN1R04nGi2PSLKn&s=J6gEolZ
+>>> qXpDtRFdEzUW6R1ySBhZw3FgsLL2GoKQ1vg0&e=
+>>>
+>>>
+>>> On 2/28/22 07:36, Ebert,Timothy Aaron wrote:
+>>>> If I want help on a package I can usually go to google and type "package.name in r" and I get what I need in the first few hits. Google typically offers suggestions if my spelling is a bit off, and I get hits that are close. I searched for the binGroup package in the usual way and found that it is no longer supported. I asked the authors only to discover that there is a binGroup2 package.
+>>>>
+>>>> If I search for "tidyv in R" I get tidyverse.
+>>>>
+>>>> Any idea why I did not get binGroup2 in the binGroup search?
+>>>>
+>>>> Regards,
+>>>> Tim
+>>>>
+>>>>         [[alternative HTML version deleted]]
+>>>>
+>>>> ______________________________________________
+>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_m
+>>>> ail
+>>>> man_listinfo_r-2Dhelp&d=DwICaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kV
+>>>> eAs
+>>>> Rzsn7AkP-g&m=WEV48V_ui8Oz-EeQtPAqqF1cRT83c11S15V05P3diVQoJspuLdN1R0
+>>>> 4nG i2PSLKn&s=1lwcSxFoUFNj5-s-czuFCrPlhteONuK8xl-a2CkpnVA&e=
+>>>> PLEASE do read the posting guide
+>>>> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject
+>>>> .or
+>>>> g_posting-2Dguide.html&d=DwICaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2k
+>>>> VeA
+>>>> sRzsn7AkP-g&m=WEV48V_ui8Oz-EeQtPAqqF1cRT83c11S15V05P3diVQoJspuLdN1R
+>>>> 04n Gi2PSLKn&s=rVBDL-rnzLnz-rie3bN1-pU8DPfnVxnJMTfbsKzW3nw&e=
+>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>>
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_ma
+>>> ilman_listinfo_r-2Dhelp&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2k
+>>> VeAsRzsn7AkP-g&m=NX0Xg1Ds2e1R_R7VKRbwJ9Nj-9mEmj5NnaA8zGWLlX904sfhElg
+>>> 1hwTnFBnnDpaM&s=-RJNhDPRaNYddtXX_a_4NSLl92KUzBAvdX91A0YYgN8&e=
+>>> PLEASE do read the posting guide
+>>> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.
+>>> org_posting-2Dguide.html&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2
+>>> kVeAsRzsn7AkP-g&m=NX0Xg1Ds2e1R_R7VKRbwJ9Nj-9mEmj5NnaA8zGWLlX904sfhEl
+>>> g1hwTnFBnnDpaM&s=-K-KXw7glY_Yz9Sw6qmm_5TT3lkQvpBig2Dpj0m3nS8&e=
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mail
+>> man_listinfo_r-2Dhelp&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAs
+>> Rzsn7AkP-g&m=NX0Xg1Ds2e1R_R7VKRbwJ9Nj-9mEmj5NnaA8zGWLlX904sfhElg1hwTnF
+>> BnnDpaM&s=-RJNhDPRaNYddtXX_a_4NSLl92KUzBAvdX91A0YYgN8&e=
+>> PLEASE do read the posting guide
+>> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.or
+>> g_posting-2Dguide.html&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeA
+>> sRzsn7AkP-g&m=NX0Xg1Ds2e1R_R7VKRbwJ9Nj-9mEmj5NnaA8zGWLlX904sfhElg1hwTn
+>> FBnnDpaM&s=-K-KXw7glY_Yz9Sw6qmm_5TT3lkQvpBig2Dpj0m3nS8&e=
+>> and provide commented, minimal, self-contained, reproducible code.
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From neh@@bo|ogn@90 @end|ng |rom gm@||@com  Mon Feb 28 22:56:23 2022
+From: neh@@bo|ogn@90 @end|ng |rom gm@||@com (Neha gupta)
+Date: Mon, 28 Feb 2022 22:56:23 +0100
+Subject: [R] How to perform statistical test with multiple variables
+Message-ID: <CA+nrPnu7nzs1K9wLL+ScCWoReM8qVA+UsNQPEmUWf=ajqgeyXQ@mail.gmail.com>
+
+Hello everyone,
+
+I have 'mean absolute error' values from different folds of CV of 6 ML
+models..
+a= c(0.3, 0.5, ..... 0.4)
+b= c(0.4, 0.6,...... 0.2)
+....
+..
+f= c(0.1, 0.4, .....0.5)
+Now algorithm 'a' performed better than all the others (in terms of mean
+absolute error scores) and then I used wilcoxon signed rank test to compare
+'a' with all other models for significance difference.
+
+Now, I have been asked to compare all the models with all others for
+significant differences at once and not compare one with the other, how can
+I do it, plz guide me? At this time, I just know about the Wilcoxon signed
+rank test.
+Regards
+
+	[[alternative HTML version deleted]]
+
+
+From drj|m|emon @end|ng |rom gm@||@com  Mon Feb 28 23:14:29 2022
+From: drj|m|emon @end|ng |rom gm@||@com (Jim Lemon)
+Date: Tue, 1 Mar 2022 09:14:29 +1100
+Subject: [R] How to perform statistical test with multiple variables
+In-Reply-To: <CA+nrPnu7nzs1K9wLL+ScCWoReM8qVA+UsNQPEmUWf=ajqgeyXQ@mail.gmail.com>
+References: <CA+nrPnu7nzs1K9wLL+ScCWoReM8qVA+UsNQPEmUWf=ajqgeyXQ@mail.gmail.com>
+Message-ID: <CA+8X3fWrnRJf03QuJJm_UeFV4TuBzYx-4MmCTQ8okcm6siXrcQ@mail.gmail.com>
+
+Hi neha,
+Ouch! I've just been run over by homework. What you are probably being
+asked to do is an "omnibus test", but I can't figure out what you are
+actually testing. Maybe that phrase will help you in _your_ search for
+the answer.
+
+Jim
+
+On Tue, Mar 1, 2022 at 8:56 AM Neha gupta <neha.bologna90 at gmail.com> wrote:
+>
+> Hello everyone,
+>
+> I have 'mean absolute error' values from different folds of CV of 6 ML
+> models..
+> a= c(0.3, 0.5, ..... 0.4)
+> b= c(0.4, 0.6,...... 0.2)
+> ....
+> ..
+> f= c(0.1, 0.4, .....0.5)
+> Now algorithm 'a' performed better than all the others (in terms of mean
+> absolute error scores) and then I used wilcoxon signed rank test to compare
+> 'a' with all other models for significance difference.
+>
+> Now, I have been asked to compare all the models with all others for
+> significant differences at once and not compare one with the other, how can
+> I do it, plz guide me? At this time, I just know about the Wilcoxon signed
+> rank test.
+> Regards
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From neh@@bo|ogn@90 @end|ng |rom gm@||@com  Mon Feb 28 23:28:29 2022
+From: neh@@bo|ogn@90 @end|ng |rom gm@||@com (Neha gupta)
+Date: Mon, 28 Feb 2022 23:28:29 +0100
+Subject: [R] How to perform statistical test with multiple variables
+In-Reply-To: <CA+8X3fWrnRJf03QuJJm_UeFV4TuBzYx-4MmCTQ8okcm6siXrcQ@mail.gmail.com>
+References: <CA+nrPnu7nzs1K9wLL+ScCWoReM8qVA+UsNQPEmUWf=ajqgeyXQ@mail.gmail.com>
+ <CA+8X3fWrnRJf03QuJJm_UeFV4TuBzYx-4MmCTQ8okcm6siXrcQ@mail.gmail.com>
+Message-ID: <CA+nrPnv-cZzfvsaTd90-i9FifhEaPyUSM-BCQPNMRBh7scRnMg@mail.gmail.com>
+
+Thank you Jim
+
+I want to evaluate if there is a significant difference between several ML
+models I have just run. Evaluation metric is Mean Absolute Error (MAE).
+Values in brackets are MAE values of a particular model (e.g. RF) for
+different folds of k-fold CV. I found that 'a' performed better (in terms
+of MAE score) than the other models i.e. b, c, d, e.
+
+But is there any significant difference ? I have used Wilcoxon test like
+below:
+
+wilcox.test(a, b, paired = T, conf.int = T, conf.level = 0.95) ,
+then wilcox.test(a, c, paired = T, conf.int = T, conf.level = 0.95),
+wilcox.test(a, d, paired = T, conf.int = T, conf.level = 0.95)   and so on,
+I compared the best model with all the other models for statistical
+differences.
+
+Can I do a test which compares it in just one time (and one step) and not
+repeating the wilcoxon test to compare the best model with all others.
+
+
+
+a= c(0.3, 0.5, ..... 0.4)
+b= c(0.4, 0.6,...... 0.2)
+....
+..
+f= c(0.1, 0.4, .....0.5)
+
+On Mon, Feb 28, 2022 at 11:14 PM Jim Lemon <drjimlemon at gmail.com> wrote:
+
+> Hi neha,
+> Ouch! I've just been run over by homework. What you are probably being
+> asked to do is an "omnibus test", but I can't figure out what you are
+> actually testing. Maybe that phrase will help you in _your_ search for
+> the answer.
+>
+> Jim
+>
+> On Tue, Mar 1, 2022 at 8:56 AM Neha gupta <neha.bologna90 at gmail.com>
+> wrote:
+> >
+> > Hello everyone,
+> >
+> > I have 'mean absolute error' values from different folds of CV of 6 ML
+> > models..
+> > a= c(0.3, 0.5, ..... 0.4)
+> > b= c(0.4, 0.6,...... 0.2)
+> > ....
+> > ..
+> > f= c(0.1, 0.4, .....0.5)
+> > Now algorithm 'a' performed better than all the others (in terms of mean
+> > absolute error scores) and then I used wilcoxon signed rank test to
+> compare
+> > 'a' with all other models for significance difference.
+> >
+> > Now, I have been asked to compare all the models with all others for
+> > significant differences at once and not compare one with the other, how
+> can
+> > I do it, plz guide me? At this time, I just know about the Wilcoxon
+> signed
+> > rank test.
+> > Regards
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
