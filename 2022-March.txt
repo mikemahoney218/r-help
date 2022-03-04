@@ -1593,3 +1593,444 @@ Debian GNU/Linux 10 aka buster (amd64 flavor)
 Thanks.
 Ross Boylan
 
+From @kw@|mmo @end|ng |rom gm@||@com  Wed Mar  2 03:50:31 2022
+From: @kw@|mmo @end|ng |rom gm@||@com (Andrew Simmons)
+Date: Tue, 1 Mar 2022 21:50:31 -0500
+Subject: [R] Time Zone problems: midnight goes in; 8am comes out
+In-Reply-To: <BY3PR05MB811676D913B9117776364CDE87039@BY3PR05MB8116.namprd05.prod.outlook.com>
+References: <BY3PR05MB811676D913B9117776364CDE87039@BY3PR05MB8116.namprd05.prod.outlook.com>
+Message-ID: <CAPcHnpTELPUMZ8FB9O86VwJWwc5=d+ERS=ct2YXvxfnfFG_=mw@mail.gmail.com>
+
+It seems like the current version of lubridate is 1.8.0, which does
+raise a warning for an invalid timezone, just like as.POSIXct. This is
+what I tried:
+
+
+print(lubridate::parse_date_time("1970-01-01 00:01:00",          "ymd
+HMS"          , tz = "PST"))
+print(as.POSIXct                ("1970-01-01 00:01:00", format =
+"%Y-%m-%d %H:%M:%S", tz = "PST"))
+
+
+outputs:
+
+
+> print(lubridate::parse_date_time("1970-01-01 00:01:00",          "ymd HMS"          , tz = "PST"))
+[1] "1970-01-01 08:01:00 GMT"
+Warning message:
+In as.POSIXlt.POSIXct(x, tz) : unknown timezone 'PST'
+> print(as.POSIXct                ("1970-01-01 00:01:00", format = "%Y-%m-%d %H:%M:%S", tz = "PST"))
+[1] "1970-01-01 00:01:00 GMT"
+Warning messages:
+1: In strptime(x, format, tz = tz) : unknown timezone 'PST'
+2: In as.POSIXct.POSIXlt(as.POSIXlt(x, tz, ...), tz, ...) :
+  unknown timezone 'PST'
+3: In as.POSIXlt.POSIXct(x, tz) : unknown timezone 'PST'
+>
+
+
+But I don't see the same problem when using `tz =
+"America/Los_Angeles"` or `tz = "PST8PDT"`.
+
+
+print(lubridate::parse_date_time("1970-01-01 00:01:00",          "ymd
+HMS"          , tz = "PST8PDT"))
+print(as.POSIXct                ("1970-01-01 00:01:00", format =
+"%Y-%m-%d %H:%M:%S", tz = "PST8PDT"))
+
+
+outputs:
+
+
+> print(lubridate::parse_date_time("1970-01-01 00:01:00",          "ymd HMS"          , tz = "PST8PDT"))
+[1] "1970-01-01 00:01:00 PST"
+> print(as.POSIXct                ("1970-01-01 00:01:00", format = "%Y-%m-%d %H:%M:%S", tz = "PST8PDT"))
+[1] "1970-01-01 00:01:00 PST"
+>
+
+
+I would hesitate to use `tz = Sys.timezone()` because someone from
+another province/state might not be able to use your code. Depends on
+whether this work is being shared with other people though, up to you.
+
+On Tue, Mar 1, 2022 at 8:51 PM Boylan, Ross via R-help
+<r-help at r-project.org> wrote:
+>
+> I'm having problems with timezones using lubridate, but it's not clear to me the difficulty is in lubridate.
+> ---------------------------------
+> > r2 <- parse_date_time("1970-01-01 00:01:00", "ymd HMS", tz="PST")
+> > r2
+> [1] "1970-01-01 08:01:00 PST"  ## Oops: midnight has turned in 8am
+> > as.numeric(r2)
+> [1] 28860
+> > 8*3600 # seconds in 8 hours
+> [1] 28800
+> ------------------------------------
+> lubridate accepts PST as the time zone, and the result prints "PST" for timezone.  Further, lubridate seems to be using the tz properly since it gets the 8 hour offset from UTC correct.
+>
+> The problem is the value that is printed gives a UTC time of 08:01 despite having the PST suffix.  So the time appears to have jumped 8 hours ahead from the value parsed.
+>
+> PST appears not to be a legal timezone (in spite of lubridate inferring the correct offset from it):
+> ---------------------------------------------------
+> > Sys.timezone()
+> [1] "America/Los_Angeles"
+>
+> > (grep("PST", OlsonNames(), value=TRUE))
+> [1] "PST8PDT"         "SystemV/PST8"    "SystemV/PST8PDT"
+> -------------------------------------
+> https://www.r-bloggers.com/2018/07/a-tour-of-timezones-troubles-in-r/ says lubridate will complain if given an invalid tz, though I don't see that explicitly in the current man page https://lubridate.tidyverse.org/reference/parse_date_time.html.  As shown above, parse_date_time() does not complain about the timezone, and does use it to get the correct offset.
+>
+> Using America/Los_Angeles produces the expected results:
+> ---------------------------------------
+> > r4 <- parse_date_time("1970-01-01 00:01:00", "ymd HMS", tz=Sys.timezone())
+> > r4
+> [1] "1970-01-01 00:01:00 PST"  # still prints PST.  This time it's true!
+> > as.numeric(r4)
+> [1] 28860
+> ----------------------------------------------------
+>
+> I suppose I can just use "America/Los_Angeles" as the time zone; this would have the advantage of making all my timezones the same, which apparently what R requires for a vector of datetimes.  But the behavior seems odd, and the "fix" also requires me to ignore the time zone specified in my inputs, which look like "2022-03-01 15:54:30 PST" or PDT, depending on time of year.
+>
+> 1. Why this strange behavior in which PST or PDT is used to construct the proper offset from UTC, and then kind of forgotten on output?
+> 2. Is this a bug in lubridate or base POSIXct, particularly its print routine?
+>
+> My theory on 1 is that lubridate understands PST and constructs an appropriate UTC time.  POSIXct time does not understand a tz of "PST" and so prints out the UTC value for the time, "decorating" it with the not understood tz value.
+>
+> For 2, on one hand, lubridate is constructing POSIXct dates with invalid tz values; lubridate probably shouldn't.  On the other hand, POSIXct is printing a UTC time but labeling it with a tz it doesn't understand, so it looks if it's in that local time even though it isn't.  In the context above that seems like a bug, but it's possible a lot of code that depends on it.
+>
+> Under these theories, the problems only arise because the set of tz values understood by lubridate differs from the tz value understood by POSIXct.
+>
+> Versions:
+> R 3.5.2
+> lubridate 1.7.4
+> Debian GNU/Linux 10 aka buster (amd64 flavor)
+>
+> Thanks.
+> Ross Boylan
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From mtenneke@ @end|ng |rom gm@||@com  Wed Mar  2 10:52:04 2022
+From: mtenneke@ @end|ng |rom gm@||@com (Martijn Tennekes)
+Date: Wed, 2 Mar 2022 10:52:04 +0100
+Subject: [R] dev.size() does not return correct size on 4K screen
+Message-ID: <5fa37950-9685-2000-905d-77290d91242a@gmail.com>
+
+dev.size() does not return the correct screen size when using a 4K 
+screen. With the R console and a x11() device, it seems to overestimate 
+with factor 1.5, and in RStudio underestimate with factor 2.
+
+See also https://github.com/rstudio/rstudio/issues/10723
+
+Is this a bug, or is there something I can do?
+
+Best,
+
+Martijn Tennekes
+
+	[[alternative HTML version deleted]]
+
+
+From pd@|gd @end|ng |rom gm@||@com  Wed Mar  2 23:11:57 2022
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Wed, 2 Mar 2022 23:11:57 +0100
+Subject: [R] dev.size() does not return correct size on 4K screen
+In-Reply-To: <5fa37950-9685-2000-905d-77290d91242a@gmail.com>
+References: <5fa37950-9685-2000-905d-77290d91242a@gmail.com>
+Message-ID: <D4C3DCA2-A3F3-4B4F-BDF1-F0E1C1E16514@gmail.com>
+
+I don't know about RStudio, but in X11 this sort of thing can happen due to misconfiguration of the display itself, i.e. not in R as such. Basically, it relies on getting the correct dots-per-inch value from the display, and may otherwise use some standard value. 
+
+What happens if you run xdpyinfo in a terminal window?
+
+With XQuartz on an MB Air, I see
+
+...
+screen #0:
+  dimensions:    1440x876 pixels (381x232 millimeters)
+  resolution:    96x96 dots per inch
+...
+
+which is a multi-way lie! It is a 2560x1600 retina display, the resolution is way higher than 96x96, and it is 13.3", whereas the stated dimensions corresponds to a 17" diagonal. 
+
+However, systems may be "lying in the users best interest", since e.g. the default for an X11() plot window is 7in square, which might not fit on a small laptop. You are somewhat more likely to want the same relative size across different laptops.  
+
+- pd
+
+> On 2 Mar 2022, at 10:52 , Martijn Tennekes <mtennekes at gmail.com> wrote:
+> 
+> dev.size() does not return the correct screen size when using a 4K 
+> screen. With the R console and a x11() device, it seems to overestimate 
+> with factor 1.5, and in RStudio underestimate with factor 2.
+> 
+> See also https://github.com/rstudio/rstudio/issues/10723
+> 
+> Is this a bug, or is there something I can do?
+> 
+> Best,
+> 
+> Martijn Tennekes
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From p@u|bern@|07 @end|ng |rom gm@||@com  Wed Mar  2 23:54:43 2022
+From: p@u|bern@|07 @end|ng |rom gm@||@com (Paul Bernal)
+Date: Wed, 2 Mar 2022 17:54:43 -0500
+Subject: [R] How to automatically set R to read the files from a specific
+ location
+Message-ID: <CAMOcQfMVNetB3KQA9+SWWxZksHFbHyBtEWr5HoxK=Q0+-w7r1g@mail.gmail.com>
+
+Dear friends,
+
+I am working on an assignment using R, and I would like to set my R code so
+that R automatically recognizes where the files that need to be read are
+without having to use the absolute path?
+The idea is that when I send my .R script and my professor receives it, he
+can just execute the code without running into any issues.
+
+Thanks, beforehand, for your valuable feedback.
+
+Cheers,
+Paul
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Thu Mar  3 00:07:17 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Wed, 2 Mar 2022 15:07:17 -0800
+Subject: [R] 
+ How to automatically set R to read the files from a specific
+ location
+In-Reply-To: <CAMOcQfMVNetB3KQA9+SWWxZksHFbHyBtEWr5HoxK=Q0+-w7r1g@mail.gmail.com>
+References: <CAMOcQfMVNetB3KQA9+SWWxZksHFbHyBtEWr5HoxK=Q0+-w7r1g@mail.gmail.com>
+Message-ID: <CAGxFJbRpjVNjO07+qWu=w_rOiHg0+DK5E5n3ECDMzHPpfSnkTg@mail.gmail.com>
+
+I may well be wrong, but I believe you will need to give more info on
+where the files are located (e.g. on a remote server, on a website, a
+local machine, ...), whether they consist only of data or whether
+there are packages with functions that need to be used, etc.
+
+A better approach might be to combine data and files into a package,
+put the package where you all have access, and then give your prof the
+code to download it from there.
+
+Others may have better ideas, so do wait for more responses.
+
+Bert Gunter
+
+"The trouble with having an open mind is that people keep coming along
+and sticking things into it."
+-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+
+On Wed, Mar 2, 2022 at 2:55 PM Paul Bernal <paulbernal07 at gmail.com> wrote:
+>
+> Dear friends,
+>
+> I am working on an assignment using R, and I would like to set my R code so
+> that R automatically recognizes where the files that need to be read are
+> without having to use the absolute path?
+> The idea is that when I send my .R script and my professor receives it, he
+> can just execute the code without running into any issues.
+>
+> Thanks, beforehand, for your valuable feedback.
+>
+> Cheers,
+> Paul
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Thu Mar  3 00:27:58 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Wed, 02 Mar 2022 15:27:58 -0800
+Subject: [R] 
+ How to automatically set R to read the files from a specific
+ location
+In-Reply-To: <CAMOcQfMVNetB3KQA9+SWWxZksHFbHyBtEWr5HoxK=Q0+-w7r1g@mail.gmail.com>
+References: <CAMOcQfMVNetB3KQA9+SWWxZksHFbHyBtEWr5HoxK=Q0+-w7r1g@mail.gmail.com>
+Message-ID: <B1EB47AE-AC31-43B3-AF6F-E498D11B717D@dcn.davis.ca.us>
+
+1) make a working directory. Put all related files (including your R file(s) in that directory or in subdirectories.
+2) Set your working directory as "current" before starting R. If you or anyone who wants to use your code does this, no actions will be needed in the script to "change" the directory. This is straightforward at the shell using "cd", and GUI file managers will normally do this automatically for you if you "open" a file using an action that triggers starting R from there. RStudio uses the .Rproj file to serve this purpose, so if you use RStudio then always create a Project for each separate "project" you work on.
+3) Use relative paths in your code. You can access a csv file in your working directory as "filename.csv" or in a subdirectory data_dir of your working directory using "data_dir/filename.csv".
+4) Send a zip archive of your "project" directory/contents to the recipient so the relative locations of files is maintained. Or consider using GitHub (e.g. [1]) to share and track changes.
+
+Note that sometimes you may not want to include the data in your project directory because switching data sets will be common. In that case you cannot achieve this goal, but you can use a global variable to specify your data directory path and use file.path( dtadir, fname ) wherever your specify a file for input. The recipient then only needs to alter one line of your code.
+
+[1] https://happygitwithr.com/
+
+On March 2, 2022 2:54:43 PM PST, Paul Bernal <paulbernal07 at gmail.com> wrote:
+>Dear friends,
+>
+>I am working on an assignment using R, and I would like to set my R code so
+>that R automatically recognizes where the files that need to be read are
+>without having to use the absolute path?
+>The idea is that when I send my .R script and my professor receives it, he
+>can just execute the code without running into any issues.
+>
+>Thanks, beforehand, for your valuable feedback.
+>
+>Cheers,
+>Paul
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From @v|gro@@ @end|ng |rom ver|zon@net  Thu Mar  3 02:02:03 2022
+From: @v|gro@@ @end|ng |rom ver|zon@net (Avi Gross)
+Date: Thu, 3 Mar 2022 01:02:03 +0000 (UTC)
+Subject: [R] 
+ How to automatically set R to read the files from a specific
+ location
+In-Reply-To: <CAGxFJbRpjVNjO07+qWu=w_rOiHg0+DK5E5n3ECDMzHPpfSnkTg@mail.gmail.com>
+References: <CAMOcQfMVNetB3KQA9+SWWxZksHFbHyBtEWr5HoxK=Q0+-w7r1g@mail.gmail.com>
+ <CAGxFJbRpjVNjO07+qWu=w_rOiHg0+DK5E5n3ECDMzHPpfSnkTg@mail.gmail.com>
+Message-ID: <1505692023.226581.1646269323492@mail.yahoo.com>
+
+All reasonable answers so far to the question but what is missing here is what the ASSIGNMENT is. Are the student(s) and professors/teachers sharing an environment on a multi-tasking machine or some networked situation or each is alone?
+If I were teaching a class, I might be supplying the data files to be used and hence have a local copy on my machine in a designated area. This same issue comes up when someone asks me to do some analysis for them, sometimes without my having a copy of the data file, just knowing details about what it contains, such as column headers in a CSV.
+So it is possibly something the teacher should have taught and set up. For example, they can tell you the file is in /usr/tmp (or whatever shared area) or a networked alternative where you are asked to copy the file into some local directory and setwd() into that directory and the? program is to be run from THAT directory. That makes it simple as each user can place the file anywhere they wish.
+An alternative, as pointed out, is to ask the person to edit one line of? the R script being supplied such as:
+WHERE <- "C:/..."setwd(WHERE)
+Or, as pointed out, R has utilities to easily splice together a filename, as simple as:
+FILE <- "xyz.csv"FULL_NAME <- paste(WHERE, "/", FILE)
+and in operations on the file, use FULL_NAME.
+Whatever method is used can be implemented best if you get instructions. If the Professor wants to see your program, the above and variants should work. If they just want to see the output file for correctness, and do not plan on running the R script, then attaching the output results in an email might do.
+NOTE, I used slash notation for directory structures above as it is most portable. Of course, if everyone is on something like MS Windows, you have the option of doubled backslashes and so on. Some R utilities handle this better and might be preferable to what I show as a SIMPLE example using base R.
+
+-----Original Message-----
+From: Bert Gunter <bgunter.4567 at gmail.com>
+To: Paul Bernal <paulbernal07 at gmail.com>
+Cc: R <r-help at r-project.org>
+Sent: Wed, Mar 2, 2022 6:07 pm
+Subject: Re: [R] How to automatically set R to read the files from a specific location
+
+I may well be wrong, but I believe you will need to give more info on
+where the files are located (e.g. on a remote server, on a website, a
+local machine, ...), whether they consist only of data or whether
+there are packages with functions that need to be used, etc.
+
+A better approach might be to combine data and files into a package,
+put the package where you all have access, and then give your prof the
+code to download it from there.
+
+Others may have better ideas, so do wait for more responses.
+
+Bert Gunter
+
+"The trouble with having an open mind is that people keep coming along
+and sticking things into it."
+-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+
+On Wed, Mar 2, 2022 at 2:55 PM Paul Bernal <paulbernal07 at gmail.com> wrote:
+>
+> Dear friends,
+>
+> I am working on an assignment using R, and I would like to set my R code so
+> that R automatically recognizes where the files that need to be read are
+> without having to use the absolute path?
+> The idea is that when I send my .R script and my professor receives it, he
+> can just execute the code without running into any issues.
+>
+> Thanks, beforehand, for your valuable feedback.
+>
+> Cheers,
+> Paul
+>
+>? ? ? ? [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From @v|gro@@ @end|ng |rom ver|zon@net  Thu Mar  3 02:08:10 2022
+From: @v|gro@@ @end|ng |rom ver|zon@net (Avi Gross)
+Date: Thu, 3 Mar 2022 01:08:10 +0000 (UTC)
+Subject: [R] 
+ How to automatically set R to read the files from a specific
+ location
+In-Reply-To: <CAMOcQfMVNetB3KQA9+SWWxZksHFbHyBtEWr5HoxK=Q0+-w7r1g@mail.gmail.com>
+References: <CAMOcQfMVNetB3KQA9+SWWxZksHFbHyBtEWr5HoxK=Q0+-w7r1g@mail.gmail.com>
+Message-ID: <456822666.230862.1646269690844@mail.yahoo.com>
+
+
+Just a silly? thought, Paul. If this is really for a class and the file(s) being used are small enough, you can play a game where the data is already in the R program and is simply written into a file at the start in the current directory or a designated area. If that succeeds, you can then have the program start as if from scratch and read it back in and continue.?
+An alternative if the file is not local but in a known place that can be reached, is code that copies it here ...
+Of course in real life with existing huge files, not so much a good idea. But many programming assignments to students use smaller data sets. Some require having loaded a package and then have an access method to make the data visible and loaded. As long as the professor and others all have the same package, ...
+
+-----Original Message-----
+From: Paul Bernal <paulbernal07 at gmail.com>
+To: R <r-help at r-project.org>
+Sent: Wed, Mar 2, 2022 5:54 pm
+Subject: [R] How to automatically set R to read the files from a specific location
+
+Dear friends,
+
+I am working on an assignment using R, and I would like to set my R code so
+that R automatically recognizes where the files that need to be read are
+without having to use the absolute path?
+The idea is that when I send my .R script and my professor receives it, he
+can just execute the code without running into any issues.
+
+Thanks, beforehand, for your valuable feedback.
+
+Cheers,
+Paul
+
+??? [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
