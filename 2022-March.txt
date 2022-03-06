@@ -2895,3 +2895,1921 @@ Rui Barradas
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From @rth|en @end|ng |rom gm@||@com  Thu Mar  3 20:11:53 2022
+From: @rth|en @end|ng |rom gm@||@com (Arthur Fendrich)
+Date: Thu, 3 Mar 2022 20:11:53 +0100
+Subject: [R] Possible causes of unexpected behavior
+Message-ID: <CADxQpSnG4iBc9JLrnHvFV89MPiPg9YUwK5vFYq7t1XyqkdfShw@mail.gmail.com>
+
+Dear all,
+
+I am currently having a weird problem with a large-scale optimization
+routine. It would be nice to know if any of you have already gone through
+something similar, and how you solved it.
+
+I apologize in advance for not providing an example, but I think the
+non-reproducibility of the error is maybe a key point of this problem.
+
+Simplest possible description of the problem: I have two functions: g(X)
+and f(v).
+g(X) does:
+ i) inputs a large matrix X;
+ ii) derives four other matrices from X (I'll call them A, B, C and D) then
+saves to disk for debugging purposes;
+
+Then, f(v) does:
+ iii) loads A, B, C, D from disk
+ iv) calculates the log-likelihood, which vary according to a vector of
+parameters, v.
+
+My goal application is quite big (X is a 40000x40000 matrix), so I created
+the following versions to test and run the codes/math/parallelization:
+#1) A simulated example with X being 100x100
+#2) A degraded version of the goal application, with X being 4000x4000
+#3) The goal application, with X being 40000x40000
+
+When I use qsub to submit the job, using the exact same code and processing
+cluster, #1 and #2 run flawlessly, so no problem. These results tell me
+that the codes/math/parallelization are fine.
+
+For application #3, it converges to a vector v*. However, when I manually
+load A, B, C and D from disk and calculate f(v*), then the value I get is
+completely different.
+For example:
+- qsub job says v* = c(0, 1, 2, 3) is a minimum with f(v*) = 1.
+- when I manually load A, B, C, D from disk and calculate f(v*) on the
+exact same machine with the same libraries and environment variables, I get
+f(v*) = 1000.
+
+This is a very confusing behavior. In theory the size of X should not
+affect my problem, but it seems that things get unstable as the dimension
+grows. The main issue for debugging is that g(X) for simulation #3 takes
+two hours to run, and I am completely lost on how I could find the causes
+of the problem. Would you have any general advices?
+
+Thank you very much in advance for literally any suggestions you might have!
+
+Best regards,
+Arthur
+
+	[[alternative HTML version deleted]]
+
+
+From m|m@|tr@ @end|ng |rom gmx@com  Fri Mar  4 06:00:06 2022
+From: m|m@|tr@ @end|ng |rom gmx@com (Ranjan Maitra)
+Date: Thu, 3 Mar 2022 23:00:06 -0600
+Subject: [R] 
+ Looking for package for data generation for classification and
+ regression
+In-Reply-To: <CALS=5mqW6y_dfBDGrVQ5rGLwUwS4bSeV+5W1zf+=tifGLYvZ4Q@mail.gmail.com>
+References: <CALS=5mqW6y_dfBDGrVQ5rGLwUwS4bSeV+5W1zf+=tifGLYvZ4Q@mail.gmail.com>
+Message-ID: <YiGc1p7HZZP/jrAq@iastate.edu>
+
+On Thu Mar03'22 09:00:08PM, Paul Smith wrote:
+> From: Paul Smith <phhs80 at gmail.com>
+> Date: Thu, 3 Mar 2022 21:00:08 +0000
+> To: "r-help at r-project.org" <r-help at r-project.org>
+> Subject: [R] Looking for package for data generation for classification and
+>  regression
+>
+> Dear All,
+>
+> I am in need of generating artificial data for machine learning
+> classification and regression analysis. What I am looking for is
+> something similar to Python sklearn.datasets.make_classification and
+> sklearn.datasets.make_regression:
+>
+> https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_classification.html
+>
+> https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_regression.html
+>
+> I have searched CRAN for something similar, but found nothing. Could
+> someone please help me with this?
+
+Not sure if this helps, but at least for classification and clustering, there is the MixSim package on CRAN which provides classification datasets according to an overall overlap measure.
+
+
+Hope this helps!
+
+Best wishes,
+Ranjan
+
+
+From er|cjberger @end|ng |rom gm@||@com  Fri Mar  4 09:47:57 2022
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Fri, 4 Mar 2022 10:47:57 +0200
+Subject: [R] Possible causes of unexpected behavior
+In-Reply-To: <CADxQpSnG4iBc9JLrnHvFV89MPiPg9YUwK5vFYq7t1XyqkdfShw@mail.gmail.com>
+References: <CADxQpSnG4iBc9JLrnHvFV89MPiPg9YUwK5vFYq7t1XyqkdfShw@mail.gmail.com>
+Message-ID: <CAGgJW775Hth2rAKQc9mXfdARmYjoujEoLdcA47OVOXbRczYvvQ@mail.gmail.com>
+
+Please confirm that when you do the manual load and check that f(v*)
+matches the result from qsub() it succeeds for cases #1,#2 but only fails
+for #3.
+
+
+On Fri, Mar 4, 2022 at 10:06 AM Arthur Fendrich <arthfen at gmail.com> wrote:
+
+> Dear all,
+>
+> I am currently having a weird problem with a large-scale optimization
+> routine. It would be nice to know if any of you have already gone through
+> something similar, and how you solved it.
+>
+> I apologize in advance for not providing an example, but I think the
+> non-reproducibility of the error is maybe a key point of this problem.
+>
+> Simplest possible description of the problem: I have two functions: g(X)
+> and f(v).
+> g(X) does:
+>  i) inputs a large matrix X;
+>  ii) derives four other matrices from X (I'll call them A, B, C and D) then
+> saves to disk for debugging purposes;
+>
+> Then, f(v) does:
+>  iii) loads A, B, C, D from disk
+>  iv) calculates the log-likelihood, which vary according to a vector of
+> parameters, v.
+>
+> My goal application is quite big (X is a 40000x40000 matrix), so I created
+> the following versions to test and run the codes/math/parallelization:
+> #1) A simulated example with X being 100x100
+> #2) A degraded version of the goal application, with X being 4000x4000
+> #3) The goal application, with X being 40000x40000
+>
+> When I use qsub to submit the job, using the exact same code and processing
+> cluster, #1 and #2 run flawlessly, so no problem. These results tell me
+> that the codes/math/parallelization are fine.
+>
+> For application #3, it converges to a vector v*. However, when I manually
+> load A, B, C and D from disk and calculate f(v*), then the value I get is
+> completely different.
+> For example:
+> - qsub job says v* = c(0, 1, 2, 3) is a minimum with f(v*) = 1.
+> - when I manually load A, B, C, D from disk and calculate f(v*) on the
+> exact same machine with the same libraries and environment variables, I get
+> f(v*) = 1000.
+>
+> This is a very confusing behavior. In theory the size of X should not
+> affect my problem, but it seems that things get unstable as the dimension
+> grows. The main issue for debugging is that g(X) for simulation #3 takes
+> two hours to run, and I am completely lost on how I could find the causes
+> of the problem. Would you have any general advices?
+>
+> Thank you very much in advance for literally any suggestions you might
+> have!
+>
+> Best regards,
+> Arthur
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From neh@@bo|ogn@90 @end|ng |rom gm@||@com  Fri Mar  4 10:26:03 2022
+From: neh@@bo|ogn@90 @end|ng |rom gm@||@com (Neha gupta)
+Date: Fri, 4 Mar 2022 10:26:03 +0100
+Subject: [R] Continuous variable into levels
+In-Reply-To: <100bfeff-4894-3fb6-fdbc-9b33f612cd63@sapo.pt>
+References: <CA+nrPnup8rLzGHB3XEydm-PTqZzBL1TyyAAD7=wY8c8D_-tqxw@mail.gmail.com>
+ <CA+8X3fWy57M16M=aF9jsCPXn30+wT_YKcNtvqurupJX6KOaYjA@mail.gmail.com>
+ <CA+nrPnuxefq0hfiqsm-hLEBUjOqqqGV=xogDXDiYOErokGUf2g@mail.gmail.com>
+ <CA+8X3fX2jC9Kk4Y+dTmzo1deDqeVG23ak94o1kaLs27v7nVuJA@mail.gmail.com>
+ <100bfeff-4894-3fb6-fdbc-9b33f612cd63@sapo.pt>
+Message-ID: <CA+nrPnsZ_jKDgJ_rQDW==UokKHjtw2_v7tENmnptBrs_COR15g@mail.gmail.com>
+
+Thank you dear Rui
+
+Yes, it helps.
+
+Best regards
+
+On Thursday, March 3, 2022, Rui Barradas <ruipbarradas at sapo.pt> wrote:
+
+> Hello,
+>
+> And ?findInterval is faster than hist.
+>
+> findInterval(x, c(-Inf, 500, 1000, 5000))
+>
+> Also, before the cut code, the OP wrote
+>
+>
+> if value is between 1-100 do something
+>
+>
+> but in the breaks vector there's no 100. I guess this is not important,
+> though, only the function to bin the data is.
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+> ?s 22:38 de 03/03/2022, Jim Lemon escreveu:
+>
+>> Sorry, it was such an easy question that I didn't even read it
+>> closely. Apparently using hist() is a bit faster. Whether this is
+>> worth it, I don't know.
+>>
+>> Jim
+>>
+>> On Fri, Mar 4, 2022 at 9:36 AM Neha gupta <neha.bologna90 at gmail.com>
+>> wrote:
+>>
+>>>
+>>> Hello Jim
+>>>
+>>> So, you believe the following way is better ?
+>>>
+>>> var2=cut(var1, br=c(-1,500, 501,1000, 1001,5000))
+>>>
+>>>
+>>>
+>>> On Thu, Mar 3, 2022 at 11:29 PM Jim Lemon <drjimlemon at gmail.com> wrote:
+>>>
+>>>>
+>>>> Hi Neha,
+>>>> I think you're looking for the "cut" function.
+>>>>
+>>>> Jim
+>>>>
+>>>> On Fri, Mar 4, 2022 at 8:10 AM Neha gupta <neha.bologna90 at gmail.com>
+>>>> wrote:
+>>>>
+>>>>>
+>>>>> Hello everyone
+>>>>>
+>>>>> I have a variable with about 5000 different values
+>>>>>
+>>>>> var1= c(0, 123, 400, .....4988)
+>>>>>
+>>>>> I want to convert it into different levels for some comparisons like
+>>>>>
+>>>>> if value is between 1-100 do something
+>>>>> else
+>>>>> do other things
+>>>>>
+>>>>> Is there any sophisticated way to do that than the following:
+>>>>>
+>>>>> var2=cut(var1, br=c(-1,500, 501,1000, 1001,5000))
+>>>>>
+>>>>> Thank you
+>>>>>
+>>>>>          [[alternative HTML version deleted]]
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>>> PLEASE do read the posting guide http://www.R-project.org/posti
+>>>>> ng-guide.html
+>>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>>>
+>>>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posti
+>> ng-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From er|cjberger @end|ng |rom gm@||@com  Fri Mar  4 10:32:58 2022
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Fri, 4 Mar 2022 11:32:58 +0200
+Subject: [R] Possible causes of unexpected behavior
+In-Reply-To: <CADxQpSkTAZ7mOx2_zeRKNa4JmBuiOiwTOPs6k2U-9ER0RyGq1A@mail.gmail.com>
+References: <CADxQpSnG4iBc9JLrnHvFV89MPiPg9YUwK5vFYq7t1XyqkdfShw@mail.gmail.com>
+ <CAGgJW775Hth2rAKQc9mXfdARmYjoujEoLdcA47OVOXbRczYvvQ@mail.gmail.com>
+ <CADxQpSkTAZ7mOx2_zeRKNa4JmBuiOiwTOPs6k2U-9ER0RyGq1A@mail.gmail.com>
+Message-ID: <CAGgJW75REvX_yiOdORUsZDdSO0uajk+FCdecZu_VjHsKZAs4jg@mail.gmail.com>
+
+Can you confirm you have a distributed calculation running in parallel?
+Have you determined that it is thread safe? How?
+Your check on the smaller examples may not have ruled out such
+possibilities.
+
+On Fri, Mar 4, 2022 at 11:21 AM Arthur Fendrich <arthfen at gmail.com> wrote:
+
+> Dear Eric,
+>
+> Thank you for the response. Yes, I can confirm that, please see below the
+> behavior.
+> For #1, results are identical. For #2, they are not identical but very
+> close. For #3, they are completely different.
+>
+> Best regards,
+> Arthur
+>
+> --
+>
+> For #1,
+> - qsub execution:
+> [1] "ll: 565.7251"
+> [1] "norm gr @ minimum: 2.96967368608131e-08"
+>
+> - manual check:
+> f(v*): 565.7251
+> gradient norm at v*: 2.969674e-08
+>
+> #
+> For #2,
+>
+> - qsub execution:
+> [1] "ll: 14380.8308"
+> [1] "norm gr @ minimum: 0.0140857561408041"
+>
+> - manual check:
+> f(v*): 14380.84
+> gradient norm at v*: 0.01404779
+>
+> #
+> For #3,
+>
+> - qsub execution:
+> [1] "ll: 14310.6812"
+> [1] "norm gr @ minimum: 6232158.38877002"
+>
+> - manual check:
+> f(v*): 97604.69
+> gradient norm at v*: 6266696595
+>
+> Em sex., 4 de mar. de 2022 ?s 09:48, Eric Berger <ericjberger at gmail.com>
+> escreveu:
+>
+>> Please confirm that when you do the manual load and check that f(v*)
+>> matches the result from qsub() it succeeds for cases #1,#2 but only fails
+>> for #3.
+>>
+>>
+>> On Fri, Mar 4, 2022 at 10:06 AM Arthur Fendrich <arthfen at gmail.com>
+>> wrote:
+>>
+>>> Dear all,
+>>>
+>>> I am currently having a weird problem with a large-scale optimization
+>>> routine. It would be nice to know if any of you have already gone through
+>>> something similar, and how you solved it.
+>>>
+>>> I apologize in advance for not providing an example, but I think the
+>>> non-reproducibility of the error is maybe a key point of this problem.
+>>>
+>>> Simplest possible description of the problem: I have two functions: g(X)
+>>> and f(v).
+>>> g(X) does:
+>>>  i) inputs a large matrix X;
+>>>  ii) derives four other matrices from X (I'll call them A, B, C and D)
+>>> then
+>>> saves to disk for debugging purposes;
+>>>
+>>> Then, f(v) does:
+>>>  iii) loads A, B, C, D from disk
+>>>  iv) calculates the log-likelihood, which vary according to a vector of
+>>> parameters, v.
+>>>
+>>> My goal application is quite big (X is a 40000x40000 matrix), so I
+>>> created
+>>> the following versions to test and run the codes/math/parallelization:
+>>> #1) A simulated example with X being 100x100
+>>> #2) A degraded version of the goal application, with X being 4000x4000
+>>> #3) The goal application, with X being 40000x40000
+>>>
+>>> When I use qsub to submit the job, using the exact same code and
+>>> processing
+>>> cluster, #1 and #2 run flawlessly, so no problem. These results tell me
+>>> that the codes/math/parallelization are fine.
+>>>
+>>> For application #3, it converges to a vector v*. However, when I manually
+>>> load A, B, C and D from disk and calculate f(v*), then the value I get is
+>>> completely different.
+>>> For example:
+>>> - qsub job says v* = c(0, 1, 2, 3) is a minimum with f(v*) = 1.
+>>> - when I manually load A, B, C, D from disk and calculate f(v*) on the
+>>> exact same machine with the same libraries and environment variables, I
+>>> get
+>>> f(v*) = 1000.
+>>>
+>>> This is a very confusing behavior. In theory the size of X should not
+>>> affect my problem, but it seems that things get unstable as the dimension
+>>> grows. The main issue for debugging is that g(X) for simulation #3 takes
+>>> two hours to run, and I am completely lost on how I could find the causes
+>>> of the problem. Would you have any general advices?
+>>>
+>>> Thank you very much in advance for literally any suggestions you might
+>>> have!
+>>>
+>>> Best regards,
+>>> Arthur
+>>>
+>>>         [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+
+	[[alternative HTML version deleted]]
+
+
+From er|cjberger @end|ng |rom gm@||@com  Fri Mar  4 11:13:23 2022
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Fri, 4 Mar 2022 12:13:23 +0200
+Subject: [R] Possible causes of unexpected behavior
+In-Reply-To: <CADxQpSk5pxzTaQvNTVzSLqUXmJoMp-cA-jkOSNXUjrqQyAv--A@mail.gmail.com>
+References: <CADxQpSnG4iBc9JLrnHvFV89MPiPg9YUwK5vFYq7t1XyqkdfShw@mail.gmail.com>
+ <CAGgJW775Hth2rAKQc9mXfdARmYjoujEoLdcA47OVOXbRczYvvQ@mail.gmail.com>
+ <CADxQpSkTAZ7mOx2_zeRKNa4JmBuiOiwTOPs6k2U-9ER0RyGq1A@mail.gmail.com>
+ <CAGgJW75REvX_yiOdORUsZDdSO0uajk+FCdecZu_VjHsKZAs4jg@mail.gmail.com>
+ <CADxQpSk5pxzTaQvNTVzSLqUXmJoMp-cA-jkOSNXUjrqQyAv--A@mail.gmail.com>
+Message-ID: <CAGgJW7413G4fERhaD5DP=6uBsPp7HNqgvFyzxpp4OmJJG_BLTw@mail.gmail.com>
+
+If I understand correctly, steps i,ii can be ignored.
+i.e. we just focus on step iii with A,B,C,D fixed.
+
+You do the optimization of f(v) to calculate, say, v* = argmin f(v).
+This optimization is single threaded.
+
+(A)
+In that case, I suggest you add some logging so that for each call to f(),
+you output its input and output.
+Then you can (re-) confirm your validation test - i.e. that the "manual"
+calc of f(v*) gives a different result than what is found in the log file.
+
+(B) If (A) doesn't lead you anywhere ....
+Re-reading your original description of the process, it seems that the time
+consuming part is creating A,B,C,D.
+If the evaluation of f(v) is not overly time consuming, then run the
+optimization under valgrind. It is possible that you are depending on some
+uninitialized variables, or trashing memory somewhere.
+
+
+
+On Fri, Mar 4, 2022 at 11:54 AM Arthur Fendrich <arthfen at gmail.com> wrote:
+
+> Dear Eric,
+>
+> Yes, I can confirm that I have distributed calculations running in
+> parallel.
+>
+> I am not sure if this is a precise answer to the thread-safe question
+> since I'm not familiar with this definition, but what I do is:
+>  i) First, chunks of A, B, C and D are calculated from X in parallel by
+> the worker nodes.
+>  ii) Second, all the chunks are combined on my master node, and the final
+> A, B, C and D are saved to disk.
+>  iii) Then, still on the master node, I optimize f(v) using the final A,
+> B, C and D.
+>
+> When I debug, I skip steps i) and ii) and check only iii) manually by
+> loading A, B, C and D from the disk and evaluating f(v*). Does that seem
+> correct?
+>
+> Best regards,
+> Arthur
+>
+> Em sex., 4 de mar. de 2022 ?s 10:33, Eric Berger <ericjberger at gmail.com>
+> escreveu:
+>
+>> Can you confirm you have a distributed calculation running in parallel?
+>> Have you determined that it is thread safe? How?
+>> Your check on the smaller examples may not have ruled out such
+>> possibilities.
+>>
+>> On Fri, Mar 4, 2022 at 11:21 AM Arthur Fendrich <arthfen at gmail.com>
+>> wrote:
+>>
+>>> Dear Eric,
+>>>
+>>> Thank you for the response. Yes, I can confirm that, please see below
+>>> the behavior.
+>>> For #1, results are identical. For #2, they are not identical but very
+>>> close. For #3, they are completely different.
+>>>
+>>> Best regards,
+>>> Arthur
+>>>
+>>> --
+>>>
+>>> For #1,
+>>> - qsub execution:
+>>> [1] "ll: 565.7251"
+>>> [1] "norm gr @ minimum: 2.96967368608131e-08"
+>>>
+>>> - manual check:
+>>> f(v*): 565.7251
+>>> gradient norm at v*: 2.969674e-08
+>>>
+>>> #
+>>> For #2,
+>>>
+>>> - qsub execution:
+>>> [1] "ll: 14380.8308"
+>>> [1] "norm gr @ minimum: 0.0140857561408041"
+>>>
+>>> - manual check:
+>>> f(v*): 14380.84
+>>> gradient norm at v*: 0.01404779
+>>>
+>>> #
+>>> For #3,
+>>>
+>>> - qsub execution:
+>>> [1] "ll: 14310.6812"
+>>> [1] "norm gr @ minimum: 6232158.38877002"
+>>>
+>>> - manual check:
+>>> f(v*): 97604.69
+>>> gradient norm at v*: 6266696595
+>>>
+>>> Em sex., 4 de mar. de 2022 ?s 09:48, Eric Berger <ericjberger at gmail.com>
+>>> escreveu:
+>>>
+>>>> Please confirm that when you do the manual load and check that f(v*)
+>>>> matches the result from qsub() it succeeds for cases #1,#2 but only fails
+>>>> for #3.
+>>>>
+>>>>
+>>>> On Fri, Mar 4, 2022 at 10:06 AM Arthur Fendrich <arthfen at gmail.com>
+>>>> wrote:
+>>>>
+>>>>> Dear all,
+>>>>>
+>>>>> I am currently having a weird problem with a large-scale optimization
+>>>>> routine. It would be nice to know if any of you have already gone
+>>>>> through
+>>>>> something similar, and how you solved it.
+>>>>>
+>>>>> I apologize in advance for not providing an example, but I think the
+>>>>> non-reproducibility of the error is maybe a key point of this problem.
+>>>>>
+>>>>> Simplest possible description of the problem: I have two functions:
+>>>>> g(X)
+>>>>> and f(v).
+>>>>> g(X) does:
+>>>>>  i) inputs a large matrix X;
+>>>>>  ii) derives four other matrices from X (I'll call them A, B, C and D)
+>>>>> then
+>>>>> saves to disk for debugging purposes;
+>>>>>
+>>>>> Then, f(v) does:
+>>>>>  iii) loads A, B, C, D from disk
+>>>>>  iv) calculates the log-likelihood, which vary according to a vector of
+>>>>> parameters, v.
+>>>>>
+>>>>> My goal application is quite big (X is a 40000x40000 matrix), so I
+>>>>> created
+>>>>> the following versions to test and run the codes/math/parallelization:
+>>>>> #1) A simulated example with X being 100x100
+>>>>> #2) A degraded version of the goal application, with X being 4000x4000
+>>>>> #3) The goal application, with X being 40000x40000
+>>>>>
+>>>>> When I use qsub to submit the job, using the exact same code and
+>>>>> processing
+>>>>> cluster, #1 and #2 run flawlessly, so no problem. These results tell me
+>>>>> that the codes/math/parallelization are fine.
+>>>>>
+>>>>> For application #3, it converges to a vector v*. However, when I
+>>>>> manually
+>>>>> load A, B, C and D from disk and calculate f(v*), then the value I get
+>>>>> is
+>>>>> completely different.
+>>>>> For example:
+>>>>> - qsub job says v* = c(0, 1, 2, 3) is a minimum with f(v*) = 1.
+>>>>> - when I manually load A, B, C, D from disk and calculate f(v*) on the
+>>>>> exact same machine with the same libraries and environment variables,
+>>>>> I get
+>>>>> f(v*) = 1000.
+>>>>>
+>>>>> This is a very confusing behavior. In theory the size of X should not
+>>>>> affect my problem, but it seems that things get unstable as the
+>>>>> dimension
+>>>>> grows. The main issue for debugging is that g(X) for simulation #3
+>>>>> takes
+>>>>> two hours to run, and I am completely lost on how I could find the
+>>>>> causes
+>>>>> of the problem. Would you have any general advices?
+>>>>>
+>>>>> Thank you very much in advance for literally any suggestions you might
+>>>>> have!
+>>>>>
+>>>>> Best regards,
+>>>>> Arthur
+>>>>>
+>>>>>         [[alternative HTML version deleted]]
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>>> PLEASE do read the posting guide
+>>>>> http://www.R-project.org/posting-guide.html
+>>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>>>
+>>>>
+
+	[[alternative HTML version deleted]]
+
+
+From phh@80 @end|ng |rom gm@||@com  Fri Mar  4 11:41:24 2022
+From: phh@80 @end|ng |rom gm@||@com (Paul Smith)
+Date: Fri, 4 Mar 2022 10:41:24 +0000
+Subject: [R] 
+ Looking for package for data generation for classification and
+ regression
+In-Reply-To: <YiGc1p7HZZP/jrAq@iastate.edu>
+References: <CALS=5mqW6y_dfBDGrVQ5rGLwUwS4bSeV+5W1zf+=tifGLYvZ4Q@mail.gmail.com>
+ <YiGc1p7HZZP/jrAq@iastate.edu>
+Message-ID: <CALS=5moiamk9tzDdrJC05mqA-aiNOw67p6wniyuc8fOhGvZv9A@mail.gmail.com>
+
+On Fri, Mar 4, 2022 at 8:07 AM Ranjan Maitra <mlmaitra at gmx.com> wrote:
+>
+> > I am in need of generating artificial data for machine learning
+> > classification and regression analysis. What I am looking for is
+> > something similar to Python sklearn.datasets.make_classification and
+> > sklearn.datasets.make_regression:
+> >
+> > https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_classification.html
+> >
+> > https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_regression.html
+> >
+> > I have searched CRAN for something similar, but found nothing. Could
+> > someone please help me with this?
+>
+> Not sure if this helps, but at least for classification and clustering, there is the MixSim package on CRAN which provides classification datasets according to an overall overlap measure.
+
+Thanks, Ranjan, that is also quite helpful, since clustering is also a
+topic of the course!
+
+Paul
+
+
+From @rth|en @end|ng |rom gm@||@com  Fri Mar  4 10:21:05 2022
+From: @rth|en @end|ng |rom gm@||@com (Arthur Fendrich)
+Date: Fri, 4 Mar 2022 10:21:05 +0100
+Subject: [R] Possible causes of unexpected behavior
+In-Reply-To: <CAGgJW775Hth2rAKQc9mXfdARmYjoujEoLdcA47OVOXbRczYvvQ@mail.gmail.com>
+References: <CADxQpSnG4iBc9JLrnHvFV89MPiPg9YUwK5vFYq7t1XyqkdfShw@mail.gmail.com>
+ <CAGgJW775Hth2rAKQc9mXfdARmYjoujEoLdcA47OVOXbRczYvvQ@mail.gmail.com>
+Message-ID: <CADxQpSkTAZ7mOx2_zeRKNa4JmBuiOiwTOPs6k2U-9ER0RyGq1A@mail.gmail.com>
+
+Dear Eric,
+
+Thank you for the response. Yes, I can confirm that, please see below the
+behavior.
+For #1, results are identical. For #2, they are not identical but very
+close. For #3, they are completely different.
+
+Best regards,
+Arthur
+
+--
+
+For #1,
+- qsub execution:
+[1] "ll: 565.7251"
+[1] "norm gr @ minimum: 2.96967368608131e-08"
+
+- manual check:
+f(v*): 565.7251
+gradient norm at v*: 2.969674e-08
+
+#
+For #2,
+
+- qsub execution:
+[1] "ll: 14380.8308"
+[1] "norm gr @ minimum: 0.0140857561408041"
+
+- manual check:
+f(v*): 14380.84
+gradient norm at v*: 0.01404779
+
+#
+For #3,
+
+- qsub execution:
+[1] "ll: 14310.6812"
+[1] "norm gr @ minimum: 6232158.38877002"
+
+- manual check:
+f(v*): 97604.69
+gradient norm at v*: 6266696595
+
+Em sex., 4 de mar. de 2022 ?s 09:48, Eric Berger <ericjberger at gmail.com>
+escreveu:
+
+> Please confirm that when you do the manual load and check that f(v*)
+> matches the result from qsub() it succeeds for cases #1,#2 but only fails
+> for #3.
+>
+>
+> On Fri, Mar 4, 2022 at 10:06 AM Arthur Fendrich <arthfen at gmail.com> wrote:
+>
+>> Dear all,
+>>
+>> I am currently having a weird problem with a large-scale optimization
+>> routine. It would be nice to know if any of you have already gone through
+>> something similar, and how you solved it.
+>>
+>> I apologize in advance for not providing an example, but I think the
+>> non-reproducibility of the error is maybe a key point of this problem.
+>>
+>> Simplest possible description of the problem: I have two functions: g(X)
+>> and f(v).
+>> g(X) does:
+>>  i) inputs a large matrix X;
+>>  ii) derives four other matrices from X (I'll call them A, B, C and D)
+>> then
+>> saves to disk for debugging purposes;
+>>
+>> Then, f(v) does:
+>>  iii) loads A, B, C, D from disk
+>>  iv) calculates the log-likelihood, which vary according to a vector of
+>> parameters, v.
+>>
+>> My goal application is quite big (X is a 40000x40000 matrix), so I created
+>> the following versions to test and run the codes/math/parallelization:
+>> #1) A simulated example with X being 100x100
+>> #2) A degraded version of the goal application, with X being 4000x4000
+>> #3) The goal application, with X being 40000x40000
+>>
+>> When I use qsub to submit the job, using the exact same code and
+>> processing
+>> cluster, #1 and #2 run flawlessly, so no problem. These results tell me
+>> that the codes/math/parallelization are fine.
+>>
+>> For application #3, it converges to a vector v*. However, when I manually
+>> load A, B, C and D from disk and calculate f(v*), then the value I get is
+>> completely different.
+>> For example:
+>> - qsub job says v* = c(0, 1, 2, 3) is a minimum with f(v*) = 1.
+>> - when I manually load A, B, C, D from disk and calculate f(v*) on the
+>> exact same machine with the same libraries and environment variables, I
+>> get
+>> f(v*) = 1000.
+>>
+>> This is a very confusing behavior. In theory the size of X should not
+>> affect my problem, but it seems that things get unstable as the dimension
+>> grows. The main issue for debugging is that g(X) for simulation #3 takes
+>> two hours to run, and I am completely lost on how I could find the causes
+>> of the problem. Would you have any general advices?
+>>
+>> Thank you very much in advance for literally any suggestions you might
+>> have!
+>>
+>> Best regards,
+>> Arthur
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @rth|en @end|ng |rom gm@||@com  Fri Mar  4 10:53:29 2022
+From: @rth|en @end|ng |rom gm@||@com (Arthur Fendrich)
+Date: Fri, 4 Mar 2022 10:53:29 +0100
+Subject: [R] Possible causes of unexpected behavior
+In-Reply-To: <CAGgJW75REvX_yiOdORUsZDdSO0uajk+FCdecZu_VjHsKZAs4jg@mail.gmail.com>
+References: <CADxQpSnG4iBc9JLrnHvFV89MPiPg9YUwK5vFYq7t1XyqkdfShw@mail.gmail.com>
+ <CAGgJW775Hth2rAKQc9mXfdARmYjoujEoLdcA47OVOXbRczYvvQ@mail.gmail.com>
+ <CADxQpSkTAZ7mOx2_zeRKNa4JmBuiOiwTOPs6k2U-9ER0RyGq1A@mail.gmail.com>
+ <CAGgJW75REvX_yiOdORUsZDdSO0uajk+FCdecZu_VjHsKZAs4jg@mail.gmail.com>
+Message-ID: <CADxQpSk5pxzTaQvNTVzSLqUXmJoMp-cA-jkOSNXUjrqQyAv--A@mail.gmail.com>
+
+Dear Eric,
+
+Yes, I can confirm that I have distributed calculations running in parallel.
+
+I am not sure if this is a precise answer to the thread-safe question since
+I'm not familiar with this definition, but what I do is:
+ i) First, chunks of A, B, C and D are calculated from X in parallel by the
+worker nodes.
+ ii) Second, all the chunks are combined on my master node, and the final
+A, B, C and D are saved to disk.
+ iii) Then, still on the master node, I optimize f(v) using the final A, B,
+C and D.
+
+When I debug, I skip steps i) and ii) and check only iii) manually by
+loading A, B, C and D from the disk and evaluating f(v*). Does that seem
+correct?
+
+Best regards,
+Arthur
+
+Em sex., 4 de mar. de 2022 ?s 10:33, Eric Berger <ericjberger at gmail.com>
+escreveu:
+
+> Can you confirm you have a distributed calculation running in parallel?
+> Have you determined that it is thread safe? How?
+> Your check on the smaller examples may not have ruled out such
+> possibilities.
+>
+> On Fri, Mar 4, 2022 at 11:21 AM Arthur Fendrich <arthfen at gmail.com> wrote:
+>
+>> Dear Eric,
+>>
+>> Thank you for the response. Yes, I can confirm that, please see below the
+>> behavior.
+>> For #1, results are identical. For #2, they are not identical but very
+>> close. For #3, they are completely different.
+>>
+>> Best regards,
+>> Arthur
+>>
+>> --
+>>
+>> For #1,
+>> - qsub execution:
+>> [1] "ll: 565.7251"
+>> [1] "norm gr @ minimum: 2.96967368608131e-08"
+>>
+>> - manual check:
+>> f(v*): 565.7251
+>> gradient norm at v*: 2.969674e-08
+>>
+>> #
+>> For #2,
+>>
+>> - qsub execution:
+>> [1] "ll: 14380.8308"
+>> [1] "norm gr @ minimum: 0.0140857561408041"
+>>
+>> - manual check:
+>> f(v*): 14380.84
+>> gradient norm at v*: 0.01404779
+>>
+>> #
+>> For #3,
+>>
+>> - qsub execution:
+>> [1] "ll: 14310.6812"
+>> [1] "norm gr @ minimum: 6232158.38877002"
+>>
+>> - manual check:
+>> f(v*): 97604.69
+>> gradient norm at v*: 6266696595
+>>
+>> Em sex., 4 de mar. de 2022 ?s 09:48, Eric Berger <ericjberger at gmail.com>
+>> escreveu:
+>>
+>>> Please confirm that when you do the manual load and check that f(v*)
+>>> matches the result from qsub() it succeeds for cases #1,#2 but only fails
+>>> for #3.
+>>>
+>>>
+>>> On Fri, Mar 4, 2022 at 10:06 AM Arthur Fendrich <arthfen at gmail.com>
+>>> wrote:
+>>>
+>>>> Dear all,
+>>>>
+>>>> I am currently having a weird problem with a large-scale optimization
+>>>> routine. It would be nice to know if any of you have already gone
+>>>> through
+>>>> something similar, and how you solved it.
+>>>>
+>>>> I apologize in advance for not providing an example, but I think the
+>>>> non-reproducibility of the error is maybe a key point of this problem.
+>>>>
+>>>> Simplest possible description of the problem: I have two functions: g(X)
+>>>> and f(v).
+>>>> g(X) does:
+>>>>  i) inputs a large matrix X;
+>>>>  ii) derives four other matrices from X (I'll call them A, B, C and D)
+>>>> then
+>>>> saves to disk for debugging purposes;
+>>>>
+>>>> Then, f(v) does:
+>>>>  iii) loads A, B, C, D from disk
+>>>>  iv) calculates the log-likelihood, which vary according to a vector of
+>>>> parameters, v.
+>>>>
+>>>> My goal application is quite big (X is a 40000x40000 matrix), so I
+>>>> created
+>>>> the following versions to test and run the codes/math/parallelization:
+>>>> #1) A simulated example with X being 100x100
+>>>> #2) A degraded version of the goal application, with X being 4000x4000
+>>>> #3) The goal application, with X being 40000x40000
+>>>>
+>>>> When I use qsub to submit the job, using the exact same code and
+>>>> processing
+>>>> cluster, #1 and #2 run flawlessly, so no problem. These results tell me
+>>>> that the codes/math/parallelization are fine.
+>>>>
+>>>> For application #3, it converges to a vector v*. However, when I
+>>>> manually
+>>>> load A, B, C and D from disk and calculate f(v*), then the value I get
+>>>> is
+>>>> completely different.
+>>>> For example:
+>>>> - qsub job says v* = c(0, 1, 2, 3) is a minimum with f(v*) = 1.
+>>>> - when I manually load A, B, C, D from disk and calculate f(v*) on the
+>>>> exact same machine with the same libraries and environment variables, I
+>>>> get
+>>>> f(v*) = 1000.
+>>>>
+>>>> This is a very confusing behavior. In theory the size of X should not
+>>>> affect my problem, but it seems that things get unstable as the
+>>>> dimension
+>>>> grows. The main issue for debugging is that g(X) for simulation #3 takes
+>>>> two hours to run, and I am completely lost on how I could find the
+>>>> causes
+>>>> of the problem. Would you have any general advices?
+>>>>
+>>>> Thank you very much in advance for literally any suggestions you might
+>>>> have!
+>>>>
+>>>> Best regards,
+>>>> Arthur
+>>>>
+>>>>         [[alternative HTML version deleted]]
+>>>>
+>>>> ______________________________________________
+>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>> PLEASE do read the posting guide
+>>>> http://www.R-project.org/posting-guide.html
+>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>>
+>>>
+
+	[[alternative HTML version deleted]]
+
+
+From ||809 @end|ng |rom nc|@c@  Fri Mar  4 14:23:43 2022
+From: ||809 @end|ng |rom nc|@c@ (Brian Lunergan)
+Date: Fri, 4 Mar 2022 08:23:43 -0500
+Subject: [R] Problem installing Rcmdr on version 4.1.2...
+Message-ID: <c924d43e-46f3-a313-deb6-a54fc8ab5a8d@ncf.ca>
+
+Hi folks:
+
+Running R 4.1.2 on Linux Mint 19.3. Tried to install Rcmdr, but when it
+tried to install nloptr I got the following as it seemed to trip over
+Cmake. Bit lengthy but here's what was spit out.
+
+* installing *source* package ?nloptr? ...
+** package ?nloptr? successfully unpacked and MD5 sums checked
+** using staged installation
+checking whether the C++ compiler works... yes
+checking for C++ compiler default output file name... a.out
+checking for suffix of executables...
+checking whether we are cross compiling... no
+checking for suffix of object files... o
+checking whether we are using the GNU C++ compiler... yes
+checking whether g++ -std=gnu++14 accepts -g... yes
+checking how to run the C++ preprocessor... g++ -std=gnu++14 -E
+checking whether we are using the GNU C++ compiler... (cached) yes
+checking whether g++ -std=gnu++14 accepts -g... (cached) yes
+checking for pkg-config... /usr/bin/pkg-config
+checking if pkg-config knows NLopt... no
+using NLopt via local cmake build on x86_64
+set CMAKE_BIN=/usr/bin/cmake
+set CC=gcc -std=gnu99 -std=gnu11
+set CFLAGS= -fpic -g -O2
+-fdebug-prefix-map=/build/r-base-J7pprH/r-base-4.1.2=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g
+set CXX=g++
+set CXXFLAGS=-std=gnu++11 -fpic -g -O2
+-fdebug-prefix-map=/build/r-base-J7pprH/r-base-4.1.2=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g
+set LDFLAGS=-Wl,-Bsymbolic-functions -Wl,-z,relro
+CMake Error: The source directory
+"/tmp/RtmpP4rvt0/R.INSTALL360c3be2694c/nloptr/src/nlopt-build" does not
+exist.
+Specify --help for usage, or press the help button on the CMake GUI.
+Unknown argument -j
+Unknown argument 2
+Usage: cmake --build <dir> [options] [-- [native-options]]
+Options:
+  <dir>          = Project binary directory to be built.
+  --target <tgt> = Build <tgt> instead of default targets.
+                   May only be specified once.
+  --config <cfg> = For multi-configuration tools, choose <cfg>.
+  --clean-first  = Build target 'clean' first, then build.
+                   (To clean only, use --target 'clean'.)
+  --use-stderr   = Ignored.  Behavior is default in CMake >= 3.0.
+  --             = Pass remaining options to the native tool.
+CMake Error: The source directory
+"/tmp/RtmpP4rvt0/R.INSTALL360c3be2694c/nloptr/src/nlopt" does not exist.
+Specify --help for usage, or press the help button on the CMake GUI.
+cp: cannot stat 'nlopt/include/*': No such file or directory
+configure: creating ./config.status
+config.status: creating src/Makevars
+** libs
+gcc -std=gnu99 -std=gnu11 -I"/usr/share/R/include" -DNDEBUG
+-I../inst/include
+-I'/home/brian/R/x86_64-pc-linux-gnu-library/4.1/testthat/include'
+-fpic  -g -O2 -fdebug-prefix-map=/build/r-base-J7pprH/r-base-4.1.2=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c init_nloptr.c -o init_nloptr.o
+gcc -std=gnu99 -std=gnu11 -I"/usr/share/R/include" -DNDEBUG
+-I../inst/include
+-I'/home/brian/R/x86_64-pc-linux-gnu-library/4.1/testthat/include'
+-fpic  -g -O2 -fdebug-prefix-map=/build/r-base-J7pprH/r-base-4.1.2=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c nloptr.c -o nloptr.o
+g++ -std=gnu++11 -I"/usr/share/R/include" -DNDEBUG -I../inst/include
+-I'/home/brian/R/x86_64-pc-linux-gnu-library/4.1/testthat/include'
+-fpic  -g -O2 -fdebug-prefix-map=/build/r-base-J7pprH/r-base-4.1.2=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c test-C-API.cpp -o test-C-API.o
+g++ -std=gnu++11 -I"/usr/share/R/include" -DNDEBUG -I../inst/include
+-I'/home/brian/R/x86_64-pc-linux-gnu-library/4.1/testthat/include'
+-fpic  -g -O2 -fdebug-prefix-map=/build/r-base-J7pprH/r-base-4.1.2=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c test-runner.cpp -o test-runner.o
+g++ -std=gnu++11 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions
+-Wl,-z,relro -o nloptr.so init_nloptr.o nloptr.o test-C-API.o
+test-runner.o -llapack -lblas -lgfortran -lm -lquadmath -Lnlopt/lib
+-lnlopt -L/usr/lib/R/lib -lR
+/usr/bin/ld: cannot find -lnlopt
+collect2: error: ld returned 1 exit status
+/usr/share/R/share/make/shlib.mk:10: recipe for target 'nloptr.so' failed
+make: *** [nloptr.so] Error 1
+ERROR: compilation failed for package ?nloptr?
+* removing ?/home/brian/R/x86_64-pc-linux-gnu-library/4.1/nloptr?
+
+I have cmake on mint in the current edition, but when I try to install
+it in R it fires as not available for 4.1.2. Is there a version out
+there that will work with 4.1.2? Where would I find it and how would I
+install it? Any help/advice would be greatly appreciated.
+
+Regards...
+-- 
+Brian Lunergan
+Russell, ON
+Canada
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: OpenPGP_signature
+Type: application/pgp-signature
+Size: 665 bytes
+Desc: OpenPGP digital signature
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20220304/bb0ed18a/attachment.sig>
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Mar  4 14:34:03 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 4 Mar 2022 16:34:03 +0300
+Subject: [R] Problem installing Rcmdr on version 4.1.2...
+In-Reply-To: <c924d43e-46f3-a313-deb6-a54fc8ab5a8d@ncf.ca>
+References: <c924d43e-46f3-a313-deb6-a54fc8ab5a8d@ncf.ca>
+Message-ID: <20220304163403.518a397a@arachnoid>
+
+On Fri, 4 Mar 2022 08:23:43 -0500
+Brian Lunergan <ff809 at ncf.ca> wrote:
+
+> Running R 4.1.2 on Linux Mint 19.3.
+
+> g++ -std=gnu++11 -I"/usr/share/R/include" -DNDEBUG -I../inst/include
+> -I'/home/brian/R/x86_64-pc-linux-gnu-library/4.1/testthat/include'
+> -fpic  -g -O2 -fdebug-prefix-map=/build/r-base-J7pprH/r-base-4.1.2=.
+> -fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+> -D_FORTIFY_SOURCE=2 -g  -c test-runner.cpp -o test-runner.o
+> g++ -std=gnu++11 -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions
+> -Wl,-z,relro -o nloptr.so init_nloptr.o nloptr.o test-C-API.o
+> test-runner.o -llapack -lblas -lgfortran -lm -lquadmath -Lnlopt/lib
+> -lnlopt -L/usr/lib/R/lib -lR
+> /usr/bin/ld: cannot find -lnlopt
+> collect2: error: ld returned 1 exit status
+
+Typically, when an R package wraps a third-party library, you need a
+development version of it installed in order to install that package
+from source.
+
+If you're running R from the Linux Mint repos, try to install
+r-cran-nloptr from Linux Mint repositories. If you don't, or have some
+trouble installing the package, install the libnlopt-dev Linux Mint
+package before trying to install the nloptr R package.
+
+-- 
+Best regards,
+Ivan
+
+
+From ||809 @end|ng |rom nc|@c@  Fri Mar  4 15:59:45 2022
+From: ||809 @end|ng |rom nc|@c@ (Brian Lunergan)
+Date: Fri, 4 Mar 2022 09:59:45 -0500
+Subject: [R] Problem installing Rcmdr on version 4.1.2...
+In-Reply-To: <20220304163403.518a397a@arachnoid>
+References: <c924d43e-46f3-a313-deb6-a54fc8ab5a8d@ncf.ca>
+ <20220304163403.518a397a@arachnoid>
+Message-ID: <fb644a03-56e8-35af-89e3-eb5fb9d558b1@ncf.ca>
+
+On 2022-03-04 8:34 a.m., Ivan Krylov wrote:
+
+> Typically, when an R package wraps a third-party library, you need a
+> development version of it installed in order to install that package
+> from source.
+> 
+> If you're running R from the Linux Mint repos, try to install
+> r-cran-nloptr from Linux Mint repositories. If you don't, or have some
+> trouble installing the package, install the libnlopt-dev Linux Mint
+> package before trying to install the nloptr R package.
+> 
+
+libnlopt-dev installed okay, but when I tried pulling in the r-cran
+package I got this:
+
+brian at brian-Aspire-ES1-511:~$ sudo apt-get install r-cran-nloptr
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+Some packages could not be installed. This may mean that you have
+requested an impossible situation or if you are using the unstable
+distribution that some required packages have not yet been created
+or been moved out of Incoming.
+The following information may help resolve the situation:
+
+The following packages have unmet dependencies:
+ r-cran-nloptr : Depends: r-api-3.4
+E: Unable to correct problems, you have held broken packages.
+
+I'll try the R site, but I'm open to other ideas.:-(
+-- 
+Brian Lunergan
+Russell, ON
+Canada
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: OpenPGP_signature
+Type: application/pgp-signature
+Size: 665 bytes
+Desc: OpenPGP digital signature
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20220304/7e3cc72a/attachment.sig>
+
+From @rth|en @end|ng |rom gm@||@com  Fri Mar  4 16:17:17 2022
+From: @rth|en @end|ng |rom gm@||@com (Arthur Fendrich)
+Date: Fri, 4 Mar 2022 16:17:17 +0100
+Subject: [R] Possible causes of unexpected behavior
+In-Reply-To: <CAGgJW7413G4fERhaD5DP=6uBsPp7HNqgvFyzxpp4OmJJG_BLTw@mail.gmail.com>
+References: <CADxQpSnG4iBc9JLrnHvFV89MPiPg9YUwK5vFYq7t1XyqkdfShw@mail.gmail.com>
+ <CAGgJW775Hth2rAKQc9mXfdARmYjoujEoLdcA47OVOXbRczYvvQ@mail.gmail.com>
+ <CADxQpSkTAZ7mOx2_zeRKNa4JmBuiOiwTOPs6k2U-9ER0RyGq1A@mail.gmail.com>
+ <CAGgJW75REvX_yiOdORUsZDdSO0uajk+FCdecZu_VjHsKZAs4jg@mail.gmail.com>
+ <CADxQpSk5pxzTaQvNTVzSLqUXmJoMp-cA-jkOSNXUjrqQyAv--A@mail.gmail.com>
+ <CAGgJW7413G4fERhaD5DP=6uBsPp7HNqgvFyzxpp4OmJJG_BLTw@mail.gmail.com>
+Message-ID: <CADxQpS=hO=zeWNOFZDfkOLsZYOWm1UZhKDJZuDOEWWjTzf5o_Q@mail.gmail.com>
+
+Dear Eric,
+
+I followed your suggestion (A) and I believe I finally got to the cause of
+the problem.
+It turns out that I was not exporting two environment variables for step
+iii. Because this part of the code does not run in parallel, I was simply
+ignoring them:
+> export OMP_NUM_THREADS=1
+> export OPENBLAS_NUM_THREADS=1
+
+When I do that, the results change for some reason that I still have to
+investigate further. What I get now seems coherent (below).
+
+Thank you again for the help.
+
+Best regards,
+Arthur
+
+##
+
+-- Results for optim(f) --
+
+Case: qsub, with or without the two variables (same result for both):
+- initial guess:
+  v = [0 0 0 0 0 0 0 0 0]
+  f(v) = 599765.9
+- solution:
+  v = [0.3529 -6.4176 -0.0271 -0.0066 0.0013 -0.0172 -0.0198 -0.0034
+-0.0171]
+  f(v) = 14310.68
+
+#
+Case: manual without the two variables:
+- initial guess:
+  v = [0 0 0 0 0 0 0 0 0]
+  f(v) = 643417.1
+- solution:
+  v = [1.5669 -6.2815 -0.0091 -0.0022 0.0004 -0.0059 -0.0066 -0.0014 -0.005]
+  f(v) = 19712.85
+
+#
+Case: manual with the two variables:
+- initial guess:
+  v = [0 0 0 0 0 0 0 0 0]
+  f(v) = 599765.9
+- solution:
+  v = [0.3529 -6.4176 -0.0271 -0.0066 0.0013 -0.0172 -0.0198 -0.0034
+-0.0171]
+  f(v) = 14310.68
+
+Em sex., 4 de mar. de 2022 ?s 11:13, Eric Berger <ericjberger at gmail.com>
+escreveu:
+
+> If I understand correctly, steps i,ii can be ignored.
+> i.e. we just focus on step iii with A,B,C,D fixed.
+>
+> You do the optimization of f(v) to calculate, say, v* = argmin f(v).
+> This optimization is single threaded.
+>
+> (A)
+> In that case, I suggest you add some logging so that for each call to f(),
+> you output its input and output.
+> Then you can (re-) confirm your validation test - i.e. that the "manual"
+> calc of f(v*) gives a different result than what is found in the log file.
+>
+> (B) If (A) doesn't lead you anywhere ....
+> Re-reading your original description of the process, it seems that the
+> time consuming part is creating A,B,C,D.
+> If the evaluation of f(v) is not overly time consuming, then run the
+> optimization under valgrind. It is possible that you are depending on some
+> uninitialized variables, or trashing memory somewhere.
+>
+>
+>
+> On Fri, Mar 4, 2022 at 11:54 AM Arthur Fendrich <arthfen at gmail.com> wrote:
+>
+>> Dear Eric,
+>>
+>> Yes, I can confirm that I have distributed calculations running in
+>> parallel.
+>>
+>> I am not sure if this is a precise answer to the thread-safe question
+>> since I'm not familiar with this definition, but what I do is:
+>>  i) First, chunks of A, B, C and D are calculated from X in parallel by
+>> the worker nodes.
+>>  ii) Second, all the chunks are combined on my master node, and the final
+>> A, B, C and D are saved to disk.
+>>  iii) Then, still on the master node, I optimize f(v) using the final A,
+>> B, C and D.
+>>
+>> When I debug, I skip steps i) and ii) and check only iii) manually by
+>> loading A, B, C and D from the disk and evaluating f(v*). Does that seem
+>> correct?
+>>
+>> Best regards,
+>> Arthur
+>>
+>> Em sex., 4 de mar. de 2022 ?s 10:33, Eric Berger <ericjberger at gmail.com>
+>> escreveu:
+>>
+>>> Can you confirm you have a distributed calculation running in parallel?
+>>> Have you determined that it is thread safe? How?
+>>> Your check on the smaller examples may not have ruled out such
+>>> possibilities.
+>>>
+>>> On Fri, Mar 4, 2022 at 11:21 AM Arthur Fendrich <arthfen at gmail.com>
+>>> wrote:
+>>>
+>>>> Dear Eric,
+>>>>
+>>>> Thank you for the response. Yes, I can confirm that, please see below
+>>>> the behavior.
+>>>> For #1, results are identical. For #2, they are not identical but very
+>>>> close. For #3, they are completely different.
+>>>>
+>>>> Best regards,
+>>>> Arthur
+>>>>
+>>>> --
+>>>>
+>>>> For #1,
+>>>> - qsub execution:
+>>>> [1] "ll: 565.7251"
+>>>> [1] "norm gr @ minimum: 2.96967368608131e-08"
+>>>>
+>>>> - manual check:
+>>>> f(v*): 565.7251
+>>>> gradient norm at v*: 2.969674e-08
+>>>>
+>>>> #
+>>>> For #2,
+>>>>
+>>>> - qsub execution:
+>>>> [1] "ll: 14380.8308"
+>>>> [1] "norm gr @ minimum: 0.0140857561408041"
+>>>>
+>>>> - manual check:
+>>>> f(v*): 14380.84
+>>>> gradient norm at v*: 0.01404779
+>>>>
+>>>> #
+>>>> For #3,
+>>>>
+>>>> - qsub execution:
+>>>> [1] "ll: 14310.6812"
+>>>> [1] "norm gr @ minimum: 6232158.38877002"
+>>>>
+>>>> - manual check:
+>>>> f(v*): 97604.69
+>>>> gradient norm at v*: 6266696595
+>>>>
+>>>> Em sex., 4 de mar. de 2022 ?s 09:48, Eric Berger <ericjberger at gmail.com>
+>>>> escreveu:
+>>>>
+>>>>> Please confirm that when you do the manual load and check that f(v*)
+>>>>> matches the result from qsub() it succeeds for cases #1,#2 but only fails
+>>>>> for #3.
+>>>>>
+>>>>>
+>>>>> On Fri, Mar 4, 2022 at 10:06 AM Arthur Fendrich <arthfen at gmail.com>
+>>>>> wrote:
+>>>>>
+>>>>>> Dear all,
+>>>>>>
+>>>>>> I am currently having a weird problem with a large-scale optimization
+>>>>>> routine. It would be nice to know if any of you have already gone
+>>>>>> through
+>>>>>> something similar, and how you solved it.
+>>>>>>
+>>>>>> I apologize in advance for not providing an example, but I think the
+>>>>>> non-reproducibility of the error is maybe a key point of this problem.
+>>>>>>
+>>>>>> Simplest possible description of the problem: I have two functions:
+>>>>>> g(X)
+>>>>>> and f(v).
+>>>>>> g(X) does:
+>>>>>>  i) inputs a large matrix X;
+>>>>>>  ii) derives four other matrices from X (I'll call them A, B, C and
+>>>>>> D) then
+>>>>>> saves to disk for debugging purposes;
+>>>>>>
+>>>>>> Then, f(v) does:
+>>>>>>  iii) loads A, B, C, D from disk
+>>>>>>  iv) calculates the log-likelihood, which vary according to a vector
+>>>>>> of
+>>>>>> parameters, v.
+>>>>>>
+>>>>>> My goal application is quite big (X is a 40000x40000 matrix), so I
+>>>>>> created
+>>>>>> the following versions to test and run the codes/math/parallelization:
+>>>>>> #1) A simulated example with X being 100x100
+>>>>>> #2) A degraded version of the goal application, with X being 4000x4000
+>>>>>> #3) The goal application, with X being 40000x40000
+>>>>>>
+>>>>>> When I use qsub to submit the job, using the exact same code and
+>>>>>> processing
+>>>>>> cluster, #1 and #2 run flawlessly, so no problem. These results tell
+>>>>>> me
+>>>>>> that the codes/math/parallelization are fine.
+>>>>>>
+>>>>>> For application #3, it converges to a vector v*. However, when I
+>>>>>> manually
+>>>>>> load A, B, C and D from disk and calculate f(v*), then the value I
+>>>>>> get is
+>>>>>> completely different.
+>>>>>> For example:
+>>>>>> - qsub job says v* = c(0, 1, 2, 3) is a minimum with f(v*) = 1.
+>>>>>> - when I manually load A, B, C, D from disk and calculate f(v*) on the
+>>>>>> exact same machine with the same libraries and environment variables,
+>>>>>> I get
+>>>>>> f(v*) = 1000.
+>>>>>>
+>>>>>> This is a very confusing behavior. In theory the size of X should not
+>>>>>> affect my problem, but it seems that things get unstable as the
+>>>>>> dimension
+>>>>>> grows. The main issue for debugging is that g(X) for simulation #3
+>>>>>> takes
+>>>>>> two hours to run, and I am completely lost on how I could find the
+>>>>>> causes
+>>>>>> of the problem. Would you have any general advices?
+>>>>>>
+>>>>>> Thank you very much in advance for literally any suggestions you
+>>>>>> might have!
+>>>>>>
+>>>>>> Best regards,
+>>>>>> Arthur
+>>>>>>
+>>>>>>         [[alternative HTML version deleted]]
+>>>>>>
+>>>>>> ______________________________________________
+>>>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>>>> PLEASE do read the posting guide
+>>>>>> http://www.R-project.org/posting-guide.html
+>>>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>>>>
+>>>>>
+
+	[[alternative HTML version deleted]]
+
+
+From c@r| @end|ng |rom w|ttho|t@com  Fri Mar  4 17:45:39 2022
+From: c@r| @end|ng |rom w|ttho|t@com (Carl Witthoft)
+Date: Fri, 4 Mar 2022 11:45:39 -0500
+Subject: [R] copying huge strings via clipboard?
+Message-ID: <778a0fb5-08a8-7611-1bb4-ad9dace55bca@witthoft.com>
+
+Hi,
+This is on Windows10 via the R gui  .  I, admittedly inadvisably, tried 
+to create a new character object by first copying a 1-million character 
+string (including lead and trail "'" chars) to the clipboard and then, 
+in the console,
+
+ >> foo <-
+and hitting "paste"
+
+What I found is that, around 5000 characters, a newline ( "\n") char 
+showed up.  Is this something that the Windows Clipboard does, or 
+something odd about pasting into a command in R?
+
+Postscript:  using
+
+ >>  bar <- readChar('thefile.txt',1e6)
+
+the import works perfectly.
+
+
+-- 
+Carl Witthoft
+personal: carl at witthoft.com
+The Witthoft Group, Consulting
+https://witthoftgroup.weebly.com/
+
+
+From dw|n@em|u@ @end|ng |rom comc@@t@net  Fri Mar  4 17:58:30 2022
+From: dw|n@em|u@ @end|ng |rom comc@@t@net (David Winsemius)
+Date: Fri, 4 Mar 2022 08:58:30 -0800
+Subject: [R] Problem installing Rcmdr on version 4.1.2...
+In-Reply-To: <fb644a03-56e8-35af-89e3-eb5fb9d558b1@ncf.ca>
+References: <c924d43e-46f3-a313-deb6-a54fc8ab5a8d@ncf.ca>
+ <20220304163403.518a397a@arachnoid>
+ <fb644a03-56e8-35af-89e3-eb5fb9d558b1@ncf.ca>
+Message-ID: <678f9c36-046f-1d26-ac88-0e9d1a820614@comcast.net>
+
+
+On 3/4/22 06:59, Brian Lunergan wrote:
+> On 2022-03-04 8:34 a.m., Ivan Krylov wrote:
+>
+>> Typically, when an R package wraps a third-party library, you need a
+>> development version of it installed in order to install that package
+>> from source.
+>>
+>> If you're running R from the Linux Mint repos, try to install
+>> r-cran-nloptr from Linux Mint repositories. If you don't, or have some
+>> trouble installing the package, install the libnlopt-dev Linux Mint
+>> package before trying to install the nloptr R package.
+>>
+> libnlopt-dev installed okay, but when I tried pulling in the r-cran
+> package I got this:
+>
+> brian at brian-Aspire-ES1-511:~$ sudo apt-get install r-cran-nloptr
+That's not the typical way to install an R package from source.
+> Reading package lists... Done
+> Building dependency tree
+> Reading state information... Done
+> Some packages could not be installed. This may mean that you have
+> requested an impossible situation or if you are using the unstable
+> distribution that some required packages have not yet been created
+> or been moved out of Incoming.
+> The following information may help resolve the situation:
+>
+> The following packages have unmet dependencies:
+>   r-cran-nloptr : Depends: r-api-3.4
+
+
+Is there anything in your setup that would explain why nloptr is looking 
+for an ancient version of R? I'm wondering if that binary package was 
+created years ago and hasn't been replaced since nloptr was reconfigured 
+to do the work of installing nlopt?
+
+I'm also failing to install nloptr 2.0.0 using R 4.1.2 in an Ubuntu 
+18.04 machine. The first reported error was not having Cmake, but 
+installing Cmake then leads to failure both from the R console and from 
+a terminal session with:
+
+R CMD INSTALL ~/Downloads/nloptr_2.0.0.tar.gz
+
+It fails at:
+
+checking for pkg-config... /usr/bin/pkg-config
+checking if pkg-config knows NLopt... no
+using NLopt via local cmake build on x86_64
+set CMAKE_BIN=/usr/bin/cmake
+set CC=gcc -std=gnu99 -std=gnu11
+set CFLAGS= -fpic -g -O2 
+-fdebug-prefix-map=/build/r-base-J7pprH/r-base-4.1.2=. 
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time 
+-D_FORTIFY_SOURCE=2 -g
+set CXX=g++
+set CXXFLAGS=-std=gnu++11 -fpic -g -O2 
+-fdebug-prefix-map=/build/r-base-J7pprH/r-base-4.1.2=. 
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time 
+-D_FORTIFY_SOURCE=2 -g -Wno-ignored-attributes
+set LDFLAGS=-Wl,-Bsymbolic-functions -Wl,-z,relro
+CMake Error: The source directory 
+"/tmp/RtmpzB1FjU/R.INSTALL289c4748c404/nloptr/src/nlopt-build" does not 
+exist.
+
+ ?My understanding is that the right place to post such difficulties is 
+on R-SIG-debian, or at the Issues page: 
+https://github.com/astamm/nloptr/issues/85
+
+-- 
+
+David
+
+> E: Unable to correct problems, you have held broken packages.
+>
+> I'll try the R site, but I'm open to other ideas.:-(
+>
+
+
+From m|m@|tr@ @end|ng |rom gmx@com  Fri Mar  4 18:03:18 2022
+From: m|m@|tr@ @end|ng |rom gmx@com (Ranjan Maitra)
+Date: Fri, 4 Mar 2022 11:03:18 -0600
+Subject: [R] 
+ Looking for package for data generation for classification and
+ regression
+In-Reply-To: <CALS=5moiamk9tzDdrJC05mqA-aiNOw67p6wniyuc8fOhGvZv9A@mail.gmail.com>
+References: <CALS=5mqW6y_dfBDGrVQ5rGLwUwS4bSeV+5W1zf+=tifGLYvZ4Q@mail.gmail.com>
+ <YiGc1p7HZZP/jrAq@iastate.edu>
+ <CALS=5moiamk9tzDdrJC05mqA-aiNOw67p6wniyuc8fOhGvZv9A@mail.gmail.com>
+Message-ID: <YiJGVgbJ+uj/fhaW@iastate.edu>
+
+On Fri Mar04'22 10:41:24AM, Paul Smith wrote:
+> From: Paul Smith <phhs80 at gmail.com>
+> Date: Fri, 4 Mar 2022 10:41:24 +0000
+> To: Ranjan Maitra <mlmaitra at gmx.com>
+> Cc: "r-help at r-project.org" <r-help at r-project.org>
+> Subject: Re: [R]  Looking for package for data generation for
+>  classification and regression
+>
+> On Fri, Mar 4, 2022 at 8:07 AM Ranjan Maitra <mlmaitra at gmx.com> wrote:
+> >
+> > > I am in need of generating artificial data for machine learning
+> > > classification and regression analysis. What I am looking for is
+> > > something similar to Python sklearn.datasets.make_classification and
+> > > sklearn.datasets.make_regression:
+> > >
+> > > https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_classification.html
+> > >
+> > > https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_regression.html
+> > >
+> > > I have searched CRAN for something similar, but found nothing. Could
+> > > someone please help me with this?
+> >
+> > Not sure if this helps, but at least for classification and clustering, there is the MixSim package on CRAN which provides classification datasets according to an overall overlap measure.
+>
+> Thanks, Ranjan, that is also quite helpful, since clustering is also a
+> topic of the course!
+>
+> Paul
+>
+
+The Clustering Algorithms Referee Package (CARP) uses the same codebase but is more general.
+
+https://jmlr.org/papers/v12/melnykov11a.html
+
+Unfortunately, it is written in C, so may not help.
+
+It is on www.mloss.org at:
+
+https://mloss.org/software/view/248/
+
+but perhaps should also be moved to github.
+
+Best wishes,
+Ranjan
+
+
+From dw|n@em|u@ @end|ng |rom comc@@t@net  Fri Mar  4 18:34:15 2022
+From: dw|n@em|u@ @end|ng |rom comc@@t@net (David Winsemius)
+Date: Fri, 4 Mar 2022 09:34:15 -0800
+Subject: [R] copying huge strings via clipboard?
+In-Reply-To: <778a0fb5-08a8-7611-1bb4-ad9dace55bca@witthoft.com>
+References: <778a0fb5-08a8-7611-1bb4-ad9dace55bca@witthoft.com>
+Message-ID: <9bb2e8c4-cfbd-89fb-0c92-826d229496cb@comcast.net>
+
+
+On 3/4/22 08:45, Carl Witthoft wrote:
+> Hi,
+> This is on Windows10 via the R gui? .? I, admittedly inadvisably, 
+> tried to create a new character object by first copying a 1-million 
+> character string (including lead and trail "'" chars) to the clipboard 
+> and then, in the console,
+>
+> >> foo <-
+> and hitting "paste"
+>
+> What I found is that, around 5000 characters, a newline ( "\n") char 
+> showed up.? Is this something that the Windows Clipboard does, or 
+> something odd about pasting into a command in R?
+
+I'm the wrong person to comment on Windows clipboard features.
+
+ISTR that there is a character limit for R command line input, at least 
+in some or perhaps all R installations.
+
+Subject: 	[R] parsing -?input?buffer overflow 
+<http://markmail.org/message/iyjlmfsb4kp63cyi> 	permalink 
+<http://markmail.org/message/iyjlmfsb4kp63cyi>
+From: 	Prof Brian Ripley (rip... at stats.ox.ac.uk)
+Date: 	Jun 13, 2008 1:52:06 am
+List: 	org.r-project.r-help
+
+"R does have limits on the command line length (1024 bytes up to 
+R-devel, 4096 bytes there). What happens if you exceed that depends on 
+the interface you are using (and you have not told us). Beyond that, the 
+parser has a limit of MAXELTSIZE (8192 bytes) on strings.
+
+I don't see any need for 'improvement' though: why are you entering very 
+long strings as part of the R program? They are data, and e.g. 
+readLines() and scan() have no limits on string length beyond those 
+imposed by R's internals (2^31-1 bytes)."
+
+
+I think that info is still current since a search of the 
+../manuals/R-int page says:
+
+--- copied
+
+The|R_StringBuffer|structure needs to be initialized, for example by
+
+static R_StringBuffer ex_buff = {NULL, 0, MAXELTSIZE};
+
+which uses a default size of|MAXELTSIZE = 8192|bytes.Most current uses 
+have a static|R_StringBuffer|structure, which allows the (default-sized) 
+buffer to be shared between calls to e.g.|grep|and even between 
+functions: this will need to be changed if R ever allows concurrent 
+evaluation threads.
+
+--- end copy
+
+
+-- 
+
+David
+
+
+>
+> Postscript:? using
+>
+> >>? bar <- readChar('thefile.txt',1e6)
+>
+> the import works perfectly.
+>
+>
+
+
+From phh@80 @end|ng |rom gm@||@com  Fri Mar  4 18:45:01 2022
+From: phh@80 @end|ng |rom gm@||@com (Paul Smith)
+Date: Fri, 4 Mar 2022 17:45:01 +0000
+Subject: [R] 
+ Looking for package for data generation for classification and
+ regression
+In-Reply-To: <YiJGVgbJ+uj/fhaW@iastate.edu>
+References: <CALS=5mqW6y_dfBDGrVQ5rGLwUwS4bSeV+5W1zf+=tifGLYvZ4Q@mail.gmail.com>
+ <YiGc1p7HZZP/jrAq@iastate.edu>
+ <CALS=5moiamk9tzDdrJC05mqA-aiNOw67p6wniyuc8fOhGvZv9A@mail.gmail.com>
+ <YiJGVgbJ+uj/fhaW@iastate.edu>
+Message-ID: <CALS=5mqtHvQJ88aUHJZos_hgZT1emDou7vE62djpMC6_mV3KxQ@mail.gmail.com>
+
+On Fri, Mar 4, 2022 at 5:03 PM Ranjan Maitra <mlmaitra at gmx.com> wrote:
+>
+> > > > I am in need of generating artificial data for machine learning
+> > > > classification and regression analysis. What I am looking for is
+> > > > something similar to Python sklearn.datasets.make_classification and
+> > > > sklearn.datasets.make_regression:
+> > > >
+> > > > https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_classification.html
+> > > >
+> > > > https://scikit-learn.org/stable/modules/generated/sklearn.datasets.make_regression.html
+> > > >
+> > > > I have searched CRAN for something similar, but found nothing. Could
+> > > > someone please help me with this?
+> > >
+> > > Not sure if this helps, but at least for classification and clustering, there is the MixSim package on CRAN which provides classification datasets according to an overall overlap measure.
+> >
+> > Thanks, Ranjan, that is also quite helpful, since clustering is also a
+> > topic of the course!
+>
+> The Clustering Algorithms Referee Package (CARP) uses the same codebase but is more general.
+>
+> https://jmlr.org/papers/v12/melnykov11a.html
+>
+> Unfortunately, it is written in C, so may not help.
+>
+> It is on www.mloss.org at:
+>
+> https://mloss.org/software/view/248/
+>
+> but perhaps should also be moved to github.
+
+That is quite interesting, Ranjan! I hope you will have that on GitHub
+as a R package ready for installation.
+
+Best wishes, Paul
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Fri Mar  4 21:13:40 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Fri, 04 Mar 2022 12:13:40 -0800
+Subject: [R] copying huge strings via clipboard?
+In-Reply-To: <9bb2e8c4-cfbd-89fb-0c92-826d229496cb@comcast.net>
+References: <778a0fb5-08a8-7611-1bb4-ad9dace55bca@witthoft.com>
+ <9bb2e8c4-cfbd-89fb-0c92-826d229496cb@comcast.net>
+Message-ID: <FC0EA404-02CB-4EC5-B39D-ECD928805308@dcn.davis.ca.us>
+
+Windows can handle up to 2GB in the clipboard... but IMO it isn't a good practice to rely on. Use files for reproducibility and portability. It is common for command line shells of all varieties to limit their buffer sizes considerably.
+
+On March 4, 2022 9:34:15 AM PST, David Winsemius <dwinsemius at comcast.net> wrote:
+>
+>On 3/4/22 08:45, Carl Witthoft wrote:
+>> Hi,
+>> This is on Windows10 via the R gui? .? I, admittedly inadvisably, 
+>> tried to create a new character object by first copying a 1-million 
+>> character string (including lead and trail "'" chars) to the clipboard 
+>> and then, in the console,
+>>
+>> >> foo <-
+>> and hitting "paste"
+>>
+>> What I found is that, around 5000 characters, a newline ( "\n") char 
+>> showed up.? Is this something that the Windows Clipboard does, or 
+>> something odd about pasting into a command in R?
+>
+>I'm the wrong person to comment on Windows clipboard features.
+>
+>ISTR that there is a character limit for R command line input, at least 
+>in some or perhaps all R installations.
+>
+>Subject: 	[R] parsing -?input?buffer overflow 
+><http://markmail.org/message/iyjlmfsb4kp63cyi> 	permalink 
+><http://markmail.org/message/iyjlmfsb4kp63cyi>
+>From: 	Prof Brian Ripley (rip... at stats.ox.ac.uk)
+>Date: 	Jun 13, 2008 1:52:06 am
+>List: 	org.r-project.r-help
+>
+>"R does have limits on the command line length (1024 bytes up to 
+>R-devel, 4096 bytes there). What happens if you exceed that depends on 
+>the interface you are using (and you have not told us). Beyond that, the 
+>parser has a limit of MAXELTSIZE (8192 bytes) on strings.
+>
+>I don't see any need for 'improvement' though: why are you entering very 
+>long strings as part of the R program? They are data, and e.g. 
+>readLines() and scan() have no limits on string length beyond those 
+>imposed by R's internals (2^31-1 bytes)."
+>
+>
+>I think that info is still current since a search of the 
+>../manuals/R-int page says:
+>
+>--- copied
+>
+>The|R_StringBuffer|structure needs to be initialized, for example by
+>
+>static R_StringBuffer ex_buff = {NULL, 0, MAXELTSIZE};
+>
+>which uses a default size of|MAXELTSIZE = 8192|bytes.Most current uses 
+>have a static|R_StringBuffer|structure, which allows the (default-sized) 
+>buffer to be shared between calls to e.g.|grep|and even between 
+>functions: this will need to be changed if R ever allows concurrent 
+>evaluation threads.
+>
+>--- end copy
+>
+>
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From @rr@ypro|||e @end|ng |rom y@hoo@com  Sat Mar  5 01:41:57 2022
+From: @rr@ypro|||e @end|ng |rom y@hoo@com (array chip)
+Date: Sat, 5 Mar 2022 00:41:57 +0000 (UTC)
+Subject: [R] linear mixed model using lmer
+References: <306704552.453726.1646440917947.ref@mail.yahoo.com>
+Message-ID: <306704552.453726.1646440917947@mail.yahoo.com>
+
+Dear all, I have this simple dataset to measure the yeild of a crop collected in 2 batches (attached). when I ran a simple inear mixed model using lmer to estimate within-batch and between-batch variability, the between-batch variability is 0. The run showed that data is singular. Does anyone know why the data is singular and what's the reason for 0 variability? is it because the dataset only has 2 batches?
+> daty<-read.table("datx.txt",sep='\t',header=T,row.names=NULL)
+> library(lme4)> lmer(yield~1+(1|batch),daty)
+boundary (singular) fit: see ?isSingular
+Linear mixed model fit by REML ['lmerMod']
+Formula: yield ~ 1 + (1 | batch)
+? ?Data: daty
+REML criterion at convergence: 115.6358
+Random effects:
+?Groups? ?Name? ? ? ? Std.Dev.
+?batch? ? (Intercept) 0.000? ?
+?Residual? ? ? ? ? ? ?2.789? ?
+Number of obs: 24, groups:? batch, 2
+Fixed Effects:
+(Intercept)??
+? ? ? 5.788??
+
+Thanks!
+John
+-------------- next part --------------
+An embedded and charset-unspecified text was scrubbed...
+Name: datx.txt
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20220305/296d04e5/attachment.txt>
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sat Mar  5 01:56:16 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Fri, 04 Mar 2022 16:56:16 -0800
+Subject: [R] linear mixed model using lmer
+In-Reply-To: <306704552.453726.1646440917947@mail.yahoo.com>
+References: <306704552.453726.1646440917947.ref@mail.yahoo.com>
+ <306704552.453726.1646440917947@mail.yahoo.com>
+Message-ID: <A7919738-CB75-4978-8862-614CE21F2A8A@dcn.davis.ca.us>
+
+a) There is a mailing list for that: https://stat.ethz.ch/mailman/listinfo/r-sig-mixed-models
+
+b) Read the Posting Guide, as most attachment types are removed to avoid propagating worms/viruses. (None seen upon receipt of this email.)
+
+On March 4, 2022 4:41:57 PM PST, array chip via R-help <r-help at r-project.org> wrote:
+>Dear all, I have this simple dataset to measure the yeild of a crop collected in 2 batches (attached). when I ran a simple inear mixed model using lmer to estimate within-batch and between-batch variability, the between-batch variability is 0. The run showed that data is singular. Does anyone know why the data is singular and what's the reason for 0 variability? is it because the dataset only has 2 batches?
+>> daty<-read.table("datx.txt",sep='\t',header=T,row.names=NULL)
+>> library(lme4)> lmer(yield~1+(1|batch),daty)
+>boundary (singular) fit: see ?isSingular
+>Linear mixed model fit by REML ['lmerMod']
+>Formula: yield ~ 1 + (1 | batch)
+>? ?Data: daty
+>REML criterion at convergence: 115.6358
+>Random effects:
+>?Groups? ?Name? ? ? ? Std.Dev.
+>?batch? ? (Intercept) 0.000? ?
+>?Residual? ? ? ? ? ? ?2.789? ?
+>Number of obs: 24, groups:? batch, 2
+>Fixed Effects:
+>(Intercept)??
+>? ? ? 5.788??
+>
+>Thanks!
+>John
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From @rr@ypro|||e @end|ng |rom y@hoo@com  Sat Mar  5 02:05:59 2022
+From: @rr@ypro|||e @end|ng |rom y@hoo@com (array chip)
+Date: Sat, 5 Mar 2022 01:05:59 +0000 (UTC)
+Subject: [R] linear mixed model using lmer
+In-Reply-To: <A7919738-CB75-4978-8862-614CE21F2A8A@dcn.davis.ca.us>
+References: <306704552.453726.1646440917947.ref@mail.yahoo.com>
+ <306704552.453726.1646440917947@mail.yahoo.com>
+ <A7919738-CB75-4978-8862-614CE21F2A8A@dcn.davis.ca.us>
+Message-ID: <325378712.461321.1646442359534@mail.yahoo.com>
+
+ Thanks Jeff for reminding me that the attachment is removed. I put it in my google drive if anyone wants to test the data (https://drive.google.com/file/d/1lgVZVLHeecp9a_sFxEPeg6353O-qXZhM/view?usp=sharing)
+I'll try the mixed model mailing list as well.
+John
+    On Friday, March 4, 2022, 04:56:20 PM PST, Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrote:  
+ 
+ a) There is a mailing list for that: https://stat.ethz.ch/mailman/listinfo/r-sig-mixed-models
+
+b) Read the Posting Guide, as most attachment types are removed to avoid propagating worms/viruses. (None seen upon receipt of this email.)
+
+On March 4, 2022 4:41:57 PM PST, array chip via R-help <r-help at r-project.org> wrote:
+>Dear all, I have this simple dataset to measure the yeild of a crop collected in 2 batches (attached). when I ran a simple inear mixed model using lmer to estimate within-batch and between-batch variability, the between-batch variability is 0. The run showed that data is singular. Does anyone know why the data is singular and what's the reason for 0 variability? is it because the dataset only has 2 batches?
+>> daty<-read.table("datx.txt",sep='\t',header=T,row.names=NULL)
+>> library(lme4)> lmer(yield~1+(1|batch),daty)
+>boundary (singular) fit: see ?isSingular
+>Linear mixed model fit by REML ['lmerMod']
+>Formula: yield ~ 1 + (1 | batch)
+>? ?Data: daty
+>REML criterion at convergence: 115.6358
+>Random effects:
+>?Groups? ?Name? ? ? ? Std.Dev.
+>?batch? ? (Intercept) 0.000? ?
+>?Residual? ? ? ? ? ? ?2.789? ?
+>Number of obs: 24, groups:? batch, 2
+>Fixed Effects:
+>(Intercept)??
+>? ? ? 5.788??
+>
+>Thanks!
+>John
+-- 
+Sent from my phone. Please excuse my brevity.
+  
+	[[alternative HTML version deleted]]
+
+
