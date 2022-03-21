@@ -13210,3 +13210,629 @@ and provide commented, minimal, self-contained, reproducible code.
 	[[alternative HTML version deleted]]
 
 
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Mar 19 11:52:22 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 19 Mar 2022 06:52:22 -0400
+Subject: [R] Converting two byte encoding to UTF-8
+Message-ID: <21371900-539f-90e9-ea45-a2c580698d50@gmail.com>
+
+I have a file that includes Japanese characters encoded using the 
+"JIS_X0208-1997" encoding.  According to iconvlist(), an earlier 
+revision "JIS_X0208-1990" is supported, so I'd like to try that to 
+decode them.
+
+However, I can't seem to find how to provide input to iconv() to do it. 
+This is a two-byte encoding, so one character has bytes
+
+ > as.raw(result[[1]]$kanji)
+[1] b0 a1
+
+But this is being interpreted as two characters by iconv():
+
+ > iconv(as.raw(result[[1]]$kanji), from = "JIS_X0208-1990", to = "UTF-8")
+[1] "?" "?"
+
+I can't seem to find any input that iconv() will accept to treat this as 
+a single character.  (I believe the answer should be ? , if that helps.) 
+  How do I tell it to use 0xb0a1 (or 0xa1b0, if that's the right byte 
+order)?  I just see NA:
+
+ >  iconv(0xb0a1, from = "JIS_X0208-1990", to = "UTF-8")
+[1] NA
+ > iconv(0xa1b0, from = "JIS_X0208-1990", to = "UTF-8")
+[1] NA
+
+Duncan Murdoch
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Mar 19 13:35:14 2022
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 19 Mar 2022 08:35:14 -0400
+Subject: [R] Converting two byte encoding to UTF-8
+In-Reply-To: <21371900-539f-90e9-ea45-a2c580698d50@gmail.com>
+References: <21371900-539f-90e9-ea45-a2c580698d50@gmail.com>
+Message-ID: <944907c9-5e8d-2b3e-4dad-1463b5560709@gmail.com>
+
+I have solved it!
+
+First, the bytes I have are offset by 0x80 from what they should 
+contain.  The actual encoding of ? is 0x30 0x21.  But subtracting 0x80 
+isn't enough; they are still treated as two characters:
+
+ > iconv(as.raw(result[[1]]$kanji-0x80), from = "JIS_X0208-1990", 
+to="UTF-8")
+[1] "?" "?"
+
+However, if I put those bytes in a list entry, it works:
+
+ > iconv(list(as.raw(result[[1]]$kanji-0x80)), from = "JIS_X0208-1990", 
+to="UTF-8")
+[1] "?"
+
+Duncan Murdoch
+
+
+On 19/03/2022 6:52 a.m., Duncan Murdoch wrote:
+> I have a file that includes Japanese characters encoded using the
+> "JIS_X0208-1997" encoding.  According to iconvlist(), an earlier
+> revision "JIS_X0208-1990" is supported, so I'd like to try that to
+> decode them.
+> 
+> However, I can't seem to find how to provide input to iconv() to do it.
+> This is a two-byte encoding, so one character has bytes
+> 
+>   > as.raw(result[[1]]$kanji)
+> [1] b0 a1
+> 
+> But this is being interpreted as two characters by iconv():
+> 
+>   > iconv(as.raw(result[[1]]$kanji), from = "JIS_X0208-1990", to = "UTF-8")
+> [1] "?" "?"
+> 
+> I can't seem to find any input that iconv() will accept to treat this as
+> a single character.  (I believe the answer should be ? , if that helps.)
+>    How do I tell it to use 0xb0a1 (or 0xa1b0, if that's the right byte
+> order)?  I just see NA:
+> 
+>   >  iconv(0xb0a1, from = "JIS_X0208-1990", to = "UTF-8")
+> [1] NA
+>   > iconv(0xa1b0, from = "JIS_X0208-1990", to = "UTF-8")
+> [1] NA
+> 
+> Duncan Murdoch
+>
+
+
+From re|chm@nj @end|ng |rom @bcg|ob@|@net  Sun Mar 20 02:15:34 2022
+From: re|chm@nj @end|ng |rom @bcg|ob@|@net (Jeff Reichman)
+Date: Sat, 19 Mar 2022 20:15:34 -0500
+Subject: [R] Combining data.frames
+References: <001d01d83bf8$00d11420$02733c60$.ref@sbcglobal.net>
+Message-ID: <001d01d83bf8$00d11420$02733c60$@sbcglobal.net>
+
+R-Help Community
+
+I'm trying to combine two data.frames which each containing 10 columns of
+which they each share two common fields. Here are two small test datasets.
+
+df1 <- data.frame(date =
+c("2021-1-1","2021-1-1","2021-1-1","2021-1-1","2021-1-1",
+ 
+"2021-1-2","2021-1-2","2021-1-3","2021-1-3","2021-1-3"),
+                  geo_hash =
+c("abc123","abc123","abc456","abc789","abc246","abc123",
+                               "asd123","abc789","abc890","abc123"),
+                  ad_id = c("a12345","b12345","a12345","a12345","c12345",
+                            "b12345","b12345","a12345","b12345","a12345"))
+df2 <- data.frame(date =
+c("2021-1-1","2021-1-1","2021-1-2","2021-1-3","2021-1-3"),
+                  geo_hash =
+c("abc123","abc456","abc123","abc789","abc890"),
+                  event = c("shoting","ied","protest","riot","protest"))
+
+I'm trying to combine them such that I get a combined data.frames such as 
+
+date		geo_hash	ad_id		event
+1/1/2021	abc123		a12345		shoting
+1/1/2021	abc123		b12345	
+1/1/2021	abc456		a12345		ied
+1/1/2021	abc789		a12345	
+1/1/2021	abc246		c12345	
+
+Jeff
+
+
+From twoo|m@n @end|ng |rom ont@rgettek@com  Sun Mar 20 02:19:30 2022
+From: twoo|m@n @end|ng |rom ont@rgettek@com (Tom Woolman)
+Date: Sat, 19 Mar 2022 21:19:30 -0400
+Subject: [R] Combining data.frames
+In-Reply-To: <001d01d83bf8$00d11420$02733c60$@sbcglobal.net>
+References: <001d01d83bf8$00d11420$02733c60$.ref@sbcglobal.net>
+ <001d01d83bf8$00d11420$02733c60$@sbcglobal.net>
+Message-ID: <ae4664a2c2a8d9ab0931cb620c88242a@ontargettek.com>
+
+Have you looked at the merge function in base R?
+
+https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/merge
+
+
+On 2022-03-19 21:15, Jeff Reichman wrote:
+> R-Help Community
+> 
+> I'm trying to combine two data.frames which each containing 10 columns 
+> of
+> which they each share two common fields. Here are two small test 
+> datasets.
+> 
+> df1 <- data.frame(date =
+> c("2021-1-1","2021-1-1","2021-1-1","2021-1-1","2021-1-1",
+> 
+> "2021-1-2","2021-1-2","2021-1-3","2021-1-3","2021-1-3"),
+>                   geo_hash =
+> c("abc123","abc123","abc456","abc789","abc246","abc123",
+>                                "asd123","abc789","abc890","abc123"),
+>                   ad_id = 
+> c("a12345","b12345","a12345","a12345","c12345",
+>                             
+> "b12345","b12345","a12345","b12345","a12345"))
+> df2 <- data.frame(date =
+> c("2021-1-1","2021-1-1","2021-1-2","2021-1-3","2021-1-3"),
+>                   geo_hash =
+> c("abc123","abc456","abc123","abc789","abc890"),
+>                   event = 
+> c("shoting","ied","protest","riot","protest"))
+> 
+> I'm trying to combine them such that I get a combined data.frames such 
+> as
+> 
+> date		geo_hash	ad_id		event
+> 1/1/2021	abc123		a12345		shoting
+> 1/1/2021	abc123		b12345
+> 1/1/2021	abc456		a12345		ied
+> 1/1/2021	abc789		a12345
+> 1/1/2021	abc246		c12345
+> 
+> Jeff
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From re|chm@nj @end|ng |rom @bcg|ob@|@net  Sun Mar 20 02:23:02 2022
+From: re|chm@nj @end|ng |rom @bcg|ob@|@net (Jeff Reichman)
+Date: Sat, 19 Mar 2022 20:23:02 -0500
+Subject: [R] Combining data.frames
+In-Reply-To: <ae4664a2c2a8d9ab0931cb620c88242a@ontargettek.com>
+References: <001d01d83bf8$00d11420$02733c60$.ref@sbcglobal.net>
+ <001d01d83bf8$00d11420$02733c60$@sbcglobal.net>
+ <ae4664a2c2a8d9ab0931cb620c88242a@ontargettek.com>
+Message-ID: <001f01d83bf9$0be19be0$23a4d3a0$@sbcglobal.net>
+
+Evening Tom
+
+Yest I've been playing with the merge function.  But haven't been able to
+achieve what I need. Could maybe the way to to and it might be my syntax
+
+-----Original Message-----
+From: Tom Woolman <twoolman at ontargettek.com> 
+Sent: Saturday, March 19, 2022 8:20 PM
+To: reichmanj at sbcglobal.net
+Cc: r-help at r-project.org
+Subject: Re: [R] Combining data.frames
+
+Have you looked at the merge function in base R?
+
+https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/merge
+
+
+On 2022-03-19 21:15, Jeff Reichman wrote:
+> R-Help Community
+> 
+> I'm trying to combine two data.frames which each containing 10 columns 
+> of which they each share two common fields. Here are two small test 
+> datasets.
+> 
+> df1 <- data.frame(date =
+> c("2021-1-1","2021-1-1","2021-1-1","2021-1-1","2021-1-1",
+> 
+> "2021-1-2","2021-1-2","2021-1-3","2021-1-3","2021-1-3"),
+>                   geo_hash =
+> c("abc123","abc123","abc456","abc789","abc246","abc123",
+>                                "asd123","abc789","abc890","abc123"),
+>                   ad_id =
+> c("a12345","b12345","a12345","a12345","c12345",
+>                             
+> "b12345","b12345","a12345","b12345","a12345"))
+> df2 <- data.frame(date =
+> c("2021-1-1","2021-1-1","2021-1-2","2021-1-3","2021-1-3"),
+>                   geo_hash =
+> c("abc123","abc456","abc123","abc789","abc890"),
+>                   event =
+> c("shoting","ied","protest","riot","protest"))
+> 
+> I'm trying to combine them such that I get a combined data.frames such 
+> as
+> 
+> date		geo_hash	ad_id		event
+> 1/1/2021	abc123		a12345		shoting
+> 1/1/2021	abc123		b12345
+> 1/1/2021	abc456		a12345		ied
+> 1/1/2021	abc789		a12345
+> 1/1/2021	abc246		c12345
+> 
+> Jeff
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From twoo|m@n @end|ng |rom ont@rgettek@com  Sun Mar 20 02:27:07 2022
+From: twoo|m@n @end|ng |rom ont@rgettek@com (Tom Woolman)
+Date: Sat, 19 Mar 2022 21:27:07 -0400
+Subject: [R] Combining data.frames
+In-Reply-To: <001f01d83bf9$0be19be0$23a4d3a0$@sbcglobal.net>
+References: <001d01d83bf8$00d11420$02733c60$.ref@sbcglobal.net>
+ <001d01d83bf8$00d11420$02733c60$@sbcglobal.net>
+ <ae4664a2c2a8d9ab0931cb620c88242a@ontargettek.com>
+ <001f01d83bf9$0be19be0$23a4d3a0$@sbcglobal.net>
+Message-ID: <07dbad00d27a2c935c8a6ec9c68ead11@ontargettek.com>
+
+You can also do "SQL-like" joins in the tidyverse with dplyr.
+
+
+On 2022-03-19 21:23, Jeff Reichman wrote:
+> Evening Tom
+> 
+> Yest I've been playing with the merge function.  But haven't been able 
+> to
+> achieve what I need. Could maybe the way to to and it might be my 
+> syntax
+> 
+> -----Original Message-----
+> From: Tom Woolman <twoolman at ontargettek.com>
+> Sent: Saturday, March 19, 2022 8:20 PM
+> To: reichmanj at sbcglobal.net
+> Cc: r-help at r-project.org
+> Subject: Re: [R] Combining data.frames
+> 
+> Have you looked at the merge function in base R?
+> 
+> https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/merge
+> 
+> 
+> On 2022-03-19 21:15, Jeff Reichman wrote:
+>> R-Help Community
+>> 
+>> I'm trying to combine two data.frames which each containing 10 columns
+>> of which they each share two common fields. Here are two small test
+>> datasets.
+>> 
+>> df1 <- data.frame(date =
+>> c("2021-1-1","2021-1-1","2021-1-1","2021-1-1","2021-1-1",
+>> 
+>> "2021-1-2","2021-1-2","2021-1-3","2021-1-3","2021-1-3"),
+>>                   geo_hash =
+>> c("abc123","abc123","abc456","abc789","abc246","abc123",
+>>                                "asd123","abc789","abc890","abc123"),
+>>                   ad_id =
+>> c("a12345","b12345","a12345","a12345","c12345",
+>> 
+>> "b12345","b12345","a12345","b12345","a12345"))
+>> df2 <- data.frame(date =
+>> c("2021-1-1","2021-1-1","2021-1-2","2021-1-3","2021-1-3"),
+>>                   geo_hash =
+>> c("abc123","abc456","abc123","abc789","abc890"),
+>>                   event =
+>> c("shoting","ied","protest","riot","protest"))
+>> 
+>> I'm trying to combine them such that I get a combined data.frames such
+>> as
+>> 
+>> date		geo_hash	ad_id		event
+>> 1/1/2021	abc123		a12345		shoting
+>> 1/1/2021	abc123		b12345
+>> 1/1/2021	abc456		a12345		ied
+>> 1/1/2021	abc789		a12345
+>> 1/1/2021	abc246		c12345
+>> 
+>> Jeff
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From re|chm@nj @end|ng |rom @bcg|ob@|@net  Sun Mar 20 02:31:19 2022
+From: re|chm@nj @end|ng |rom @bcg|ob@|@net (Jeff Reichman)
+Date: Sat, 19 Mar 2022 20:31:19 -0500
+Subject: [R] Combining data.frames
+In-Reply-To: <07dbad00d27a2c935c8a6ec9c68ead11@ontargettek.com>
+References: <001d01d83bf8$00d11420$02733c60$.ref@sbcglobal.net>
+ <001d01d83bf8$00d11420$02733c60$@sbcglobal.net>
+ <ae4664a2c2a8d9ab0931cb620c88242a@ontargettek.com>
+ <001f01d83bf9$0be19be0$23a4d3a0$@sbcglobal.net>
+ <07dbad00d27a2c935c8a6ec9c68ead11@ontargettek.com>
+Message-ID: <002a01d83bfa$33bf56b0$9b3e0410$@sbcglobal.net>
+
+Yes I'm reading that presently
+
+The closest I've gotten has been
+
+df3 <- merge(df1, df2, all = TRUE)
+
+-----Original Message-----
+From: Tom Woolman <twoolman at ontargettek.com> 
+Sent: Saturday, March 19, 2022 8:27 PM
+To: reichmanj at sbcglobal.net
+Cc: r-help at r-project.org
+Subject: Re: [R] Combining data.frames
+
+You can also do "SQL-like" joins in the tidyverse with dplyr.
+
+
+On 2022-03-19 21:23, Jeff Reichman wrote:
+> Evening Tom
+> 
+> Yest I've been playing with the merge function.  But haven't been able 
+> to achieve what I need. Could maybe the way to to and it might be my 
+> syntax
+> 
+> -----Original Message-----
+> From: Tom Woolman <twoolman at ontargettek.com>
+> Sent: Saturday, March 19, 2022 8:20 PM
+> To: reichmanj at sbcglobal.net
+> Cc: r-help at r-project.org
+> Subject: Re: [R] Combining data.frames
+> 
+> Have you looked at the merge function in base R?
+> 
+> https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/mer
+> ge
+> 
+> 
+> On 2022-03-19 21:15, Jeff Reichman wrote:
+>> R-Help Community
+>> 
+>> I'm trying to combine two data.frames which each containing 10 
+>> columns of which they each share two common fields. Here are two 
+>> small test datasets.
+>> 
+>> df1 <- data.frame(date =
+>> c("2021-1-1","2021-1-1","2021-1-1","2021-1-1","2021-1-1",
+>> 
+>> "2021-1-2","2021-1-2","2021-1-3","2021-1-3","2021-1-3"),
+>>                   geo_hash =
+>> c("abc123","abc123","abc456","abc789","abc246","abc123",
+>>                                "asd123","abc789","abc890","abc123"),
+>>                   ad_id =
+>> c("a12345","b12345","a12345","a12345","c12345",
+>> 
+>> "b12345","b12345","a12345","b12345","a12345"))
+>> df2 <- data.frame(date =
+>> c("2021-1-1","2021-1-1","2021-1-2","2021-1-3","2021-1-3"),
+>>                   geo_hash =
+>> c("abc123","abc456","abc123","abc789","abc890"),
+>>                   event =
+>> c("shoting","ied","protest","riot","protest"))
+>> 
+>> I'm trying to combine them such that I get a combined data.frames 
+>> such as
+>> 
+>> date		geo_hash	ad_id		event
+>> 1/1/2021	abc123		a12345		shoting
+>> 1/1/2021	abc123		b12345
+>> 1/1/2021	abc456		a12345		ied
+>> 1/1/2021	abc789		a12345
+>> 1/1/2021	abc246		c12345
+>> 
+>> Jeff
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From re|chm@nj @end|ng |rom @bcg|ob@|@net  Sun Mar 20 02:38:01 2022
+From: re|chm@nj @end|ng |rom @bcg|ob@|@net (Jeff Reichman)
+Date: Sat, 19 Mar 2022 20:38:01 -0500
+Subject: [R] Combining data.frames
+In-Reply-To: <07dbad00d27a2c935c8a6ec9c68ead11@ontargettek.com>
+References: <001d01d83bf8$00d11420$02733c60$.ref@sbcglobal.net>
+ <001d01d83bf8$00d11420$02733c60$@sbcglobal.net>
+ <ae4664a2c2a8d9ab0931cb620c88242a@ontargettek.com>
+ <001f01d83bf9$0be19be0$23a4d3a0$@sbcglobal.net>
+ <07dbad00d27a2c935c8a6ec9c68ead11@ontargettek.com>
+Message-ID: <002c01d83bfb$235ee000$6a1ca000$@sbcglobal.net>
+
+Tom
+
+Looks like I figured it out. Syntax issue - wrong "all" argument  (I think)
+
+-----Original Message-----
+From: Tom Woolman <twoolman at ontargettek.com> 
+Sent: Saturday, March 19, 2022 8:27 PM
+To: reichmanj at sbcglobal.net
+Cc: r-help at r-project.org
+Subject: Re: [R] Combining data.frames
+
+You can also do "SQL-like" joins in the tidyverse with dplyr.
+
+
+On 2022-03-19 21:23, Jeff Reichman wrote:
+> Evening Tom
+> 
+> Yest I've been playing with the merge function.  But haven't been able 
+> to achieve what I need. Could maybe the way to to and it might be my 
+> syntax
+> 
+> -----Original Message-----
+> From: Tom Woolman <twoolman at ontargettek.com>
+> Sent: Saturday, March 19, 2022 8:20 PM
+> To: reichmanj at sbcglobal.net
+> Cc: r-help at r-project.org
+> Subject: Re: [R] Combining data.frames
+> 
+> Have you looked at the merge function in base R?
+> 
+> https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/mer
+> ge
+> 
+> 
+> On 2022-03-19 21:15, Jeff Reichman wrote:
+>> R-Help Community
+>> 
+>> I'm trying to combine two data.frames which each containing 10 
+>> columns of which they each share two common fields. Here are two 
+>> small test datasets.
+>> 
+>> df1 <- data.frame(date =
+>> c("2021-1-1","2021-1-1","2021-1-1","2021-1-1","2021-1-1",
+>> 
+>> "2021-1-2","2021-1-2","2021-1-3","2021-1-3","2021-1-3"),
+>>                   geo_hash =
+>> c("abc123","abc123","abc456","abc789","abc246","abc123",
+>>                                "asd123","abc789","abc890","abc123"),
+>>                   ad_id =
+>> c("a12345","b12345","a12345","a12345","c12345",
+>> 
+>> "b12345","b12345","a12345","b12345","a12345"))
+>> df2 <- data.frame(date =
+>> c("2021-1-1","2021-1-1","2021-1-2","2021-1-3","2021-1-3"),
+>>                   geo_hash =
+>> c("abc123","abc456","abc123","abc789","abc890"),
+>>                   event =
+>> c("shoting","ied","protest","riot","protest"))
+>> 
+>> I'm trying to combine them such that I get a combined data.frames 
+>> such as
+>> 
+>> date		geo_hash	ad_id		event
+>> 1/1/2021	abc123		a12345		shoting
+>> 1/1/2021	abc123		b12345
+>> 1/1/2021	abc456		a12345		ied
+>> 1/1/2021	abc789		a12345
+>> 1/1/2021	abc246		c12345
+>> 
+>> Jeff
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From twoo|m@n @end|ng |rom ont@rgettek@com  Sun Mar 20 02:48:26 2022
+From: twoo|m@n @end|ng |rom ont@rgettek@com (Tom Woolman)
+Date: Sat, 19 Mar 2022 21:48:26 -0400
+Subject: [R] Combining data.frames
+In-Reply-To: <002c01d83bfb$235ee000$6a1ca000$@sbcglobal.net>
+References: <001d01d83bf8$00d11420$02733c60$.ref@sbcglobal.net>
+ <001d01d83bf8$00d11420$02733c60$@sbcglobal.net>
+ <ae4664a2c2a8d9ab0931cb620c88242a@ontargettek.com>
+ <001f01d83bf9$0be19be0$23a4d3a0$@sbcglobal.net>
+ <07dbad00d27a2c935c8a6ec9c68ead11@ontargettek.com>
+ <002c01d83bfb$235ee000$6a1ca000$@sbcglobal.net>
+Message-ID: <5c94b7ebe8a870dc4b1db34c024c7f41@ontargettek.com>
+
+I'm trying hard to take tonight off and avoid booting up the laptop and 
+launching R... :)   but you need to merge by the primary key(s), e.g. 
+the common columns (common IVs) shared between the two dataframes.
+
+
+On 2022-03-19 21:38, Jeff Reichman wrote:
+> Tom
+> 
+> Looks like I figured it out. Syntax issue - wrong "all" argument  (I 
+> think)
+> 
+> -----Original Message-----
+> From: Tom Woolman <twoolman at ontargettek.com>
+> Sent: Saturday, March 19, 2022 8:27 PM
+> To: reichmanj at sbcglobal.net
+> Cc: r-help at r-project.org
+> Subject: Re: [R] Combining data.frames
+> 
+> You can also do "SQL-like" joins in the tidyverse with dplyr.
+> 
+> 
+> On 2022-03-19 21:23, Jeff Reichman wrote:
+>> Evening Tom
+>> 
+>> Yest I've been playing with the merge function.  But haven't been able
+>> to achieve what I need. Could maybe the way to to and it might be my
+>> syntax
+>> 
+>> -----Original Message-----
+>> From: Tom Woolman <twoolman at ontargettek.com>
+>> Sent: Saturday, March 19, 2022 8:20 PM
+>> To: reichmanj at sbcglobal.net
+>> Cc: r-help at r-project.org
+>> Subject: Re: [R] Combining data.frames
+>> 
+>> Have you looked at the merge function in base R?
+>> 
+>> https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/mer
+>> ge
+>> 
+>> 
+>> On 2022-03-19 21:15, Jeff Reichman wrote:
+>>> R-Help Community
+>>> 
+>>> I'm trying to combine two data.frames which each containing 10
+>>> columns of which they each share two common fields. Here are two
+>>> small test datasets.
+>>> 
+>>> df1 <- data.frame(date =
+>>> c("2021-1-1","2021-1-1","2021-1-1","2021-1-1","2021-1-1",
+>>> 
+>>> "2021-1-2","2021-1-2","2021-1-3","2021-1-3","2021-1-3"),
+>>>                   geo_hash =
+>>> c("abc123","abc123","abc456","abc789","abc246","abc123",
+>>>                                "asd123","abc789","abc890","abc123"),
+>>>                   ad_id =
+>>> c("a12345","b12345","a12345","a12345","c12345",
+>>> 
+>>> "b12345","b12345","a12345","b12345","a12345"))
+>>> df2 <- data.frame(date =
+>>> c("2021-1-1","2021-1-1","2021-1-2","2021-1-3","2021-1-3"),
+>>>                   geo_hash =
+>>> c("abc123","abc456","abc123","abc789","abc890"),
+>>>                   event =
+>>> c("shoting","ied","protest","riot","protest"))
+>>> 
+>>> I'm trying to combine them such that I get a combined data.frames
+>>> such as
+>>> 
+>>> date		geo_hash	ad_id		event
+>>> 1/1/2021	abc123		a12345		shoting
+>>> 1/1/2021	abc123		b12345
+>>> 1/1/2021	abc456		a12345		ied
+>>> 1/1/2021	abc789		a12345
+>>> 1/1/2021	abc246		c12345
+>>> 
+>>> Jeff
+>>> 
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+
+
