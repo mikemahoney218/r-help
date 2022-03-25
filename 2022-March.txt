@@ -19224,3 +19224,2053 @@ Rui Barradas
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Wed Mar 23 06:50:28 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Wed, 23 Mar 2022 05:50:28 +0000
+Subject: [R] bootstraping by groups
+In-Reply-To: <72024f64-8866-bb2f-cd79-df2fce7605e0@sapo.pt>
+References: <CAMwU6B0a2zzxbbb4gu11tviBrB6ZdsMi8dSrCpjgCU9FxB3Y1g@mail.gmail.com>
+ <72024f64-8866-bb2f-cd79-df2fce7605e0@sapo.pt>
+Message-ID: <9dac775c-b4b1-6ae2-1bf7-577e6925ff59@sapo.pt>
+
+Hello,
+
+Sorry, there's an error.
+
+?s 22:33 de 22/03/2022, Rui Barradas escreveu:
+> Hello,
+> 
+> The error is in
+> 
+> boot.pop. <- boot(daT, bootprop, 999)
+> 
+> 
+> Here are basse R and tidyverse solutions. But first, create a test data 
+> set. The values in vector 'year' are the iris species names, I haven't 
+> changed them.
+> 
+> 
+> daT <- iris[3:5]
+> names(daT) <- c("BothTimes", "onlyoneTime", "year")
+> 
+> 
+> And the bootstrap function.
+> 
+> 
+> library(boot)
+> 
+> bootprop <- function(data, index){
+>  ? d <- data[index, ]
+>  ? sum(d[["BothTimes"]], na.rm = TRUE)/sum(d[["onlyoneTime"]], na.rm = 
+> TRUE)
+> }
+> 
+> 
+> 
+> 1. Base R
+> 
+> Only one package needs to be loaded and the code is simple.
+> 
+> 
+> # split the data by year
+> sp <- split(daT, daT$year)
+> lapply(sp, \(x) boot(x, bootprop, 999)$t0)
+> 
+> 
+> 2. tidyverse
+> 
+> Also load packagges dplyr and purrr. To call purrr::map_dfr an extra 
+> function is needed.
+> 
+> 
+> library(dplyr)
+> library(purrr)
+> 
+> boot_fun <- function(data, FUN, R){
+>  ? boot.prop <- boot(data, FUN, R)
+>  ? c(boot.prop = boot.prop$t0)
+> }
+
+This function should be
+
+
+boot_fun <- function(data, FUN, R){
+   boot.prop <- boot(data, FUN, R)
+   c(boot.prop = mean(boot.prop$t))
+}
+
+
+Hope this helps,
+
+Rui Barradas
+> 
+> daT %>%
+>  ? group_split(year) %>%
+>  ? map_dfr(boot_fun, bootprop, R = 999)
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> ?s 20:45 de 22/03/2022, Marna Wagley escreveu:
+>> Hi All,
+>> I have many classes and was trying to estimate the value using a
+>> bootstrapping approach for each group with the following code. 
+>> However, it
+>> did not work when I added a group in the code. Do you have any 
+>> suggestions?
+>> thanks,
+>>
+>>
+>> bootprop <- function(data, index){
+>> ?? d <- data[index, ]
+>> ?? sum(d[["BothTimes"]], na.rm = TRUE)/sum(d[["onlyoneTime"]], na.rm = 
+>> TRUE)
+>> }
+>>
+>> daT %>%
+>> ?? group_by(year) %>%
+>> ?? boot.pop. <- boot(daT, bootprop, 999) %>%
+>> boot.pop.$t0)
+>>
+>> ????[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Mar 23 07:48:41 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 23 Mar 2022 09:48:41 +0300
+Subject: [R] Help with using the huxreg() function
+In-Reply-To: <CAB9BkXxYKyo1HEQRJno-Oi2puWrX+XzfvrFCOPtsb10rfJUGTw@mail.gmail.com>
+References: <CAB9BkXxYKyo1HEQRJno-Oi2puWrX+XzfvrFCOPtsb10rfJUGTw@mail.gmail.com>
+Message-ID: <20220323094841.0f624e25@Tarkus>
+
+On Tue, 22 Mar 2022 21:51:19 +0100
+Linda Stefansson <linda.smile.stefansson at gmail.com> wrote:
+
+> The task is to make the table only display the two coefficients
+> that all models have.
+
+> To this point I have made the regression table like this:
+> huxreg(model_1, model_2, model_3, model 4, statistics = c(N = "nobs",
+> R2 = "r.squared"), stars = c(* = 0.1, ** = 0.05, *** = 0.01)).
+
+help(huxreg) describes an argument to huxreg() that defines the
+coefficients to display. You can specify them manually, or use a
+combination of Reduce() and intersect() to make R find out the required
+coefficients for you.
+
+-- 
+Best regards,
+Ivan
+
+
+From Sven@G@rb@de @end|ng |rom med@un|-he|de|berg@de  Wed Mar 23 10:38:34 2022
+From: Sven@G@rb@de @end|ng |rom med@un|-he|de|berg@de (Garbade, Sven)
+Date: Wed, 23 Mar 2022 09:38:34 +0000
+Subject: [R] panel.rect and log scale in lattice plot
+Message-ID: <1648028314164.79932@med.uni-heidelberg.de>
+
+Dear all,
+
+
+I posted this on Stack Overflow, but there is no response, so I try it here again.
+
+
+I'm wondering about how to draw a highlighted rectangle with log y-axis in a trellis/lattice plot. My idea was to use panel.rect(), which works without a log scale:
+
+library(lattice)
+
+set.seed(1)
+
+y <- runif(100, min=1, max=1000)
+x <- seq_along(y)
+
+xyplot(y ~ x,
+       panel=function(x,y,...) {
+           cpl <- current.panel.limits()
+           panel.rect(xleft=cpl$xlim[1], ybottom=10,
+                      xright=cpl$xlim[2], ytop=500,
+                      fill="lightgray", border="lightgray", alpha=.6)
+           panel.xyplot(x,y,...)
+
+       },
+       scales=list(y=list(log=FALSE))
+       )
+
+
+However, when log=TRUE, the rectangle disappears.
+
+
+Are there any ideas? Thanks, Sven
+
+<https://mail.med.uni-heidelberg.de/questions/tagged/,DanaInfo=stackoverflow.com,SSL+r>
+
+
+	[[alternative HTML version deleted]]
+
+
+From tebert @end|ng |rom u||@edu  Wed Mar 23 11:15:23 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Wed, 23 Mar 2022 10:15:23 +0000
+Subject: [R] panel.rect and log scale in lattice plot
+In-Reply-To: <1648028314164.79932@med.uni-heidelberg.de>
+References: <1648028314164.79932@med.uni-heidelberg.de>
+Message-ID: <BN6PR2201MB1553D322CB69E19F217D496DCF189@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+Have you tried the ggplot2 package?
+http://www.sthda.com/english/wiki/ggplot2-add-straight-lines-to-a-plot-horizontal-vertical-and-regression-lines
+
+Tim
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Garbade, Sven via R-help
+Sent: Wednesday, March 23, 2022 5:39 AM
+To: r-help at r-project.org
+Subject: [R] panel.rect and log scale in lattice plot
+
+[External Email]
+
+Dear all,
+
+
+I posted this on Stack Overflow, but there is no response, so I try it here again.
+
+
+I'm wondering about how to draw a highlighted rectangle with log y-axis in a trellis/lattice plot. My idea was to use panel.rect(), which works without a log scale:
+
+library(lattice)
+
+set.seed(1)
+
+y <- runif(100, min=1, max=1000)
+x <- seq_along(y)
+
+xyplot(y ~ x,
+       panel=function(x,y,...) {
+           cpl <- current.panel.limits()
+           panel.rect(xleft=cpl$xlim[1], ybottom=10,
+                      xright=cpl$xlim[2], ytop=500,
+                      fill="lightgray", border="lightgray", alpha=.6)
+           panel.xyplot(x,y,...)
+
+       },
+       scales=list(y=list(log=FALSE))
+       )
+
+
+However, when log=TRUE, the rectangle disappears.
+
+
+Are there any ideas? Thanks, Sven
+
+<https://urldefense.proofpoint.com/v2/url?u=https-3A__mail.med.uni-2Dheidelberg.de_questions_tagged_-2CDanaInfo-3Dstackoverflow.com-2CSSL-2Br&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=FpPsvaC4RAcwCFXTkiSHekD-Kq42a0hxUJvGstcn9J-97cF_sKhux4I2Q2Xoys4N&s=zoK3I2T0bpTMEgeKFzwh3IGQsunArwGKt734uAuYKY4&e= >
+
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=FpPsvaC4RAcwCFXTkiSHekD-Kq42a0hxUJvGstcn9J-97cF_sKhux4I2Q2Xoys4N&s=Ah56En_K57pgqMo-alPPK_pxyzmHpZt4xF7hO3DDpS4&e=
+PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=FpPsvaC4RAcwCFXTkiSHekD-Kq42a0hxUJvGstcn9J-97cF_sKhux4I2Q2Xoys4N&s=Sf4-2puTGAtpoZr1CNzG7wyOZFcVptczggv4aoWUji0&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From Sven@G@rb@de @end|ng |rom med@un|-he|de|berg@de  Wed Mar 23 11:27:50 2022
+From: Sven@G@rb@de @end|ng |rom med@un|-he|de|berg@de (Garbade, Sven)
+Date: Wed, 23 Mar 2022 10:27:50 +0000
+Subject: [R] panel.rect and log scale in lattice plot
+In-Reply-To: <BN6PR2201MB1553D322CB69E19F217D496DCF189@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <1648028314164.79932@med.uni-heidelberg.de>,
+ <BN6PR2201MB1553D322CB69E19F217D496DCF189@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <1648031270660.17366@med.uni-heidelberg.de>
+
+Yes, thanks. The figure is for publication, I started with lattice and I don't like to use two different graph types (lattice and ggplot2). When there is no workaround, I re-create all figures with ggplot2. In the meanwhile, I tried "panel.polygon()", which also does not work.
+
+
+________________________________________
+Von: Ebert,Timothy Aaron <tebert at ufl.edu>
+Gesendet: Mittwoch, 23. M?rz 2022 11:15
+An: Garbade, Sven; r-help at r-project.org
+Betreff: RE: panel.rect and log scale in lattice plot
+
+Have you tried the ggplot2 package?
+http://www.sthda.com/english/wiki/ggplot2-add-straight-lines-to-a-plot-horizontal-vertical-and-regression-lines
+
+Tim
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Garbade, Sven via R-help
+Sent: Wednesday, March 23, 2022 5:39 AM
+To: r-help at r-project.org
+Subject: [R] panel.rect and log scale in lattice plot
+
+[External Email]
+
+Dear all,
+
+
+I posted this on Stack Overflow, but there is no response, so I try it here again.
+
+
+I'm wondering about how to draw a highlighted rectangle with log y-axis in a trellis/lattice plot. My idea was to use panel.rect(), which works without a log scale:
+
+library(lattice)
+
+set.seed(1)
+
+y <- runif(100, min=1, max=1000)
+x <- seq_along(y)
+
+xyplot(y ~ x,
+       panel=function(x,y,...) {
+           cpl <- current.panel.limits()
+           panel.rect(xleft=cpl$xlim[1], ybottom=10,
+                      xright=cpl$xlim[2], ytop=500,
+                      fill="lightgray", border="lightgray", alpha=.6)
+           panel.xyplot(x,y,...)
+
+       },
+       scales=list(y=list(log=FALSE))
+       )
+
+
+However, when log=TRUE, the rectangle disappears.
+
+
+Are there any ideas? Thanks, Sven
+
+<https://urldefense.proofpoint.com/v2/url?u=https-3A__mail.med.uni-2Dheidelberg.de_questions_tagged_-2CDanaInfo-3Dstackoverflow.com-2CSSL-2Br&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=FpPsvaC4RAcwCFXTkiSHekD-Kq42a0hxUJvGstcn9J-97cF_sKhux4I2Q2Xoys4N&s=zoK3I2T0bpTMEgeKFzwh3IGQsunArwGKt734uAuYKY4&e= >
+
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=FpPsvaC4RAcwCFXTkiSHekD-Kq42a0hxUJvGstcn9J-97cF_sKhux4I2Q2Xoys4N&s=Ah56En_K57pgqMo-alPPK_pxyzmHpZt4xF7hO3DDpS4&e=
+PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=FpPsvaC4RAcwCFXTkiSHekD-Kq42a0hxUJvGstcn9J-97cF_sKhux4I2Q2Xoys4N&s=Sf4-2puTGAtpoZr1CNzG7wyOZFcVptczggv4aoWUji0&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Mar 23 11:33:52 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 23 Mar 2022 13:33:52 +0300
+Subject: [R] panel.rect and log scale in lattice plot
+In-Reply-To: <1648028314164.79932@med.uni-heidelberg.de>
+References: <1648028314164.79932@med.uni-heidelberg.de>
+Message-ID: <20220323133352.3d014cc6@arachnoid>
+
+On Wed, 23 Mar 2022 09:38:34 +0000
+"Garbade, Sven via R-help" <r-help at r-project.org> wrote:
+
+>            cpl <- current.panel.limits()
+
+If you str() the return value of current.panel.limits() from the panel
+function with log-scaling enabled, you can see that it contains the
+logarithm of the y-values, as do the y values themselves. This is
+consistent with ?xyplot saying:
+
+>> Note that this is in reality a transformation of the data, not the
+>> axes. Other than the axis labeling, using this feature is no
+>> different than transforming the data in the formula; e.g.,
+>> ?scales=list(x = list(log = 2))? is equivalent to ?y ~ log2(x)?.
+
+...although it could be more explicit.
+
+If you take a logarithm of 10 and 500, lrect() should be able to
+produce a rectangle in the right place.
+
+-- 
+Best regards,
+Ivan
+
+
+From Sven@G@rb@de @end|ng |rom med@un|-he|de|berg@de  Wed Mar 23 11:48:44 2022
+From: Sven@G@rb@de @end|ng |rom med@un|-he|de|berg@de (Garbade, Sven)
+Date: Wed, 23 Mar 2022 10:48:44 +0000
+Subject: [R] panel.rect and log scale in lattice plot
+In-Reply-To: <20220323133352.3d014cc6@arachnoid>
+References: <1648028314164.79932@med.uni-heidelberg.de>,
+ <20220323133352.3d014cc6@arachnoid>
+Message-ID: <1648032524766.95711@med.uni-heidelberg.de>
+
+thanks, this do the trick!
+
+xyplot(y ~ x,
+       panel=function(x,y, ...) {
+           cpl <- current.panel.limits()
+           yseq <- log(c(100,1000))
+           panel.rect(xleft=cpl$xlim[1],
+                      ybottom=yseq[1],
+                      xright=cpl$xlim[2],
+                      ytop=yseq[2],
+                      fill="lightgray", border="lightgray", alpha=.6)
+           panel.xyplot(x,y,...)
+       },
+       scales=list(y=list(log=2))
+       ) 
+
+Best Regards, Sven
+________________________________________
+Von: Ivan Krylov <krylov.r00t at gmail.com>
+Gesendet: Mittwoch, 23. M?rz 2022 11:33
+An: Garbade, Sven via R-help
+Cc: Garbade, Sven
+Betreff: Re: [R] panel.rect and log scale in lattice plot
+
+On Wed, 23 Mar 2022 09:38:34 +0000
+"Garbade, Sven via R-help" <r-help at r-project.org> wrote:
+
+>            cpl <- current.panel.limits()
+
+If you str() the return value of current.panel.limits() from the panel
+function with log-scaling enabled, you can see that it contains the
+logarithm of the y-values, as do the y values themselves. This is
+consistent with ?xyplot saying:
+
+>> Note that this is in reality a transformation of the data, not the
+>> axes. Other than the axis labeling, using this feature is no
+>> different than transforming the data in the formula; e.g.,
+>> ?scales=list(x = list(log = 2))? is equivalent to ?y ~ log2(x)?.
+
+...although it could be more explicit.
+
+If you take a logarithm of 10 and 500, lrect() should be able to
+produce a rectangle in the right place.
+
+--
+Best regards,
+Ivan
+
+
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Wed Mar 23 12:05:00 2022
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Wed, 23 Mar 2022 16:35:00 +0530
+Subject: [R] panel.rect and log scale in lattice plot
+In-Reply-To: <20220323133352.3d014cc6@arachnoid>
+References: <1648028314164.79932@med.uni-heidelberg.de>
+ <20220323133352.3d014cc6@arachnoid>
+Message-ID: <CADfFDC4sPHeiZ+MN7atY3=4opTntPcYYqD+6yi=YM9POLgswMg@mail.gmail.com>
+
+On Wed, Mar 23, 2022 at 4:08 PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>
+> On Wed, 23 Mar 2022 09:38:34 +0000
+> "Garbade, Sven via R-help" <r-help at r-project.org> wrote:
+>
+> >            cpl <- current.panel.limits()
+>
+> If you str() the return value of current.panel.limits() from the panel
+> function with log-scaling enabled, you can see that it contains the
+> logarithm of the y-values, as do the y values themselves. This is
+> consistent with ?xyplot saying:
+>
+> >> Note that this is in reality a transformation of the data, not the
+> >> axes. Other than the axis labeling, using this feature is no
+> >> different than transforming the data in the formula; e.g.,
+> >> ?scales=list(x = list(log = 2))? is equivalent to ?y ~ log2(x)?.
+>
+> ...although it could be more explicit.
+>
+> If you take a logarithm of 10 and 500, lrect() should be able to
+> produce a rectangle in the right place.
+
+Right, "log scales" in lattice simply transform the data, unlike in
+traditional graphics.
+
+If it helps, I could change current.panel.limits() to return
+information on whether the data were transformed. For now, a
+roundabout way to detect this inside the panel function is to use
+trellis.last.object()$y.scales$log etc.
+
+Best,
+-Deepayan
+
+>
+> --
+> Best regards,
+> Ivan
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From Sven@G@rb@de @end|ng |rom med@un|-he|de|berg@de  Wed Mar 23 13:32:05 2022
+From: Sven@G@rb@de @end|ng |rom med@un|-he|de|berg@de (Garbade, Sven)
+Date: Wed, 23 Mar 2022 12:32:05 +0000
+Subject: [R] panel.rect and log scale in lattice plot
+In-Reply-To: <CADfFDC4sPHeiZ+MN7atY3=4opTntPcYYqD+6yi=YM9POLgswMg@mail.gmail.com>
+References: <1648028314164.79932@med.uni-heidelberg.de>
+ <20220323133352.3d014cc6@arachnoid>,
+ <CADfFDC4sPHeiZ+MN7atY3=4opTntPcYYqD+6yi=YM9POLgswMg@mail.gmail.com>
+Message-ID: <1648038725054.91539@med.uni-heidelberg.de>
+
+using trellis.last.object()$y.scales$log helps a lot, thanks! I now check whether data were transformed and apply an appropriate transformation if needed. Maybe it helps when current.panel.limit() has information about transformations, so someone doesn't need to call 'trellis.last.object()', too.
+
+________________________________________
+Von: Deepayan Sarkar <deepayan.sarkar at gmail.com>
+Gesendet: Mittwoch, 23. M?rz 2022 12:05
+An: Ivan Krylov
+Cc: Garbade, Sven via R-help; Garbade, Sven
+Betreff: Re: [R] panel.rect and log scale in lattice plot
+
+On Wed, Mar 23, 2022 at 4:08 PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>
+> On Wed, 23 Mar 2022 09:38:34 +0000
+> "Garbade, Sven via R-help" <r-help at r-project.org> wrote:
+>
+> >            cpl <- current.panel.limits()
+>
+> If you str() the return value of current.panel.limits() from the panel
+> function with log-scaling enabled, you can see that it contains the
+> logarithm of the y-values, as do the y values themselves. This is
+> consistent with ?xyplot saying:
+>
+> >> Note that this is in reality a transformation of the data, not the
+> >> axes. Other than the axis labeling, using this feature is no
+> >> different than transforming the data in the formula; e.g.,
+> >> ?scales=list(x = list(log = 2))? is equivalent to ?y ~ log2(x)?.
+>
+> ...although it could be more explicit.
+>
+> If you take a logarithm of 10 and 500, lrect() should be able to
+> produce a rectangle in the right place.
+
+Right, "log scales" in lattice simply transform the data, unlike in
+traditional graphics.
+
+If it helps, I could change current.panel.limits() to return
+information on whether the data were transformed. For now, a
+roundabout way to detect this inside the panel function is to use
+trellis.last.object()$y.scales$log etc.
+
+Best,
+-Deepayan
+
+>
+> --
+> Best regards,
+> Ivan
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From n|ckmwr@y @end|ng |rom gm@||@com  Wed Mar 23 17:51:05 2022
+From: n|ckmwr@y @end|ng |rom gm@||@com (Nick Wray)
+Date: Wed, 23 Mar 2022 16:51:05 +0000
+Subject: [R] functions st_transform and st_point
+Message-ID: <CABxY9BNsHgpq8ZkWdgm7rytkOL_muvwwVqFhL1B-L8Gh5fwksA@mail.gmail.com>
+
+Hello   I'm trying to work out ways of manipulating maps in R and have
+found various potentially useful starter sites, eg
+
+https://r-spatial.github.io/sf/reference/st_transform.html
+p1 = st_point(c(7,52))
+p2 = st_point(c(-30,20))
+sfc = st_sfc(p1, p2, crs = 4326)
+sfc
+st_transform(sfc, 3857)
+
+and
+https://rforjournalists.com/2021/04/10/how-to-plot-a-large-rural-area-using-ordnance-survey-data-in-r/
+But when I try to run the example code R tells me that it cannot find
+function "st_point" (or in  the other instance "st_transform")   I assumed
+that these functions were in some package, and searching I found "sf" and
+"lwgeom" suggested, but installing and loading these does not help.  Does
+anyone know where I can find the wherewithal to make these st_ functions
+work?
+
+Thanks Nick Wray
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Wed Mar 23 18:58:38 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Wed, 23 Mar 2022 10:58:38 -0700
+Subject: [R] functions st_transform and st_point
+In-Reply-To: <CABxY9BNsHgpq8ZkWdgm7rytkOL_muvwwVqFhL1B-L8Gh5fwksA@mail.gmail.com>
+References: <CABxY9BNsHgpq8ZkWdgm7rytkOL_muvwwVqFhL1B-L8Gh5fwksA@mail.gmail.com>
+Message-ID: <CAGxFJbQa9MPnZuarJraQYVDa9+vmOjJ-Jae59YSXJwo6=fL4og@mail.gmail.com>
+
+This is a good site for such searches:
+https://rdrr.io/
+
+Searching on "st_point" there says it's in the 'geotidy' package on github.
+
+Bert Gunter
+
+"The trouble with having an open mind is that people keep coming along
+and sticking things into it."
+-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+
+On Wed, Mar 23, 2022 at 9:51 AM Nick Wray <nickmwray at gmail.com> wrote:
+>
+> Hello   I'm trying to work out ways of manipulating maps in R and have
+> found various potentially useful starter sites, eg
+>
+> https://r-spatial.github.io/sf/reference/st_transform.html
+> p1 = st_point(c(7,52))
+> p2 = st_point(c(-30,20))
+> sfc = st_sfc(p1, p2, crs = 4326)
+> sfc
+> st_transform(sfc, 3857)
+>
+> and
+> https://rforjournalists.com/2021/04/10/how-to-plot-a-large-rural-area-using-ordnance-survey-data-in-r/
+> But when I try to run the example code R tells me that it cannot find
+> function "st_point" (or in  the other instance "st_transform")   I assumed
+> that these functions were in some package, and searching I found "sf" and
+> "lwgeom" suggested, but installing and loading these does not help.  Does
+> anyone know where I can find the wherewithal to make these st_ functions
+> work?
+>
+> Thanks Nick Wray
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Mar 23 19:29:46 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Wed, 23 Mar 2022 11:29:46 -0700
+Subject: [R] functions st_transform and st_point
+In-Reply-To: <CAGxFJbQa9MPnZuarJraQYVDa9+vmOjJ-Jae59YSXJwo6=fL4og@mail.gmail.com>
+References: <CABxY9BNsHgpq8ZkWdgm7rytkOL_muvwwVqFhL1B-L8Gh5fwksA@mail.gmail.com>
+ <CAGxFJbQa9MPnZuarJraQYVDa9+vmOjJ-Jae59YSXJwo6=fL4og@mail.gmail.com>
+Message-ID: <7A6162C8-8053-46D3-A1AF-10331DF2395A@dcn.davis.ca.us>
+
+... and whenever you think "I have a question about spatial statistics in R" you should think "I should ask on the R-sig-geo mailing list"... because, of course you have read the Posting Guide, right?
+
+On March 23, 2022 10:58:38 AM PDT, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>This is a good site for such searches:
+>https://rdrr.io/
+>
+>Searching on "st_point" there says it's in the 'geotidy' package on github.
+>
+>Bert Gunter
+>
+>"The trouble with having an open mind is that people keep coming along
+>and sticking things into it."
+>-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+>
+>On Wed, Mar 23, 2022 at 9:51 AM Nick Wray <nickmwray at gmail.com> wrote:
+>>
+>> Hello   I'm trying to work out ways of manipulating maps in R and have
+>> found various potentially useful starter sites, eg
+>>
+>> https://r-spatial.github.io/sf/reference/st_transform.html
+>> p1 = st_point(c(7,52))
+>> p2 = st_point(c(-30,20))
+>> sfc = st_sfc(p1, p2, crs = 4326)
+>> sfc
+>> st_transform(sfc, 3857)
+>>
+>> and
+>> https://rforjournalists.com/2021/04/10/how-to-plot-a-large-rural-area-using-ordnance-survey-data-in-r/
+>> But when I try to run the example code R tells me that it cannot find
+>> function "st_point" (or in  the other instance "st_transform")   I assumed
+>> that these functions were in some package, and searching I found "sf" and
+>> "lwgeom" suggested, but installing and loading these does not help.  Does
+>> anyone know where I can find the wherewithal to make these st_ functions
+>> work?
+>>
+>> Thanks Nick Wray
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Wed Mar 23 19:44:01 2022
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Wed, 23 Mar 2022 18:44:01 +0000
+Subject: [R] print only a few lines of an object
+Message-ID: <BL0PR01MB4036A8E9BB336EC81FBDB8BAFA189@BL0PR01MB4036.prod.exchangelabs.com>
+
+In an R session, when I type the name of an object, R prints the entire object (for example, a 20000 x 5 data.frame).  Is it possible to change the default behavior so that only the first five and last five rows are printed?  
+
+Similarly, if the object is a 20000 x 200 matrix, the default behavior will be to print first five and last five columns, combined with first five and last five rows.  
+
+Thanks,
+Naresh
+
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Wed Mar 23 19:50:39 2022
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Wed, 23 Mar 2022 18:50:39 +0000
+Subject: [R] plot and keep R session as active window
+Message-ID: <BL0PR01MB40366D5AE15565581851CD86FA189@BL0PR01MB4036.prod.exchangelabs.com>
+
+When I plot a graph 
+
+plot(norm(10))
+
+R plots the graph and makes the graph window the active window.  It is straightforward to type Cmd-TAB and go back to R session.  
+
+Is it possible to change default settings so that R session window remains the active window?
+
+I am on a Mac, running R from EMACS + ESS.  
+
+Thanks,
+Naresh
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Mar 23 20:31:46 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Wed, 23 Mar 2022 12:31:46 -0700
+Subject: [R] print only a few lines of an object
+In-Reply-To: <BL0PR01MB4036A8E9BB336EC81FBDB8BAFA189@BL0PR01MB4036.prod.exchangelabs.com>
+References: <BL0PR01MB4036A8E9BB336EC81FBDB8BAFA189@BL0PR01MB4036.prod.exchangelabs.com>
+Message-ID: <18157ABC-62DF-4A18-BB4F-5A2ECA238C11@dcn.davis.ca.us>
+
+Sure. Re-define the print method for those objects. Can't say I recommend this, but it can be done.
+
+On March 23, 2022 11:44:01 AM PDT, Naresh Gurbuxani <naresh_gurbuxani at hotmail.com> wrote:
+>In an R session, when I type the name of an object, R prints the entire object (for example, a 20000 x 5 data.frame).  Is it possible to change the default behavior so that only the first five and last five rows are printed?  
+>
+>Similarly, if the object is a 20000 x 200 matrix, the default behavior will be to print first five and last five columns, combined with first five and last five rows.  
+>
+>Thanks,
+>Naresh
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Wed Mar 23 20:34:30 2022
+From: j|ox @end|ng |rom mcm@@ter@c@ (Fox, John)
+Date: Wed, 23 Mar 2022 19:34:30 +0000
+Subject: [R] print only a few lines of an object
+In-Reply-To: <30733_1648061340_22NIn0PL007253_BL0PR01MB4036A8E9BB336EC81FBDB8BAFA189@BL0PR01MB4036.prod.exchangelabs.com>
+References: <30733_1648061340_22NIn0PL007253_BL0PR01MB4036A8E9BB336EC81FBDB8BAFA189@BL0PR01MB4036.prod.exchangelabs.com>
+Message-ID: <YT1PR01MB2601D2F234DF7F3A1458A610DF189@YT1PR01MB2601.CANPRD01.PROD.OUTLOOK.COM>
+
+Dear Naresh,
+
+You could try the brief() function in the car package, which has methods for matrices and data frames. For example:
+
+> X <- matrix(rnorm(20000*200), nrow = 20000)
+> library("car")
+Loading required package: carData
+> brief(X)
+20000 x 200 matrix (19995 rows and 197 columns omitted)
+                [,1] . . .     [,199]     [,200]
+    [1,] -0.03153991       1.29516494 -2.6333638
+    [2,]  0.21286783       0.01152682 -1.0662203
+    [3,]  0.63017820       0.68932816  1.5035356
+. . .                                                
+[19999,]  2.68200662       0.24294658 -0.1350098
+[20000,]  0.76880930       1.22899828 -1.3462279
+> brief(X, rows = c(5, 5), cols = c(5, 5))
+20000 x 200 matrix (19990 rows and 190 columns omitted)
+                [,1]        [,2]        [,3]       [,4]       [,5] . . .
+    [1,] -0.03153991  1.51280101  0.56670537  1.3421424 -0.0901379      
+    [2,]  0.21286783  0.01565378  0.36631559 -1.6334725 -0.4110920      
+    [3,]  0.63017820  0.64677503  0.23708531 -1.0694868  0.6824060      
+    [4,] -0.30640844 -0.50453994 -0.02955539 -0.3602093  0.9529470      
+    [5,] -0.14800239 -0.36379589  0.26398965  0.7045783 -0.4371091      
+             [,196]     [,197]      [,198]      [,199]     [,200]
+    [1,]  2.4384271 -0.8562120  0.03272777  1.29516494 -2.6333638
+    [2,]  2.3218889  0.9590918 -1.02492163  0.01152682 -1.0662203
+    [3,]  0.5408822  1.1099126 -0.35874326  0.68932816  1.5035356
+    [4,] -1.2347136  0.1547285 -0.94671222 -0.87190563 -0.8089031
+    [5,]  0.1008432 -0.3179192  0.18579939 -0.31228407 -0.3491618
+. . .                                                                        
+[19996,]  0.77793106 -1.69263749 -0.11233025  0.1823454 -1.3472522      
+[19997,]  0.50623281  1.63893912 -1.28729766  0.3620005  0.4693123      
+[19998,] -1.25504937  0.34050657  0.48436453 -0.1727108  0.4209498      
+[19999,]  2.68200662 -1.25888437  0.68085064 -0.3954497 -0.4057523      
+[20000,]  0.76880930 -0.48637856  1.68292021  0.8830241  0.4467292      
+                                                                 
+[19996,]  1.1499971 -1.5115928 -0.97399354  1.21192716  0.4767529
+[19997,]  0.5482631 -0.5797288 -0.13904089 -1.35133895  0.2814043
+[19998,] -0.9352181 -1.1193794  0.37612204  1.09246093 -0.3628966
+[19999,] -0.4141664 -0.5314562  0.60420993  0.24294658 -0.1350098
+[20000,] -0.4208899 -1.4542644 -0.20223993  1.22899828 -1.3462279
+
+
+I hope this helps,
+ John
+
+-----------------------------------------------------------------
+John Fox
+Professor Emeritus
+McMaster University
+Hamilton, Ontario, Canada
+Web: https://socialsciences.mcmaster.ca/jfox/
+
+
+
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Naresh Gurbuxani
+> Sent: Wednesday, March 23, 2022 2:44 PM
+> To: r-help at r-project.org
+> Subject: [R] print only a few lines of an object
+> 
+> In an R session, when I type the name of an object, R prints the entire object
+> (for example, a 20000 x 5 data.frame).  Is it possible to change the default
+> behavior so that only the first five and last five rows are printed?
+> 
+> Similarly, if the object is a 20000 x 200 matrix, the default behavior will be to
+> print first five and last five columns, combined with first five and last five rows.
+> 
+> Thanks,
+> Naresh
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Mar 23 20:36:27 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Wed, 23 Mar 2022 12:36:27 -0700
+Subject: [R] print only a few lines of an object
+In-Reply-To: <18157ABC-62DF-4A18-BB4F-5A2ECA238C11@dcn.davis.ca.us>
+References: <BL0PR01MB4036A8E9BB336EC81FBDB8BAFA189@BL0PR01MB4036.prod.exchangelabs.com>
+ <18157ABC-62DF-4A18-BB4F-5A2ECA238C11@dcn.davis.ca.us>
+Message-ID: <46EC3719-2BDF-4B72-A0BF-145ADE8CA5C1@dcn.davis.ca.us>
+
+After-thought...
+
+Why not just use head() and tail() like normal R users do?
+
+On March 23, 2022 12:31:46 PM PDT, Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrote:
+>Sure. Re-define the print method for those objects. Can't say I recommend this, but it can be done.
+>
+>On March 23, 2022 11:44:01 AM PDT, Naresh Gurbuxani <naresh_gurbuxani at hotmail.com> wrote:
+>>In an R session, when I type the name of an object, R prints the entire object (for example, a 20000 x 5 data.frame).  Is it possible to change the default behavior so that only the first five and last five rows are printed?  
+>>
+>>Similarly, if the object is a 20000 x 200 matrix, the default behavior will be to print first five and last five columns, combined with first five and last five rows.  
+>>
+>>Thanks,
+>>Naresh
+>>______________________________________________
+>>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>https://stat.ethz.ch/mailman/listinfo/r-help
+>>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>and provide commented, minimal, self-contained, reproducible code.
+>
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Wed Mar 23 20:42:02 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Wed, 23 Mar 2022 12:42:02 -0700
+Subject: [R] plot and keep R session as active window
+In-Reply-To: <BL0PR01MB40366D5AE15565581851CD86FA189@BL0PR01MB4036.prod.exchangelabs.com>
+References: <BL0PR01MB40366D5AE15565581851CD86FA189@BL0PR01MB4036.prod.exchangelabs.com>
+Message-ID: <CAGxFJbRgvQTtQz0rNcpLtvq8U3EQQoXyDOMJR=q+cC=FCx5YjQ@mail.gmail.com>
+
+This list is for help on the R language, so strictly speaking, your
+query is off topic (but not unreasonable, imo). So if you don't get
+sufficient help here you should probably try here:
+https://ess.r-project.org/index.php?Section=home
+
+
+Bert Gunter
+
+"The trouble with having an open mind is that people keep coming along
+and sticking things into it."
+-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+
+On Wed, Mar 23, 2022 at 11:59 AM Naresh Gurbuxani
+<naresh_gurbuxani at hotmail.com> wrote:
+>
+> When I plot a graph
+>
+> plot(norm(10))
+>
+> R plots the graph and makes the graph window the active window.  It is straightforward to type Cmd-TAB and go back to R session.
+>
+> Is it possible to change default settings so that R session window remains the active window?
+>
+> I am on a Mac, running R from EMACS + ESS.
+>
+> Thanks,
+> Naresh
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From btupper @end|ng |rom b|ge|ow@org  Wed Mar 23 20:42:11 2022
+From: btupper @end|ng |rom b|ge|ow@org (Ben Tupper)
+Date: Wed, 23 Mar 2022 15:42:11 -0400
+Subject: [R] functions st_transform and st_point
+In-Reply-To: <CABxY9BNsHgpq8ZkWdgm7rytkOL_muvwwVqFhL1B-L8Gh5fwksA@mail.gmail.com>
+References: <CABxY9BNsHgpq8ZkWdgm7rytkOL_muvwwVqFhL1B-L8Gh5fwksA@mail.gmail.com>
+Message-ID: <CALrbzg0PNE=Nu+52+2BPN54atSbyn+-L5wn4kM88ygv18yoitw@mail.gmail.com>
+
+Hi,
+
+Did you run `library(sf)` before calling these functions?
+
+Ben
+
+On Wed, Mar 23, 2022 at 12:51 PM Nick Wray <nickmwray at gmail.com> wrote:
+
+> Hello   I'm trying to work out ways of manipulating maps in R and have
+> found various potentially useful starter sites, eg
+>
+> https://r-spatial.github.io/sf/reference/st_transform.html
+> p1 = st_point(c(7,52))
+> p2 = st_point(c(-30,20))
+> sfc = st_sfc(p1, p2, crs = 4326)
+> sfc
+> st_transform(sfc, 3857)
+>
+> and
+>
+> https://rforjournalists.com/2021/04/10/how-to-plot-a-large-rural-area-using-ordnance-survey-data-in-r/
+> But when I try to run the example code R tells me that it cannot find
+> function "st_point" (or in  the other instance "st_transform")   I assumed
+> that these functions were in some package, and searching I found "sf" and
+> "lwgeom" suggested, but installing and loading these does not help.  Does
+> anyone know where I can find the wherewithal to make these st_ functions
+> work?
+>
+> Thanks Nick Wray
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+-- 
+Ben Tupper (he/him)
+Bigelow Laboratory for Ocean Science
+East Boothbay, Maine
+http://www.bigelow.org/
+https://eco.bigelow.org
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Wed Mar 23 20:47:00 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Wed, 23 Mar 2022 12:47:00 -0700
+Subject: [R] print only a few lines of an object
+In-Reply-To: <46EC3719-2BDF-4B72-A0BF-145ADE8CA5C1@dcn.davis.ca.us>
+References: <BL0PR01MB4036A8E9BB336EC81FBDB8BAFA189@BL0PR01MB4036.prod.exchangelabs.com>
+ <18157ABC-62DF-4A18-BB4F-5A2ECA238C11@dcn.davis.ca.us>
+ <46EC3719-2BDF-4B72-A0BF-145ADE8CA5C1@dcn.davis.ca.us>
+Message-ID: <CAGxFJbR4RGDjja7L3gv7pj3rk2hR_bzNpmfHvT+BBGiXFG8n3w@mail.gmail.com>
+
+Well, that depends whether the object has/inherits from a class for
+which there is a suitable method for head/tail and for printing the
+result. So I think your before-thought applies  :-)
+
+Bert Gunter
+
+"The trouble with having an open mind is that people keep coming along
+and sticking things into it."
+-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+
+On Wed, Mar 23, 2022 at 12:42 PM Jeff Newmiller
+<jdnewmil at dcn.davis.ca.us> wrote:
+>
+> After-thought...
+>
+> Why not just use head() and tail() like normal R users do?
+>
+> On March 23, 2022 12:31:46 PM PDT, Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrote:
+> >Sure. Re-define the print method for those objects. Can't say I recommend this, but it can be done.
+> >
+> >On March 23, 2022 11:44:01 AM PDT, Naresh Gurbuxani <naresh_gurbuxani at hotmail.com> wrote:
+> >>In an R session, when I type the name of an object, R prints the entire object (for example, a 20000 x 5 data.frame).  Is it possible to change the default behavior so that only the first five and last five rows are printed?
+> >>
+> >>Similarly, if the object is a 20000 x 200 matrix, the default behavior will be to print first five and last five columns, combined with first five and last five rows.
+> >>
+> >>Thanks,
+> >>Naresh
+> >>______________________________________________
+> >>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>https://stat.ethz.ch/mailman/listinfo/r-help
+> >>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> >>and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+> --
+> Sent from my phone. Please excuse my brevity.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Wed Mar 23 21:13:55 2022
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Wed, 23 Mar 2022 16:13:55 -0400
+Subject: [R] print only a few lines of an object
+In-Reply-To: <16469_1648064572_22NJgpNA001749_46EC3719-2BDF-4B72-A0BF-145ADE8CA5C1@dcn.davis.ca.us>
+References: <BL0PR01MB4036A8E9BB336EC81FBDB8BAFA189@BL0PR01MB4036.prod.exchangelabs.com>
+ <18157ABC-62DF-4A18-BB4F-5A2ECA238C11@dcn.davis.ca.us>
+ <16469_1648064572_22NJgpNA001749_46EC3719-2BDF-4B72-A0BF-145ADE8CA5C1@dcn.davis.ca.us>
+Message-ID: <2d674b85-9fa1-072c-1474-4456d6a2a126@mcmaster.ca>
+
+Dear Jeff,
+
+On 2022-03-23 3:36 p.m., Jeff Newmiller wrote:
+> After-thought...
+> 
+> Why not just use head() and tail() like normal R users do?
+
+head() and tail() are reasonable choices if there are many rows, but not 
+if there are many columns.
+
+My first thought was your previous suggestion to redefine print() 
+methods (although I agree with you that this isn't a good idea), but 
+though I could get that to work for data frames, I couldn't for matrices.
+
+Adapting my preceding examples using car::brief():
+
+ > X <- matrix(rnorm(20000*200), nrow = 20000)
+
+ > library("car")
+Loading required package: carData
+
+ > print.data.frame <- function(x, ...){ # not recommended!
++   brief(x, ...)
++   invisible(x)
++ }
+
+ > as.data.frame(X)
+20000 x 200 data.frame (19995 rows and 195 columns omitted)
+               V1         V2         V3 . . .        V199       V200
+              [n]        [n]        [n]               [n]        [n]
+1     -1.1810658 -0.6090037  1.0057908        1.23860428  0.6265465
+2     -1.6395909 -0.2828005 -0.6418150        1.12875894 -0.7594760
+3      0.2751099  0.2268473  0.2267713        0.64305445  1.1951732
+. . .
+19999  1.2744054  1.0170934 -1.0172511       -0.02997537  0.7645707
+20000 -0.4798590 -1.8248293 -1.4664622       -0.06359483  0.7671203
+
+
+ > print.matrix <- function(x, ...){ # not recommended (and doesn't work)!
++   brief(x, ...)
++   invisible(x)
++ }
+
+ > X
+                   [,1]          [,2]          [,3]          [,4] 
+   [,5]
+     [1,] -1.181066e+00 -6.090037e-01  1.005791e+00  3.738742e+00 
+-6.986169e-01
+     [2,] -1.639591e+00 -2.828005e-01 -6.418150e-01 -7.424275e-01 
+-1.415092e-01
+     [3,]  2.751099e-01  2.268473e-01  2.267713e-01 -6.308073e-01 
+7.042624e-01
+     [4,] -9.210181e-01 -4.617637e-01  1.523291e+00  4.003071e-01 
+-2.792705e-01
+     [5,] -6.047414e-01  1.976075e-01  6.065795e-01 -8.074581e-01 
+-4.089352e-01
+
+. . . [many lines elided]
+
+                 [,196]        [,197]        [,198]        [,199] 
+[,200]
+     [1,] -1.453015e+00  1.347678e+00  1.189217e+00  1.238604e+00 
+0.6265465033
+     [2,] -1.693822e+00  2.689917e-01 -1.703176e-01  1.128759e+00 
+-0.7594760299
+     [3,]  1.260585e-01  6.589839e-01 -7.928987e-01  6.430545e-01 
+1.1951731814
+     [4,] -1.890582e+00  7.614779e-01 -5.726204e-01  1.090881e+00 
+0.9570510645
+     [5,] -8.667687e-01  5.365750e-01 -2.079445e+00  1.209543e+00 
+-0.2697400234
+  [ reached getOption("max.print") -- omitted 19995 rows ]
+
+So, something more complicated that I don't understand is going on with 
+matrices.
+
+Best,
+  John
+
+> 
+> On March 23, 2022 12:31:46 PM PDT, Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrote:
+>> Sure. Re-define the print method for those objects. Can't say I recommend this, but it can be done.
+>>
+>> On March 23, 2022 11:44:01 AM PDT, Naresh Gurbuxani <naresh_gurbuxani at hotmail.com> wrote:
+>>> In an R session, when I type the name of an object, R prints the entire object (for example, a 20000 x 5 data.frame).  Is it possible to change the default behavior so that only the first five and last five rows are printed?
+>>>
+>>> Similarly, if the object is a 20000 x 200 matrix, the default behavior will be to print first five and last five columns, combined with first five and last five rows.
+>>>
+>>> Thanks,
+>>> Naresh
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+
+From nev||@@mo@ @end|ng |rom gm@||@com  Wed Mar 23 21:46:16 2022
+From: nev||@@mo@ @end|ng |rom gm@||@com (nevil amos)
+Date: Thu, 24 Mar 2022 07:46:16 +1100
+Subject: [R] write console ouptut to file AND view in console
+Message-ID: <CAN9eD7moge1c-yFVgNEpD6rfXOqtTxb73e8_ZUtjriZwrUCyJA@mail.gmail.com>
+
+I know I can write console output to a file:
+my_log <- file("my_log.txt")
+  sink(my_log, append = TRUE, type = "output")
+  sink(my_log, append = TRUE, type = "message")
+
+Is there any way to do this while still having the output display in the
+console at the same time
+
+thanks
+
+	[[alternative HTML version deleted]]
+
+
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Wed Mar 23 22:26:34 2022
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Wed, 23 Mar 2022 21:26:34 +0000
+Subject: [R] print only a few lines of an object
+In-Reply-To: <YT1PR01MB2601D2F234DF7F3A1458A610DF189@YT1PR01MB2601.CANPRD01.PROD.OUTLOOK.COM>
+References: <30733_1648061340_22NIn0PL007253_BL0PR01MB4036A8E9BB336EC81FBDB8BAFA189@BL0PR01MB4036.prod.exchangelabs.com>
+ <YT1PR01MB2601D2F234DF7F3A1458A610DF189@YT1PR01MB2601.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <BL0PR01MB4036D27C293A02A81B617054FA189@BL0PR01MB4036.prod.exchangelabs.com>
+
+John,
+
+This what I needed.  Thanks for your help,
+
+Naresh
+
+________________________________________
+From: Fox, John <jfox at mcmaster.ca>
+Sent: Wednesday, March 23, 2022 3:34 PM
+To: Naresh Gurbuxani; r-help at r-project.org
+Subject: RE: print only a few lines of an object
+
+Dear Naresh,
+
+You could try the brief() function in the car package, which has methods for matrices and data frames. For example:
+
+> X <- matrix(rnorm(20000*200), nrow = 20000)
+> library("car")
+Loading required package: carData
+> brief(X)
+20000 x 200 matrix (19995 rows and 197 columns omitted)
+                [,1] . . .     [,199]     [,200]
+    [1,] -0.03153991       1.29516494 -2.6333638
+    [2,]  0.21286783       0.01152682 -1.0662203
+    [3,]  0.63017820       0.68932816  1.5035356
+. . .
+[19999,]  2.68200662       0.24294658 -0.1350098
+[20000,]  0.76880930       1.22899828 -1.3462279
+> brief(X, rows = c(5, 5), cols = c(5, 5))
+20000 x 200 matrix (19990 rows and 190 columns omitted)
+                [,1]        [,2]        [,3]       [,4]       [,5] . . .
+    [1,] -0.03153991  1.51280101  0.56670537  1.3421424 -0.0901379
+    [2,]  0.21286783  0.01565378  0.36631559 -1.6334725 -0.4110920
+    [3,]  0.63017820  0.64677503  0.23708531 -1.0694868  0.6824060
+    [4,] -0.30640844 -0.50453994 -0.02955539 -0.3602093  0.9529470
+    [5,] -0.14800239 -0.36379589  0.26398965  0.7045783 -0.4371091
+             [,196]     [,197]      [,198]      [,199]     [,200]
+    [1,]  2.4384271 -0.8562120  0.03272777  1.29516494 -2.6333638
+    [2,]  2.3218889  0.9590918 -1.02492163  0.01152682 -1.0662203
+    [3,]  0.5408822  1.1099126 -0.35874326  0.68932816  1.5035356
+    [4,] -1.2347136  0.1547285 -0.94671222 -0.87190563 -0.8089031
+    [5,]  0.1008432 -0.3179192  0.18579939 -0.31228407 -0.3491618
+. . .
+[19996,]  0.77793106 -1.69263749 -0.11233025  0.1823454 -1.3472522
+[19997,]  0.50623281  1.63893912 -1.28729766  0.3620005  0.4693123
+[19998,] -1.25504937  0.34050657  0.48436453 -0.1727108  0.4209498
+[19999,]  2.68200662 -1.25888437  0.68085064 -0.3954497 -0.4057523
+[20000,]  0.76880930 -0.48637856  1.68292021  0.8830241  0.4467292
+
+[19996,]  1.1499971 -1.5115928 -0.97399354  1.21192716  0.4767529
+[19997,]  0.5482631 -0.5797288 -0.13904089 -1.35133895  0.2814043
+[19998,] -0.9352181 -1.1193794  0.37612204  1.09246093 -0.3628966
+[19999,] -0.4141664 -0.5314562  0.60420993  0.24294658 -0.1350098
+[20000,] -0.4208899 -1.4542644 -0.20223993  1.22899828 -1.3462279
+
+
+I hope this helps,
+ John
+
+-----------------------------------------------------------------
+John Fox
+Professor Emeritus
+McMaster University
+Hamilton, Ontario, Canada
+Web: https://socialsciences.mcmaster.ca/jfox/
+
+
+
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Naresh Gurbuxani
+> Sent: Wednesday, March 23, 2022 2:44 PM
+> To: r-help at r-project.org
+> Subject: [R] print only a few lines of an object
+>
+> In an R session, when I type the name of an object, R prints the entire object
+> (for example, a 20000 x 5 data.frame).  Is it possible to change the default
+> behavior so that only the first five and last five rows are printed?
+>
+> Similarly, if the object is a 20000 x 200 matrix, the default behavior will be to
+> print first five and last five columns, combined with first five and last five rows.
+>
+> Thanks,
+> Naresh
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From dc@r|@on @end|ng |rom t@mu@edu  Wed Mar 23 22:26:39 2022
+From: dc@r|@on @end|ng |rom t@mu@edu (David Carlson)
+Date: Wed, 23 Mar 2022 16:26:39 -0500
+Subject: [R] print only a few lines of an object
+In-Reply-To: <2d674b85-9fa1-072c-1474-4456d6a2a126@mcmaster.ca>
+References: <BL0PR01MB4036A8E9BB336EC81FBDB8BAFA189@BL0PR01MB4036.prod.exchangelabs.com>
+ <18157ABC-62DF-4A18-BB4F-5A2ECA238C11@dcn.davis.ca.us>
+ <16469_1648064572_22NJgpNA001749_46EC3719-2BDF-4B72-A0BF-145ADE8CA5C1@dcn.davis.ca.us>
+ <2d674b85-9fa1-072c-1474-4456d6a2a126@mcmaster.ca>
+Message-ID: <CAE-dL2owkTzqr1qvseR8tRQSKvNuj=esHzkxL43yx++8HeViKA@mail.gmail.com>
+
+You can set the "max.print" option to something other than the default
+value of 99999, e.g. options(max.print=50). The number is not lines,
+or characters as far as I can tell. For example setting max.print=50
+causes print(iris) to display the first 10 lines followed by a
+warning. On a list object it seems to apply to each part of the list,
+(e.g. split(iris, iris$Species) prints 10 lines of each species. This
+is a crude tool that is mostly useful if you are working with large
+objects and have a bad tendency to type the object name without
+thinking.
+
+David L Carlson
+
+
+On Wed, Mar 23, 2022 at 3:32 PM John Fox <jfox at mcmaster.ca> wrote:
+>
+> Dear Jeff, On 2022-03-23 3:36 p.m., Jeff Newmiller wrote: > After-thought... > > Why not just use head() and tail() like normal R users do? head() and tail() are reasonable choices if there are many rows, but not if there are many ZjQcmQRYFpfptBannerStart
+> This Message Is From an External Sender
+> This message came from outside your organization.
+> ZjQcmQRYFpfptBannerEnd
+>
+> Dear Jeff,
+>
+> On 2022-03-23 3:36 p.m., Jeff Newmiller wrote:
+> > After-thought...
+> >
+> > Why not just use head() and tail() like normal R users do?
+>
+> head() and tail() are reasonable choices if there are many rows, but not
+> if there are many columns.
+>
+> My first thought was your previous suggestion to redefine print()
+> methods (although I agree with you that this isn't a good idea), but
+> though I could get that to work for data frames, I couldn't for matrices.
+>
+> Adapting my preceding examples using car::brief():
+>
+>  > X <- matrix(rnorm(20000*200), nrow = 20000)
+>
+>  > library("car")
+> Loading required package: carData
+>
+>  > print.data.frame <- function(x, ...){ # not recommended!
+> +   brief(x, ...)
+> +   invisible(x)
+> + }
+>
+>  > as.data.frame(X)
+> 20000 x 200 data.frame (19995 rows and 195 columns omitted)
+>                V1         V2         V3 . . .        V199       V200
+>               [n]        [n]        [n]               [n]        [n]
+> 1     -1.1810658 -0.6090037  1.0057908        1.23860428  0.6265465
+> 2     -1.6395909 -0.2828005 -0.6418150        1.12875894 -0.7594760
+> 3      0.2751099  0.2268473  0.2267713        0.64305445  1.1951732
+> . . .
+> 19999  1.2744054  1.0170934 -1.0172511       -0.02997537  0.7645707
+> 20000 -0.4798590 -1.8248293 -1.4664622       -0.06359483  0.7671203
+>
+>
+>  > print.matrix <- function(x, ...){ # not recommended (and doesn't work)!
+> +   brief(x, ...)
+> +   invisible(x)
+> + }
+>
+>  > X
+>                    [,1]          [,2]          [,3]          [,4]
+>    [,5]
+>      [1,] -1.181066e+00 -6.090037e-01  1.005791e+00  3.738742e+00
+> -6.986169e-01
+>      [2,] -1.639591e+00 -2.828005e-01 -6.418150e-01 -7.424275e-01
+> -1.415092e-01
+>      [3,]  2.751099e-01  2.268473e-01  2.267713e-01 -6.308073e-01
+> 7.042624e-01
+>      [4,] -9.210181e-01 -4.617637e-01  1.523291e+00  4.003071e-01
+> -2.792705e-01
+>      [5,] -6.047414e-01  1.976075e-01  6.065795e-01 -8.074581e-01
+> -4.089352e-01
+>
+> . . . [many lines elided]
+>
+>                  [,196]        [,197]        [,198]        [,199]
+> [,200]
+>      [1,] -1.453015e+00  1.347678e+00  1.189217e+00  1.238604e+00
+> 0.6265465033
+>      [2,] -1.693822e+00  2.689917e-01 -1.703176e-01  1.128759e+00
+> -0.7594760299
+>      [3,]  1.260585e-01  6.589839e-01 -7.928987e-01  6.430545e-01
+> 1.1951731814
+>      [4,] -1.890582e+00  7.614779e-01 -5.726204e-01  1.090881e+00
+> 0.9570510645
+>      [5,] -8.667687e-01  5.365750e-01 -2.079445e+00  1.209543e+00
+> -0.2697400234
+>   [ reached getOption("max.print") -- omitted 19995 rows ]
+>
+> So, something more complicated that I don't understand is going on with
+> matrices.
+>
+> Best,
+>   John
+>
+> >
+> > On March 23, 2022 12:31:46 PM PDT, Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrote:
+> >> Sure. Re-define the print method for those objects. Can't say I recommend this, but it can be done.
+> >>
+> >> On March 23, 2022 11:44:01 AM PDT, Naresh Gurbuxani <naresh_gurbuxani at hotmail.com> wrote:
+> >>> In an R session, when I type the name of an object, R prints the entire object (for example, a 20000 x 5 data.frame).  Is it possible to change the default behavior so that only the first five and last five rows are printed?
+> >>>
+> >>> Similarly, if the object is a 20000 x 200 matrix, the default behavior will be to print first five and last five columns, combined with first five and last five rows.
+> >>>
+> >>> Thanks,
+> >>> Naresh
+> >>> ______________________________________________
+> >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!SHUnKZnGGIuDhR3CYX60wwKDCoy0r4PVMrM2SNw3JDac0fl8Fjc7PY3Fxu1u5Xo$
+> >>> PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!SHUnKZnGGIuDhR3CYX60wwKDCoy0r4PVMrM2SNw3JDac0fl8Fjc7PY3Fdt4UHeg$
+> >>> and provide commented, minimal, self-contained, reproducible code.
+> >>
+> >
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!SHUnKZnGGIuDhR3CYX60wwKDCoy0r4PVMrM2SNw3JDac0fl8Fjc7PY3Fxu1u5Xo$
+> PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!SHUnKZnGGIuDhR3CYX60wwKDCoy0r4PVMrM2SNw3JDac0fl8Fjc7PY3Fdt4UHeg$
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Wed Mar 23 22:36:21 2022
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Wed, 23 Mar 2022 14:36:21 -0700
+Subject: [R] write console ouptut to file AND view in console
+In-Reply-To: <CAN9eD7moge1c-yFVgNEpD6rfXOqtTxb73e8_ZUtjriZwrUCyJA@mail.gmail.com>
+References: <CAN9eD7moge1c-yFVgNEpD6rfXOqtTxb73e8_ZUtjriZwrUCyJA@mail.gmail.com>
+Message-ID: <CAFDcVCRjTKj-P9BWjA3k9Ee1cJwRsvmC4zMbeWkFhgKFo+jq8g@mail.gmail.com>
+
+I think adding argument split=TRUE will do what you want.
+
+FYI, it's a bit risky to rely on sink type="message" (standard error).
+Contrary to "output" sinks, there can only be one "message" sink
+active at any time, and whoever grabbed it last owns it going forward.
+I'd say it can only be the end-user who can use this sink at the top
+level, but it must not be used in packages (which then would steal it
+from the end-user).
+
+/Henrik
+
+
+On Wed, Mar 23, 2022 at 1:47 PM nevil amos <nevil.amos at gmail.com> wrote:
+>
+> I know I can write console output to a file:
+> my_log <- file("my_log.txt")
+>   sink(my_log, append = TRUE, type = "output")
+>   sink(my_log, append = TRUE, type = "message")
+>
+> Is there any way to do this while still having the output display in the
+> console at the same time
+>
+> thanks
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Wed Mar 23 23:16:32 2022
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Wed, 23 Mar 2022 22:16:32 +0000
+Subject: [R] print only a few lines of an object
+In-Reply-To: <CAE-dL2owkTzqr1qvseR8tRQSKvNuj=esHzkxL43yx++8HeViKA@mail.gmail.com>
+References: <BL0PR01MB4036A8E9BB336EC81FBDB8BAFA189@BL0PR01MB4036.prod.exchangelabs.com>
+ <18157ABC-62DF-4A18-BB4F-5A2ECA238C11@dcn.davis.ca.us>
+ <16469_1648064572_22NJgpNA001749_46EC3719-2BDF-4B72-A0BF-145ADE8CA5C1@dcn.davis.ca.us>
+ <2d674b85-9fa1-072c-1474-4456d6a2a126@mcmaster.ca>
+ <CAE-dL2owkTzqr1qvseR8tRQSKvNuj=esHzkxL43yx++8HeViKA@mail.gmail.com>
+Message-ID: <BL0PR01MB403697417AF768D9118DB900FA189@BL0PR01MB4036.prod.exchangelabs.com>
+
+
+
+Sent from my iPhone
+
+> On Mar 23, 2022, at 5:37 PM, David Carlson via R-help <r-help at r-project.org> wrote:
+> 
+> You can set the "max.print" option to something other than the default
+> value of 99999, e.g. options(max.print=50). The number is not lines,
+> or characters as far as I can tell. For example setting max.print=50
+> causes print(iris) to display the first 10 lines followed by a
+> warning. On a list object it seems to apply to each part of the list,
+> (e.g. split(iris, iris$Species) prints 10 lines of each species. This
+> is a crude tool that is mostly useful if you are working with large
+> objects and have a bad tendency to type the object name without
+> thinking.
+> 
+> David L Carlson
+> 
+> 
+>> On Wed, Mar 23, 2022 at 3:32 PM John Fox <jfox at mcmaster.ca> wrote:
+>> 
+>> Dear Jeff, On 2022-03-23 3:36 p.m., Jeff Newmiller wrote: > After-thought... > > Why not just use head() and tail() like normal R users do? head() and tail() are reasonable choices if there are many rows, but not if there are many ZjQcmQRYFpfptBannerStart
+>> This Message Is From an External Sender
+>> This message came from outside your organization.
+>> ZjQcmQRYFpfptBannerEnd
+>> 
+>> Dear Jeff,
+>> 
+>>> On 2022-03-23 3:36 p.m., Jeff Newmiller wrote:
+>>> After-thought...
+>>> 
+>>> Why not just use head() and tail() like normal R users do?
+>> 
+>> head() and tail() are reasonable choices if there are many rows, but not
+>> if there are many columns.
+>> 
+>> My first thought was your previous suggestion to redefine print()
+>> methods (although I agree with you that this isn't a good idea), but
+>> though I could get that to work for data frames, I couldn't for matrices.
+>> 
+>> Adapting my preceding examples using car::brief():
+>> 
+>>> X <- matrix(rnorm(20000*200), nrow = 20000)
+>> 
+>>> library("car")
+>> Loading required package: carData
+>> 
+>>> print.data.frame <- function(x, ...){ # not recommended!
+>> +   brief(x, ...)
+>> +   invisible(x)
+>> + }
+>> 
+>>> as.data.frame(X)
+>> 20000 x 200 data.frame (19995 rows and 195 columns omitted)
+>>               V1         V2         V3 . . .        V199       V200
+>>              [n]        [n]        [n]               [n]        [n]
+>> 1     -1.1810658 -0.6090037  1.0057908        1.23860428  0.6265465
+>> 2     -1.6395909 -0.2828005 -0.6418150        1.12875894 -0.7594760
+>> 3      0.2751099  0.2268473  0.2267713        0.64305445  1.1951732
+>> . . .
+>> 19999  1.2744054  1.0170934 -1.0172511       -0.02997537  0.7645707
+>> 20000 -0.4798590 -1.8248293 -1.4664622       -0.06359483  0.7671203
+>> 
+>> 
+>>> print.matrix <- function(x, ...){ # not recommended (and doesn't work)!
+>> +   brief(x, ...)
+>> +   invisible(x)
+>> + }
+>> 
+>>> X
+>>                   [,1]          [,2]          [,3]          [,4]
+>>   [,5]
+>>     [1,] -1.181066e+00 -6.090037e-01  1.005791e+00  3.738742e+00
+>> -6.986169e-01
+>>     [2,] -1.639591e+00 -2.828005e-01 -6.418150e-01 -7.424275e-01
+>> -1.415092e-01
+>>     [3,]  2.751099e-01  2.268473e-01  2.267713e-01 -6.308073e-01
+>> 7.042624e-01
+>>     [4,] -9.210181e-01 -4.617637e-01  1.523291e+00  4.003071e-01
+>> -2.792705e-01
+>>     [5,] -6.047414e-01  1.976075e-01  6.065795e-01 -8.074581e-01
+>> -4.089352e-01
+>> 
+>> . . . [many lines elided]
+>> 
+>>                 [,196]        [,197]        [,198]        [,199]
+>> [,200]
+>>     [1,] -1.453015e+00  1.347678e+00  1.189217e+00  1.238604e+00
+>> 0.6265465033
+>>     [2,] -1.693822e+00  2.689917e-01 -1.703176e-01  1.128759e+00
+>> -0.7594760299
+>>     [3,]  1.260585e-01  6.589839e-01 -7.928987e-01  6.430545e-01
+>> 1.1951731814
+>>     [4,] -1.890582e+00  7.614779e-01 -5.726204e-01  1.090881e+00
+>> 0.9570510645
+>>     [5,] -8.667687e-01  5.365750e-01 -2.079445e+00  1.209543e+00
+>> -0.2697400234
+>>  [ reached getOption("max.print") -- omitted 19995 rows ]
+>> 
+>> So, something more complicated that I don't understand is going on with
+>> matrices.
+>> 
+>> Best,
+>>  John
+>> 
+>>> 
+>>>> On March 23, 2022 12:31:46 PM PDT, Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrote:
+>>>> Sure. Re-define the print method for those objects. Can't say I recommend this, but it can be done.
+>>>> 
+>>>>> On March 23, 2022 11:44:01 AM PDT, Naresh Gurbuxani <naresh_gurbuxani at hotmail.com> wrote:
+>>>>> In an R session, when I type the name of an object, R prints the entire object (for example, a 20000 x 5 data.frame).  Is it possible to change the default behavior so that only the first five and last five rows are printed?
+>>>>> 
+>>>>> Similarly, if the object is a 20000 x 200 matrix, the default behavior will be to print first five and last five columns, combined with first five and last five rows.
+>>>>> 
+>>>>> Thanks,
+>>>>> Naresh
+>>>>> ______________________________________________
+>>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!SHUnKZnGGIuDhR3CYX60wwKDCoy0r4PVMrM2SNw3JDac0fl8Fjc7PY3Fxu1u5Xo$
+>>>>> PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!SHUnKZnGGIuDhR3CYX60wwKDCoy0r4PVMrM2SNw3JDac0fl8Fjc7PY3Fdt4UHeg$
+>>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>> 
+>>> 
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!SHUnKZnGGIuDhR3CYX60wwKDCoy0r4PVMrM2SNw3JDac0fl8Fjc7PY3Fxu1u5Xo$
+>> PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!SHUnKZnGGIuDhR3CYX60wwKDCoy0r4PVMrM2SNw3JDac0fl8Fjc7PY3Fdt4UHeg$
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @v|gro@@ @end|ng |rom ver|zon@net  Thu Mar 24 01:05:15 2022
+From: @v|gro@@ @end|ng |rom ver|zon@net (Avi Gross)
+Date: Thu, 24 Mar 2022 00:05:15 +0000 (UTC)
+Subject: [R] print only a few lines of an object
+In-Reply-To: <CAE-dL2owkTzqr1qvseR8tRQSKvNuj=esHzkxL43yx++8HeViKA@mail.gmail.com>
+References: <BL0PR01MB4036A8E9BB336EC81FBDB8BAFA189@BL0PR01MB4036.prod.exchangelabs.com>
+ <18157ABC-62DF-4A18-BB4F-5A2ECA238C11@dcn.davis.ca.us>
+ <16469_1648064572_22NJgpNA001749_46EC3719-2BDF-4B72-A0BF-145ADE8CA5C1@dcn.davis.ca.us>
+ <2d674b85-9fa1-072c-1474-4456d6a2a126@mcmaster.ca>
+ <CAE-dL2owkTzqr1qvseR8tRQSKvNuj=esHzkxL43yx++8HeViKA@mail.gmail.com>
+Message-ID: <1453412659.1258562.1648080315503@mail.yahoo.com>
+
+Variations on this topic come up regularly and of course variations on possible answers 
+to often an unclear phrasing of the question.
+
+Was the question how to change setting in R? Maybe but I consider that to be a stupider 
+question than asking HOW to display specific objects the way you want.
+
+As noted, variations on head() and tail() are commonly used. For objects like vectors 
+and data.frames that can be indexed, you certainly can use techniques like 
+name[1:7, 1:4] to show the first few rows and columns. Lots of ideas like that
+make it not necessary to change the way things are printed.
+
+But it is a common need and some have offered other packages that have dealt with
+it with functions like glimpse() but one of the more common ones is the tidyverse
+packages that use an augmented data.frame called a tibble which actually does
+alter how it prints automagically to show just a few lines and only as many columns 
+as fit your current output area and then add data mentioning how many rows and what 
+columns are being ignored.
+
+Arguably a better way to view your data is not to print it but to View it and if you do a 
+View(data) or perhaps edit(data) or click on the variable in a pane in RSTUDIO,
+you may be able to see it in a more spreadsheet format. Certainly you can also
+save your data into formats like a CSV file and then view them externally, such as 
+in EXCEL.
+
+So, yes, you can create your own ways to automatically print objects but it is very 
+rarely necessary. R has lots of built in ways and you can always write your own
+functions that use a bunch of functions to format your data however you wish including
+rounding it to some number of decimal places or all kinds of printf() functionality.
+
+I also know that for many purposes, you may not want to look at your data but some kind 
+of summary of your data and there are oodles of tools like psych::describe().
+
+So is there anything you want besides just showing the first N lines and perhaps the
+last N too? The more specific and clear the question, the more likely someone
+will post a useful answer. I held back to see what others would say and I hope 
+somewhere in all the responses you can pick what seems to work for you.
+
+Final note is if you fiddle with a way everything prints, you may need to
+work hard when you want something to print in another way or completely.
+You often see someone writing code like print(as.data.frame(some_tibble))
+to make it act on a tibble more fully.
+
+
+-----Original Message-----
+From: David Carlson via R-help <r-help at r-project.org>
+To: John Fox <jfox at mcmaster.ca>
+Cc: r-help mailing list <r-help at r-project.org>
+Sent: Wed, Mar 23, 2022 5:26 pm
+Subject: Re: [R] print only a few lines of an object
+
+
+You can set the "max.print" option to something other than the default
+value of 99999, e.g. options(max.print=50). The number is not lines,
+or characters as far as I can tell. For example setting max.print=50
+causes print(iris) to display the first 10 lines followed by a
+warning. On a list object it seems to apply to each part of the list,
+(e.g. split(iris, iris$Species) prints 10 lines of each species. This
+is a crude tool that is mostly useful if you are working with large
+objects and have a bad tendency to type the object name without
+thinking.
+
+David L Carlson
+
+
+On Wed, Mar 23, 2022 at 3:32 PM John Fox <jfox at mcmaster.ca> wrote:
+>
+> Dear Jeff, On 2022-03-23 3:36 p.m., Jeff Newmiller wrote: > After-thought... > > Why not just use head() and tail() like normal R users do? head() and tail() are reasonable choices if there are many rows, but not if there are many ZjQcmQRYFpfptBannerStart
+> This Message Is From an External Sender
+> This message came from outside your organization.
+> ZjQcmQRYFpfptBannerEnd
+>
+> Dear Jeff,
+>
+> On 2022-03-23 3:36 p.m., Jeff Newmiller wrote:
+> > After-thought...
+> >
+> > Why not just use head() and tail() like normal R users do?
+>
+> head() and tail() are reasonable choices if there are many rows, but not
+> if there are many columns.
+>
+> My first thought was your previous suggestion to redefine print()
+> methods (although I agree with you that this isn't a good idea), but
+> though I could get that to work for data frames, I couldn't for matrices.
+>
+> Adapting my preceding examples using car::brief():
+>
+>? > X <- matrix(rnorm(20000*200), nrow = 20000)
+>
+>? > library("car")
+> Loading required package: carData
+>
+>? > print.data.frame <- function(x, ...){ # not recommended!
+> +?  brief(x, ...)
+> +?  invisible(x)
+> + }
+>
+>? > as.data.frame(X)
+> 20000 x 200 data.frame (19995 rows and 195 columns omitted)
+>? ? ? ? ? ? ? ? V1? ? ? ?  V2? ? ? ?  V3 . . .? ? ? ? V199? ? ?  V200
+>? ? ? ? ? ? ?  [n]? ? ? ? [n]? ? ? ? [n]? ? ? ? ? ? ?  [n]? ? ? ? [n]
+> 1? ?  -1.1810658 -0.6090037? 1.0057908? ? ? ? 1.23860428? 0.6265465
+> 2? ?  -1.6395909 -0.2828005 -0.6418150? ? ? ? 1.12875894 -0.7594760
+> 3? ? ? 0.2751099? 0.2268473? 0.2267713? ? ? ? 0.64305445? 1.1951732
+> . . .
+> 19999? 1.2744054? 1.0170934 -1.0172511? ? ?  -0.02997537? 0.7645707
+> 20000 -0.4798590 -1.8248293 -1.4664622? ? ?  -0.06359483? 0.7671203
+>
+>
+>? > print.matrix <- function(x, ...){ # not recommended (and doesn't work)!
+> +?  brief(x, ...)
+> +?  invisible(x)
+> + }
+>
+>? > X
+>? ? ? ? ? ? ? ? ? ? [,1]? ? ? ? ? [,2]? ? ? ? ? [,3]? ? ? ? ? [,4]
+>? ? [,5]
+>? ? ? [1,] -1.181066e+00 -6.090037e-01? 1.005791e+00? 3.738742e+00
+> -6.986169e-01
+>? ? ? [2,] -1.639591e+00 -2.828005e-01 -6.418150e-01 -7.424275e-01
+> -1.415092e-01
+>? ? ? [3,]? 2.751099e-01? 2.268473e-01? 2.267713e-01 -6.308073e-01
+> 7.042624e-01
+>? ? ? [4,] -9.210181e-01 -4.617637e-01? 1.523291e+00? 4.003071e-01
+> -2.792705e-01
+>? ? ? [5,] -6.047414e-01? 1.976075e-01? 6.065795e-01 -8.074581e-01
+> -4.089352e-01
+>
+> . . . [many lines elided]
+>
+>? ? ? ? ? ? ? ? ? [,196]? ? ? ? [,197]? ? ? ? [,198]? ? ? ? [,199]
+> [,200]
+>? ? ? [1,] -1.453015e+00? 1.347678e+00? 1.189217e+00? 1.238604e+00
+> 0.6265465033
+>? ? ? [2,] -1.693822e+00? 2.689917e-01 -1.703176e-01? 1.128759e+00
+> -0.7594760299
+>? ? ? [3,]? 1.260585e-01? 6.589839e-01 -7.928987e-01? 6.430545e-01
+> 1.1951731814
+>? ? ? [4,] -1.890582e+00? 7.614779e-01 -5.726204e-01? 1.090881e+00
+> 0.9570510645
+>? ? ? [5,] -8.667687e-01? 5.365750e-01 -2.079445e+00? 1.209543e+00
+> -0.2697400234
+>?  [ reached getOption("max.print") -- omitted 19995 rows ]
+>
+> So, something more complicated that I don't understand is going on with
+> matrices.
+>
+> Best,
+>?  John
+>
+> >
+> > On March 23, 2022 12:31:46 PM PDT, Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrote:
+> >> Sure. Re-define the print method for those objects. Can't say I recommend this, but it can be done.
+> >>
+> >> On March 23, 2022 11:44:01 AM PDT, Naresh Gurbuxani <naresh_gurbuxani at hotmail.com> wrote:
+> >>> In an R session, when I type the name of an object, R prints the entire object (for example, a 20000 x 5 data.frame).? Is it possible to change the default behavior so that only the first five and last five rows are printed?
+> >>>
+> >>> Similarly, if the object is a 20000 x 200 matrix, the default behavior will be to print first five and last five columns, combined with first five and last five rows.
+> >>>
+> >>> Thanks,
+> >>> Naresh
+> >>> ______________________________________________
+> >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!SHUnKZnGGIuDhR3CYX60wwKDCoy0r4PVMrM2SNw3JDac0fl8Fjc7PY3Fxu1u5Xo$
+> >>> PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!SHUnKZnGGIuDhR3CYX60wwKDCoy0r4PVMrM2SNw3JDac0fl8Fjc7PY3Fdt4UHeg$
+> >>> and provide commented, minimal, self-contained, reproducible code.
+> >>
+> >
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!SHUnKZnGGIuDhR3CYX60wwKDCoy0r4PVMrM2SNw3JDac0fl8Fjc7PY3Fxu1u5Xo$
+> PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!SHUnKZnGGIuDhR3CYX60wwKDCoy0r4PVMrM2SNw3JDac0fl8Fjc7PY3Fdt4UHeg$
+
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From t@n@@@ @end|ng |rom gm@||@com  Thu Mar 24 01:40:32 2022
+From: t@n@@@ @end|ng |rom gm@||@com (Bogdan Tanasa)
+Date: Wed, 23 Mar 2022 17:40:32 -0700
+Subject: [R] help with installing R packages on Mac : these packages are
+ downloaded but not compiled
+Message-ID: <CA+JEM02jvcVqopRoZ62fgmcusYoWVZn2i3RAXKGgZG-HqJ8d8w@mail.gmail.com>
+
+Dear all,
+
+I would appreciate to have your prompt help please on the following issue :
+
+I am the process of installing R and R packages on MacOS Monterrey.
+
+The packages are downloaded but not compiled and are not installed, as
+shown below.
+
+ I would appreciate any help that you can offer please. Thank you.
+
+> install.packages("tidyverse", dependencies=T)
+Installing package into
+?/Users/btanasa/Library/R/x86_64/4.1/library?(as ?lib? is unspecified)
+trying URL 'https://cran.rstudio.com/bin/macosx/contrib/4.1/tidyverse_1.3.1.tgz'
+Content type 'application/x-gzip' length 421072 bytes (411
+KB)==================================================
+downloaded 411 KB
+
+
+The downloaded binary packages are in
+    /var/folders/j1/vfxkcdz51l945jpfb2vplcsw47dvp9/T//RtmpYudPdW/downloaded_packages>
+> > library("tidyverse")
+Error: package or namespace load failed for ?tidyverse?:
+ .onLoad failed in loadNamespace() for 'broom', details:
+  call: loadNamespace(x)
+  error: there is no package called ?backports?
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Thu Mar 24 01:52:29 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Wed, 23 Mar 2022 17:52:29 -0700
+Subject: [R] help with installing R packages on Mac : these packages are
+ downloaded but not compiled
+In-Reply-To: <CA+JEM02jvcVqopRoZ62fgmcusYoWVZn2i3RAXKGgZG-HqJ8d8w@mail.gmail.com>
+References: <CA+JEM02jvcVqopRoZ62fgmcusYoWVZn2i3RAXKGgZG-HqJ8d8w@mail.gmail.com>
+Message-ID: <CAGxFJbQ7r=qNz5bZT0b1Z4weaXFyqxLS3PW8FCsyrLn+JZ9EqQ@mail.gmail.com>
+
+Mac specific issues generally belong on the R-sig-mac list, not here(I
+of course don't know whether this is Mac specific or not. Folks on the
+Mac list presumably would).
+
+
+Bert Gunter
+
+"The trouble with having an open mind is that people keep coming along
+and sticking things into it."
+-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+
+On Wed, Mar 23, 2022 at 5:41 PM Bogdan Tanasa <tanasa at gmail.com> wrote:
+>
+> Dear all,
+>
+> I would appreciate to have your prompt help please on the following issue :
+>
+> I am the process of installing R and R packages on MacOS Monterrey.
+>
+> The packages are downloaded but not compiled and are not installed, as
+> shown below.
+>
+>  I would appreciate any help that you can offer please. Thank you.
+>
+> > install.packages("tidyverse", dependencies=T)
+> Installing package into
+> ?/Users/btanasa/Library/R/x86_64/4.1/library?(as ?lib? is unspecified)
+> trying URL 'https://cran.rstudio.com/bin/macosx/contrib/4.1/tidyverse_1.3.1.tgz'
+> Content type 'application/x-gzip' length 421072 bytes (411
+> KB)==================================================
+> downloaded 411 KB
+>
+>
+> The downloaded binary packages are in
+>     /var/folders/j1/vfxkcdz51l945jpfb2vplcsw47dvp9/T//RtmpYudPdW/downloaded_packages>
+> > > library("tidyverse")
+> Error: package or namespace load failed for ?tidyverse?:
+>  .onLoad failed in loadNamespace() for 'broom', details:
+>   call: loadNamespace(x)
+>   error: there is no package called ?backports?
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Thu Mar 24 02:41:58 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Wed, 23 Mar 2022 18:41:58 -0700
+Subject: [R] help with installing R packages on Mac : these packages are
+ downloaded but not compiled
+In-Reply-To: <CAGxFJbQ7r=qNz5bZT0b1Z4weaXFyqxLS3PW8FCsyrLn+JZ9EqQ@mail.gmail.com>
+References: <CA+JEM02jvcVqopRoZ62fgmcusYoWVZn2i3RAXKGgZG-HqJ8d8w@mail.gmail.com>
+ <CAGxFJbQ7r=qNz5bZT0b1Z4weaXFyqxLS3PW8FCsyrLn+JZ9EqQ@mail.gmail.com>
+Message-ID: <CCDECD6C-8741-4F97-A3CA-C43FCE11BB9C@dcn.davis.ca.us>
+
+Tidyverse has dozens of dependencies... and when a dependency fails to install then you often need to install it explicitly... the automatic dependency algorithm doesn't seem to work robustly.
+
+Carefully read your error messages... it looks like you should start by installing backports.
+
+On March 23, 2022 5:52:29 PM PDT, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>Mac specific issues generally belong on the R-sig-mac list, not here(I
+>of course don't know whether this is Mac specific or not. Folks on the
+>Mac list presumably would).
+>
+>
+>Bert Gunter
+>
+>"The trouble with having an open mind is that people keep coming along
+>and sticking things into it."
+>-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+>
+>On Wed, Mar 23, 2022 at 5:41 PM Bogdan Tanasa <tanasa at gmail.com> wrote:
+>>
+>> Dear all,
+>>
+>> I would appreciate to have your prompt help please on the following issue :
+>>
+>> I am the process of installing R and R packages on MacOS Monterrey.
+>>
+>> The packages are downloaded but not compiled and are not installed, as
+>> shown below.
+>>
+>>  I would appreciate any help that you can offer please. Thank you.
+>>
+>> > install.packages("tidyverse", dependencies=T)
+>> Installing package into
+>> ?/Users/btanasa/Library/R/x86_64/4.1/library?(as ?lib? is unspecified)
+>> trying URL 'https://cran.rstudio.com/bin/macosx/contrib/4.1/tidyverse_1.3.1.tgz'
+>> Content type 'application/x-gzip' length 421072 bytes (411
+>> KB)==================================================
+>> downloaded 411 KB
+>>
+>>
+>> The downloaded binary packages are in
+>>     /var/folders/j1/vfxkcdz51l945jpfb2vplcsw47dvp9/T//RtmpYudPdW/downloaded_packages>
+>> > > library("tidyverse")
+>> Error: package or namespace load failed for ?tidyverse?:
+>>  .onLoad failed in loadNamespace() for 'broom', details:
+>>   call: loadNamespace(x)
+>>   error: there is no package called ?backports?
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From t@n@@@ @end|ng |rom gm@||@com  Thu Mar 24 02:45:03 2022
+From: t@n@@@ @end|ng |rom gm@||@com (Bogdan Tanasa)
+Date: Wed, 23 Mar 2022 18:45:03 -0700
+Subject: [R] help with installing R packages on Mac : these packages are
+ downloaded but not compiled
+In-Reply-To: <CCDECD6C-8741-4F97-A3CA-C43FCE11BB9C@dcn.davis.ca.us>
+References: <CA+JEM02jvcVqopRoZ62fgmcusYoWVZn2i3RAXKGgZG-HqJ8d8w@mail.gmail.com>
+ <CAGxFJbQ7r=qNz5bZT0b1Z4weaXFyqxLS3PW8FCsyrLn+JZ9EqQ@mail.gmail.com>
+ <CCDECD6C-8741-4F97-A3CA-C43FCE11BB9C@dcn.davis.ca.us>
+Message-ID: <CA+JEM00PxyubjD=iBGvSD2yA51+QKq1Eypi1QCELcH6=j+sp1Q@mail.gmail.com>
+
+Thank you Jeff.
+
+Well, the same messages I do receive not only I do install "tidyverse" but
+also any other packages from BioConductor ;
+
+specifically, the packages are downloaded but not compiled and not
+installed.
+
+I believe that it is a more global R issue with Mac Monterey, although I do
+not know how to solve it. Thanks,
+
+Bogdan
+
+
+
+On Wed, Mar 23, 2022 at 6:42 PM Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+wrote:
+
+> Tidyverse has dozens of dependencies... and when a dependency fails to
+> install then you often need to install it explicitly... the automatic
+> dependency algorithm doesn't seem to work robustly.
+>
+> Carefully read your error messages... it looks like you should start by
+> installing backports.
+>
+> On March 23, 2022 5:52:29 PM PDT, Bert Gunter <bgunter.4567 at gmail.com>
+> wrote:
+> >Mac specific issues generally belong on the R-sig-mac list, not here(I
+> >of course don't know whether this is Mac specific or not. Folks on the
+> >Mac list presumably would).
+> >
+> >
+> >Bert Gunter
+> >
+> >"The trouble with having an open mind is that people keep coming along
+> >and sticking things into it."
+> >-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+> >
+> >On Wed, Mar 23, 2022 at 5:41 PM Bogdan Tanasa <tanasa at gmail.com> wrote:
+> >>
+> >> Dear all,
+> >>
+> >> I would appreciate to have your prompt help please on the following
+> issue :
+> >>
+> >> I am the process of installing R and R packages on MacOS Monterrey.
+> >>
+> >> The packages are downloaded but not compiled and are not installed, as
+> >> shown below.
+> >>
+> >>  I would appreciate any help that you can offer please. Thank you.
+> >>
+> >> > install.packages("tidyverse", dependencies=T)
+> >> Installing package into
+> >> ?/Users/btanasa/Library/R/x86_64/4.1/library?(as ?lib? is unspecified)
+> >> trying URL '
+> https://cran.rstudio.com/bin/macosx/contrib/4.1/tidyverse_1.3.1.tgz'
+> >> Content type 'application/x-gzip' length 421072 bytes (411
+> >> KB)==================================================
+> >> downloaded 411 KB
+> >>
+> >>
+> >> The downloaded binary packages are in
+> >>
+>  /var/folders/j1/vfxkcdz51l945jpfb2vplcsw47dvp9/T//RtmpYudPdW/downloaded_packages>
+> >> > > library("tidyverse")
+> >> Error: package or namespace load failed for ?tidyverse?:
+> >>  .onLoad failed in loadNamespace() for 'broom', details:
+> >>   call: loadNamespace(x)
+> >>   error: there is no package called ?backports?
+> >>
+> >>         [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+> >
+> >______________________________________________
+> >R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >https://stat.ethz.ch/mailman/listinfo/r-help
+> >PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> >and provide commented, minimal, self-contained, reproducible code.
+>
+> --
+> Sent from my phone. Please excuse my brevity.
+>
+
+	[[alternative HTML version deleted]]
+
+
