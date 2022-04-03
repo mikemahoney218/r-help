@@ -1349,3 +1349,858 @@ On Fri, Apr 1, 2022 at 12:50 PM Grzegorz Smoli?ski
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From g@@mo||n@k|1 @end|ng |rom gm@||@com  Sat Apr  2 11:31:35 2022
+From: g@@mo||n@k|1 @end|ng |rom gm@||@com (=?UTF-8?Q?Grzegorz_Smoli=C5=84ski?=)
+Date: Sat, 2 Apr 2022 11:31:35 +0200
+Subject: [R] Modificatio of function body within a function
+In-Reply-To: <CAGxFJbSOOLbPB7ETcSkSO44j-TyH02BdjCBhLvjJ_GkroQW0pg@mail.gmail.com>
+References: <CABxpnnnkEvQceozk4yHaDJruTobUuno5Prhs8n5xmnFkpKdyDg@mail.gmail.com>
+ <CAGxFJbSOOLbPB7ETcSkSO44j-TyH02BdjCBhLvjJ_GkroQW0pg@mail.gmail.com>
+Message-ID: <CABxpnn=dp6H0ki7oSsD7JPTSL+0jBgBJeMv2=NE7QOGGTnh=gw@mail.gmail.com>
+
+Thank you, I think I can say that I get it, especially when reading
+this explanation: "assignments within a function occur *within* the
+function environment unless otherwise specified", so this is just like
+in the example below:
+
+a <- 4
+fun2 <- function() {
+  a <- 2
+}
+fun2()
+a
+#> [1] 4
+
+a <- 4
+fun2 <- function() {
+  env <- .GlobalEnv
+  env$a <- 2
+}
+fun2()
+a
+#> [1] 2
+
+I would like to ask about one more thing, also regarding the
+modification of the body of function. There is one phenomenon which
+I'm actually using during my work with R, but I'm not sure why this
+happens. Below is an example of this:
+
+fun1 <- function() {
+  1
+  env <- environment(fun1)
+  body(env$fun1) <- body(env$fun1)[-5]
+  "one"
+}
+fun1()
+#> [1] "one"
+body(fun1)
+#> {
+#>     1
+#>     env <- environment(fun1)
+#>     body(env$fun1) <- body(env$fun1)[-5]
+#> }
+
+Within a function, I'm removing the last line of code in that function
+(string "one") and what happens here is that when I use this function
+(first time), that string is actually returned, so this line of code
+which is removed is executed. I don't have a good background in
+computer science and would like to know why this last line of code is
+executed. Why not - well, I could imagine that when the function is
+called, it is executed line by line (of course), so before the last
+line ("one"), this line will be removed and this string won't be
+returned. However, when Bert mentioned functional paradigm, I have
+started to think that it may looks like this:
+a) function is defined
+b) function is called and in the one before last line of code, some
+object (fun1) is modified and when something is modified, the copy is
+made, so the modified function lives in a different memory address.
+c) the original function (not changed) continues computation and
+returns the string
+d) when the execution is finished, then the modified fun1 is bind to
+the name "fun1" and because this happens in the same environment where
+the original fun1 was defined and the objects are now different,
+garbage collector removes original (not modified) fun1 object.
+
+Is that, more or less, what happens?
+
+Best,
+
+Grzegorz
+
+pt., 1 kwi 2022 o 23:12 Bert Gunter <bgunter.4567 at gmail.com> napisa?(a):
+>
+> Heh ... These self-referential constructs are certainly puzzles...
+>
+> Does this help:
+>
+> fun1 <- function() {
+>    1
+>    body(fun1)[[2]] <<- 'one'
+>    'hi'
+> }
+>
+> > fun1
+> function() {
+>    1
+>    body(fun1)[[2]] <<- 'one' ## note the double '<<" assigning to the parent env
+>    'hi'
+> }
+>
+> > fun1()
+> [1] "hi"
+>
+> > fun1
+> function ()
+> {
+>     "one" ## the change was made
+>     body(fun1)[[2]] <<- "one"
+>     "hi"
+> }
+>
+> The point is that assignments within a function occur *within* the
+> function environment unless otherwise specified (either by <<- or the
+> use of the 'environment' argument in 'body<-'()  ). This is, of
+> course, central to the functional programming paradigm of no side
+> effects (unless explicitly invoked).
+>
+> NOTE: Correction to this requested if this is wrong in any way!!
+>
+> Cheers,
+> Bert
+>
+>
+>
+>
+> Bert Gunter
+>
+> "The trouble with having an open mind is that people keep coming along
+> and sticking things into it."
+> -- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+>
+> Bert Gunter
+>
+> "The trouble with having an open mind is that people keep coming along
+> and sticking things into it."
+> -- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+>
+>
+> On Fri, Apr 1, 2022 at 12:50 PM Grzegorz Smoli?ski
+> <g.smolinski1 at gmail.com> wrote:
+> >
+> > Hi,
+> >
+> > I'm working on a presentation regarding the modification of the
+> > function body on-the-fly and just discovered something I don't
+> > understand. I would like to modify a body of the function within a
+> > function, but I see that it is possible only when explicitly referring
+> > to the environment where the function is defined:
+> >
+> > fun1 <- function() {
+> >   1
+> >   body(fun1)[[2]] <- "one"
+> > }
+> > fun1()
+> > body(fun1)
+> > #> {
+> > #>     1
+> > #>     body(fun1)[[2]] <- "one"
+> > #> }
+> >
+> > fun2 <- function() {
+> >   2
+> >   env <- environment(fun2)
+> >   body(env$fun2)[[2]] <- "two"
+> > }
+> > fun2()
+> > body(fun2)
+> > #> {
+> > #>     "two"
+> > #>     env <- environment(fun2)
+> > #>     body(env$fun2)[[2]] <- "two"
+> > #> }
+> >
+> > Can I get some explanation or some links / articles about this,
+> > please? I thought it won't be a difference and I should be able to
+> > modify a function body also in the first case, because I'm changing
+> > something in the parent environment being in the child environment.
+> >
+> > Best regards,
+> >
+> > Grzegorz
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Apr  2 16:39:16 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 2 Apr 2022 07:39:16 -0700
+Subject: [R] Modificatio of function body within a function
+In-Reply-To: <CABxpnn=dp6H0ki7oSsD7JPTSL+0jBgBJeMv2=NE7QOGGTnh=gw@mail.gmail.com>
+References: <CABxpnnnkEvQceozk4yHaDJruTobUuno5Prhs8n5xmnFkpKdyDg@mail.gmail.com>
+ <CAGxFJbSOOLbPB7ETcSkSO44j-TyH02BdjCBhLvjJ_GkroQW0pg@mail.gmail.com>
+ <CABxpnn=dp6H0ki7oSsD7JPTSL+0jBgBJeMv2=NE7QOGGTnh=gw@mail.gmail.com>
+Message-ID: <CAGxFJbT35KQR7pcE2mEL-dYWMhWc76Ce0-6brsKuux-KpA8oUA@mail.gmail.com>
+
+This is not as complicated as you think.
+
+## First define the function.
+> fun1 <- function() {
+    1
+    env <- environment(fun1)
+    body(env$fun1) <- body(env$fun1)[-5]
+    "one"
+ }
+
+## The function as defined above is now in the environment in which it
+was defined, here .GlobalRnv.
+
+## Now calling it executes **the above function.**
+> fun1()
+[1] "one"
+
+## But this execution has the side effect of modifying the function
+object in .GlobalEnv. (This is why side effects can be problematic).
+So when we look at fun1 again in that environment, we see the modified
+version.
+
+> fun1
+function ()
+{
+    1
+    env <- environment(fun1)
+    body(env$fun1) <- body(env$fun1)[-5]
+}
+
+## which, of course, returns nothing on being called.
+> fun1()
+>
+
+Bert Gunter
+
+"The trouble with having an open mind is that people keep coming along
+and sticking things into it."
+-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+
+On Sat, Apr 2, 2022 at 2:32 AM Grzegorz Smoli?ski
+<g.smolinski1 at gmail.com> wrote:
+>
+> Thank you, I think I can say that I get it, especially when reading
+> this explanation: "assignments within a function occur *within* the
+> function environment unless otherwise specified", so this is just like
+> in the example below:
+>
+> a <- 4
+> fun2 <- function() {
+>   a <- 2
+> }
+> fun2()
+> a
+> #> [1] 4
+>
+> a <- 4
+> fun2 <- function() {
+>   env <- .GlobalEnv
+>   env$a <- 2
+> }
+> fun2()
+> a
+> #> [1] 2
+>
+> I would like to ask about one more thing, also regarding the
+> modification of the body of function. There is one phenomenon which
+> I'm actually using during my work with R, but I'm not sure why this
+> happens. Below is an example of this:
+>
+> fun1 <- function() {
+>   1
+>   env <- environment(fun1)
+>   body(env$fun1) <- body(env$fun1)[-5]
+>   "one"
+> }
+> fun1()
+> #> [1] "one"
+> body(fun1)
+> #> {
+> #>     1
+> #>     env <- environment(fun1)
+> #>     body(env$fun1) <- body(env$fun1)[-5]
+> #> }
+>
+> Within a function, I'm removing the last line of code in that function
+> (string "one") and what happens here is that when I use this function
+> (first time), that string is actually returned, so this line of code
+> which is removed is executed. I don't have a good background in
+> computer science and would like to know why this last line of code is
+> executed. Why not - well, I could imagine that when the function is
+> called, it is executed line by line (of course), so before the last
+> line ("one"), this line will be removed and this string won't be
+> returned. However, when Bert mentioned functional paradigm, I have
+> started to think that it may looks like this:
+> a) function is defined
+> b) function is called and in the one before last line of code, some
+> object (fun1) is modified and when something is modified, the copy is
+> made, so the modified function lives in a different memory address.
+> c) the original function (not changed) continues computation and
+> returns the string
+> d) when the execution is finished, then the modified fun1 is bind to
+> the name "fun1" and because this happens in the same environment where
+> the original fun1 was defined and the objects are now different,
+> garbage collector removes original (not modified) fun1 object.
+>
+> Is that, more or less, what happens?
+>
+> Best,
+>
+> Grzegorz
+>
+> pt., 1 kwi 2022 o 23:12 Bert Gunter <bgunter.4567 at gmail.com> napisa?(a):
+> >
+> > Heh ... These self-referential constructs are certainly puzzles...
+> >
+> > Does this help:
+> >
+> > fun1 <- function() {
+> >    1
+> >    body(fun1)[[2]] <<- 'one'
+> >    'hi'
+> > }
+> >
+> > > fun1
+> > function() {
+> >    1
+> >    body(fun1)[[2]] <<- 'one' ## note the double '<<" assigning to the parent env
+> >    'hi'
+> > }
+> >
+> > > fun1()
+> > [1] "hi"
+> >
+> > > fun1
+> > function ()
+> > {
+> >     "one" ## the change was made
+> >     body(fun1)[[2]] <<- "one"
+> >     "hi"
+> > }
+> >
+> > The point is that assignments within a function occur *within* the
+> > function environment unless otherwise specified (either by <<- or the
+> > use of the 'environment' argument in 'body<-'()  ). This is, of
+> > course, central to the functional programming paradigm of no side
+> > effects (unless explicitly invoked).
+> >
+> > NOTE: Correction to this requested if this is wrong in any way!!
+> >
+> > Cheers,
+> > Bert
+> >
+> >
+> >
+> >
+> > Bert Gunter
+> >
+> > "The trouble with having an open mind is that people keep coming along
+> > and sticking things into it."
+> > -- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+> >
+> > Bert Gunter
+> >
+> > "The trouble with having an open mind is that people keep coming along
+> > and sticking things into it."
+> > -- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+> >
+> >
+> > On Fri, Apr 1, 2022 at 12:50 PM Grzegorz Smoli?ski
+> > <g.smolinski1 at gmail.com> wrote:
+> > >
+> > > Hi,
+> > >
+> > > I'm working on a presentation regarding the modification of the
+> > > function body on-the-fly and just discovered something I don't
+> > > understand. I would like to modify a body of the function within a
+> > > function, but I see that it is possible only when explicitly referring
+> > > to the environment where the function is defined:
+> > >
+> > > fun1 <- function() {
+> > >   1
+> > >   body(fun1)[[2]] <- "one"
+> > > }
+> > > fun1()
+> > > body(fun1)
+> > > #> {
+> > > #>     1
+> > > #>     body(fun1)[[2]] <- "one"
+> > > #> }
+> > >
+> > > fun2 <- function() {
+> > >   2
+> > >   env <- environment(fun2)
+> > >   body(env$fun2)[[2]] <- "two"
+> > > }
+> > > fun2()
+> > > body(fun2)
+> > > #> {
+> > > #>     "two"
+> > > #>     env <- environment(fun2)
+> > > #>     body(env$fun2)[[2]] <- "two"
+> > > #> }
+> > >
+> > > Can I get some explanation or some links / articles about this,
+> > > please? I thought it won't be a difference and I should be able to
+> > > modify a function body also in the first case, because I'm changing
+> > > something in the parent environment being in the child environment.
+> > >
+> > > Best regards,
+> > >
+> > > Grzegorz
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sat Apr  2 19:45:07 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sat, 2 Apr 2022 18:45:07 +0100
+Subject: [R] Unexpected behavior in par()
+Message-ID: <ec4aa4b3-1b4c-8272-96d3-b0dde00af5d0@sapo.pt>
+
+Hello,
+
+I have a function using base graphics that changes some graphics 
+parameters, then plots what it has to plot, then on exit puts the 
+graphics parameters back as they were.
+The problem is that if outside the function the graphics parameters are 
+also changed, for instance mfrow, those chages are not respected by the 
+function. This seems to come from the way the graphics pars are saved.
+
+After par(mfrow = c(2, 1))
+
+- if I call par(no.readonly = TRUE) then the second call to the function 
+plots in the 1st row, it overplots what was plotted before.
+- if I save the pars when they are changed, all is well.
+
+Here is a reproducible example.
+
+
+f <- function(x, ...) {
+   old_par <- par(no.readonly = TRUE)    # this is the problem
+   par(mar = c(4.1, 3.1, 3.1, 1.1))      # or maybe here
+   on.exit(par(old_par))
+   barplot(x, ...)
+}
+
+g <- function(x, ...) {
+   old_par <- par(mar = c(4.1, 3.1, 3.1, 1.1))   # this is the solution
+   on.exit(par(old_par))
+   barplot(x, ...)
+}
+
+set.seed(2022)
+b1 <- table(sample(4, 100, TRUE))
+b2 <- table(sample(10, 100, TRUE))
+
+# 1st function, unexpected behavior
+old_par <- par(mfrow = c(2, 1))
+f(b1, main = "1st plot")
+f(b2, main = "2nd plot")
+par(old_par)
+
+# 2nd function, all is well
+old_par <- par(mfrow = c(2, 1))
+g(b1, main = "1st plot")
+g(b2, main = "2nd plot")
+par(old_par)
+
+
+If I print(old_par) in any of the functions the result is the right 
+mfrow setting, so I would expect the 2nd call to f() to plot in the 2nd 
+row. But it doesn't.
+Function f() calls par() twice but it only changes a parameter unrelated 
+to the parameter set outside the function.
+
+I'm obviously making a mistake but I don't know what. Is this expected 
+(or a par() bug)?
+
+
+Thaks in advance,
+
+Rui Barradas
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Sat Apr  2 21:00:16 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Sat, 2 Apr 2022 12:00:16 -0700
+Subject: [R] Unexpected behavior in par()
+In-Reply-To: <ec4aa4b3-1b4c-8272-96d3-b0dde00af5d0@sapo.pt>
+References: <ec4aa4b3-1b4c-8272-96d3-b0dde00af5d0@sapo.pt>
+Message-ID: <CAHqSRuQzvrUL_+kN8Oy6A+n=Vjxp8x67hB_+AU5zCxoQmXOq3Q@mail.gmail.com>
+
+par("mfrow") works by updating par("fig") before each plot.  I think that
+when you reset all the par values after each plot you reset par("fig") to
+the value it had before you made the last plot.
+
+-Bill
+
+On Sat, Apr 2, 2022 at 10:45 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+
+> Hello,
+>
+> I have a function using base graphics that changes some graphics
+> parameters, then plots what it has to plot, then on exit puts the
+> graphics parameters back as they were.
+> The problem is that if outside the function the graphics parameters are
+> also changed, for instance mfrow, those chages are not respected by the
+> function. This seems to come from the way the graphics pars are saved.
+>
+> After par(mfrow = c(2, 1))
+>
+> - if I call par(no.readonly = TRUE) then the second call to the function
+> plots in the 1st row, it overplots what was plotted before.
+> - if I save the pars when they are changed, all is well.
+>
+> Here is a reproducible example.
+>
+>
+> f <- function(x, ...) {
+>    old_par <- par(no.readonly = TRUE)    # this is the problem
+>    par(mar = c(4.1, 3.1, 3.1, 1.1))      # or maybe here
+>    on.exit(par(old_par))
+>    barplot(x, ...)
+> }
+>
+> g <- function(x, ...) {
+>    old_par <- par(mar = c(4.1, 3.1, 3.1, 1.1))   # this is the solution
+>    on.exit(par(old_par))
+>    barplot(x, ...)
+> }
+>
+> set.seed(2022)
+> b1 <- table(sample(4, 100, TRUE))
+> b2 <- table(sample(10, 100, TRUE))
+>
+> # 1st function, unexpected behavior
+> old_par <- par(mfrow = c(2, 1))
+> f(b1, main = "1st plot")
+> f(b2, main = "2nd plot")
+> par(old_par)
+>
+> # 2nd function, all is well
+> old_par <- par(mfrow = c(2, 1))
+> g(b1, main = "1st plot")
+> g(b2, main = "2nd plot")
+> par(old_par)
+>
+>
+> If I print(old_par) in any of the functions the result is the right
+> mfrow setting, so I would expect the 2nd call to f() to plot in the 2nd
+> row. But it doesn't.
+> Function f() calls par() twice but it only changes a parameter unrelated
+> to the parameter set outside the function.
+>
+> I'm obviously making a mistake but I don't know what. Is this expected
+> (or a par() bug)?
+>
+>
+> Thaks in advance,
+>
+> Rui Barradas
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From p@t @end|ng |rom |@rh@rbor@com  Sat Apr  2 18:22:55 2022
+From: p@t @end|ng |rom |@rh@rbor@com (Pat Malone)
+Date: Sat, 2 Apr 2022 12:22:55 -0400
+Subject: [R] EFA with Complex Survey Data (Incl. Replicate Weights)
+In-Reply-To: <BN6PR11MB203337F8459D4CD1A0EF713E9BE19@BN6PR11MB2033.namprd11.prod.outlook.com>
+References: <BN6PR11MB203337F8459D4CD1A0EF713E9BE19@BN6PR11MB2033.namprd11.prod.outlook.com>
+Message-ID: <CAJhmz4fjFuqGedfxAo5uq_gqh59kYb6zckUZaSbDTWfMnCVYog@mail.gmail.com>
+
+Lybrya,
+
+You might have better luck on SEMNET. Responses won't necessarily be
+specific to R, but that's where to find a concentration of experts on
+factor analysis in a variety of contexts.
+
+You have to have a LISTSERV account to log in, but you can follow this link
+to both set up an account and then subscribe to the list.
+https://listserv.ua.edu/cgi-bin/wa?A0=SEMNET
+
+Pat
+
+
+
+On Fri, Apr 1, 2022 at 4:14 AM Lybrya Kebreab <Lybrya.Kebreab at ucf.edu>
+wrote:
+
+> Hello,
+>
+>
+> I am a doctoral student, completing my dissertation using the public
+> HSLS2009 survey data. I am interested in running an exploratory factor
+> analysis (EFA) and need to apply both the child weight and replicate
+> weights. I found some information on applying weights in EFA (
+> https://r-survey.r-forge.r-project.org/survey/html/svyfactanal.html),
+> however I have not found information on how to apply multiple replicate
+> weights. Can anyone please help me with a resource that can assist?
+>
+> Thank you kindly,
+>
+> Lybrya Kebreab
+> Doctoral Candidate
+> Education-Mathematics Education Track
+> School of Teacher Education
+> College of Community Innovation and Education
+> University of Central Florida
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+-- 
+
+*Patrick S. Malone, PhD*
+Sr Research Statistician, FAR HARB?R
++1 803.553.4181  |  pat@ <pat at farharbor.com>  |  farharbor.com
+*This message may contain confidential information; if you are not the
+intended recipient please notify the sender and delete the message.*
+
+	[[alternative HTML version deleted]]
+
+
+From @jd@m|co @end|ng |rom gm@||@com  Sat Apr  2 22:14:13 2022
+From: @jd@m|co @end|ng |rom gm@||@com (Anthony Damico)
+Date: Sat, 2 Apr 2022 16:14:13 -0400
+Subject: [R] EFA with Complex Survey Data (Incl. Replicate Weights)
+In-Reply-To: <BN6PR11MB203337F8459D4CD1A0EF713E9BE19@BN6PR11MB2033.namprd11.prod.outlook.com>
+References: <BN6PR11MB203337F8459D4CD1A0EF713E9BE19@BN6PR11MB2033.namprd11.prod.outlook.com>
+Message-ID: <CAOwvMDyujeDniqYq_g=CLBuH2oDwt3KiwC0vrN-t0SYmcAV4vw@mail.gmail.com>
+
+hi!  after loading the survey library, i believe you might want to create a
+`svrepdesign()` object that matches the SAS syntax published here?
+
+https://nces.ed.gov/surveys/hsls09/pdf/2011328_1.pdf#page=174
+
+...not sure if you need combined.weights = FALSE option added to the
+svrepdesign() call, but it looks like your complex survey design should
+look roughly like this?
+
+hsls09_design <- svrepdesign( data = data_frame_with_hsls09 , type="BRR",
+weights = ~w1student , repweights="w1student[0-9]+" )
+
+from there, you could look to the examples posted on the ?svyfactanal help
+page and use your design=hsls09_design rather than the example dataset
+design=dclus1
+
+
+
+
+
+
+
+
+
+
+
+
+On Fri, Apr 1, 2022 at 4:14 AM Lybrya Kebreab <Lybrya.Kebreab at ucf.edu>
+wrote:
+
+> Hello,
+>
+>
+> I am a doctoral student, completing my dissertation using the public
+> HSLS2009 survey data. I am interested in running an exploratory factor
+> analysis (EFA) and need to apply both the child weight and replicate
+> weights. I found some information on applying weights in EFA (
+> https://r-survey.r-forge.r-project.org/survey/html/svyfactanal.html),
+> however I have not found information on how to apply multiple replicate
+> weights. Can anyone please help me with a resource that can assist?
+>
+> Thank you kindly,
+>
+> Lybrya Kebreab
+> Doctoral Candidate
+> Education-Mathematics Education Track
+> School of Teacher Education
+> College of Community Innovation and Education
+> University of Central Florida
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sat Apr  2 23:02:31 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sat, 2 Apr 2022 22:02:31 +0100
+Subject: [R] Unexpected behavior in par()
+In-Reply-To: <CAHqSRuQzvrUL_+kN8Oy6A+n=Vjxp8x67hB_+AU5zCxoQmXOq3Q@mail.gmail.com>
+References: <ec4aa4b3-1b4c-8272-96d3-b0dde00af5d0@sapo.pt>
+ <CAHqSRuQzvrUL_+kN8Oy6A+n=Vjxp8x67hB_+AU5zCxoQmXOq3Q@mail.gmail.com>
+Message-ID: <862ee107-e723-2070-a773-113a5ae06a51@sapo.pt>
+
+Hello,
+
+Thanks, that makes sense. So don't use par(no.readonly = TRUE) unless 
+that's the desired behavior.
+
+Rui Barradas
+
+?s 20:00 de 02/04/2022, Bill Dunlap escreveu:
+> par("mfrow") works by updating par("fig") before each plot.? I think 
+> that when you reset all the par values after each plot you reset 
+> par("fig") to the value it had before you made the last plot.
+> 
+> -Bill
+> 
+> On Sat, Apr 2, 2022 at 10:45 AM Rui Barradas <ruipbarradas at sapo.pt 
+> <mailto:ruipbarradas at sapo.pt>> wrote:
+> 
+>     Hello,
+> 
+>     I have a function using base graphics that changes some graphics
+>     parameters, then plots what it has to plot, then on exit puts the
+>     graphics parameters back as they were.
+>     The problem is that if outside the function the graphics parameters are
+>     also changed, for instance mfrow, those chages are not respected by the
+>     function. This seems to come from the way the graphics pars are saved.
+> 
+>     After par(mfrow = c(2, 1))
+> 
+>     - if I call par(no.readonly = TRUE) then the second call to the
+>     function
+>     plots in the 1st row, it overplots what was plotted before.
+>     - if I save the pars when they are changed, all is well.
+> 
+>     Here is a reproducible example.
+> 
+> 
+>     f <- function(x, ...) {
+>      ? ?old_par <- par(no.readonly = TRUE)? ? # this is the problem
+>      ? ?par(mar = c(4.1, 3.1, 3.1, 1.1))? ? ? # or maybe here
+>      ? ?on.exit(par(old_par))
+>      ? ?barplot(x, ...)
+>     }
+> 
+>     g <- function(x, ...) {
+>      ? ?old_par <- par(mar = c(4.1, 3.1, 3.1, 1.1))? ?# this is the solution
+>      ? ?on.exit(par(old_par))
+>      ? ?barplot(x, ...)
+>     }
+> 
+>     set.seed(2022)
+>     b1 <- table(sample(4, 100, TRUE))
+>     b2 <- table(sample(10, 100, TRUE))
+> 
+>     # 1st function, unexpected behavior
+>     old_par <- par(mfrow = c(2, 1))
+>     f(b1, main = "1st plot")
+>     f(b2, main = "2nd plot")
+>     par(old_par)
+> 
+>     # 2nd function, all is well
+>     old_par <- par(mfrow = c(2, 1))
+>     g(b1, main = "1st plot")
+>     g(b2, main = "2nd plot")
+>     par(old_par)
+> 
+> 
+>     If I print(old_par) in any of the functions the result is the right
+>     mfrow setting, so I would expect the 2nd call to f() to plot in the 2nd
+>     row. But it doesn't.
+>     Function f() calls par() twice but it only changes a parameter
+>     unrelated
+>     to the parameter set outside the function.
+> 
+>     I'm obviously making a mistake but I don't know what. Is this expected
+>     (or a par() bug)?
+> 
+> 
+>     Thaks in advance,
+> 
+>     Rui Barradas
+> 
+>     ______________________________________________
+>     R-help at r-project.org <mailto:R-help at r-project.org> mailing list --
+>     To UNSUBSCRIBE and more, see
+>     https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>
+>     PLEASE do read the posting guide
+>     http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>     and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From m@pjg @end|ng |rom br|@to|@@c@uk  Sat Apr  2 16:58:17 2022
+From: m@pjg @end|ng |rom br|@to|@@c@uk (Peter Green)
+Date: Sat, 2 Apr 2022 15:58:17 +0100
+Subject: [R] [R-pkgs] Nmix package - Bayesian inference about univariate
+ Gaussian mixtures with an unknown number of components
+Message-ID: <d52bf841-0a15-ba10-6585-155a33be35e9@bristol.ac.uk>
+
+This package is now on CRAN in version 2.0.2, and anyone interested in 
+inference on mixture models, or more generally in Bayesian inference for 
+"trans-dimensional" problems, is encouraged to try it out. The 
+methodology is that presented by Richardson and Green in our 1997 
+article in the Journal of the Royal Statistical Society, using 
+Reversible jump Markov chain Monte Carlo. The package is based on the 
+Fortran code used in the research for that paper, which is available now 
+to the R user for the first time. A rich variety of outputs from the 
+MCMC sample path is available, optionally, and many features of the 
+posterior distribution are presented graphically. Apart from its direct 
+use in analysing data, the package might be useful in supporting 
+learning about Bayesian computation.
+
+Feedback is most welcome, and I may be open to extending the 
+functionality of the package in response to concrete suggestions.
+
+regards,
+
+Peter Green
+
+_______________________________________________
+R-packages mailing list
+R-packages at r-project.org
+https://stat.ethz.ch/mailman/listinfo/r-packages
+
+
