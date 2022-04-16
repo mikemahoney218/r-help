@@ -18352,3 +18352,1664 @@ Rui Barradas
 >
 
 
+From r@oknz @end|ng |rom gm@||@com  Fri Apr 15 05:05:16 2022
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Fri, 15 Apr 2022 15:05:16 +1200
+Subject: [R] Symbol/String comparison in R
+In-Reply-To: <B6EFD588-C064-4C9D-982B-0CA74559BD07@dcn.davis.ca.us>
+References: <CAJ_7LVteUa=FJDDoT_TyYq1tG8QRQoM0XFTuT+q87+9MAbg9_w@mail.gmail.com>
+ <BN6PR2201MB15539E14C13A43B753D756EDCFEF9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <CABcYAdKgxg-Kib2r62tScO9OoH3_gaY+Jd1KEEXUrFo0pj2EwA@mail.gmail.com>
+ <B6EFD588-C064-4C9D-982B-0CA74559BD07@dcn.davis.ca.us>
+Message-ID: <CABcYAd+8muJZ9uj-45qvi81-1kd0Ms8R_yb3jCGyBtfyHZDweA@mail.gmail.com>
+
+First off, while it is true that 16r61 = 10r97,
+there is nothing about the interaction
+> charToRaw("a")
+61
+that suggests to the unwary that 61 does not mean
+six tens and one unit.  In fact that 61 isn't even
+a number, though it looks like one.  It's a "raw".
+
+And that's the problem.  The whole point of "raws"
+is to forget how a string was encoded (that is, to
+forget what it MEANS), and compare it DIFFERENTLY
+from the way it would be compared as a string.  So
+it really has no relevance to how string collation
+is done.
+
+There is good reason to use "raws", and that is when
+you are interfacing with code written in some other
+language that for some reason wants byte sequences.
+
+As for the default collation order and other local aspects,
+R is expected to pick that up from the environment.
+If I have
+   l=en_NZ.iso88591
+   export LC_COLLATE=$l
+   export LC_NUMERIC=$l
+then when I run R, I expect it to take en_NZ.iso88591
+as the locale for collation (it does) and for numbers
+(it doesn't, it insists on LC_NUMERIC=C).
+
+The help for ?"<" is quite clear that collation for
+UTF-8 is *not* byte-by-byte but by Unicode code-point.
+Now if you are given *valid* UTF-8 in which each
+code-point is represented by the smallest number of
+bytes possible, byte-by-byte and code-point-by-code-
+point should agree, but for quite a bit of "UTF-8" out
+there (such as the stuff Java used to generate) they
+can be teased apart.
+
+Alexander Pope's advice is good counsel here.
+
+A little learning is a dangerous thing ;
+Drink deep, or taste not the Pierian spring :
+There shallow draughts intoxicate the brain,
+And drinking largely sobers us again.
+...
+While from the bounded level of our mind
+Short views we take, nor see the lengths behind,
+But, more advanced, behold with strange surprise
+New distant scenes of endless science rise !
+...
+
+If you really want to understand this stuff,
+start with "Unicode Demystified", go on to
+"The Unicode Standard 14.0.0"
+https://www.unicode.org/versions/Unicode14.0.0/
+then over to ISO 14651
+https://en.wikipedia.org/wiki/ISO/IEC_14651
+then to the Unicode Collation Algorithm
+and The International Components for Unicode.
+Don't forget to check out the Unicode CLDR
+(Common Locale Data Repository) version 41
+https://home.unicode.org/unicode-cldr-version-41-released/
+
+Or you could let R get on with it and study
+some more statistics instead.
+
+On Fri, 15 Apr 2022 at 02:24, Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+wrote:
+
+> While the advice that collation order is not necessarily determined by
+> encoding is helpful, the advice suggesting that charToRaw is to be always
+> avoided rings false to me, since 61 hexadecimal is the same as 97 decimal.
+>
+> I am hoping someone will come along and offer useful input like where to
+> find the actual collation order implemented by the now-default
+> Sys.getlocale("LC_COLATE")="C.UTF-8", since I was under the impression that
+> this particular collation was in fact supposed to collate according to the
+> numerical magnitude of the UTF-8 code points but it does not appear to do
+> so.
+>
+> On April 14, 2022 4:25:17 AM PDT, Richard O'Keefe <raoknz at gmail.com>
+> wrote:
+> >To the original poster: don't even think about
+> >charToRaw.  For one thing, the integer code that
+> >corresponds to "a" can be found thus:
+> >> library(gtools)
+> >> asc("a")
+> >97
+> >and the answer is (predictably) 97, not 61.
+> >
+> >> ?"<"
+> >...
+> >     Comparison of strings in character vectors is lexicographic within
+> >     the strings using the collating sequence of the locale in use: see
+> >     'locales'.  The collating sequence of locales such as 'en_US' is
+> >     normally different from 'C' (which should use ASCII) and can be
+> >     surprising.  Beware of making _any_ assumptions about the
+> >     collation order
+> >...
+> >
+> >In a UNIX environment, the collating order R uses will
+> >normally match the collating order that the system
+> >sort(1) command uses.  This is also the order that is
+> >used by the strcoll(3) library function.  There is an
+> >ISO standard, not for how to compare strings, but for
+> >specifying the rules for how to compare strings.  The
+> >rules can be amazingly elaborate requiring up to seven
+> >different passes and not all of them in the same direction.
+> >
+> >ORIGINALLY the order was lexicographical left to right
+> >by byte values (like the strcmp(3) library function) but
+> >in a world of about 6000 languages and an amazing number
+> >of scripts, that just doesn't match what people actually
+> >want to do.
+> >
+> >> icuGetCollate()
+> >will tell you what collation rules R is following.
+> >> ?icuGetCollate
+> >will not so much tell you more than you wanted to know
+> >about collation as hint at it.
+> >
+> >These days, with Unicode and internationalisation,
+> >text encoding and collation are just insanely complex.
+> >R goes to a lot of trouble to hide this from you.
+> >LET IT.
+> >
+> >
+> >
+> >On Thu, 14 Apr 2022 at 13:38, Ebert,Timothy Aaron <tebert at ufl.edu> wrote:
+> >
+> >> https://en.wikipedia.org/wiki/ASCII
+> >> There is a table towards the end of the document. Some of the other
+> pieces
+> >> may be of interest and/or relevant.
+> >>
+> >> Tim
+> >>
+> >> -----Original Message-----
+> >> From: R-help <r-help-bounces at r-project.org> On Behalf Of Kristjan Kure
+> >> Sent: Wednesday, April 13, 2022 10:06 AM
+> >> To: r-help at r-project.org
+> >> Subject: [R] Symbol/String comparison in R
+> >>
+> >> [External Email]
+> >>
+> >> Hi!
+> >>
+> >> Sorry, I am a beginner in R.
+> >>
+> >> I was not able to find answers to my questions (tried Google, Stack
+> >> Overflow, etc). Please correct me if anything is wrong here.
+> >>
+> >> When comparing symbols/strings in R - raw numeric values are compared
+> >> symbol by symbol starting from left? If raw numeric values are not used
+> is
+> >> there an ASCII / Unicode table where symbols have values/ranking/order
+> and
+> >> R compares those values?
+> >>
+> >> *2) Comparing symbols*
+> >> Letter "a" raw value is 61, letter "b" raw value is 62? Is this correct?
+> >>
+> >> # Raw value for "a" = 61
+> >> a_raw <- charToRaw("a")
+> >> a_raw
+> >>
+> >> # Raw value for "b" = 62
+> >> b_raw <- charToRaw("b")
+> >> b_raw
+> >>
+> >> # equals TRUE
+> >> "a" < "b"
+> >>
+> >> Ok, so 61 is less than 62 so it's TRUE. Is this correct?
+> >>
+> >> *3) Comparing strings #1*
+> >> "1040" <= "12000"
+> >>
+> >> raw_1040 <- charToRaw("1040")
+> >> raw_1040
+> >> #31 *30* (comparison happens with the second symbol) 34 30
+> >>
+> >> raw_12000 <- charToRaw("12000")
+> >> raw_12000
+> >> #31 *32* (comparison happens with the second symbol) 30 30 30
+> >>
+> >> The symbol in the second position is 30 and it's less than 32. Equals to
+> >> true. Is this correct?
+> >>
+> >> *4) Comparing strings #2*
+> >> "1040" <= "10000"
+> >>
+> >> raw_1040 <- charToRaw("1040")
+> >> raw_1040
+> >> #31 30 *34*  (comparison happens with third symbol) 30
+> >>
+> >> raw_10000 <- charToRaw("10000")
+> >> raw_10000
+> >> #31 30 *30*  (comparison happens with third symbol) 30 30
+> >>
+> >> The symbol in the third position is 34 is greater than 30. Equals to
+> false.
+> >> Is this correct?
+> >>
+> >> *5) Problem - Why does this equal FALSE?* *"A" < "a"*
+> >>
+> >> 41 < 61 # FALSE?
+> >>
+> >> # Raw value for "A" = 41
+> >> A_raw <- charToRaw("A")
+> >> A_raw
+> >>
+> >> # Raw value for "a" = 61
+> >> a_raw <- charToRaw("a")
+> >> a_raw
+> >>
+> >> Why is capitalized "A" not less than lowercase "a"? Based on raw values
+> it
+> >> should be. What am I missing here?
+> >>
+> >> Thanks
+> >> Kristjan
+> >>
+> >>         [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=9E-P8HOWO0s4h1p__tW4o8QGtge3bJ9VUJEDH-e-U_8OKRu2p1zazebKjPltKrWM&s=rhYKCkMRBFMzOVf8rVaRiO1Puh-rTSWAS8P6hoSzdgc&e=
+> >> PLEASE do read the posting guide
+> >>
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=9E-P8HOWO0s4h1p__tW4o8QGtge3bJ9VUJEDH-e-U_8OKRu2p1zazebKjPltKrWM&s=fI_1ZAYJFp1nrJkOV4i4ueqf4o1MD1gKHzb6AyciJUc&e=
+> >> and provide commented, minimal, self-contained, reproducible code.
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide
+> >> http://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+> >>
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> >______________________________________________
+> >R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >https://stat.ethz.ch/mailman/listinfo/r-help
+> >PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> >and provide commented, minimal, self-contained, reproducible code.
+>
+> --
+> Sent from my phone. Please excuse my brevity.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Fri Apr 15 05:26:59 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Fri, 15 Apr 2022 04:26:59 +0100
+Subject: [R] Symbol/String comparison in R
+In-Reply-To: <CAJ_7LVsw+rJqx4bmwr9a-MsvO4SPob9G1Dmquy3bDes=FanD-w@mail.gmail.com>
+References: <CAJ_7LVteUa=FJDDoT_TyYq1tG8QRQoM0XFTuT+q87+9MAbg9_w@mail.gmail.com>
+ <074d6a6f-4fe7-6c9e-7059-585f492bbb6f@sapo.pt>
+ <CAJ_7LVswyHkvcnV_TtCEn-0VGWcxurHih4Ww=w8p6CRO0=yhEQ@mail.gmail.com>
+ <6a02e922-b11e-edf8-abd2-f1b2b1849e37@sapo.pt>
+ <CAJ_7LVsw+rJqx4bmwr9a-MsvO4SPob9G1Dmquy3bDes=FanD-w@mail.gmail.com>
+Message-ID: <bbaec6bb-bec8-642a-64c4-0df8e97b711b@sapo.pt>
+
+Hello,
+
+Inline.
+
+?s 22:09 de 14/04/2022, Kristjan Kure escreveu:
+> Thank you, Rui. Not sure I got everything right, but here it is:
+> 
+> *current_loc <- Sys.getlocale("LC_COLLATE")*
+> #> [1] "Estonian_Estonia.1257"
+> 
+> "A" < "a"
+> #41 < 61
+> #> [1] FALSE
+> raw_A <- charToRaw("A") #41
+> raw_a <- charToRaw("a") #61
+> # Not OK - should be TRUE (41 is less than 61)
+> 
+> "A" > "a"
+> #41 > 61
+> #> [1] TRUE
+> raw_A <- charToRaw("A") #41
+> raw_a <- charToRaw("a") #61
+> # Not OK - should be FALSE (41 is not bigger than 61)
+> 
+> *Sys.setlocale("LC_COLLATE", locale = "C")*
+> 
+> "A" < "a"
+> #41 < 61
+> #> [1] TRUE
+> raw_A <- charToRaw("A") #41
+> raw_a <- charToRaw("a") #61
+> 
+> # OK - (41 is less than 61)
+> 
+> "A" > "a"
+> #41 > 61
+> #> [1] FALSE
+> raw_A <- charToRaw("A") #41
+> raw_a <- charToRaw("a") #61
+> 
+> # OK - (41 is not bigger than 61)
+> 
+> *Sys.setlocale("LC_COLLATE", current_loc)*
+> *
+> *
+> *Conclusion: Comparing strings using charToRaw() only works correctly 
+> with locale = C?*
+> *
+
+You are still mistaking the locale with the ASCII code (raw).
+Windows codepages like 1252 or your 1257 are supersets of the ASCII code 
+and the ASCII hex codes make a lot of sense. The upper case and lower 
+letters are 2^5 == 32 == 0x20 apart so set the 5th bit to go from upper 
+to lower case:
+
+"A": 0100 0001 == 0x41
+"a": 0110 0001 == 0x61
+
+"B": 0100 0010
+"b": 0110 0010
+
+etc.
+
+This only relates to human alphabets and languages because its an 
+attempt to make an electronic code usable to transmit/record/retrieve 
+text in human readable way. But each language's lexicographic order need 
+not follow this encoding's order even if it's what is used to record it 
+electronically.
+In the examples below you'll see that to change the locale does not 
+change the numeric codes.
+
+Comparing strings using charToRaw() only works correctly if what you 
+want is to compare codes, not letters (in the sense of human writing).
+
+
+old_loc <- Sys.getlocale("LC_COLLATE")
+
+# hexadecimal base integers
+raw_A <- charToRaw("A") # 0x41
+raw_a <- charToRaw("a") # 0x61
+
+raw_A < raw_a
+#> [1] TRUE
+raw_A > raw_a
+#> [1] FALSE
+
+as.integer(raw_A)
+#> [1] 65
+as.integer(raw_a)
+#> [1] 97
+
+Sys.setlocale("LC_COLLATE", locale = "C")
+#> [1] "C"
+
+(C_raw_A <- charToRaw("A")) # 0x41
+#> [1] 41
+(C_raw_a <- charToRaw("a")) # 0x61
+#> [1] 61
+C_raw_A < C_raw_a
+#> [1] TRUE
+C_raw_A > C_raw_a
+#> [1] FALSE
+
+identical(raw_A, C_raw_A)
+#> [1] TRUE
+identical(raw_a, C_raw_a)
+#> [1] TRUE
+
+Sys.setlocale("LC_COLLATE", old_loc)
+#> [1] "Portuguese_Portugal.1252"
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+> *
+> Regards,
+> Kristjan*
+> *
+> *
+> *
+> *
+> *
+> 
+> On Thu, Apr 14, 2022 at 10:01 PM Rui Barradas <ruipbarradas at sapo.pt 
+> <mailto:ruipbarradas at sapo.pt>> wrote:
+> 
+>     Hello,
+> 
+>     1) The best I could find on lower case/upper case is [1];
+>     The Wikipedia page you link to is about a code page and the collating
+>     sequence is the same as ASCII so no, that's not it.
+> 
+>     2) In the cp1252 table "A" < "a", it follows the numeric order 0x31 <
+>     0x41. But what R is using is the locale LC_COLLATE setting, not the "C"
+>     one.
+> 
+>     How to validate the end results? The best way is to check the current
+>     setting, with Sys.getlocale.
+> 
+> 
+> 
+>     [1]
+>     https://books.google.pt/books?id=GkajBQAAQBAJ&pg=PA259&lpg=PA259&dq=collating+sequence+portuguese&source=bl&ots=fVnUYHz0ev&sig=ACfU3U3xjpJfPNcWEfvwb_2nScYb89CeOw&hl=pt-PT&sa=X&ved=2ahUKEwiAoNTW-JP3AhVI1xoKHXT-C4oQ6AF6BAgUEAM#v=onepage&q=collating%20sequence%20portuguese&f=false
+>     <https://books.google.pt/books?id=GkajBQAAQBAJ&pg=PA259&lpg=PA259&dq=collating+sequence+portuguese&source=bl&ots=fVnUYHz0ev&sig=ACfU3U3xjpJfPNcWEfvwb_2nScYb89CeOw&hl=pt-PT&sa=X&ved=2ahUKEwiAoNTW-JP3AhVI1xoKHXT-C4oQ6AF6BAgUEAM#v=onepage&q=collating%20sequence%20portuguese&f=false>
+> 
+> 
+>     Hope this helps,
+> 
+>     Rui Barradas
+> 
+>     ?s 16:33 de 14/04/2022, Kristjan Kure escreveu:
+>      > Hi Rui
+>      >
+>      > Thank you for the code snippet.
+>      >
+>      > 1) How do you find your "Portuguese_Portugal.1252" symbols table now?
+>      > Is it this https://en.wikipedia.org/wiki/Windows-1252
+>     <https://en.wikipedia.org/wiki/Windows-1252>
+>      > <https://en.wikipedia.org/wiki/Windows-1252
+>     <https://en.wikipedia.org/wiki/Windows-1252>>?
+>      >
+>      > 2) What attributes and values do you check to validate the end
+>     result?
+>      > I see there is a section "Codepage layout" and I can find "A" and
+>     "a"
+>      > symbols.
+>      >
+>      > What values on that table tell you "A" is bigger than "a"?
+>      > "A" < "a" # returns FALSE
+>      > "A" > "a" # returns TRUE
+>      >
+>      > PS! My locale is Estonian_Estonia.1257
+>      >
+>      > Regards,
+>      > Kristjan
+>      >
+>      > On Thu, Apr 14, 2022 at 5:05 PM Rui Barradas
+>     <ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>
+>      > <mailto:ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>>> wrote:
+>      >
+>      >? ? ?Hello,
+>      >
+>      >? ? ?This is a locale issue, you are counting on the ASCII table
+>     codes but
+>      >? ? ?that's only valid for the "C" locale.
+>      >
+>      >? ? ?old_loc <- Sys.getlocale("LC_COLLATE")
+>      >
+>      >? ? ?"A" < "a"
+>      >? ? ?#> [1] FALSE
+>      >? ? ?"A" > "a"
+>      >? ? ?#> [1] TRUE
+>      >
+>      >? ? ?Sys.setlocale("LC_COLLATE", locale = "C")
+>      >? ? ?#> [1] "C"
+>      >
+>      >? ? ?"A" < "a"
+>      >? ? ?#> [1] TRUE
+>      >? ? ?"A" > "a"
+>      >? ? ?#> [1] FALSE
+>      >
+>      >? ? ?Sys.setlocale("LC_COLLATE", old_loc)
+>      >? ? ?#> [1] "Portuguese_Portugal.1252"
+>      >
+>      >
+>      >? ? ?Hope this helps,
+>      >
+>      >? ? ?Rui Barradas
+>      >
+>      >? ? ??s 15:06 de 13/04/2022, Kristjan Kure escreveu:
+>      >? ? ? > Hi!
+>      >? ? ? >
+>      >? ? ? > Sorry, I am a beginner in R.
+>      >? ? ? >
+>      >? ? ? > I was not able to find answers to my questions (tried
+>     Google, Stack
+>      >? ? ? > Overflow, etc). Please correct me if anything is wrong here.
+>      >? ? ? >
+>      >? ? ? > When comparing symbols/strings in R - raw numeric values
+>     are compared
+>      >? ? ? > symbol by symbol starting from left? If raw numeric values are
+>      >? ? ?not used is
+>      >? ? ? > there an ASCII / Unicode table where symbols have
+>      >? ? ?values/ranking/order and
+>      >? ? ? > R compares those values?
+>      >? ? ? >
+>      >? ? ? > *2) Comparing symbols*
+>      >? ? ? > Letter "a" raw value is 61, letter "b" raw value is 62? Is
+>     this
+>      >? ? ?correct?
+>      >? ? ? >
+>      >? ? ? > # Raw value for "a" = 61
+>      >? ? ? > a_raw <- charToRaw("a")
+>      >? ? ? > a_raw
+>      >? ? ? >
+>      >? ? ? > # Raw value for "b" = 62
+>      >? ? ? > b_raw <- charToRaw("b")
+>      >? ? ? > b_raw
+>      >? ? ? >
+>      >? ? ? > # equals TRUE
+>      >? ? ? > "a" < "b"
+>      >? ? ? >
+>      >? ? ? > Ok, so 61 is less than 62 so it's TRUE. Is this correct?
+>      >? ? ? >
+>      >? ? ? > *3) Comparing strings #1*
+>      >? ? ? > "1040" <= "12000"
+>      >? ? ? >
+>      >? ? ? > raw_1040 <- charToRaw("1040")
+>      >? ? ? > raw_1040
+>      >? ? ? > #31 *30* (comparison happens with the second symbol) 34 30
+>      >? ? ? >
+>      >? ? ? > raw_12000 <- charToRaw("12000")
+>      >? ? ? > raw_12000
+>      >? ? ? > #31 *32* (comparison happens with the second symbol) 30 30 30
+>      >? ? ? >
+>      >? ? ? > The symbol in the second position is 30 and it's less than 32.
+>      >? ? ?Equals to
+>      >? ? ? > true. Is this correct?
+>      >? ? ? >
+>      >? ? ? > *4) Comparing strings #2*
+>      >? ? ? > "1040" <= "10000"
+>      >? ? ? >
+>      >? ? ? > raw_1040 <- charToRaw("1040")
+>      >? ? ? > raw_1040
+>      >? ? ? > #31 30 *34*? (comparison happens with third symbol) 30
+>      >? ? ? >
+>      >? ? ? > raw_10000 <- charToRaw("10000")
+>      >? ? ? > raw_10000
+>      >? ? ? > #31 30 *30*? (comparison happens with third symbol) 30 30
+>      >? ? ? >
+>      >? ? ? > The symbol in the third position is 34 is greater than 30.
+>     Equals
+>      >? ? ?to false.
+>      >? ? ? > Is this correct?
+>      >? ? ? >
+>      >? ? ? > *5) Problem - Why does this equal FALSE?*
+>      >? ? ? > *"A" < "a"*
+>      >? ? ? >
+>      >? ? ? > 41 < 61 # FALSE?
+>      >? ? ? >
+>      >? ? ? > # Raw value for "A" = 41
+>      >? ? ? > A_raw <- charToRaw("A")
+>      >? ? ? > A_raw
+>      >? ? ? >
+>      >? ? ? > # Raw value for "a" = 61
+>      >? ? ? > a_raw <- charToRaw("a")
+>      >? ? ? > a_raw
+>      >? ? ? >
+>      >? ? ? > Why is capitalized "A" not less than lowercase "a"? Based
+>     on raw
+>      >? ? ?values it
+>      >? ? ? > should be. What am I missing here?
+>      >? ? ? >
+>      >? ? ? > Thanks
+>      >? ? ? > Kristjan
+>      >? ? ? >
+>      >? ? ? >? ? ? ?[[alternative HTML version deleted]]
+>      >? ? ? >
+>      >? ? ? > ______________________________________________
+>      >? ? ? > R-help at r-project.org <mailto:R-help at r-project.org>
+>     <mailto:R-help at r-project.org <mailto:R-help at r-project.org>> mailing list
+>      >? ? ?-- To UNSUBSCRIBE and more, see
+>      >? ? ? > https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>
+>      >? ? ?<https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>>
+>      >? ? ? > PLEASE do read the posting guide
+>      > http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>      >? ? ?<http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>>
+>      >? ? ? > and provide commented, minimal, self-contained,
+>     reproducible code.
+>      >
+>
+
+
+From neh@@bo|ogn@90 @end|ng |rom gm@||@com  Fri Apr 15 15:15:34 2022
+From: neh@@bo|ogn@90 @end|ng |rom gm@||@com (Neha gupta)
+Date: Fri, 15 Apr 2022 15:15:34 +0200
+Subject: [R] Preprocess and training model with text data
+Message-ID: <CA+nrPns5diauNiRJxJseM5uYhAGayvv8v2E9Fa_UFgYce+LWVg@mail.gmail.com>
+
+Hi everyone,
+
+I am working on text categorization (my first project so learning) and my
+dataset has several columns as text (detail about the data is pasted in the
+bottom. I worked before on numeric data but my advisor now asked me to
+perform predictive modeling on this text data.
+
+I am doing some preprocessing such as tokenizing, lower case, stemming etc.
+
+The following code is used for tokenization
+
+train.tokens <- tokens(train$DESCRIPTION,, what = "word",
+                       remove_numbers = TRUE, remove_punct = TRUE,
+                       remove_symbols = TRUE, remove_hyphens = TRUE).   then
+
+ train.tokens <- tokens_tolower(train.tokens)     then
+
+train.tokens <- tokens_wordstem(train.tokens, language = "english")
+
+I have two questions
+
+(1)  If we have more text features (apart from DESCRIPTION), do I need to
+repeat these steps for each feature? I tried the following but does not work
+
+
+*train.tokens <- tokens(c(train$DESCRIPTION,,train$NAME) , what = "word",
+remove_numbers = TRUE, remove_punct = TRUE,*
+*     remove_symbols = TRUE, remove_hyphens = TRUE).*
+
+(2) My second question, after we preprocess the data and create our
+bag-of-words model like below
+
+train.tokens.dfm <- dfm(train.tokens, tolower = FALSE)
+
+train.tokens.matrix= as.matrix(train.tokens.dfm)
+
+,  are we ready to *train our model and perform prediction*?
+
+
+*My data as mentioned also in previous emails*
+
+Rows: 1,819
+Columns: 14
+$ PLUGIN_RULE_KEY             <chr> "InsufficientBranchCoverage",
+"InsufficientLin~
+$ PLUGIN_CONFIG_KEY           <chr> "", "", "", "", "", "", "", "", "", "",
+"S1120~
+$ PLUGIN_NAME                 <chr> "common-java", "common-java",
+"common-java", "~
+$ DESCRIPTION                 <chr> "An issue is created on a file as soon
+as the ~
+$ SEVERITY                    <chr> "MAJOR", "MAJOR", "MAJOR", "MAJOR",
+"MAJOR", "~
+$ NAME                        <chr> "Branches should have sufficient
+coverage by t~
+$ DEF_REMEDIATION_FUNCTION    <chr> "LINEAR", "LINEAR", "LINEAR",
+"LINEAR_OFFSET",~
+$ REMEDIATION_GAP_MULT        <lgl> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,
+NA, NA~
+$ DEF_REMEDIATION_BASE_EFFORT <chr> "", "", "", "10min", "", "", "5min",
+"5min", "~
+$ GAP_DESCRIPTION             <chr> "number of uncovered conditions",
+"number of l~
+$ SYSTEM_TAGS                 <chr> "bad-practice", "bad-practice",
+"convention", ~
+$ IS_TEMPLATE                 <int> 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+0, 0, 0~
+$ DESCRIPTION_FORMAT          <chr> "HTML", "HTML", "HTML", "HTML", "HTML",
+"HTML"~
+$ TYPE                        <chr> "CODE_SMELL", "CODE_SMELL",
+"CODE_SMELL", "COD~
+
+	[[alternative HTML version deleted]]
+
+
+From e||z@_botto @end|ng |rom out|ook@com  Fri Apr 15 16:53:36 2022
+From: e||z@_botto @end|ng |rom out|ook@com (Eliza Botto)
+Date: Fri, 15 Apr 2022 14:53:36 +0000
+Subject: [R] Sorted index of values in matrix
+Message-ID: <VI1PR0501MB26408188825DBD86941BEA4A9AEE9@VI1PR0501MB2640.eurprd05.prod.outlook.com>
+
+deaR useRs,
+
+I have this following simple dataset
+
+> dput(qq)
+
+structure(1:6, .Dim = 3:2, .Dimnames = list(c("1", "2", "3"),
+    c("1", "2")))
+
+I want to extract row and column index of the sorted values of this matrix
+
+For example,
+
+sort(qq) command will execute the sorted values of this matrix as (1 2 3 4 5 6). Instead of values, I want the row and column names of these sorted values as (1,1), (1,2), (1,3), (2,1), (2,2), (2,3)
+
+I thankyou very much in advance for your help.
+
+Eliza
+
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Apr 15 17:11:37 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 15 Apr 2022 18:11:37 +0300
+Subject: [R] Sorted index of values in matrix
+In-Reply-To: <VI1PR0501MB26408188825DBD86941BEA4A9AEE9@VI1PR0501MB2640.eurprd05.prod.outlook.com>
+References: <VI1PR0501MB26408188825DBD86941BEA4A9AEE9@VI1PR0501MB2640.eurprd05.prod.outlook.com>
+Message-ID: <20220415181137.60744732@arachnoid>
+
+? Fri, 15 Apr 2022 14:53:36 +0000
+Eliza Botto <eliza_botto at outlook.com> ?????:
+
+> sort(qq) command will execute the sorted values of this matrix as (1
+> 2 3 4 5 6). Instead of values, I want the row and column names of
+> these sorted values as (1,1), (1,2), (1,3), (2,1), (2,2), (2,3)
+
+Combine order() to get the sorting permutation with arrayInd() to get
+row and column indices from absolute indices with colnames() and
+rownames() to get the names themselves.
+
+-- 
+Best regards,
+Ivan
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Fri Apr 15 17:33:22 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Fri, 15 Apr 2022 08:33:22 -0700
+Subject: [R] Sorted index of values in matrix
+In-Reply-To: <VI1PR0501MB26408188825DBD86941BEA4A9AEE9@VI1PR0501MB2640.eurprd05.prod.outlook.com>
+References: <VI1PR0501MB26408188825DBD86941BEA4A9AEE9@VI1PR0501MB2640.eurprd05.prod.outlook.com>
+Message-ID: <558AB668-6441-40BE-AEF8-06CD28155D9E@dcn.davis.ca.us>
+
+Please stop posting in HTML format.
+
+I think your specified result coordinates are in (col,row) order, which is not normal for R. The solution below yields (row,col) order.
+
+qq <- structure(1:6, .Dim = 3:2, .Dimnames = list(c("1", "2", "3"), c("1", "2")))
+pos <- expand.grid( r = seq.int( nrow( qq ) )
+                  , c = seq.int( ncol( qq ) ) )
+qq #'confirm source layout is column major
+pos[ order( qq ), ] # (row,col)
+pos[ order( qq ), 2:1 ] # (col,row)
+
+
+On April 15, 2022 7:53:36 AM PDT, Eliza Botto <eliza_botto at outlook.com> wrote:
+>deaR useRs,
+>
+>I have this following simple dataset
+>
+>> dput(qq)
+>
+>structure(1:6, .Dim = 3:2, .Dimnames = list(c("1", "2", "3"),
+>    c("1", "2")))
+>
+>I want to extract row and column index of the sorted values of this matrix
+>
+>For example,
+>
+>sort(qq) command will execute the sorted values of this matrix as (1 2 3 4 5 6). Instead of values, I want the row and column names of these sorted values as (1,1), (1,2), (1,3), (2,1), (2,2), (2,3)
+>
+>I thankyou very much in advance for your help.
+>
+>Eliza
+>
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Fri Apr 15 18:25:16 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Fri, 15 Apr 2022 09:25:16 -0700
+Subject: [R] Sorted index of values in matrix
+In-Reply-To: <558AB668-6441-40BE-AEF8-06CD28155D9E@dcn.davis.ca.us>
+References: <VI1PR0501MB26408188825DBD86941BEA4A9AEE9@VI1PR0501MB2640.eurprd05.prod.outlook.com>
+ <558AB668-6441-40BE-AEF8-06CD28155D9E@dcn.davis.ca.us>
+Message-ID: <CAGxFJbR4eL6a0nqFW0bcoj+srhdyHM2Gktt1St-zfp7ZdfuXNQ@mail.gmail.com>
+
+... and here is another version of Jeff's solution using the built in
+row() and col() functions instead of explicitly creating the indices
+(but his version generalizes to arbitrary arrays; this does not):
+
+ qq <- matrix(12:7, nrow =3) ## start with a non-sorted matrix
+> qq
+     [,1] [,2]
+[1,]   12    9
+[2,]   11    8
+[3,]   10    7
+> sort(qq)
+[1]  7  8  9 10 11 12 ## the sorted values
+
+> o <- order(qq)
+> cbind(row(qq)[o], col(qq)[o])
+## matrix of (row, col) indices of sorted values in original unsorted matrix
+     [,1] [,2]
+[1,]    3    2
+[2,]    2    2
+[3,]    1    2
+[4,]    3    1
+[5,]    2    1
+[6,]    1    1
+
+Cheers,
+Bert Gunter
+
+On Fri, Apr 15, 2022 at 8:33 AM Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrote:
+>
+> Please stop posting in HTML format.
+>
+> I think your specified result coordinates are in (col,row) order, which is not normal for R. The solution below yields (row,col) order.
+>
+> qq <- structure(1:6, .Dim = 3:2, .Dimnames = list(c("1", "2", "3"), c("1", "2")))
+> pos <- expand.grid( r = seq.int( nrow( qq ) )
+>                   , c = seq.int( ncol( qq ) ) )
+> qq #'confirm source layout is column major
+> pos[ order( qq ), ] # (row,col)
+> pos[ order( qq ), 2:1 ] # (col,row)
+>
+>
+> On April 15, 2022 7:53:36 AM PDT, Eliza Botto <eliza_botto at outlook.com> wrote:
+> >deaR useRs,
+> >
+> >I have this following simple dataset
+> >
+> >> dput(qq)
+> >
+> >structure(1:6, .Dim = 3:2, .Dimnames = list(c("1", "2", "3"),
+> >    c("1", "2")))
+> >
+> >I want to extract row and column index of the sorted values of this matrix
+> >
+> >For example,
+> >
+> >sort(qq) command will execute the sorted values of this matrix as (1 2 3 4 5 6). Instead of values, I want the row and column names of these sorted values as (1,1), (1,2), (1,3), (2,1), (2,2), (2,3)
+> >
+> >I thankyou very much in advance for your help.
+> >
+> >Eliza
+> >
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> >______________________________________________
+> >R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >https://stat.ethz.ch/mailman/listinfo/r-help
+> >PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> >and provide commented, minimal, self-contained, reproducible code.
+>
+> --
+> Sent from my phone. Please excuse my brevity.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Fri Apr 15 19:00:34 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Fri, 15 Apr 2022 10:00:34 -0700
+Subject: [R] Sorted index of values in matrix
+In-Reply-To: <CAGxFJbR4eL6a0nqFW0bcoj+srhdyHM2Gktt1St-zfp7ZdfuXNQ@mail.gmail.com>
+References: <VI1PR0501MB26408188825DBD86941BEA4A9AEE9@VI1PR0501MB2640.eurprd05.prod.outlook.com>
+ <558AB668-6441-40BE-AEF8-06CD28155D9E@dcn.davis.ca.us>
+ <CAGxFJbR4eL6a0nqFW0bcoj+srhdyHM2Gktt1St-zfp7ZdfuXNQ@mail.gmail.com>
+Message-ID: <CAGxFJbSqaYTJwGa7gOe=tTW2_-pN0Xgu3PpYysYxdG_jQ+fX5g@mail.gmail.com>
+
+...
+But Ivan's solution -- which I had to think about -- is better, and it
+also generalizes to arbitrary arrays:
+
+arrayInd(order(qq), .dim = dim(qq))
+
+Bert Gunter
+
+
+On Fri, Apr 15, 2022 at 9:25 AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> ... and here is another version of Jeff's solution using the built in
+> row() and col() functions instead of explicitly creating the indices
+> (but his version generalizes to arbitrary arrays; this does not):
+>
+>  qq <- matrix(12:7, nrow =3) ## start with a non-sorted matrix
+> > qq
+>      [,1] [,2]
+> [1,]   12    9
+> [2,]   11    8
+> [3,]   10    7
+> > sort(qq)
+> [1]  7  8  9 10 11 12 ## the sorted values
+>
+> > o <- order(qq)
+> > cbind(row(qq)[o], col(qq)[o])
+> ## matrix of (row, col) indices of sorted values in original unsorted matrix
+>      [,1] [,2]
+> [1,]    3    2
+> [2,]    2    2
+> [3,]    1    2
+> [4,]    3    1
+> [5,]    2    1
+> [6,]    1    1
+>
+> Cheers,
+> Bert Gunter
+>
+> On Fri, Apr 15, 2022 at 8:33 AM Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrote:
+> >
+> > Please stop posting in HTML format.
+> >
+> > I think your specified result coordinates are in (col,row) order, which is not normal for R. The solution below yields (row,col) order.
+> >
+> > qq <- structure(1:6, .Dim = 3:2, .Dimnames = list(c("1", "2", "3"), c("1", "2")))
+> > pos <- expand.grid( r = seq.int( nrow( qq ) )
+> >                   , c = seq.int( ncol( qq ) ) )
+> > qq #'confirm source layout is column major
+> > pos[ order( qq ), ] # (row,col)
+> > pos[ order( qq ), 2:1 ] # (col,row)
+> >
+> >
+> > On April 15, 2022 7:53:36 AM PDT, Eliza Botto <eliza_botto at outlook.com> wrote:
+> > >deaR useRs,
+> > >
+> > >I have this following simple dataset
+> > >
+> > >> dput(qq)
+> > >
+> > >structure(1:6, .Dim = 3:2, .Dimnames = list(c("1", "2", "3"),
+> > >    c("1", "2")))
+> > >
+> > >I want to extract row and column index of the sorted values of this matrix
+> > >
+> > >For example,
+> > >
+> > >sort(qq) command will execute the sorted values of this matrix as (1 2 3 4 5 6). Instead of values, I want the row and column names of these sorted values as (1,1), (1,2), (1,3), (2,1), (2,2), (2,3)
+> > >
+> > >I thankyou very much in advance for your help.
+> > >
+> > >Eliza
+> > >
+> > >
+> > >       [[alternative HTML version deleted]]
+> > >
+> > >______________________________________________
+> > >R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > >https://stat.ethz.ch/mailman/listinfo/r-help
+> > >PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > >and provide commented, minimal, self-contained, reproducible code.
+> >
+> > --
+> > Sent from my phone. Please excuse my brevity.
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+
+From kr|@tj@n@kure@1 @end|ng |rom gm@||@com  Thu Apr 14 23:09:20 2022
+From: kr|@tj@n@kure@1 @end|ng |rom gm@||@com (Kristjan Kure)
+Date: Fri, 15 Apr 2022 00:09:20 +0300
+Subject: [R] Symbol/String comparison in R
+In-Reply-To: <6a02e922-b11e-edf8-abd2-f1b2b1849e37@sapo.pt>
+References: <CAJ_7LVteUa=FJDDoT_TyYq1tG8QRQoM0XFTuT+q87+9MAbg9_w@mail.gmail.com>
+ <074d6a6f-4fe7-6c9e-7059-585f492bbb6f@sapo.pt>
+ <CAJ_7LVswyHkvcnV_TtCEn-0VGWcxurHih4Ww=w8p6CRO0=yhEQ@mail.gmail.com>
+ <6a02e922-b11e-edf8-abd2-f1b2b1849e37@sapo.pt>
+Message-ID: <CAJ_7LVsw+rJqx4bmwr9a-MsvO4SPob9G1Dmquy3bDes=FanD-w@mail.gmail.com>
+
+Thank you, Rui. Not sure I got everything right, but here it is:
+
+*current_loc <- Sys.getlocale("LC_COLLATE")*
+#> [1] "Estonian_Estonia.1257"
+
+"A" < "a"
+#41 < 61
+#> [1] FALSE
+raw_A <- charToRaw("A") #41
+raw_a <- charToRaw("a") #61
+# Not OK - should be TRUE (41 is less than 61)
+
+"A" > "a"
+#41 > 61
+#> [1] TRUE
+raw_A <- charToRaw("A") #41
+raw_a <- charToRaw("a") #61
+# Not OK - should be FALSE (41 is not bigger than 61)
+
+*Sys.setlocale("LC_COLLATE", locale = "C")*
+
+"A" < "a"
+#41 < 61
+#> [1] TRUE
+raw_A <- charToRaw("A") #41
+raw_a <- charToRaw("a") #61
+
+# OK - (41 is less than 61)
+
+"A" > "a"
+#41 > 61
+#> [1] FALSE
+raw_A <- charToRaw("A") #41
+raw_a <- charToRaw("a") #61
+
+# OK - (41 is not bigger than 61)
+
+*Sys.setlocale("LC_COLLATE", current_loc)*
+
+*Conclusion: Comparing strings using charToRaw() only works correctly with
+locale = C?*
+
+Regards,
+Kristjan
+
+
+
+On Thu, Apr 14, 2022 at 10:01 PM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+
+> Hello,
+>
+> 1) The best I could find on lower case/upper case is [1];
+> The Wikipedia page you link to is about a code page and the collating
+> sequence is the same as ASCII so no, that's not it.
+>
+> 2) In the cp1252 table "A" < "a", it follows the numeric order 0x31 <
+> 0x41. But what R is using is the locale LC_COLLATE setting, not the "C"
+> one.
+>
+> How to validate the end results? The best way is to check the current
+> setting, with Sys.getlocale.
+>
+>
+>
+> [1]
+>
+> https://books.google.pt/books?id=GkajBQAAQBAJ&pg=PA259&lpg=PA259&dq=collating+sequence+portuguese&source=bl&ots=fVnUYHz0ev&sig=ACfU3U3xjpJfPNcWEfvwb_2nScYb89CeOw&hl=pt-PT&sa=X&ved=2ahUKEwiAoNTW-JP3AhVI1xoKHXT-C4oQ6AF6BAgUEAM#v=onepage&q=collating%20sequence%20portuguese&f=false
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+> ?s 16:33 de 14/04/2022, Kristjan Kure escreveu:
+> > Hi Rui
+> >
+> > Thank you for the code snippet.
+> >
+> > 1) How do you find your "Portuguese_Portugal.1252" symbols table now?
+> > Is it this https://en.wikipedia.org/wiki/Windows-1252
+> > <https://en.wikipedia.org/wiki/Windows-1252>?
+> >
+> > 2) What attributes and values do you check to validate the end result?
+> > I see there is a section "Codepage layout" and I can find "A" and "a"
+> > symbols.
+> >
+> > What values on that table tell you "A" is bigger than "a"?
+> > "A" < "a" # returns FALSE
+> > "A" > "a" # returns TRUE
+> >
+> > PS! My locale is Estonian_Estonia.1257
+> >
+> > Regards,
+> > Kristjan
+> >
+> > On Thu, Apr 14, 2022 at 5:05 PM Rui Barradas <ruipbarradas at sapo.pt
+> > <mailto:ruipbarradas at sapo.pt>> wrote:
+> >
+> >     Hello,
+> >
+> >     This is a locale issue, you are counting on the ASCII table codes but
+> >     that's only valid for the "C" locale.
+> >
+> >     old_loc <- Sys.getlocale("LC_COLLATE")
+> >
+> >     "A" < "a"
+> >     #> [1] FALSE
+> >     "A" > "a"
+> >     #> [1] TRUE
+> >
+> >     Sys.setlocale("LC_COLLATE", locale = "C")
+> >     #> [1] "C"
+> >
+> >     "A" < "a"
+> >     #> [1] TRUE
+> >     "A" > "a"
+> >     #> [1] FALSE
+> >
+> >     Sys.setlocale("LC_COLLATE", old_loc)
+> >     #> [1] "Portuguese_Portugal.1252"
+> >
+> >
+> >     Hope this helps,
+> >
+> >     Rui Barradas
+> >
+> >     ?s 15:06 de 13/04/2022, Kristjan Kure escreveu:
+> >      > Hi!
+> >      >
+> >      > Sorry, I am a beginner in R.
+> >      >
+> >      > I was not able to find answers to my questions (tried Google,
+> Stack
+> >      > Overflow, etc). Please correct me if anything is wrong here.
+> >      >
+> >      > When comparing symbols/strings in R - raw numeric values are
+> compared
+> >      > symbol by symbol starting from left? If raw numeric values are
+> >     not used is
+> >      > there an ASCII / Unicode table where symbols have
+> >     values/ranking/order and
+> >      > R compares those values?
+> >      >
+> >      > *2) Comparing symbols*
+> >      > Letter "a" raw value is 61, letter "b" raw value is 62? Is this
+> >     correct?
+> >      >
+> >      > # Raw value for "a" = 61
+> >      > a_raw <- charToRaw("a")
+> >      > a_raw
+> >      >
+> >      > # Raw value for "b" = 62
+> >      > b_raw <- charToRaw("b")
+> >      > b_raw
+> >      >
+> >      > # equals TRUE
+> >      > "a" < "b"
+> >      >
+> >      > Ok, so 61 is less than 62 so it's TRUE. Is this correct?
+> >      >
+> >      > *3) Comparing strings #1*
+> >      > "1040" <= "12000"
+> >      >
+> >      > raw_1040 <- charToRaw("1040")
+> >      > raw_1040
+> >      > #31 *30* (comparison happens with the second symbol) 34 30
+> >      >
+> >      > raw_12000 <- charToRaw("12000")
+> >      > raw_12000
+> >      > #31 *32* (comparison happens with the second symbol) 30 30 30
+> >      >
+> >      > The symbol in the second position is 30 and it's less than 32.
+> >     Equals to
+> >      > true. Is this correct?
+> >      >
+> >      > *4) Comparing strings #2*
+> >      > "1040" <= "10000"
+> >      >
+> >      > raw_1040 <- charToRaw("1040")
+> >      > raw_1040
+> >      > #31 30 *34*  (comparison happens with third symbol) 30
+> >      >
+> >      > raw_10000 <- charToRaw("10000")
+> >      > raw_10000
+> >      > #31 30 *30*  (comparison happens with third symbol) 30 30
+> >      >
+> >      > The symbol in the third position is 34 is greater than 30. Equals
+> >     to false.
+> >      > Is this correct?
+> >      >
+> >      > *5) Problem - Why does this equal FALSE?*
+> >      > *"A" < "a"*
+> >      >
+> >      > 41 < 61 # FALSE?
+> >      >
+> >      > # Raw value for "A" = 41
+> >      > A_raw <- charToRaw("A")
+> >      > A_raw
+> >      >
+> >      > # Raw value for "a" = 61
+> >      > a_raw <- charToRaw("a")
+> >      > a_raw
+> >      >
+> >      > Why is capitalized "A" not less than lowercase "a"? Based on raw
+> >     values it
+> >      > should be. What am I missing here?
+> >      >
+> >      > Thanks
+> >      > Kristjan
+> >      >
+> >      >       [[alternative HTML version deleted]]
+> >      >
+> >      > ______________________________________________
+> >      > R-help at r-project.org <mailto:R-help at r-project.org> mailing list
+> >     -- To UNSUBSCRIBE and more, see
+> >      > https://stat.ethz.ch/mailman/listinfo/r-help
+> >     <https://stat.ethz.ch/mailman/listinfo/r-help>
+> >      > PLEASE do read the posting guide
+> >     http://www.R-project.org/posting-guide.html
+> >     <http://www.R-project.org/posting-guide.html>
+> >      > and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+
+	[[alternative HTML version deleted]]
+
+
+From r@ubb@|@h115 @end|ng |rom gm@||@com  Fri Apr 15 19:51:04 2022
+From: r@ubb@|@h115 @end|ng |rom gm@||@com (Roopa Subbaiah)
+Date: Fri, 15 Apr 2022 23:21:04 +0530
+Subject: [R] Need help with netmeta package
+Message-ID: <CAHudoO3Q+xrW5yOsgdkSQvLV9D63LeAC6wWWsCK_0ySw=uXK0A@mail.gmail.com>
+
+Hi all,
+
+We are conducting network metaanalysis of 3 treatments compared to placebo
+using netmeta analysis. We have mean sd values for an outcome. How do we
+calculate z scores using netmeta package? Thank you
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Fri Apr 15 22:52:11 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Fri, 15 Apr 2022 13:52:11 -0700
+Subject: [R] Need help with netmeta package
+In-Reply-To: <CAHudoO3Q+xrW5yOsgdkSQvLV9D63LeAC6wWWsCK_0ySw=uXK0A@mail.gmail.com>
+References: <CAHudoO3Q+xrW5yOsgdkSQvLV9D63LeAC6wWWsCK_0ySw=uXK0A@mail.gmail.com>
+Message-ID: <CAGxFJbRNE3JntChzRUkbnC1cjMWr93LijK4cBa3--ET9C-=TiQ@mail.gmail.com>
+
+While you *may* get a useful reply here, there is an
+r-sig-meta-analysis list to which this would be better posted:
+https://stat.ethz.ch/mailman/listinfo/r-sig-meta-analysis
+
+
+Bert Gunter
+
+"The trouble with having an open mind is that people keep coming along
+and sticking things into it."
+-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+
+On Fri, Apr 15, 2022 at 1:04 PM Roopa Subbaiah <rsubbaiah115 at gmail.com> wrote:
+>
+> Hi all,
+>
+> We are conducting network metaanalysis of 3 treatments compared to placebo
+> using netmeta analysis. We have mean sd values for an outcome. How do we
+> calculate z scores using netmeta package? Thank you
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From e||z@_botto @end|ng |rom out|ook@com  Sat Apr 16 01:51:36 2022
+From: e||z@_botto @end|ng |rom out|ook@com (Eliza Botto)
+Date: Fri, 15 Apr 2022 23:51:36 +0000
+Subject: [R] Sorted index of values in matrix
+In-Reply-To: <CAGxFJbSqaYTJwGa7gOe=tTW2_-pN0Xgu3PpYysYxdG_jQ+fX5g@mail.gmail.com>
+References: <VI1PR0501MB26408188825DBD86941BEA4A9AEE9@VI1PR0501MB2640.eurprd05.prod.outlook.com>
+ <558AB668-6441-40BE-AEF8-06CD28155D9E@dcn.davis.ca.us>
+ <CAGxFJbR4eL6a0nqFW0bcoj+srhdyHM2Gktt1St-zfp7ZdfuXNQ@mail.gmail.com>
+ <CAGxFJbSqaYTJwGa7gOe=tTW2_-pN0Xgu3PpYysYxdG_jQ+fX5g@mail.gmail.com>
+Message-ID: <VI1PR0501MB2640475BF7CAB03F236C2FEB9AEE9@VI1PR0501MB2640.eurprd05.prod.outlook.com>
+
+Thankyou very much. It worked.
+
+
+Eliza
+________________________________
+From: Bert Gunter <bgunter.4567 at gmail.com>
+Sent: Friday 15 April 2022 17:00
+To: Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+Cc: R-help <r-help at r-project.org>; Eliza Botto <eliza_botto at outlook.com>
+Subject: Re: [R] Sorted index of values in matrix
+
+...
+But Ivan's solution -- which I had to think about -- is better, and it
+also generalizes to arbitrary arrays:
+
+arrayInd(order(qq), .dim = dim(qq))
+
+Bert Gunter
+
+
+On Fri, Apr 15, 2022 at 9:25 AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> ... and here is another version of Jeff's solution using the built in
+> row() and col() functions instead of explicitly creating the indices
+> (but his version generalizes to arbitrary arrays; this does not):
+>
+>  qq <- matrix(12:7, nrow =3) ## start with a non-sorted matrix
+> > qq
+>      [,1] [,2]
+> [1,]   12    9
+> [2,]   11    8
+> [3,]   10    7
+> > sort(qq)
+> [1]  7  8  9 10 11 12 ## the sorted values
+>
+> > o <- order(qq)
+> > cbind(row(qq)[o], col(qq)[o])
+> ## matrix of (row, col) indices of sorted values in original unsorted matrix
+>      [,1] [,2]
+> [1,]    3    2
+> [2,]    2    2
+> [3,]    1    2
+> [4,]    3    1
+> [5,]    2    1
+> [6,]    1    1
+>
+> Cheers,
+> Bert Gunter
+>
+> On Fri, Apr 15, 2022 at 8:33 AM Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrote:
+> >
+> > Please stop posting in HTML format.
+> >
+> > I think your specified result coordinates are in (col,row) order, which is not normal for R. The solution below yields (row,col) order.
+> >
+> > qq <- structure(1:6, .Dim = 3:2, .Dimnames = list(c("1", "2", "3"), c("1", "2")))
+> > pos <- expand.grid( r = seq.int( nrow( qq ) )
+> >                   , c = seq.int( ncol( qq ) ) )
+> > qq #'confirm source layout is column major
+> > pos[ order( qq ), ] # (row,col)
+> > pos[ order( qq ), 2:1 ] # (col,row)
+> >
+> >
+> > On April 15, 2022 7:53:36 AM PDT, Eliza Botto <eliza_botto at outlook.com> wrote:
+> > >deaR useRs,
+> > >
+> > >I have this following simple dataset
+> > >
+> > >> dput(qq)
+> > >
+> > >structure(1:6, .Dim = 3:2, .Dimnames = list(c("1", "2", "3"),
+> > >    c("1", "2")))
+> > >
+> > >I want to extract row and column index of the sorted values of this matrix
+> > >
+> > >For example,
+> > >
+> > >sort(qq) command will execute the sorted values of this matrix as (1 2 3 4 5 6). Instead of values, I want the row and column names of these sorted values as (1,1), (1,2), (1,3), (2,1), (2,2), (2,3)
+> > >
+> > >I thankyou very much in advance for your help.
+> > >
+> > >Eliza
+> > >
+> > >
+> > >       [[alternative HTML version deleted]]
+> > >
+> > >______________________________________________
+> > >R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > >https://stat.ethz.ch/mailman/listinfo/r-help
+> > >PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > >and provide commented, minimal, self-contained, reproducible code.
+> >
+> > --
+> > Sent from my phone. Please excuse my brevity.
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From p@u|bern@|07 @end|ng |rom gm@||@com  Sat Apr 16 02:11:33 2022
+From: p@u|bern@|07 @end|ng |rom gm@||@com (Paul Bernal)
+Date: Fri, 15 Apr 2022 19:11:33 -0500
+Subject: [R] Question regarding k-fold cross validation
+Message-ID: <CAMOcQfPfLkCwL+0mxYDa9eNAX2UspPqSK0-gmCfyZaEmJ9toBw@mail.gmail.com>
+
+Dear friends,
+
+Hope you are doing great. I need to perform a k-fold cross validation
+analysis on the famous iris dataset, with k = 5.
+
+Now, the model I am using is a multinomial logit, because the dependent
+variable is species and it has three classes (setosa, versicolor and
+virginica).
+
+The packages I am using are caret and nnet.
+
+Below is my R code:
+
+#specifying the cross-validation method
+
+ctrl <- trainControl(method = "cv", number = 5)
+
+model = train(multinom(as.factor(iris_frame$species) ~
+iris_frame$sepal_length + iris_frame$sepal_width + iris_frame$petal_length
++ iris_frame$petal_width), trControl = ctrl)
+
+Now, R throws the following message:
+
+# weights:  18 (10 variable)
+initial  value 164.791843
+iter  10 value 16.119063
+iter  20 value 7.103299
+iter  30 value 6.191105
+iter  40 value 5.984259
+iter  50 value 5.961820
+iter  60 value 5.955196
+iter  70 value 5.952041
+iter  80 value 5.950570
+iter  90 value 5.950178
+iter 100 value 5.950059
+final  value 5.950059
+stopped after 100 iterations
+Error in x[0, , drop = FALSE] : incorrect number of dimensions
+
+What am I doing wrong? How could I accomplish the 5-fold cross validation
+on the iris data set?
+
+I am providing the dput for the iris data set that I am using below:
+dput(iris)
+structure(list(Sepal.Length = c(5.1, 4.9, 4.7, 4.6, 5, 5.4, 4.6,
+5, 4.4, 4.9, 5.4, 4.8, 4.8, 4.3, 5.8, 5.7, 5.4, 5.1, 5.7, 5.1,
+5.4, 5.1, 4.6, 5.1, 4.8, 5, 5, 5.2, 5.2, 4.7, 4.8, 5.4, 5.2,
+5.5, 4.9, 5, 5.5, 4.9, 4.4, 5.1, 5, 4.5, 4.4, 5, 5.1, 4.8, 5.1,
+4.6, 5.3, 5, 7, 6.4, 6.9, 5.5, 6.5, 5.7, 6.3, 4.9, 6.6, 5.2,
+5, 5.9, 6, 6.1, 5.6, 6.7, 5.6, 5.8, 6.2, 5.6, 5.9, 6.1, 6.3,
+6.1, 6.4, 6.6, 6.8, 6.7, 6, 5.7, 5.5, 5.5, 5.8, 6, 5.4, 6, 6.7,
+6.3, 5.6, 5.5, 5.5, 6.1, 5.8, 5, 5.6, 5.7, 5.7, 6.2, 5.1, 5.7,
+6.3, 5.8, 7.1, 6.3, 6.5, 7.6, 4.9, 7.3, 6.7, 7.2, 6.5, 6.4, 6.8,
+5.7, 5.8, 6.4, 6.5, 7.7, 7.7, 6, 6.9, 5.6, 7.7, 6.3, 6.7, 7.2,
+6.2, 6.1, 6.4, 7.2, 7.4, 7.9, 6.4, 6.3, 6.1, 7.7, 6.3, 6.4, 6,
+6.9, 6.7, 6.9, 5.8, 6.8, 6.7, 6.7, 6.3, 6.5, 6.2, 5.9), Sepal.Width =
+c(3.5,
+3, 3.2, 3.1, 3.6, 3.9, 3.4, 3.4, 2.9, 3.1, 3.7, 3.4, 3, 3, 4,
+4.4, 3.9, 3.5, 3.8, 3.8, 3.4, 3.7, 3.6, 3.3, 3.4, 3, 3.4, 3.5,
+3.4, 3.2, 3.1, 3.4, 4.1, 4.2, 3.1, 3.2, 3.5, 3.6, 3, 3.4, 3.5,
+2.3, 3.2, 3.5, 3.8, 3, 3.8, 3.2, 3.7, 3.3, 3.2, 3.2, 3.1, 2.3,
+2.8, 2.8, 3.3, 2.4, 2.9, 2.7, 2, 3, 2.2, 2.9, 2.9, 3.1, 3, 2.7,
+2.2, 2.5, 3.2, 2.8, 2.5, 2.8, 2.9, 3, 2.8, 3, 2.9, 2.6, 2.4,
+2.4, 2.7, 2.7, 3, 3.4, 3.1, 2.3, 3, 2.5, 2.6, 3, 2.6, 2.3, 2.7,
+3, 2.9, 2.9, 2.5, 2.8, 3.3, 2.7, 3, 2.9, 3, 3, 2.5, 2.9, 2.5,
+3.6, 3.2, 2.7, 3, 2.5, 2.8, 3.2, 3, 3.8, 2.6, 2.2, 3.2, 2.8,
+2.8, 2.7, 3.3, 3.2, 2.8, 3, 2.8, 3, 2.8, 3.8, 2.8, 2.8, 2.6,
+3, 3.4, 3.1, 3, 3.1, 3.1, 3.1, 2.7, 3.2, 3.3, 3, 2.5, 3, 3.4,
+3), Petal.Length = c(1.4, 1.4, 1.3, 1.5, 1.4, 1.7, 1.4, 1.5,
+1.4, 1.5, 1.5, 1.6, 1.4, 1.1, 1.2, 1.5, 1.3, 1.4, 1.7, 1.5, 1.7,
+1.5, 1, 1.7, 1.9, 1.6, 1.6, 1.5, 1.4, 1.6, 1.6, 1.5, 1.5, 1.4,
+1.5, 1.2, 1.3, 1.4, 1.3, 1.5, 1.3, 1.3, 1.3, 1.6, 1.9, 1.4, 1.6,
+1.4, 1.5, 1.4, 4.7, 4.5, 4.9, 4, 4.6, 4.5, 4.7, 3.3, 4.6, 3.9,
+3.5, 4.2, 4, 4.7, 3.6, 4.4, 4.5, 4.1, 4.5, 3.9, 4.8, 4, 4.9,
+4.7, 4.3, 4.4, 4.8, 5, 4.5, 3.5, 3.8, 3.7, 3.9, 5.1, 4.5, 4.5,
+4.7, 4.4, 4.1, 4, 4.4, 4.6, 4, 3.3, 4.2, 4.2, 4.2, 4.3, 3, 4.1,
+6, 5.1, 5.9, 5.6, 5.8, 6.6, 4.5, 6.3, 5.8, 6.1, 5.1, 5.3, 5.5,
+5, 5.1, 5.3, 5.5, 6.7, 6.9, 5, 5.7, 4.9, 6.7, 4.9, 5.7, 6, 4.8,
+4.9, 5.6, 5.8, 6.1, 6.4, 5.6, 5.1, 5.6, 6.1, 5.6, 5.5, 4.8, 5.4,
+5.6, 5.1, 5.1, 5.9, 5.7, 5.2, 5, 5.2, 5.4, 5.1), Petal.Width = c(0.2,
+0.2, 0.2, 0.2, 0.2, 0.4, 0.3, 0.2, 0.2, 0.1, 0.2, 0.2, 0.1, 0.1,
+0.2, 0.4, 0.4, 0.3, 0.3, 0.3, 0.2, 0.4, 0.2, 0.5, 0.2, 0.2, 0.4,
+0.2, 0.2, 0.2, 0.2, 0.4, 0.1, 0.2, 0.2, 0.2, 0.2, 0.1, 0.2, 0.2,
+0.3, 0.3, 0.2, 0.6, 0.4, 0.3, 0.2, 0.2, 0.2, 0.2, 1.4, 1.5, 1.5,
+1.3, 1.5, 1.3, 1.6, 1, 1.3, 1.4, 1, 1.5, 1, 1.4, 1.3, 1.4, 1.5,
+1, 1.5, 1.1, 1.8, 1.3, 1.5, 1.2, 1.3, 1.4, 1.4, 1.7, 1.5, 1,
+1.1, 1, 1.2, 1.6, 1.5, 1.6, 1.5, 1.3, 1.3, 1.3, 1.2, 1.4, 1.2,
+1, 1.3, 1.2, 1.3, 1.3, 1.1, 1.3, 2.5, 1.9, 2.1, 1.8, 2.2, 2.1,
+1.7, 1.8, 1.8, 2.5, 2, 1.9, 2.1, 2, 2.4, 2.3, 1.8, 2.2, 2.3,
+1.5, 2.3, 2, 2, 1.8, 2.1, 1.8, 1.8, 1.8, 2.1, 1.6, 1.9, 2, 2.2,
+1.5, 1.4, 2.3, 2.4, 1.8, 1.8, 2.1, 2.4, 2.3, 1.9, 2.3, 2.5, 2.3,
+1.9, 2, 2.3, 1.8), Species = structure(c(1L, 1L, 1L, 1L, 1L,
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,
+1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 2L, 2L, 2L,
+2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 3L,
+3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L,
+3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L,
+3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L,
+3L), .Label = c("setosa", "versicolor", "virginica"), class = "factor")),
+class = "data.frame", row.names = c(NA,
+-150L))
+
+Any help and/or guidance will be greatly appreciated.
+
+Best regards,
+Paul
+
+	[[alternative HTML version deleted]]
+
+
+From dw|n@em|u@ @end|ng |rom comc@@t@net  Sat Apr 16 02:49:04 2022
+From: dw|n@em|u@ @end|ng |rom comc@@t@net (David Winsemius)
+Date: Fri, 15 Apr 2022 17:49:04 -0700
+Subject: [R] Question regarding k-fold cross validation
+In-Reply-To: <CAMOcQfPfLkCwL+0mxYDa9eNAX2UspPqSK0-gmCfyZaEmJ9toBw@mail.gmail.com>
+References: <CAMOcQfPfLkCwL+0mxYDa9eNAX2UspPqSK0-gmCfyZaEmJ9toBw@mail.gmail.com>
+Message-ID: <72831a78-b5b8-c475-3f3e-460cbfbea8a2@comcast.net>
+
+
+On 4/15/22 17:11, Paul Bernal wrote:
+> Dear friends,
+>
+> Hope you are doing great. I need to perform a k-fold cross validation
+> analysis on the famous iris dataset, with k = 5.
+>
+> Now, the model I am using is a multinomial logit, because the dependent
+> variable is species and it has three classes (setosa, versicolor and
+> virginica).
+>
+> The packages I am using are caret and nnet.
+>
+> Below is my R code:
+>
+> #specifying the cross-validation method
+>
+> ctrl <- trainControl(method = "cv", number = 5)
+>
+> model = train(multinom(as.factor(iris_frame$species) ~
+> iris_frame$sepal_length + iris_frame$sepal_width + iris_frame$petal_length
+> + iris_frame$petal_width), trControl = ctrl)
+>
+> Now, R throws the following message:
+>
+> # weights:  18 (10 variable)
+> initial  value 164.791843
+> iter  10 value 16.119063
+> iter  20 value 7.103299
+> iter  30 value 6.191105
+> iter  40 value 5.984259
+> iter  50 value 5.961820
+> iter  60 value 5.955196
+> iter  70 value 5.952041
+> iter  80 value 5.950570
+> iter  90 value 5.950178
+> iter 100 value 5.950059
+> final  value 5.950059
+> stopped after 100 iterations
+> Error in x[0, , drop = FALSE] : incorrect number of dimensions
+>
+> What am I doing wrong? How could I accomplish the 5-fold cross validation
+> on the iris data set?
+>
+> I am providing the dput for the iris data set that I am using below:
+> dput(iris)
+> structure(list(Sepal.Length = c(5.1, 4.9, 4.7, 4.6, 5, 5.4, 4.6,
+> 5, 4.4, 4.9, 5.4, 4.8, 4.8, 4.3, 5.8, 5.7, 5.4, 5.1, 5.7, 5.1,
+> 5.4, 5.1, 4.6, 5.1, 4.8, 5, 5, 5.2, 5.2, 4.7, 4.8, 5.4, 5.2,
+> 5.5, 4.9, 5, 5.5, 4.9, 4.4, 5.1, 5, 4.5, 4.4, 5, 5.1, 4.8, 5.1,
+> 4.6, 5.3, 5, 7, 6.4, 6.9, 5.5, 6.5, 5.7, 6.3, 4.9, 6.6, 5.2,
+> 5, 5.9, 6, 6.1, 5.6, 6.7, 5.6, 5.8, 6.2, 5.6, 5.9, 6.1, 6.3,
+> 6.1, 6.4, 6.6, 6.8, 6.7, 6, 5.7, 5.5, 5.5, 5.8, 6, 5.4, 6, 6.7,
+> 6.3, 5.6, 5.5, 5.5, 6.1, 5.8, 5, 5.6, 5.7, 5.7, 6.2, 5.1, 5.7,
+> 6.3, 5.8, 7.1, 6.3, 6.5, 7.6, 4.9, 7.3, 6.7, 7.2, 6.5, 6.4, 6.8,
+> 5.7, 5.8, 6.4, 6.5, 7.7, 7.7, 6, 6.9, 5.6, 7.7, 6.3, 6.7, 7.2,
+> 6.2, 6.1, 6.4, 7.2, 7.4, 7.9, 6.4, 6.3, 6.1, 7.7, 6.3, 6.4, 6,
+> 6.9, 6.7, 6.9, 5.8, 6.8, 6.7, 6.7, 6.3, 6.5, 6.2, 5.9), Sepal.Width =
+> c(3.5,
+> 3, 3.2, 3.1, 3.6, 3.9, 3.4, 3.4, 2.9, 3.1, 3.7, 3.4, 3, 3, 4,
+> 4.4, 3.9, 3.5, 3.8, 3.8, 3.4, 3.7, 3.6, 3.3, 3.4, 3, 3.4, 3.5,
+> 3.4, 3.2, 3.1, 3.4, 4.1, 4.2, 3.1, 3.2, 3.5, 3.6, 3, 3.4, 3.5,
+> 2.3, 3.2, 3.5, 3.8, 3, 3.8, 3.2, 3.7, 3.3, 3.2, 3.2, 3.1, 2.3,
+> 2.8, 2.8, 3.3, 2.4, 2.9, 2.7, 2, 3, 2.2, 2.9, 2.9, 3.1, 3, 2.7,
+> 2.2, 2.5, 3.2, 2.8, 2.5, 2.8, 2.9, 3, 2.8, 3, 2.9, 2.6, 2.4,
+> 2.4, 2.7, 2.7, 3, 3.4, 3.1, 2.3, 3, 2.5, 2.6, 3, 2.6, 2.3, 2.7,
+> 3, 2.9, 2.9, 2.5, 2.8, 3.3, 2.7, 3, 2.9, 3, 3, 2.5, 2.9, 2.5,
+> 3.6, 3.2, 2.7, 3, 2.5, 2.8, 3.2, 3, 3.8, 2.6, 2.2, 3.2, 2.8,
+> 2.8, 2.7, 3.3, 3.2, 2.8, 3, 2.8, 3, 2.8, 3.8, 2.8, 2.8, 2.6,
+> 3, 3.4, 3.1, 3, 3.1, 3.1, 3.1, 2.7, 3.2, 3.3, 3, 2.5, 3, 3.4,
+> 3), Petal.Length = c(1.4, 1.4, 1.3, 1.5, 1.4, 1.7, 1.4, 1.5,
+> 1.4, 1.5, 1.5, 1.6, 1.4, 1.1, 1.2, 1.5, 1.3, 1.4, 1.7, 1.5, 1.7,
+> 1.5, 1, 1.7, 1.9, 1.6, 1.6, 1.5, 1.4, 1.6, 1.6, 1.5, 1.5, 1.4,
+> 1.5, 1.2, 1.3, 1.4, 1.3, 1.5, 1.3, 1.3, 1.3, 1.6, 1.9, 1.4, 1.6,
+> 1.4, 1.5, 1.4, 4.7, 4.5, 4.9, 4, 4.6, 4.5, 4.7, 3.3, 4.6, 3.9,
+> 3.5, 4.2, 4, 4.7, 3.6, 4.4, 4.5, 4.1, 4.5, 3.9, 4.8, 4, 4.9,
+> 4.7, 4.3, 4.4, 4.8, 5, 4.5, 3.5, 3.8, 3.7, 3.9, 5.1, 4.5, 4.5,
+> 4.7, 4.4, 4.1, 4, 4.4, 4.6, 4, 3.3, 4.2, 4.2, 4.2, 4.3, 3, 4.1,
+> 6, 5.1, 5.9, 5.6, 5.8, 6.6, 4.5, 6.3, 5.8, 6.1, 5.1, 5.3, 5.5,
+> 5, 5.1, 5.3, 5.5, 6.7, 6.9, 5, 5.7, 4.9, 6.7, 4.9, 5.7, 6, 4.8,
+> 4.9, 5.6, 5.8, 6.1, 6.4, 5.6, 5.1, 5.6, 6.1, 5.6, 5.5, 4.8, 5.4,
+> 5.6, 5.1, 5.1, 5.9, 5.7, 5.2, 5, 5.2, 5.4, 5.1), Petal.Width = c(0.2,
+> 0.2, 0.2, 0.2, 0.2, 0.4, 0.3, 0.2, 0.2, 0.1, 0.2, 0.2, 0.1, 0.1,
+> 0.2, 0.4, 0.4, 0.3, 0.3, 0.3, 0.2, 0.4, 0.2, 0.5, 0.2, 0.2, 0.4,
+> 0.2, 0.2, 0.2, 0.2, 0.4, 0.1, 0.2, 0.2, 0.2, 0.2, 0.1, 0.2, 0.2,
+> 0.3, 0.3, 0.2, 0.6, 0.4, 0.3, 0.2, 0.2, 0.2, 0.2, 1.4, 1.5, 1.5,
+> 1.3, 1.5, 1.3, 1.6, 1, 1.3, 1.4, 1, 1.5, 1, 1.4, 1.3, 1.4, 1.5,
+> 1, 1.5, 1.1, 1.8, 1.3, 1.5, 1.2, 1.3, 1.4, 1.4, 1.7, 1.5, 1,
+> 1.1, 1, 1.2, 1.6, 1.5, 1.6, 1.5, 1.3, 1.3, 1.3, 1.2, 1.4, 1.2,
+> 1, 1.3, 1.2, 1.3, 1.3, 1.1, 1.3, 2.5, 1.9, 2.1, 1.8, 2.2, 2.1,
+> 1.7, 1.8, 1.8, 2.5, 2, 1.9, 2.1, 2, 2.4, 2.3, 1.8, 2.2, 2.3,
+> 1.5, 2.3, 2, 2, 1.8, 2.1, 1.8, 1.8, 1.8, 2.1, 1.6, 1.9, 2, 2.2,
+> 1.5, 1.4, 2.3, 2.4, 1.8, 1.8, 2.1, 2.4, 2.3, 1.9, 2.3, 2.5, 2.3,
+> 1.9, 2, 2.3, 1.8), Species = structure(c(1L, 1L, 1L, 1L, 1L,
+> 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,
+> 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,
+> 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 2L, 2L, 2L,
+> 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+> 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+> 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 3L,
+> 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L,
+> 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L,
+> 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L,
+> 3L), .Label = c("setosa", "versicolor", "virginica"), class = "factor")),
+> class = "data.frame", row.names = c(NA,
+> -150L))
+>
+> Any help and/or guidance will be greatly appreciated.
+>
+> Best regards,
+> Paul
+>
+> 	[[alternative HTML version deleted]]
+
+
+The first thing "wrong" is posting in HTML. Read the Posting Guide.
+
+Next. You offer a data object named "iris" and then construct a formula 
+that is using the "$" operator to access columns in a different named 
+object: "iris_frame". Easy but annoying to fix.
+
+Last, and most critical, is failing to use the caret format of 
+specifying "method" with a character name for the function to be used:
+
+# This runs without error
+
+library(caret)
+
+library(nnet)
+
+model = train(? form= Species ~? Sepal.Length + Sepal.Width + Petal.Length +
+ ?????????????????????? Petal.Width, data=iris, method="multinom", 
+trControl = ctrl)
+
+#-----------------
+
+R formulas in regression functions expect to find their column names 
+(a.k.a. "variables") in an object passed via the data-prameter
+
+-- 
+
+David.
+
+
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
