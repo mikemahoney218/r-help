@@ -23850,3 +23850,1405 @@ R-announce at r-project.org mailing list
 https://stat.ethz.ch/mailman/listinfo/r-announce
 
 
+From dc@r|@on @end|ng |rom t@mu@edu  Sat Apr 23 06:04:32 2022
+From: dc@r|@on @end|ng |rom t@mu@edu (David Carlson)
+Date: Fri, 22 Apr 2022 23:04:32 -0500
+Subject: [R] Model To Simulate Dice Roll
+In-Reply-To: <931063bd-ecd7-8edd-23c1-dcb5f02f86a7@sapo.pt>
+References: <CAMOcQfMMq7U0jjsGgfL3kQ=Gc4ZsMqZVaLP=SmguPJuhZTYRGg@mail.gmail.com>
+ <CAGxFJbTwAqA9beG8FwUPY+v4S-jKMM8+3YjTqH0r_WO2JvOZ_Q@mail.gmail.com>
+ <CAMOcQfOQG4camFLTHpesHUMd9L01tmUW0xHUQGDJK1dBQ=nAAw@mail.gmail.com>
+ <63179a44-d944-fe1e-ae0f-c6ed7d2d3cde@sapo.pt>
+ <931063bd-ecd7-8edd-23c1-dcb5f02f86a7@sapo.pt>
+Message-ID: <CAE-dL2orYo_bAzxh3-CTC2FfiiD8JzYRRVzgsTmGmDN857b+6Q@mail.gmail.com>
+
+Since the rolls are independent, it is not necessary to separate the rolls
+into two stages:
+
+sides <- 6
+months <- 12
+reps <- 100
+
+set.seed(2022)
+results <- matrix(sample.int(sides, months*reps, replace=TRUE), reps,
+months, byrow=TRUE)
+colnames(results) <- month.name
+all6 <- apply(results, 1, function(x) length(intersect(x, 1:6))==6)
+sum(all6)/reps
+# 0.53 which matches Rui's result
+results <- as.data.frame(results)
+
+David L. Carlson
+
+
+
+On Thu, Apr 21, 2022 at 4:04 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+
+> Hello, There's an error in my code, inline. ?s 07:55 de 21/04/2022, Rui
+> Barradas escreveu: > Hello, > > For what I understand of the question, the
+> followng might answer it. > > The functions below roll dice and simulate R
+> replicates
+> ZjQcmQRYFpfptBannerStart
+> This Message Is From an External Sender
+> This message came from outside your organization.
+>
+> ZjQcmQRYFpfptBannerEnd
+>
+> Hello,
+>
+> There's an error in my code, inline.
+>
+> ?s 07:55 de 21/04/2022, Rui Barradas escreveu:
+> > Hello,
+> >
+> > For what I understand of the question, the followng might answer it.
+> >
+> > The functions below roll dice and simulate R replicates of dice rolls.
+> > Then 12 (one per month) 6 sided dice rolls are simulated 100 times.
+> >
+> > The colMeans/apply computes the empiric probabilities of having all 6
+> > sides occur in each row, Jan to Dec and a overall probabilty is the mean
+> > of those probabilities.
+> >
+> > The matrix is coerced to data.frame only at the end.
+> >
+> >
+> >
+> > dice <- function(rolls = 1, ndice = 1, sides = 6) {
+> >    roll <- function(ndice = 1, sides = 6) {
+> >      sample(seq_len(sides), ndice, replace = TRUE)
+> >    }
+> >    y <- replicate(rolls, roll(ndice = ndice, sides = sides))
+> >    if(is.null(dim(y))) y else colSums(y)
+> > }
+> > dice_simul <- function(rolls = 1, ndice = 1, sides = 6, R) {
+> >    if(missing(R)) {
+> >      stop("number of simulations 'R' is missing with no default.")
+> >    }
+> >    replicate(R, dice(rolls = rolls, ndice = ndice, sides = sides))
+> > }
+> >
+> > dice_rolls <- 100
+> > #dice_rolls <- 1e6
+> > num_dice <- 1
+> > dice_sides <- 6
+> > months <- 12
+> >
+> > set.seed(2022)
+> > prob_frame <- t(dice_simul(months, num_dice, dice_sides, R = dice_rolls))
+> > colnames(prob_frame) <- month.name
+> > head(prob_frame)
+> >
+>
+> # --- wrong
+> > p <- colMeans(apply(prob_frame, 1, \(x) 1:6 %in% x))
+> > mean(p)
+> > # [1] 0.9116667
+>
+> This should be
+>
+> yes_no <- apply(prob_frame, 1, \(x) all(1:6 %in% x))
+> p <- mean(yes_no)
+> p
+> # [1] 0.53
+>
+>
+> Rui Barradas
+>
+>
+>
+> >
+> > prob_frame <- as.data.frame(prob_frame)
+> >
+> >
+> > Hope this helps,
+> >
+> > Rui Barradas
+> >
+> >
+> > ?s 05:02 de 21/04/2022, Paul Bernal escreveu:
+> >> Dear friend Bert,
+> >>
+> >> Thank you so much for your kind reply. The first thing I need to do is to
+> >> simulate dice rolls, say 120 times.
+> >>
+> >> I want to populate an m by 12 dataframe with the results of each dice
+> >> roll.
+> >> For example, the result from dice roll #1 would need to go on row 1,
+> >> column1, the result from dice roll #2 would have to go in row 1 column 2,
+> >> and so on.
+> >>
+> >> The reason why I want to store those results in a dataframe is to be able
+> >> to perform some other calculations afterwards.
+> >>
+> >> This is for a project I am doing.
+> >>
+> >> So this is the situation:
+> >> You and five friends ? a total of six people ? plan to meet once per
+> >> month
+> >> to have dinner together, with one of you choosing the restaurant each
+> >> month. Rather than scheduling the entire year in advance, you decide to
+> >> make it interesting: each month a single six-sided die will be rolled to
+> >> determine which of you gets to choose the restaurant that month. How
+> >> likely
+> >> is it that everyone will have a chance to eat at their own favorite
+> >> restaurant? That is, what is the probability p that over the next 12
+> >> months, each of you will have had at least one opportunity to choose
+> >> where
+> >> to eat?
+> >>
+> >> This is what I am asked to do:
+> >> Write a program to estimate the desired probability p via simulation. The
+> >> program should input a sequence of positive integer number of trials to
+> >> simulate using the language's pseudorandom number generator and calculate
+> >> the corresponding fractions of simulated trials that are ?successful"
+> >> (i.e., all 6 parties get at least one opportunity to choose where to eat.
+> >> Alice, Bob, Charley, Fred, Ellen, Don, Don, Don, Don, Alice, Charley, Bob
+> >> is a successful trial. Alice, Bob, Charley, Ellen, Don, Don, Don, Don,
+> >> Ellen, Alice, Charley, Bob is not a successful trial since Fred does not
+> >> get to choose.)
+> >> Turn in a set of 10 trials showing each roll of the dice to show
+> >> correctness. Label the out-comes. Keep in mind that a single trial
+> >> requires
+> >> rolling the die twelve times. Calculate and print the average
+> >> probability p
+> >> for the set. Please refer to your friends by name.
+> >>
+> >> For this reason, I am trying to simulate the n trials, and then
+> >> populate a
+> >> table with the results from the trials. I have to simulate a dice roll
+> >> dice
+> >> for each month and for each row. Rows would be equivalent to years, and
+> >> then columns would be equivalent to the month of a particular year.
+> >>
+> >> Once I store the results in a dataframe, everything is much easier.
+> >>
+> >> I installed package dice and performed simulations by doing:
+> >> #declaring variables:
+> >> #1)dice_rolls which is the number of times the dice will be rolled
+> >> #2)num_dice which is the number of dice that will be rolled each time
+> >> #3)dice_sides which is the number of sides of the dice
+> >> #function dice will take each one of these variables as its parameter to
+> >> perform the simulation
+> >> dice_rolls = 120
+> >> num_dice   = 1
+> >> dice_sides = 6
+> >>
+> >> #performing simulation
+> >> dice_simul = dice(rolls = dice_rolls, ndice = num_dice, sides =
+> >> dice_sides,
+> >> plot.it = TRUE)
+> >>
+> >> I tried the following, but did not work as expected:
+> >>
+> >> for (i in 1:nrow(dice_simul)){
+> >>    for(j in 1:ncol(prob_frame)){
+> >>      for(k in 1:nrow(prob_frame)){
+> >>        prob_frame[k,j] = dice_simul[i,1]
+> >>      }
+> >>    }
+> >> }
+> >>
+> >> I apologize for the long explanation.
+> >>
+> >> Best regards,
+> >>
+> >> Paul
+> >>
+> >>
+> >> El mi?, 20 abr 2022 a las 22:47, Bert Gunter (<bgunter.4567 at gmail.com>)
+> >> escribi?:
+> >>
+> >>> If I understand you correctly, it's simple.
+> >>> Matrices in R are vectors with a dimension attribute. By default, they
+> >>> are populated column by column. Use 'byrow = TRUE to populate by row
+> >>> instead. For example:
+> >>>
+> >>>> matrix (1:36, ncol = 12, byrow = TRUE)
+> >>>       [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10] [,11] [,12]
+> >>> [1,]    1    2    3    4    5    6    7    8    9    10    11    12
+> >>> [2,]   13   14   15   16   17   18   19   20   21    22    23    24
+> >>> [3,]   25   26   27   28   29   30   31   32   33    34    35    36
+> >>>
+> >>> I leave it to you to use the 'dimnames' argument of ?matrix  to give
+> >>> names to the column and then subsequently convert to a data frame if
+> >>> you like.
+> >>>
+> >>> Bert Gunter
+> >>>
+> >>> "The trouble with having an open mind is that people keep coming along
+> >>> and sticking things into it."
+> >>> -- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+> >>>
+> >>> On Wed, Apr 20, 2022 at 8:38 PM Paul Bernal <paulbernal07 at gmail.com>
+> >>> wrote:
+> >>>>
+> >>>> Dear friends,
+> >>>>
+> >>>> Hope you are doing well. I need to simulate a 1 dice roll for each
+> >>>> one of
+> >>>> the twelve months of the year and perform 100 trials, so I thought of
+> >>>> constructing a dataframe with twelve columns and 100 rows the following
+> >>> way:
+> >>>>
+> >>>> num_rows = 100
+> >>>>
+> >>>> prob_frame <- data.frame(matrix(NA, nrow = num_rows, ncol = 12))
+> >>>>
+> >>> colnames(prob_frame)<-c("January","February","March","April","May","June","July","August","September","October","November","December")
+> >>>
+> >>>>
+> >>>> Now, using the dice package, I can simulate n number of dice rolls as
+> >>>> follows:
+> >>>> #performing simulation
+> >>>> dice_simul = dice(rolls = dice_rolls, ndice = num_dice, sides =
+> >>> dice_sides,
+> >>>> plot.it = TRUE)
+> >>>>
+> >>>> What I would like to do is to populate each column and row with the
+> >>> results
+> >>>> of dice_simul.
+> >>>>
+> >>>> Let me show you the structure of dice_simul:
+> >>>>> str(dice_simul)
+> >>>> Classes ?dice? and 'data.frame': 100 obs. of  1 variable:
+> >>>>   $ Red: int  2 2 1 2 5 4 4 6 1 4 ...
+> >>>>> dput(dice_simul)
+> >>>> structure(list(Red = c(2L, 2L, 1L, 2L, 5L, 4L, 4L, 6L, 1L, 4L,
+> >>>> 4L, 2L, 6L, 2L, 2L, 1L, 3L, 6L, 1L, 5L, 5L, 5L, 3L, 4L, 2L, 6L,
+> >>>> 4L, 6L, 6L, 2L, 1L, 2L, 2L, 6L, 4L, 2L, 3L, 5L, 6L, 6L, 4L, 5L,
+> >>>> 4L, 6L, 6L, 3L, 4L, 1L, 5L, 3L, 3L, 5L, 3L, 4L, 1L, 3L, 3L, 2L,
+> >>>> 4L, 1L, 2L, 1L, 6L, 3L, 5L, 5L, 3L, 4L, 4L, 5L, 4L, 1L, 5L, 3L,
+> >>>> 4L, 4L, 3L, 6L, 5L, 2L, 4L, 1L, 1L, 6L, 4L, 3L, 6L, 5L, 6L, 2L,
+> >>>> 6L, 1L, 6L, 6L, 4L, 3L, 4L, 2L, 1L, 5L)), class = c("dice",
+> >>>> "data.frame"
+> >>>> ), row.names = c(NA, -100L))
+> >>>>
+> >>>> For example, the first number of dice_simul should go to row 1 for
+> >>> January,
+> >>>> the second number of dice_simul should go to row 1 for February, ...
+> >>>> the
+> >>>> twelveth number of dice_simul should go to row 1 for December, the 13th
+> >>>> number should go to row 2 for january, and so on.
+> >>>>
+> >>>> This is what I tried to do but doesn?t work they way I want to:
+> >>>>
+> >>>> #1)dice_rolls which is the number of times the dice will be rolled
+> >>>> #2)num_dice which is the number of dice that will be rolled each time
+> >>>> #3)dice_sides which is the number of sides of the dice
+> >>>> #function dice will take each one of these variables as its
+> >>>> parameter to
+> >>>> perform the simulation
+> >>>> dice_rolls = 100
+> >>>> num_dice   = 1
+> >>>> dice_sides = 6
+> >>>>
+> >>>> #performing simulation
+> >>>> dice_simul = dice(rolls = dice_rolls, ndice = num_dice, sides =
+> >>> dice_sides,
+> >>>> plot.it = TRUE)
+> >>>>
+> >>>> num_rows = 100
+> >>>>
+> >>>> prob_frame <- data.frame(matrix(NA, nrow = num_rows, ncol = 12))
+> >>>> colnames(prob_frame) <-
+> >>>>
+> >>> c("January","February","March","April","May","June","July","August","September","October","November","December")
+> >>>
+> >>>>
+> >>>>
+> >>>> for (j in 1:12){
+> >>>>    for (i in 1:num_rows){
+> >>>>      prob_frame[i,j]=dice_simul[i,1]
+> >>>>    }
+> >>>> }
+> >>>> I basically want to populate the twelve months for the first row, then
+> >>> the
+> >>>> twelve months for the second row, and so on, until I get to populate
+> >>>> the
+> >>>> twelve months for the last row sequentially.
+> >>>>
+> >>>> How could I accomplish this?
+> >>>>
+> >>>> Any help and/or guidance will be greatly appreciated.
+> >>>>
+> >>>> Best regards,
+> >>>> Paul
+> >>>>
+> >>>>          [[alternative HTML version deleted]]
+> >>>>
+> >>>> ______________________________________________
+> >>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAbZaomfvI$
+> >>>> PLEASE do read the posting guide
+> >>> https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAb7rrtTbc$
+> >>>> and provide commented, minimal, self-contained, reproducible code.
+> >>>
+> >>
+> >>     [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAbZaomfvI$
+> >> PLEASE do read the posting guide
+> >> https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAb7rrtTbc$
+> >> and provide commented, minimal, self-contained, reproducible code.
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAbZaomfvI$
+> > PLEASE do read the posting guide
+> > https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAb7rrtTbc$
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, seehttps://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAbZaomfvI$
+> PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAb7rrtTbc$
+> and provide commented, minimal, self-contained, reproducible code.
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From p@u|bern@|07 @end|ng |rom gm@||@com  Sat Apr 23 06:05:38 2022
+From: p@u|bern@|07 @end|ng |rom gm@||@com (Paul Bernal)
+Date: Fri, 22 Apr 2022 23:05:38 -0500
+Subject: [R] Model To Simulate Dice Roll
+In-Reply-To: <CAE-dL2orYo_bAzxh3-CTC2FfiiD8JzYRRVzgsTmGmDN857b+6Q@mail.gmail.com>
+References: <CAMOcQfMMq7U0jjsGgfL3kQ=Gc4ZsMqZVaLP=SmguPJuhZTYRGg@mail.gmail.com>
+ <CAGxFJbTwAqA9beG8FwUPY+v4S-jKMM8+3YjTqH0r_WO2JvOZ_Q@mail.gmail.com>
+ <CAMOcQfOQG4camFLTHpesHUMd9L01tmUW0xHUQGDJK1dBQ=nAAw@mail.gmail.com>
+ <63179a44-d944-fe1e-ae0f-c6ed7d2d3cde@sapo.pt>
+ <931063bd-ecd7-8edd-23c1-dcb5f02f86a7@sapo.pt>
+ <CAE-dL2orYo_bAzxh3-CTC2FfiiD8JzYRRVzgsTmGmDN857b+6Q@mail.gmail.com>
+Message-ID: <CAMOcQfPB4eQ7TpSnK_fqcjfUJ8ycmYiWMQ-ea3WaHqPaU_ZrTg@mail.gmail.com>
+
+Thank you so much David!
+
+El El vie, 22 de abr. de 2022 a la(s) 11:04 p. m., David Carlson <
+dcarlson at tamu.edu> escribi?:
+
+> Since the rolls are independent, it is not necessary to separate the rolls
+> into two stages:
+>
+> sides <- 6
+> months <- 12
+> reps <- 100
+>
+> set.seed(2022)
+> results <- matrix(sample.int(sides, months*reps, replace=TRUE), reps,
+> months, byrow=TRUE)
+> colnames(results) <- month.name
+> all6 <- apply(results, 1, function(x) length(intersect(x, 1:6))==6)
+> sum(all6)/reps
+> # 0.53 which matches Rui's result
+> results <- as.data.frame(results)
+>
+> David L. Carlson
+>
+>
+>
+> On Thu, Apr 21, 2022 at 4:04 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>
+>> Hello, There's an error in my code, inline. ?s 07:55 de 21/04/2022, Rui
+>> Barradas escreveu: > Hello, > > For what I understand of the question, the
+>> followng might answer it. > > The functions below roll dice and simulate R
+>> replicates
+>> ZjQcmQRYFpfptBannerStart
+>> This Message Is From an External Sender
+>> This message came from outside your organization.
+>>
+>> ZjQcmQRYFpfptBannerEnd
+>>
+>> Hello,
+>>
+>> There's an error in my code, inline.
+>>
+>> ?s 07:55 de 21/04/2022, Rui Barradas escreveu:
+>> > Hello,
+>> >
+>> > For what I understand of the question, the followng might answer it.
+>> >
+>> > The functions below roll dice and simulate R replicates of dice rolls.
+>> > Then 12 (one per month) 6 sided dice rolls are simulated 100 times.
+>> >
+>> > The colMeans/apply computes the empiric probabilities of having all 6
+>> > sides occur in each row, Jan to Dec and a overall probabilty is the mean
+>> > of those probabilities.
+>> >
+>> > The matrix is coerced to data.frame only at the end.
+>> >
+>> >
+>> >
+>> > dice <- function(rolls = 1, ndice = 1, sides = 6) {
+>> >    roll <- function(ndice = 1, sides = 6) {
+>> >      sample(seq_len(sides), ndice, replace = TRUE)
+>> >    }
+>> >    y <- replicate(rolls, roll(ndice = ndice, sides = sides))
+>> >    if(is.null(dim(y))) y else colSums(y)
+>> > }
+>> > dice_simul <- function(rolls = 1, ndice = 1, sides = 6, R) {
+>> >    if(missing(R)) {
+>> >      stop("number of simulations 'R' is missing with no default.")
+>> >    }
+>> >    replicate(R, dice(rolls = rolls, ndice = ndice, sides = sides))
+>> > }
+>> >
+>> > dice_rolls <- 100
+>> > #dice_rolls <- 1e6
+>> > num_dice <- 1
+>> > dice_sides <- 6
+>> > months <- 12
+>> >
+>> > set.seed(2022)
+>> > prob_frame <- t(dice_simul(months, num_dice, dice_sides, R = dice_rolls))
+>> > colnames(prob_frame) <- month.name
+>> > head(prob_frame)
+>> >
+>>
+>> # --- wrong
+>> > p <- colMeans(apply(prob_frame, 1, \(x) 1:6 %in% x))
+>> > mean(p)
+>> > # [1] 0.9116667
+>>
+>> This should be
+>>
+>> yes_no <- apply(prob_frame, 1, \(x) all(1:6 %in% x))
+>> p <- mean(yes_no)
+>> p
+>> # [1] 0.53
+>>
+>>
+>> Rui Barradas
+>>
+>>
+>>
+>> >
+>> > prob_frame <- as.data.frame(prob_frame)
+>> >
+>> >
+>> > Hope this helps,
+>> >
+>> > Rui Barradas
+>> >
+>> >
+>> > ?s 05:02 de 21/04/2022, Paul Bernal escreveu:
+>> >> Dear friend Bert,
+>> >>
+>> >> Thank you so much for your kind reply. The first thing I need to do is to
+>> >> simulate dice rolls, say 120 times.
+>> >>
+>> >> I want to populate an m by 12 dataframe with the results of each dice
+>> >> roll.
+>> >> For example, the result from dice roll #1 would need to go on row 1,
+>> >> column1, the result from dice roll #2 would have to go in row 1 column 2,
+>> >> and so on.
+>> >>
+>> >> The reason why I want to store those results in a dataframe is to be able
+>> >> to perform some other calculations afterwards.
+>> >>
+>> >> This is for a project I am doing.
+>> >>
+>> >> So this is the situation:
+>> >> You and five friends ? a total of six people ? plan to meet once per
+>> >> month
+>> >> to have dinner together, with one of you choosing the restaurant each
+>> >> month. Rather than scheduling the entire year in advance, you decide to
+>> >> make it interesting: each month a single six-sided die will be rolled to
+>> >> determine which of you gets to choose the restaurant that month. How
+>> >> likely
+>> >> is it that everyone will have a chance to eat at their own favorite
+>> >> restaurant? That is, what is the probability p that over the next 12
+>> >> months, each of you will have had at least one opportunity to choose
+>> >> where
+>> >> to eat?
+>> >>
+>> >> This is what I am asked to do:
+>> >> Write a program to estimate the desired probability p via simulation. The
+>> >> program should input a sequence of positive integer number of trials to
+>> >> simulate using the language's pseudorandom number generator and calculate
+>> >> the corresponding fractions of simulated trials that are ?successful"
+>> >> (i.e., all 6 parties get at least one opportunity to choose where to eat.
+>> >> Alice, Bob, Charley, Fred, Ellen, Don, Don, Don, Don, Alice, Charley, Bob
+>> >> is a successful trial. Alice, Bob, Charley, Ellen, Don, Don, Don, Don,
+>> >> Ellen, Alice, Charley, Bob is not a successful trial since Fred does not
+>> >> get to choose.)
+>> >> Turn in a set of 10 trials showing each roll of the dice to show
+>> >> correctness. Label the out-comes. Keep in mind that a single trial
+>> >> requires
+>> >> rolling the die twelve times. Calculate and print the average
+>> >> probability p
+>> >> for the set. Please refer to your friends by name.
+>> >>
+>> >> For this reason, I am trying to simulate the n trials, and then
+>> >> populate a
+>> >> table with the results from the trials. I have to simulate a dice roll
+>> >> dice
+>> >> for each month and for each row. Rows would be equivalent to years, and
+>> >> then columns would be equivalent to the month of a particular year.
+>> >>
+>> >> Once I store the results in a dataframe, everything is much easier.
+>> >>
+>> >> I installed package dice and performed simulations by doing:
+>> >> #declaring variables:
+>> >> #1)dice_rolls which is the number of times the dice will be rolled
+>> >> #2)num_dice which is the number of dice that will be rolled each time
+>> >> #3)dice_sides which is the number of sides of the dice
+>> >> #function dice will take each one of these variables as its parameter to
+>> >> perform the simulation
+>> >> dice_rolls = 120
+>> >> num_dice   = 1
+>> >> dice_sides = 6
+>> >>
+>> >> #performing simulation
+>> >> dice_simul = dice(rolls = dice_rolls, ndice = num_dice, sides =
+>> >> dice_sides,
+>> >> plot.it = TRUE)
+>> >>
+>> >> I tried the following, but did not work as expected:
+>> >>
+>> >> for (i in 1:nrow(dice_simul)){
+>> >>    for(j in 1:ncol(prob_frame)){
+>> >>      for(k in 1:nrow(prob_frame)){
+>> >>        prob_frame[k,j] = dice_simul[i,1]
+>> >>      }
+>> >>    }
+>> >> }
+>> >>
+>> >> I apologize for the long explanation.
+>> >>
+>> >> Best regards,
+>> >>
+>> >> Paul
+>> >>
+>> >>
+>> >> El mi?, 20 abr 2022 a las 22:47, Bert Gunter (<bgunter.4567 at gmail.com>)
+>> >> escribi?:
+>> >>
+>> >>> If I understand you correctly, it's simple.
+>> >>> Matrices in R are vectors with a dimension attribute. By default, they
+>> >>> are populated column by column. Use 'byrow = TRUE to populate by row
+>> >>> instead. For example:
+>> >>>
+>> >>>> matrix (1:36, ncol = 12, byrow = TRUE)
+>> >>>       [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10] [,11] [,12]
+>> >>> [1,]    1    2    3    4    5    6    7    8    9    10    11    12
+>> >>> [2,]   13   14   15   16   17   18   19   20   21    22    23    24
+>> >>> [3,]   25   26   27   28   29   30   31   32   33    34    35    36
+>> >>>
+>> >>> I leave it to you to use the 'dimnames' argument of ?matrix  to give
+>> >>> names to the column and then subsequently convert to a data frame if
+>> >>> you like.
+>> >>>
+>> >>> Bert Gunter
+>> >>>
+>> >>> "The trouble with having an open mind is that people keep coming along
+>> >>> and sticking things into it."
+>> >>> -- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+>> >>>
+>> >>> On Wed, Apr 20, 2022 at 8:38 PM Paul Bernal <paulbernal07 at gmail.com>
+>> >>> wrote:
+>> >>>>
+>> >>>> Dear friends,
+>> >>>>
+>> >>>> Hope you are doing well. I need to simulate a 1 dice roll for each
+>> >>>> one of
+>> >>>> the twelve months of the year and perform 100 trials, so I thought of
+>> >>>> constructing a dataframe with twelve columns and 100 rows the following
+>> >>> way:
+>> >>>>
+>> >>>> num_rows = 100
+>> >>>>
+>> >>>> prob_frame <- data.frame(matrix(NA, nrow = num_rows, ncol = 12))
+>> >>>>
+>> >>> colnames(prob_frame)<-c("January","February","March","April","May","June","July","August","September","October","November","December")
+>> >>>
+>> >>>>
+>> >>>> Now, using the dice package, I can simulate n number of dice rolls as
+>> >>>> follows:
+>> >>>> #performing simulation
+>> >>>> dice_simul = dice(rolls = dice_rolls, ndice = num_dice, sides =
+>> >>> dice_sides,
+>> >>>> plot.it = TRUE)
+>> >>>>
+>> >>>> What I would like to do is to populate each column and row with the
+>> >>> results
+>> >>>> of dice_simul.
+>> >>>>
+>> >>>> Let me show you the structure of dice_simul:
+>> >>>>> str(dice_simul)
+>> >>>> Classes ?dice? and 'data.frame': 100 obs. of  1 variable:
+>> >>>>   $ Red: int  2 2 1 2 5 4 4 6 1 4 ...
+>> >>>>> dput(dice_simul)
+>> >>>> structure(list(Red = c(2L, 2L, 1L, 2L, 5L, 4L, 4L, 6L, 1L, 4L,
+>> >>>> 4L, 2L, 6L, 2L, 2L, 1L, 3L, 6L, 1L, 5L, 5L, 5L, 3L, 4L, 2L, 6L,
+>> >>>> 4L, 6L, 6L, 2L, 1L, 2L, 2L, 6L, 4L, 2L, 3L, 5L, 6L, 6L, 4L, 5L,
+>> >>>> 4L, 6L, 6L, 3L, 4L, 1L, 5L, 3L, 3L, 5L, 3L, 4L, 1L, 3L, 3L, 2L,
+>> >>>> 4L, 1L, 2L, 1L, 6L, 3L, 5L, 5L, 3L, 4L, 4L, 5L, 4L, 1L, 5L, 3L,
+>> >>>> 4L, 4L, 3L, 6L, 5L, 2L, 4L, 1L, 1L, 6L, 4L, 3L, 6L, 5L, 6L, 2L,
+>> >>>> 6L, 1L, 6L, 6L, 4L, 3L, 4L, 2L, 1L, 5L)), class = c("dice",
+>> >>>> "data.frame"
+>> >>>> ), row.names = c(NA, -100L))
+>> >>>>
+>> >>>> For example, the first number of dice_simul should go to row 1 for
+>> >>> January,
+>> >>>> the second number of dice_simul should go to row 1 for February, ...
+>> >>>> the
+>> >>>> twelveth number of dice_simul should go to row 1 for December, the 13th
+>> >>>> number should go to row 2 for january, and so on.
+>> >>>>
+>> >>>> This is what I tried to do but doesn?t work they way I want to:
+>> >>>>
+>> >>>> #1)dice_rolls which is the number of times the dice will be rolled
+>> >>>> #2)num_dice which is the number of dice that will be rolled each time
+>> >>>> #3)dice_sides which is the number of sides of the dice
+>> >>>> #function dice will take each one of these variables as its
+>> >>>> parameter to
+>> >>>> perform the simulation
+>> >>>> dice_rolls = 100
+>> >>>> num_dice   = 1
+>> >>>> dice_sides = 6
+>> >>>>
+>> >>>> #performing simulation
+>> >>>> dice_simul = dice(rolls = dice_rolls, ndice = num_dice, sides =
+>> >>> dice_sides,
+>> >>>> plot.it = TRUE)
+>> >>>>
+>> >>>> num_rows = 100
+>> >>>>
+>> >>>> prob_frame <- data.frame(matrix(NA, nrow = num_rows, ncol = 12))
+>> >>>> colnames(prob_frame) <-
+>> >>>>
+>> >>> c("January","February","March","April","May","June","July","August","September","October","November","December")
+>> >>>
+>> >>>>
+>> >>>>
+>> >>>> for (j in 1:12){
+>> >>>>    for (i in 1:num_rows){
+>> >>>>      prob_frame[i,j]=dice_simul[i,1]
+>> >>>>    }
+>> >>>> }
+>> >>>> I basically want to populate the twelve months for the first row, then
+>> >>> the
+>> >>>> twelve months for the second row, and so on, until I get to populate
+>> >>>> the
+>> >>>> twelve months for the last row sequentially.
+>> >>>>
+>> >>>> How could I accomplish this?
+>> >>>>
+>> >>>> Any help and/or guidance will be greatly appreciated.
+>> >>>>
+>> >>>> Best regards,
+>> >>>> Paul
+>> >>>>
+>> >>>>          [[alternative HTML version deleted]]
+>> >>>>
+>> >>>> ______________________________________________
+>> >>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> >>>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAbZaomfvI$
+>> >>>> PLEASE do read the posting guide
+>> >>> https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAb7rrtTbc$
+>> >>>> and provide commented, minimal, self-contained, reproducible code.
+>> >>>
+>> >>
+>> >>     [[alternative HTML version deleted]]
+>> >>
+>> >> ______________________________________________
+>> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> >> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAbZaomfvI$
+>> >> PLEASE do read the posting guide
+>> >> https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAb7rrtTbc$
+>> >> and provide commented, minimal, self-contained, reproducible code.
+>> >
+>> > ______________________________________________
+>> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAbZaomfvI$
+>> > PLEASE do read the posting guide
+>> > https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAb7rrtTbc$
+>> > and provide commented, minimal, self-contained, reproducible code.
+>>
+>> ______________________________________________R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, seehttps://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAbZaomfvI$
+>> PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAb7rrtTbc$
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>>
+
+	[[alternative HTML version deleted]]
+
+
+From dc@r|@on @end|ng |rom t@mu@edu  Sat Apr 23 06:24:31 2022
+From: dc@r|@on @end|ng |rom t@mu@edu (David Carlson)
+Date: Fri, 22 Apr 2022 23:24:31 -0500
+Subject: [R] Model To Simulate Dice Roll
+In-Reply-To: <CAMOcQfPB4eQ7TpSnK_fqcjfUJ8ycmYiWMQ-ea3WaHqPaU_ZrTg@mail.gmail.com>
+References: <CAMOcQfMMq7U0jjsGgfL3kQ=Gc4ZsMqZVaLP=SmguPJuhZTYRGg@mail.gmail.com>
+ <CAGxFJbTwAqA9beG8FwUPY+v4S-jKMM8+3YjTqH0r_WO2JvOZ_Q@mail.gmail.com>
+ <CAMOcQfOQG4camFLTHpesHUMd9L01tmUW0xHUQGDJK1dBQ=nAAw@mail.gmail.com>
+ <63179a44-d944-fe1e-ae0f-c6ed7d2d3cde@sapo.pt>
+ <931063bd-ecd7-8edd-23c1-dcb5f02f86a7@sapo.pt>
+ <CAE-dL2orYo_bAzxh3-CTC2FfiiD8JzYRRVzgsTmGmDN857b+6Q@mail.gmail.com>
+ <CAMOcQfPB4eQ7TpSnK_fqcjfUJ8ycmYiWMQ-ea3WaHqPaU_ZrTg@mail.gmail.com>
+Message-ID: <CAE-dL2qjUoPhigSBEgGuJeCVCT9gdCZ3x2aZ-DDMZh=M0kxhCg@mail.gmail.com>
+
+Sorry, The last three lines should read:
+
+all <- apply(results, 1, function(x) length(intersect(x,
+seq(sides)))==sides)
+sum(all)/reps
+results <- as.data.frame(results)
+
+To generalize them for values of sides other than 6.
+
+On Fri, Apr 22, 2022 at 11:05 PM Paul Bernal <paulbernal07 at gmail.com> wrote:
+
+> Thank you so much David! El El vie, 22 de abr. de 2022 a la(s) 11:04 p.
+> m., David Carlson <dcarlson at tamu.edu> escribi?: Since the rolls are
+> independent, it is not necessary to separate the rolls into two stages:
+> sides <- 6 ? ? ? ? ? ? ? ?
+> ZjQcmQRYFpfptBannerStart
+> This Message Is From an External Sender
+> This message came from outside your organization.
+>
+> ZjQcmQRYFpfptBannerEnd
+> Thank you so much David!
+>
+> El El vie, 22 de abr. de 2022 a la(s) 11:04 p. m., David Carlson <
+> dcarlson at tamu.edu> escribi?:
+>
+>> Since the rolls are independent, it is not necessary to separate the
+>> rolls into two stages:
+>>
+>> sides <- 6
+>> months <- 12
+>> reps <- 100
+>>
+>> set.seed(2022)
+>> results <- matrix(sample.int
+>> <https://urldefense.com/v3/__http://sample.int__;!!KwNVnqRv!GvZvIF7bCsJmP-MoZAjpwRSwA0SLF9dwlLokWfsqj07fpKB_yoDtZ64yl90ktreESKpQkxnxfP7vuF2jfsHvZA$>(sides,
+>> months*reps, replace=TRUE), reps, months, byrow=TRUE)
+>> colnames(results) <- month.name
+>> <https://urldefense.com/v3/__http://month.name__;!!KwNVnqRv!GvZvIF7bCsJmP-MoZAjpwRSwA0SLF9dwlLokWfsqj07fpKB_yoDtZ64yl90ktreESKpQkxnxfP7vuF14dyuUpA$>
+>> all6 <- apply(results, 1, function(x) length(intersect(x, 1:6))==6)
+>> sum(all6)/reps
+>> # 0.53 which matches Rui's result
+>> results <- as.data.frame(results)
+>>
+>> David L. Carlson
+>>
+>>
+>>
+>> On Thu, Apr 21, 2022 at 4:04 AM Rui Barradas <ruipbarradas at sapo.pt>
+>> wrote:
+>>
+>>> Hello, There's an error in my code, inline. ?s 07:55 de 21/04/2022, Rui
+>>> Barradas escreveu: > Hello, > > For what I understand of the question, the
+>>> followng might answer it. > > The functions below roll dice and simulate R
+>>> replicates
+>>> ZjQcmQRYFpfptBannerStart
+>>> This Message Is From an External Sender
+>>> This message came from outside your organization.
+>>>
+>>> ZjQcmQRYFpfptBannerEnd
+>>>
+>>> Hello,
+>>>
+>>> There's an error in my code, inline.
+>>>
+>>> ?s 07:55 de 21/04/2022, Rui Barradas escreveu:
+>>> > Hello,
+>>> >
+>>> > For what I understand of the question, the followng might answer it.
+>>> >
+>>> > The functions below roll dice and simulate R replicates of dice rolls.
+>>> > Then 12 (one per month) 6 sided dice rolls are simulated 100 times.
+>>> >
+>>> > The colMeans/apply computes the empiric probabilities of having all 6
+>>> > sides occur in each row, Jan to Dec and a overall probabilty is the mean
+>>> > of those probabilities.
+>>> >
+>>> > The matrix is coerced to data.frame only at the end.
+>>> >
+>>> >
+>>> >
+>>> > dice <- function(rolls = 1, ndice = 1, sides = 6) {
+>>> >    roll <- function(ndice = 1, sides = 6) {
+>>> >      sample(seq_len(sides), ndice, replace = TRUE)
+>>> >    }
+>>> >    y <- replicate(rolls, roll(ndice = ndice, sides = sides))
+>>> >    if(is.null(dim(y))) y else colSums(y)
+>>> > }
+>>> > dice_simul <- function(rolls = 1, ndice = 1, sides = 6, R) {
+>>> >    if(missing(R)) {
+>>> >      stop("number of simulations 'R' is missing with no default.")
+>>> >    }
+>>> >    replicate(R, dice(rolls = rolls, ndice = ndice, sides = sides))
+>>> > }
+>>> >
+>>> > dice_rolls <- 100
+>>> > #dice_rolls <- 1e6
+>>> > num_dice <- 1
+>>> > dice_sides <- 6
+>>> > months <- 12
+>>> >
+>>> > set.seed(2022)
+>>> > prob_frame <- t(dice_simul(months, num_dice, dice_sides, R = dice_rolls))
+>>> > colnames(prob_frame) <- month.name <https://urldefense.com/v3/__http://month.name__;!!KwNVnqRv!GvZvIF7bCsJmP-MoZAjpwRSwA0SLF9dwlLokWfsqj07fpKB_yoDtZ64yl90ktreESKpQkxnxfP7vuF14dyuUpA$>
+>>> > head(prob_frame)
+>>> >
+>>>
+>>> # --- wrong
+>>> > p <- colMeans(apply(prob_frame, 1, \(x) 1:6 %in% x))
+>>> > mean(p)
+>>> > # [1] 0.9116667
+>>>
+>>> This should be
+>>>
+>>> yes_no <- apply(prob_frame, 1, \(x) all(1:6 %in% x))
+>>> p <- mean(yes_no)
+>>> p
+>>> # [1] 0.53
+>>>
+>>>
+>>> Rui Barradas
+>>>
+>>>
+>>>
+>>> >
+>>> > prob_frame <- as.data.frame(prob_frame)
+>>> >
+>>> >
+>>> > Hope this helps,
+>>> >
+>>> > Rui Barradas
+>>> >
+>>> >
+>>> > ?s 05:02 de 21/04/2022, Paul Bernal escreveu:
+>>> >> Dear friend Bert,
+>>> >>
+>>> >> Thank you so much for your kind reply. The first thing I need to do is to
+>>> >> simulate dice rolls, say 120 times.
+>>> >>
+>>> >> I want to populate an m by 12 dataframe with the results of each dice
+>>> >> roll.
+>>> >> For example, the result from dice roll #1 would need to go on row 1,
+>>> >> column1, the result from dice roll #2 would have to go in row 1 column 2,
+>>> >> and so on.
+>>> >>
+>>> >> The reason why I want to store those results in a dataframe is to be able
+>>> >> to perform some other calculations afterwards.
+>>> >>
+>>> >> This is for a project I am doing.
+>>> >>
+>>> >> So this is the situation:
+>>> >> You and five friends ? a total of six people ? plan to meet once per
+>>> >> month
+>>> >> to have dinner together, with one of you choosing the restaurant each
+>>> >> month. Rather than scheduling the entire year in advance, you decide to
+>>> >> make it interesting: each month a single six-sided die will be rolled to
+>>> >> determine which of you gets to choose the restaurant that month. How
+>>> >> likely
+>>> >> is it that everyone will have a chance to eat at their own favorite
+>>> >> restaurant? That is, what is the probability p that over the next 12
+>>> >> months, each of you will have had at least one opportunity to choose
+>>> >> where
+>>> >> to eat?
+>>> >>
+>>> >> This is what I am asked to do:
+>>> >> Write a program to estimate the desired probability p via simulation. The
+>>> >> program should input a sequence of positive integer number of trials to
+>>> >> simulate using the language's pseudorandom number generator and calculate
+>>> >> the corresponding fractions of simulated trials that are ?successful"
+>>> >> (i.e., all 6 parties get at least one opportunity to choose where to eat.
+>>> >> Alice, Bob, Charley, Fred, Ellen, Don, Don, Don, Don, Alice, Charley, Bob
+>>> >> is a successful trial. Alice, Bob, Charley, Ellen, Don, Don, Don, Don,
+>>> >> Ellen, Alice, Charley, Bob is not a successful trial since Fred does not
+>>> >> get to choose.)
+>>> >> Turn in a set of 10 trials showing each roll of the dice to show
+>>> >> correctness. Label the out-comes. Keep in mind that a single trial
+>>> >> requires
+>>> >> rolling the die twelve times. Calculate and print the average
+>>> >> probability p
+>>> >> for the set. Please refer to your friends by name.
+>>> >>
+>>> >> For this reason, I am trying to simulate the n trials, and then
+>>> >> populate a
+>>> >> table with the results from the trials. I have to simulate a dice roll
+>>> >> dice
+>>> >> for each month and for each row. Rows would be equivalent to years, and
+>>> >> then columns would be equivalent to the month of a particular year.
+>>> >>
+>>> >> Once I store the results in a dataframe, everything is much easier.
+>>> >>
+>>> >> I installed package dice and performed simulations by doing:
+>>> >> #declaring variables:
+>>> >> #1)dice_rolls which is the number of times the dice will be rolled
+>>> >> #2)num_dice which is the number of dice that will be rolled each time
+>>> >> #3)dice_sides which is the number of sides of the dice
+>>> >> #function dice will take each one of these variables as its parameter to
+>>> >> perform the simulation
+>>> >> dice_rolls = 120
+>>> >> num_dice   = 1
+>>> >> dice_sides = 6
+>>> >>
+>>> >> #performing simulation
+>>> >> dice_simul = dice(rolls = dice_rolls, ndice = num_dice, sides =
+>>> >> dice_sides,
+>>> >> plot.it <https://urldefense.com/v3/__http://plot.it__;!!KwNVnqRv!GvZvIF7bCsJmP-MoZAjpwRSwA0SLF9dwlLokWfsqj07fpKB_yoDtZ64yl90ktreESKpQkxnxfP7vuF1nNnEZyA$> = TRUE)
+>>> >>
+>>> >> I tried the following, but did not work as expected:
+>>> >>
+>>> >> for (i in 1:nrow(dice_simul)){
+>>> >>    for(j in 1:ncol(prob_frame)){
+>>> >>      for(k in 1:nrow(prob_frame)){
+>>> >>        prob_frame[k,j] = dice_simul[i,1]
+>>> >>      }
+>>> >>    }
+>>> >> }
+>>> >>
+>>> >> I apologize for the long explanation.
+>>> >>
+>>> >> Best regards,
+>>> >>
+>>> >> Paul
+>>> >>
+>>> >>
+>>> >> El mi?, 20 abr 2022 a las 22:47, Bert Gunter (<bgunter.4567 at gmail.com>)
+>>> >> escribi?:
+>>> >>
+>>> >>> If I understand you correctly, it's simple.
+>>> >>> Matrices in R are vectors with a dimension attribute. By default, they
+>>> >>> are populated column by column. Use 'byrow = TRUE to populate by row
+>>> >>> instead. For example:
+>>> >>>
+>>> >>>> matrix (1:36, ncol = 12, byrow = TRUE)
+>>> >>>       [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10] [,11] [,12]
+>>> >>> [1,]    1    2    3    4    5    6    7    8    9    10    11    12
+>>> >>> [2,]   13   14   15   16   17   18   19   20   21    22    23    24
+>>> >>> [3,]   25   26   27   28   29   30   31   32   33    34    35    36
+>>> >>>
+>>> >>> I leave it to you to use the 'dimnames' argument of ?matrix  to give
+>>> >>> names to the column and then subsequently convert to a data frame if
+>>> >>> you like.
+>>> >>>
+>>> >>> Bert Gunter
+>>> >>>
+>>> >>> "The trouble with having an open mind is that people keep coming along
+>>> >>> and sticking things into it."
+>>> >>> -- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+>>> >>>
+>>> >>> On Wed, Apr 20, 2022 at 8:38 PM Paul Bernal <paulbernal07 at gmail.com>
+>>> >>> wrote:
+>>> >>>>
+>>> >>>> Dear friends,
+>>> >>>>
+>>> >>>> Hope you are doing well. I need to simulate a 1 dice roll for each
+>>> >>>> one of
+>>> >>>> the twelve months of the year and perform 100 trials, so I thought of
+>>> >>>> constructing a dataframe with twelve columns and 100 rows the following
+>>> >>> way:
+>>> >>>>
+>>> >>>> num_rows = 100
+>>> >>>>
+>>> >>>> prob_frame <- data.frame(matrix(NA, nrow = num_rows, ncol = 12))
+>>> >>>>
+>>> >>> colnames(prob_frame)<-c("January","February","March","April","May","June","July","August","September","October","November","December")
+>>> >>>
+>>> >>>>
+>>> >>>> Now, using the dice package, I can simulate n number of dice rolls as
+>>> >>>> follows:
+>>> >>>> #performing simulation
+>>> >>>> dice_simul = dice(rolls = dice_rolls, ndice = num_dice, sides =
+>>> >>> dice_sides,
+>>> >>>> plot.it <https://urldefense.com/v3/__http://plot.it__;!!KwNVnqRv!GvZvIF7bCsJmP-MoZAjpwRSwA0SLF9dwlLokWfsqj07fpKB_yoDtZ64yl90ktreESKpQkxnxfP7vuF1nNnEZyA$> = TRUE)
+>>> >>>>
+>>> >>>> What I would like to do is to populate each column and row with the
+>>> >>> results
+>>> >>>> of dice_simul.
+>>> >>>>
+>>> >>>> Let me show you the structure of dice_simul:
+>>> >>>>> str(dice_simul)
+>>> >>>> Classes ?dice? and 'data.frame': 100 obs. of  1 variable:
+>>> >>>>   $ Red: int  2 2 1 2 5 4 4 6 1 4 ...
+>>> >>>>> dput(dice_simul)
+>>> >>>> structure(list(Red = c(2L, 2L, 1L, 2L, 5L, 4L, 4L, 6L, 1L, 4L,
+>>> >>>> 4L, 2L, 6L, 2L, 2L, 1L, 3L, 6L, 1L, 5L, 5L, 5L, 3L, 4L, 2L, 6L,
+>>> >>>> 4L, 6L, 6L, 2L, 1L, 2L, 2L, 6L, 4L, 2L, 3L, 5L, 6L, 6L, 4L, 5L,
+>>> >>>> 4L, 6L, 6L, 3L, 4L, 1L, 5L, 3L, 3L, 5L, 3L, 4L, 1L, 3L, 3L, 2L,
+>>> >>>> 4L, 1L, 2L, 1L, 6L, 3L, 5L, 5L, 3L, 4L, 4L, 5L, 4L, 1L, 5L, 3L,
+>>> >>>> 4L, 4L, 3L, 6L, 5L, 2L, 4L, 1L, 1L, 6L, 4L, 3L, 6L, 5L, 6L, 2L,
+>>> >>>> 6L, 1L, 6L, 6L, 4L, 3L, 4L, 2L, 1L, 5L)), class = c("dice",
+>>> >>>> "data.frame"
+>>> >>>> ), row.names = c(NA, -100L))
+>>> >>>>
+>>> >>>> For example, the first number of dice_simul should go to row 1 for
+>>> >>> January,
+>>> >>>> the second number of dice_simul should go to row 1 for February, ...
+>>> >>>> the
+>>> >>>> twelveth number of dice_simul should go to row 1 for December, the 13th
+>>> >>>> number should go to row 2 for january, and so on.
+>>> >>>>
+>>> >>>> This is what I tried to do but doesn?t work they way I want to:
+>>> >>>>
+>>> >>>> #1)dice_rolls which is the number of times the dice will be rolled
+>>> >>>> #2)num_dice which is the number of dice that will be rolled each time
+>>> >>>> #3)dice_sides which is the number of sides of the dice
+>>> >>>> #function dice will take each one of these variables as its
+>>> >>>> parameter to
+>>> >>>> perform the simulation
+>>> >>>> dice_rolls = 100
+>>> >>>> num_dice   = 1
+>>> >>>> dice_sides = 6
+>>> >>>>
+>>> >>>> #performing simulation
+>>> >>>> dice_simul = dice(rolls = dice_rolls, ndice = num_dice, sides =
+>>> >>> dice_sides,
+>>> >>>> plot.it <https://urldefense.com/v3/__http://plot.it__;!!KwNVnqRv!GvZvIF7bCsJmP-MoZAjpwRSwA0SLF9dwlLokWfsqj07fpKB_yoDtZ64yl90ktreESKpQkxnxfP7vuF1nNnEZyA$> = TRUE)
+>>> >>>>
+>>> >>>> num_rows = 100
+>>> >>>>
+>>> >>>> prob_frame <- data.frame(matrix(NA, nrow = num_rows, ncol = 12))
+>>> >>>> colnames(prob_frame) <-
+>>> >>>>
+>>> >>> c("January","February","March","April","May","June","July","August","September","October","November","December")
+>>> >>>
+>>> >>>>
+>>> >>>>
+>>> >>>> for (j in 1:12){
+>>> >>>>    for (i in 1:num_rows){
+>>> >>>>      prob_frame[i,j]=dice_simul[i,1]
+>>> >>>>    }
+>>> >>>> }
+>>> >>>> I basically want to populate the twelve months for the first row, then
+>>> >>> the
+>>> >>>> twelve months for the second row, and so on, until I get to populate
+>>> >>>> the
+>>> >>>> twelve months for the last row sequentially.
+>>> >>>>
+>>> >>>> How could I accomplish this?
+>>> >>>>
+>>> >>>> Any help and/or guidance will be greatly appreciated.
+>>> >>>>
+>>> >>>> Best regards,
+>>> >>>> Paul
+>>> >>>>
+>>> >>>>          [[alternative HTML version deleted]]
+>>> >>>>
+>>> >>>> ______________________________________________
+>>> >>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> >>>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAbZaomfvI$
+>>> >>>> PLEASE do read the posting guide
+>>> >>> https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAb7rrtTbc$
+>>> >>>> and provide commented, minimal, self-contained, reproducible code.
+>>> >>>
+>>> >>
+>>> >>     [[alternative HTML version deleted]]
+>>> >>
+>>> >> ______________________________________________
+>>> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> >> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAbZaomfvI$
+>>> >> PLEASE do read the posting guide
+>>> >> https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAb7rrtTbc$
+>>> >> and provide commented, minimal, self-contained, reproducible code.
+>>> >
+>>> > ______________________________________________
+>>> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAbZaomfvI$
+>>> > PLEASE do read the posting guide
+>>> > https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAb7rrtTbc$
+>>> > and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>> ______________________________________________R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, seehttps://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAbZaomfvI$
+>>> PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!KwNVnqRv!GmY3d1J5JTqq58eyId3zjOPuWKBidPg_ojtvbhygQyudquxNCQkrcOT1xJfOQTFSlSxEJgiAwDPunCAb7rrtTbc$
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>>
+
+	[[alternative HTML version deleted]]
+
+
+From n|ckmwr@y @end|ng |rom gm@||@com  Sat Apr 23 16:32:07 2022
+From: n|ckmwr@y @end|ng |rom gm@||@com (Nick Wray)
+Date: Sat, 23 Apr 2022 15:32:07 +0100
+Subject: [R] QGIS and R
+Message-ID: <CABxY9BOq39c9Q+N4jy+Z-c+E5zT+J0kJLTwUh6Dz-LwTyymVpA@mail.gmail.com>
+
+For my PhD researches I am trying to get to grips with QGIS and in
+particular with using QGIS within R, but it's a steep and tricky learning
+curve.  For example I have installed RQGIS successfully but any example
+programs won't run because (apparently)  I haven't got x-display enabled -
+I haven't got the foggiest what that is or how to get it.  So basically my
+question is - can anyone recommend any sources/websites/books/videos etc
+which would give examples/walkthroughs/explanations of how to get off the
+ground with QGIS in R/RQGIS etc?  Thanks Nick Wray
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Apr 23 16:41:47 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 23 Apr 2022 07:41:47 -0700
+Subject: [R] QGIS and R
+In-Reply-To: <CABxY9BOq39c9Q+N4jy+Z-c+E5zT+J0kJLTwUh6Dz-LwTyymVpA@mail.gmail.com>
+References: <CABxY9BOq39c9Q+N4jy+Z-c+E5zT+J0kJLTwUh6Dz-LwTyymVpA@mail.gmail.com>
+Message-ID: <CAGxFJbS9CNMJ-=QRcBW_RgXRFLY-j8GQPFjeyRvNXN0mbTDMDg@mail.gmail.com>
+
+https://www.qgis.org/en/site/   (obviously)
+
+Probably better to ask on  https://stat.ethz.ch/mailman/listinfo/r-sig-geo
+
+Bert Gunter
+
+"The trouble with having an open mind is that people keep coming along
+and sticking things into it."
+-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+
+On Sat, Apr 23, 2022 at 7:32 AM Nick Wray <nickmwray at gmail.com> wrote:
+>
+> For my PhD researches I am trying to get to grips with QGIS and in
+> particular with using QGIS within R, but it's a steep and tricky learning
+> curve.  For example I have installed RQGIS successfully but any example
+> programs won't run because (apparently)  I haven't got x-display enabled -
+> I haven't got the foggiest what that is or how to get it.  So basically my
+> question is - can anyone recommend any sources/websites/books/videos etc
+> which would give examples/walkthroughs/explanations of how to get off the
+> ground with QGIS in R/RQGIS etc?  Thanks Nick Wray
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @@r@h@go@|ee @end|ng |rom gm@||@com  Sat Apr 23 16:48:14 2022
+From: @@r@h@go@|ee @end|ng |rom gm@||@com (Sarah Goslee)
+Date: Sat, 23 Apr 2022 10:48:14 -0400
+Subject: [R] QGIS and R
+In-Reply-To: <CABxY9BOq39c9Q+N4jy+Z-c+E5zT+J0kJLTwUh6Dz-LwTyymVpA@mail.gmail.com>
+References: <CABxY9BOq39c9Q+N4jy+Z-c+E5zT+J0kJLTwUh6Dz-LwTyymVpA@mail.gmail.com>
+Message-ID: <CAM_vju=2Cwgvo9nejWkLZtgRKejMRN-vTY=OtjAZ3SWsSQ0hYA@mail.gmail.com>
+
+Hi Nick,
+
+There's a geospatial mailing list that might be helpful (r-sig-geo),
+but also you don't give enough information to help.
+
+Are you running Windows?
+What version of QGIS did you install?
+Where did you get RQGIS from - it is no longer on CRAN, and is
+obsolete and not recommended because it only supports QGIS2
+(https://github.com/r-spatial/RQGIS).
+
+One option might be to try RQGIS3
+(https://github.com/r-spatial/RQGIS3), but again there the developers
+suggest that you don't, and offer some other possibilities.
+
+The geospatial capabilities built into R are very good, and you might
+not even need QGIS as part of your main workflow. Look into the sf and
+raster (or terra) packages for vector and raster processing,
+respectively.
+
+Good resources include https://r-spatial.org and the spatial data
+science book at https://keen-swartz-3146c4.netlify.app
+
+Sarah
+
+On Sat, Apr 23, 2022 at 10:32 AM Nick Wray <nickmwray at gmail.com> wrote:
+>
+> For my PhD researches I am trying to get to grips with QGIS and in
+> particular with using QGIS within R, but it's a steep and tricky learning
+> curve.  For example I have installed RQGIS successfully but any example
+> programs won't run because (apparently)  I haven't got x-display enabled -
+> I haven't got the foggiest what that is or how to get it.  So basically my
+> question is - can anyone recommend any sources/websites/books/videos etc
+> which would give examples/walkthroughs/explanations of how to get off the
+> ground with QGIS in R/RQGIS etc?  Thanks Nick Wray
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Sarah Goslee (she/her)
+http://www.numberwright.com
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Apr 23 16:53:27 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 23 Apr 2022 17:53:27 +0300
+Subject: [R] QGIS and R
+In-Reply-To: <CABxY9BOq39c9Q+N4jy+Z-c+E5zT+J0kJLTwUh6Dz-LwTyymVpA@mail.gmail.com>
+References: <CABxY9BOq39c9Q+N4jy+Z-c+E5zT+J0kJLTwUh6Dz-LwTyymVpA@mail.gmail.com>
+Message-ID: <20220423175327.060ffab9@Tarkus>
+
+On Sat, 23 Apr 2022 15:32:07 +0100
+Nick Wray <nickmwray at gmail.com> wrote:
+
+> For example I have installed RQGIS successfully but any example
+> programs won't run because (apparently)  I haven't got x-display
+> enabled 
+
+Bad news: RQGIS is apparently not maintained any more [1,2], because it
+only supports the old version of QGIS (2 instead of 3). There was
+something called RQGIS3, but it didn't work out, either [3]. Your best
+bet might be something else called qgisprocess [4], which isn't on CRAN
+(yet?), but at least doesn't have scary warnings in its README.
+
+I'll second the advice to ask in R-SIG-Geo. That X11-related problem (?)
+might solve itself by the time you switch to another package, but if it
+doesn't, make sure to mention the exact error message and the operating
+system you are running: X11 is very different between Windows, macOS
+and other POSIX-compatible OSes.
+
+> 	[[alternative HTML version deleted]]
+
+P.S. Please compose your messages to R mailing lists in plain text, not
+HTML.
+
+-- 
+Best regards,
+Ivan
+
+[1] https://cran.r-project.org/package=RQGIS
+
+[2] https://github.com/r-spatial/RQGIS
+
+[3] https://github.com/r-spatial/RQGIS3
+
+[4] https://github.com/paleolimbot/qgisprocess
+
+
+From p@u|bern@|07 @end|ng |rom gm@||@com  Sun Apr 24 03:00:52 2022
+From: p@u|bern@|07 @end|ng |rom gm@||@com (Paul Bernal)
+Date: Sat, 23 Apr 2022 20:00:52 -0500
+Subject: [R] R Code Execution taking forever
+Message-ID: <CAMOcQfN1U-gMbAtM5JA9VLmwyKESPo8NAPs=0gmBrtON5zq0dg@mail.gmail.com>
+
+Dear R friends,
+
+Hope you are doing great. The reason why I am contacting you all, is
+because the code I am sharing with you takes forever. It started running at
+2:00 AM today, and it's 7:52 PM and is still running (see code at the end
+of this mail).
+
+I am using Rx64  4.1.2, and the code is being executed in RStudio. The
+RStudio version I am currently using is Version 2022.02.0 Build 443
+"Prairie Trillium" Release (9f796939, 2022-02-16) for Windows.
+
+My PC specs:
+Processor: Intel(R) Core(TM) i5-10310U CPU @ 1.70 GHz
+Installed RAM: 16.0 GB (15.6 GB usable)
+System type: 64-bit operating system, x64-based processor
+Local Disc(C:) Free Space: 274 GB
+
+I am wondering if there is/are a set of system variable(s) or something I
+could do to improve the performance of the program.
+
+It is really odd this code has taken this much (and it is still running).
+
+Any help and/or guidance would be greatly appreciated.
+
+Best regards,
+Paul
+
+
+
+
+#performing 1,000,000 simulations 10 times
+num_trials_6 = 1000000
+dice_rolls_6 = num_trials_6*12
+num_dice_6 = 1
+dice_sides_6 = 6
+
+prob_frame_6 <- data.frame(matrix(ncol = 10, nrow = 1))
+
+k <- 0
+while(k < 10){
+  dice_simul_6 = data.frame(dice(rolls = dice_rolls_6, ndice = num_dice_6,
+sides = dice_sides_6, plot.it = FALSE))
+
+  #constructing matrix containing results of all dice rolls by month
+  prob_matrix_6 <- data.frame(matrix(dice_simul_6[,1], ncol = 12, byrow =
+TRUE))
+
+  #naming each column by it's corresponding month name
+  colnames(prob_matrix_6) <-
+c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+
+
+  #assigning each person?s name depending on the number showed in the dice
+once rolled
+  for (i in 1:nrow(prob_matrix_6)){
+    for (j in 1:ncol(prob_matrix_6)){
+      if (prob_matrix_6[i,j] == 1){
+        prob_matrix_6[i,j] = "Alice"
+      }
+      if (prob_matrix_6[i,j] == 2){
+        prob_matrix_6[i,j] = "Bob"
+      }
+      if (prob_matrix_6[i,j] == 3){
+        prob_matrix_6[i,j] = "Charlie"
+      }
+      if (prob_matrix_6[i,j] == 4){
+        prob_matrix_6[i,j] = "Don"
+      }
+      if (prob_matrix_6[i,j] == 5){
+        prob_matrix_6[i,j] = "Ellen"
+      }
+      if (prob_matrix_6[i,j] == 6){
+        prob_matrix_6[i,j] = "Fred"
+      }
+
+    }
+  }
+
+  #calculating column  which will have a 1 if trial was successful and a 0
+otherwise
+  prob_matrix_6['success'] <- for (i in 1:nrow(prob_matrix_6)){
+    if (("Alice" %in% prob_matrix_6[i,]) & ("Bob" %in% prob_matrix_6[i,]) &
+("Charlie" %in% prob_matrix_6[i,]) & ("Don" %in% prob_matrix_6[i,]) &
+("Ellen" %in% prob_matrix_6[i,]) & ("Fred" %in% prob_matrix_6[i,])){
+      prob_matrix_6[i,13] = 1
+    }else{
+      prob_matrix_6[i,13] = 0
+    }
+  }
+
+  #relabeling column v13 so that its new name is success
+  colnames(prob_matrix_6)[13] <- "success"
+
+
+  #calculating probability of success
+
+  p6 = sum(prob_matrix_6$success)/nrow(prob_matrix_6)
+  prob_frame_6 <- cbind(prob_frame_6, p6)
+
+  k = k + 1
+
+}
+
+prob_frame_6 <- prob_frame_6[11:20]
+colnames(prob_frame_6) <-
+c("p1","p2","p3","p4","p5","p6","p7","p8","p9","p10")
+average_prob_frame_6 <- rowMeans(prob_frame_6)
+trial_1000000_10_frame <- cbind(prob_frame_6, average_prob_frame_6)
+final_frame_6 <- trial_1000000_10_frame
+colnames(final_frame_6) <-
+c("p1","p2","p3","p4","p5","p6","p7","p8","p9","p10", "avg_prob_frame_5")
+
+write.csv(final_frame_6, "OneMillion_Trials_Ten_Times_Results.csv")
+print(final_frame_6)
+print(paste("The average probability of success when doing 1,000,000 trials
+10 times is:", average_prob_frame_6))
+
+	[[alternative HTML version deleted]]
+
+
