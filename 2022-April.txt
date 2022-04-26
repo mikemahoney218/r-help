@@ -26813,3 +26813,4262 @@ trials is:", average_prob_frame_6))
 	[[alternative HTML version deleted]]
 
 
+From @v|gro@@ @end|ng |rom ver|zon@net  Mon Apr 25 03:45:49 2022
+From: @v|gro@@ @end|ng |rom ver|zon@net (Avi Gross)
+Date: Mon, 25 Apr 2022 01:45:49 +0000 (UTC)
+Subject: [R] Issues when setting k to 1L
+In-Reply-To: <CAMOcQfNVqZzxD8SUpQL76n+94-kKMyeNR0Lo=wKTxmPDvn9KNg@mail.gmail.com>
+References: <CAMOcQfNVqZzxD8SUpQL76n+94-kKMyeNR0Lo=wKTxmPDvn9KNg@mail.gmail.com>
+Message-ID: <1697459832.504545.1650851149670@mail.yahoo.com>
+
+Try:?average_prob_frame_6 <- rowMeans(prob_frame_6, na.rm=TRUE)
+Any NA propagates into calculations to make it NA.
+Then again, should there be any NA?
+
+
+
+-----Original Message-----
+From: Paul Bernal <paulbernal07 at gmail.com>
+To: Rui Barradas <ruipbarradas at sapo.pt>; R <r-help at r-project.org>
+Sent: Sun, Apr 24, 2022 8:56 pm
+Subject: [R] Issues when setting k to 1L
+
+Dear Rui,
+
+I made the modification to k <- 1L (see the code below), but I get the
+following odd result (maybe I am forgetting to do something):
+print(final_frame_6)
+? ? ? ? p1 NA NA NA NA NA NA NA NA NA average_prob_frame_6
+1 0.437738 NA NA NA NA NA NA NA NA NA? ? ? ? ? ? ? ? ? NA
+> print(paste("The average probability of success when doing 1,000,000
+single trials is:", average_prob_frame_6))
+[1] "The average probability of success when doing 1,000,000 single trials
+is: NA"
+>
+
+#single 1,000,000 trials
+
+# these two are equal
+cnames0 <-
+c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+cnames <- month.abb
+identical(cnames0, cnames)
+# [1] TRUE
+
+# performing 1,000,000 simulations 10 times
+num_trials_6 <- 1e6
+dice_rolls_6 <- num_trials_6*12
+num_dice_6 <- 1
+dice_sides_6 <- 6
+
+set.seed(2022)
+
+prob_frame_6 <- as.data.frame(matrix(ncol = 10L, nrow = 1L))
+K <- 1L
+for(k in seq_len(K)){
+? #
+? dice_simul_6 <- sample(dice_sides_6, dice_rolls_6, replace = TRUE)
+? # constructing matrix containing results of all dice rolls by month
+? prob_matrix_6 <- matrix(dice_simul_6, ncol = 12, byrow = TRUE)
+
+? # naming each column by it's corresponding month name
+? colnames(prob_matrix_6) <- month.abb
+
+? # calculating column? which will have a 1
+? # if trial was successful and a 0 otherwise
+? success <- integer(num_trials_6)
+? for(i in seq_len(num_trials_6)){
+? ? success[i] <- as.integer(all(1:6 %in% prob_matrix_6[i, ]))
+? }
+
+? #calculating probability of success
+
+? p6 <- mean(success)
+? prob_frame_6[1, k] <- p6
+}
+
+colnames(prob_frame_6) <- sprintf("p%d", seq_len(K))
+average_prob_frame_6 <- rowMeans(prob_frame_6)
+final_frame_6 <- cbind(prob_frame_6, average_prob_frame_6)
+
+write.csv(final_frame_6, "OneMillion_Trials_Ten_Times_Results.csv")
+
+print(final_frame_6)
+print(paste("The average probability of success when doing 1,000,000 single
+trials is:", average_prob_frame_6))
+
+??? [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Apr 25 09:11:38 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 25 Apr 2022 08:11:38 +0100
+Subject: [R] R Code Execution taking forever
+In-Reply-To: <CAMOcQfMHQXVETm_aDnVMt_9ZEGKGdw9XscuZtqEu+4SMXMsgjg@mail.gmail.com>
+References: <CAMOcQfN1U-gMbAtM5JA9VLmwyKESPo8NAPs=0gmBrtON5zq0dg@mail.gmail.com>
+ <3ea85564-5162-ebcc-3697-73a7df86dcbd@sapo.pt>
+ <CAMOcQfO3MVMbkWcQQcQv4CwZgWpNFci9OVqJZZom4i9Ah14FRA@mail.gmail.com>
+ <92e4acee-31db-425a-1e33-d057dc1fb280@sapo.pt>
+ <CAMOcQfOt3qHO3NvYch1J2u7Y=1obK0Gn8N2fePBjfLWAr_NHkA@mail.gmail.com>
+ <39d15320-7f6c-bf54-3e09-801ce4fdcb4c@sapo.pt>
+ <CAMOcQfMHQXVETm_aDnVMt_9ZEGKGdw9XscuZtqEu+4SMXMsgjg@mail.gmail.com>
+Message-ID: <aa1b5f41-2a21-fe10-5145-7dfaec4dbda2@sapo.pt>
+
+Hello,
+
+You forgot to cc the list.
+
+The bug comes from creating a results data.frame with 10 columns when 
+there's only one iteration K. Swap these lines
+
+
+prob_frame_6 <- as.data.frame(matrix(ncol = 10L, nrow = 1L))
+K <- 1
+
+
+and set ncol = K:
+
+
+K <- 1L
+prob_frame_6 <- as.data.frame(matrix(ncol = K, nrow = 1L))
+
+
+You now have final_frame_6 with 2 columns, one from prob_frame_6 and the 
+other its row mean.
+Try also with K <- 2L or another number of iterations.
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+?s 01:49 de 25/04/2022, Paul Bernal escreveu:
+> Dear Rui,
+> 
+> Hope you are doing great.
+> 
+> This is the code based on yours (I modified it to run just 1 time 
+> instead of 10 times):
+> 
+> #performing 1,000,000 single trials
+> 
+> # these two are equal
+> cnames0 <- 
+> c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+> cnames <- month.abb
+> identical(cnames0, cnames)
+> # [1] TRUE
+> 
+> # performing 1,000,000 simulations 10 times
+> num_trials_6 <- 1e6
+> dice_rolls_6 <- num_trials_6*12
+> num_dice_6 <- 1
+> dice_sides_6 <- 6
+> 
+> set.seed(2022)
+> 
+> prob_frame_6 <- as.data.frame(matrix(ncol = 10L, nrow = 1L))
+> K <- 1
+> for(k in seq_len(K)){
+>  ? #
+>  ? dice_simul_6 <- sample(dice_sides_6, dice_rolls_6, replace = TRUE)
+>  ? # constructing matrix containing results of all dice rolls by month
+>  ? prob_matrix_6 <- matrix(dice_simul_6, ncol = 12, byrow = TRUE)
+> 
+>  ? # naming each column by it's corresponding month name
+>  ? colnames(prob_matrix_6) <- month.abb
+> 
+>  ? # calculating column ?which will have a 1
+>  ? # if trial was successful and a 0 otherwise
+>  ? success <- integer(num_trials_6)
+>  ? for(i in seq_len(num_trials_6)){
+>  ? ? success[i] <- as.integer(all(1:6 %in% prob_matrix_6[i, ]))
+>  ? }
+> 
+>  ? #calculating probability of success
+> 
+>  ? p6 <- mean(success)
+>  ? prob_frame_6[1, k] <- p6
+> }
+> 
+> colnames(prob_frame_6) <- sprintf("p%d", seq_len(K))
+> average_prob_frame_6 <- rowMeans(prob_frame_6)
+> final_frame_6 <- cbind(prob_frame_6, average_prob_frame_6)
+> 
+> write.csv(final_frame_6, "OneMillion_Trials_Ten_Times_Results.csv")
+> 
+> print(final_frame_6)
+> print(paste("The average probability of success when doing 1,000,000 
+> single trials is:", average_prob_frame_6))
+> 
+> however, for some reason I get this result:
+> 
+>  > print(final_frame_6)
+>  ? ? ? ? p1 NA NA NA NA NA NA NA NA NA average_prob_frame_6
+> 1 0.437738 NA NA NA NA NA NA NA NA NA ? ? ? ? ? ? ? ? ? NA
+>  > print(paste("The average probability of success when doing 1,000,000 
+> single trials is:", average_prob_frame_6))
+> [1] "The average probability of success when doing 1,000,000 single 
+> trials is: NA"
+> 
+> Any idea of why this could be happening?
+> 
+> Best,
+> Paul
+> 
+> 
+> 
+> El dom, 24 abr 2022 a las 9:38, Rui Barradas (<ruipbarradas at sapo.pt 
+> <mailto:ruipbarradas at sapo.pt>>) escribi?:
+> 
+>     Hello,
+> 
+>     Thanks for the link, the package is TeachingDemos, it's the function
+>     that's named dice. And the source code shows that it calls sample()
+>     in a
+>     way similar to mine, so the code I posted should give approximately the
+>     same results.
+> 
+>     To run just once, change to K <- 1L, right before the main for loop.
+> 
+>     Hope this helps,
+> 
+>     Rui Barradas
+> 
+>     ?s 15:24 de 24/04/2022, Paul Bernal escreveu:
+>      > Dear friend Rui,
+>      >
+>      > Thank you so much for your extremely valuable help.
+>      >
+>      > This is the dice function I used:
+>      >
+>     https://www.rdocumentation.org/packages/TeachingDemos/versions/2.12/topics/dice
+>     <https://www.rdocumentation.org/packages/TeachingDemos/versions/2.12/topics/dice>
+> 
+>      >
+>     <https://www.rdocumentation.org/packages/TeachingDemos/versions/2.12/topics/dice
+>     <https://www.rdocumentation.org/packages/TeachingDemos/versions/2.12/topics/dice>>
+>      >
+>      > One question, how would I modify your code to run it for
+>     1,000,000 rolls
+>      > 1 time?
+>      >
+>      > Best,
+>      > Paul
+>      >
+>      > El dom, 24 abr 2022 a las 8:58, Rui Barradas
+>     (<ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>
+>      > <mailto:ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>>>)
+>     escribi?:
+>      >
+>      >? ? ?Hello,
+>      >
+>      >? ? ?I still can't find the package dice you are using, it's not
+>     the one on
+>      >? ? ?CRAN, that one only has two functions, like I said earlier.
+>      >
+>      >? ? ?Anyway, I have replaced function dice(9 by a call to sample().
+>      >? ? ?And simplified the code a lot. It takes half a minute to run the
+>      >? ? ?1,000,000 simulations K = 10 times (upper case K).
+>      >? ? ?See if this is what you want.
+>      >
+>      >
+>      >? ? ?# these two are equal
+>      >? ? ?cnames0 <-
+>      >   
+>      ?c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+>      >? ? ?cnames <- month.abb
+>      >? ? ?identical(cnames0, cnames)
+>      >? ? ?# [1] TRUE
+>      >
+>      >? ? ?# performing 1,000,000 simulations 10 times
+>      >? ? ?num_trials_6 <- 1e6
+>      >? ? ?dice_rolls_6 <- num_trials_6*12
+>      >? ? ?num_dice_6 <- 1
+>      >? ? ?dice_sides_6 <- 6
+>      >
+>      >? ? ?set.seed(2022)
+>      >
+>      >? ? ?prob_frame_6 <- as.data.frame(matrix(ncol = 10L, nrow = 1L))
+>      >? ? ?K <- 10L
+>      >? ? ?for(k in seq_len(K)){
+>      >? ? ? ? ?#
+>      >? ? ? ? ?dice_simul_6 <- sample(dice_sides_6, dice_rolls_6,
+>     replace = TRUE)
+>      >? ? ? ? ?# constructing matrix containing results of all dice
+>     rolls by month
+>      >? ? ? ? ?prob_matrix_6 <- matrix(dice_simul_6, ncol = 12, byrow =
+>     TRUE)
+>      >
+>      >? ? ? ? ?# naming each column by it's corresponding month name
+>      >? ? ? ? ?colnames(prob_matrix_6) <- month.abb
+>      >
+>      >? ? ? ? ?# calculating column? which will have a 1
+>      >? ? ? ? ?# if trial was successful and a 0 otherwise
+>      >? ? ? ? ?success <- integer(num_trials_6)
+>      >? ? ? ? ?for(i in seq_len(num_trials_6)){
+>      >? ? ? ? ? ?success[i] <- as.integer(all(1:6 %in% prob_matrix_6[i, ]))
+>      >? ? ? ? ?}
+>      >
+>      >? ? ? ? ?#calculating probability of success
+>      >
+>      >? ? ? ? ?p6 <- mean(success)
+>      >? ? ? ? ?prob_frame_6[1, k] <- p6
+>      >? ? ?}
+>      >
+>      >? ? ?colnames(prob_frame_6) <- sprintf("p%d", seq_len(K))
+>      >? ? ?average_prob_frame_6 <- rowMeans(prob_frame_6)
+>      >? ? ?final_frame_6 <- cbind(prob_frame_6, average_prob_frame_6)
+>      >
+>      >? ? ?write.csv(final_frame_6,
+>     "OneMillion_Trials_Ten_Times_Results.csv")
+>      >
+>      >? ? ?print(final_frame_6)
+>      >? ? ?print(paste("The average probability of success when doing
+>     1,000,000
+>      >? ? ?trials 10 times is:", average_prob_frame_6))
+>      >
+>      >
+>      >? ? ?Hope this helps,
+>      >
+>      >? ? ?Rui Barradas
+>      >
+>      >? ? ??s 12:14 de 24/04/2022, Paul Bernal escreveu:
+>      >? ? ? > Dear Rui,
+>      >? ? ? >
+>      >? ? ? > There is a package called dice, that package is the one I am
+>      >? ? ?using. This
+>      >? ? ? > package has a funci?n called dice.
+>      >? ? ? >
+>      >? ? ? > Best,
+>      >? ? ? >
+>      >? ? ? > Paul
+>      >? ? ? >
+>      >? ? ? > El El dom, 24 de abr. de 2022 a la(s) 4:43 a.?m., Rui Barradas
+>      >? ? ? > <ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>
+>     <mailto:ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>>
+>      >? ? ?<mailto:ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>
+>     <mailto:ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>>>> escribi?:
+>      >? ? ? >
+>      >? ? ? >? ? ?Hello,
+>      >? ? ? >
+>      >? ? ? >? ? ?I'm having trouble running the code, where does
+>     function dice
+>      >? ? ?come from?
+>      >? ? ? >? ? ?CRAN package dice only has two functions,
+>      >? ? ? >
+>      >? ? ? >? ? ?getEventProb
+>      >? ? ? >? ? ?getSumProbs
+>      >? ? ? >
+>      >? ? ? >? ? ?not a function dice.
+>      >? ? ? >
+>      >? ? ? >? ? ?Can you post a link to where the package/function can
+>     be found?
+>      >? ? ? >
+>      >? ? ? >? ? ?Rui Barradas
+>      >? ? ? >
+>      >? ? ? >
+>      >? ? ? >? ? ??s 02:00 de 24/04/2022, Paul Bernal escreveu:
+>      >? ? ? >? ? ? > Dear R friends,
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > Hope you are doing great. The reason why I am
+>     contacting
+>      >? ? ?you all, is
+>      >? ? ? >? ? ? > because the code I am sharing with you takes
+>     forever. It
+>      >? ? ?started
+>      >? ? ? >? ? ?running at
+>      >? ? ? >? ? ? > 2:00 AM today, and it's 7:52 PM and is still
+>     running (see
+>      >? ? ?code at
+>      >? ? ? >? ? ?the end
+>      >? ? ? >? ? ? > of this mail).
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > I am using Rx64? 4.1.2, and the code is being
+>     executed in
+>      >? ? ? >? ? ?RStudio. The
+>      >? ? ? >? ? ? > RStudio version I am currently using is Version
+>     2022.02.0
+>      >? ? ?Build 443
+>      >? ? ? >? ? ? > "Prairie Trillium" Release (9f796939, 2022-02-16)
+>     for Windows.
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > My PC specs:
+>      >? ? ? >? ? ? > Processor: Intel(R) Core(TM) i5-10310U CPU @ 1.70 GHz
+>      >? ? ? >? ? ? > Installed RAM: 16.0 GB (15.6 GB usable)
+>      >? ? ? >? ? ? > System type: 64-bit operating system, x64-based
+>     processor
+>      >? ? ? >? ? ? > Local Disc(C:) Free Space: 274 GB
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > I am wondering if there is/are a set of system
+>     variable(s) or
+>      >? ? ? >? ? ?something I
+>      >? ? ? >? ? ? > could do to improve the performance of the program.
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > It is really odd this code has taken this much (and
+>     it is
+>      >? ? ?still
+>      >? ? ? >? ? ?running).
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > Any help and/or guidance would be greatly appreciated.
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > Best regards,
+>      >? ? ? >? ? ? > Paul
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > #performing 1,000,000 simulations 10 times
+>      >? ? ? >? ? ? > num_trials_6 = 1000000
+>      >? ? ? >? ? ? > dice_rolls_6 = num_trials_6*12
+>      >? ? ? >? ? ? > num_dice_6 = 1
+>      >? ? ? >? ? ? > dice_sides_6 = 6
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > prob_frame_6 <- data.frame(matrix(ncol = 10, nrow = 1))
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > k <- 0
+>      >? ? ? >? ? ? > while(k < 10){
+>      >? ? ? >? ? ? >? ? dice_simul_6 = data.frame(dice(rolls = dice_rolls_6,
+>      >? ? ?ndice =
+>      >? ? ? >? ? ?num_dice_6,
+>      >? ? ? >? ? ? > sides = dice_sides_6, plot.it <http://plot.it>
+>     <http://plot.it <http://plot.it>>
+>      >? ? ?<http://plot.it <http://plot.it> <http://plot.it
+>     <http://plot.it>>> = FALSE))
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? #constructing matrix containing results of all dice
+>      >? ? ?rolls by month
+>      >? ? ? >? ? ? >? ? prob_matrix_6 <-
+>     data.frame(matrix(dice_simul_6[,1], ncol =
+>      >? ? ? >? ? ?12, byrow =
+>      >? ? ? >? ? ? > TRUE))
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? #naming each column by it's corresponding month name
+>      >? ? ? >? ? ? >? ? colnames(prob_matrix_6) <-
+>      >? ? ? >? ? ? >
+>      >? ? ? >
+>      >     
+>      ?c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? #assigning each person?s name depending on the
+>     number
+>      >? ? ?showed
+>      >? ? ? >? ? ?in the dice
+>      >? ? ? >? ? ? > once rolled
+>      >? ? ? >? ? ? >? ? for (i in 1:nrow(prob_matrix_6)){
+>      >? ? ? >? ? ? >? ? ? for (j in 1:ncol(prob_matrix_6)){
+>      >? ? ? >? ? ? >? ? ? ? if (prob_matrix_6[i,j] == 1){
+>      >? ? ? >? ? ? >? ? ? ? ? prob_matrix_6[i,j] = "Alice"
+>      >? ? ? >? ? ? >? ? ? ? }
+>      >? ? ? >? ? ? >? ? ? ? if (prob_matrix_6[i,j] == 2){
+>      >? ? ? >? ? ? >? ? ? ? ? prob_matrix_6[i,j] = "Bob"
+>      >? ? ? >? ? ? >? ? ? ? }
+>      >? ? ? >? ? ? >? ? ? ? if (prob_matrix_6[i,j] == 3){
+>      >? ? ? >? ? ? >? ? ? ? ? prob_matrix_6[i,j] = "Charlie"
+>      >? ? ? >? ? ? >? ? ? ? }
+>      >? ? ? >? ? ? >? ? ? ? if (prob_matrix_6[i,j] == 4){
+>      >? ? ? >? ? ? >? ? ? ? ? prob_matrix_6[i,j] = "Don"
+>      >? ? ? >? ? ? >? ? ? ? }
+>      >? ? ? >? ? ? >? ? ? ? if (prob_matrix_6[i,j] == 5){
+>      >? ? ? >? ? ? >? ? ? ? ? prob_matrix_6[i,j] = "Ellen"
+>      >? ? ? >? ? ? >? ? ? ? }
+>      >? ? ? >? ? ? >? ? ? ? if (prob_matrix_6[i,j] == 6){
+>      >? ? ? >? ? ? >? ? ? ? ? prob_matrix_6[i,j] = "Fred"
+>      >? ? ? >? ? ? >? ? ? ? }
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? }
+>      >? ? ? >? ? ? >? ? }
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? #calculating column? which will have a 1 if
+>     trial was
+>      >? ? ? >? ? ?successful and a 0
+>      >? ? ? >? ? ? > otherwise
+>      >? ? ? >? ? ? >? ? prob_matrix_6['success'] <- for (i in
+>      >? ? ?1:nrow(prob_matrix_6)){
+>      >? ? ? >? ? ? >? ? ? if (("Alice" %in% prob_matrix_6[i,]) & ("Bob" %in%
+>      >? ? ? >? ? ?prob_matrix_6[i,]) &
+>      >? ? ? >? ? ? > ("Charlie" %in% prob_matrix_6[i,]) & ("Don" %in%
+>      >? ? ?prob_matrix_6[i,]) &
+>      >? ? ? >? ? ? > ("Ellen" %in% prob_matrix_6[i,]) & ("Fred" %in%
+>      >? ? ?prob_matrix_6[i,])){
+>      >? ? ? >? ? ? >? ? ? ? prob_matrix_6[i,13] = 1
+>      >? ? ? >? ? ? >? ? ? }else{
+>      >? ? ? >? ? ? >? ? ? ? prob_matrix_6[i,13] = 0
+>      >? ? ? >? ? ? >? ? ? }
+>      >? ? ? >? ? ? >? ? }
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? #relabeling column v13 so that its new name is
+>     success
+>      >? ? ? >? ? ? >? ? colnames(prob_matrix_6)[13] <- "success"
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? #calculating probability of success
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? p6 = sum(prob_matrix_6$success)/nrow(prob_matrix_6)
+>      >? ? ? >? ? ? >? ? prob_frame_6 <- cbind(prob_frame_6, p6)
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? k = k + 1
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > }
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > prob_frame_6 <- prob_frame_6[11:20]
+>      >? ? ? >? ? ? > colnames(prob_frame_6) <-
+>      >? ? ? >? ? ? > c("p1","p2","p3","p4","p5","p6","p7","p8","p9","p10")
+>      >? ? ? >? ? ? > average_prob_frame_6 <- rowMeans(prob_frame_6)
+>      >? ? ? >? ? ? > trial_1000000_10_frame <- cbind(prob_frame_6,
+>      >? ? ?average_prob_frame_6)
+>      >? ? ? >? ? ? > final_frame_6 <- trial_1000000_10_frame
+>      >? ? ? >? ? ? > colnames(final_frame_6) <-
+>      >? ? ? >? ? ? > c("p1","p2","p3","p4","p5","p6","p7","p8","p9","p10",
+>      >? ? ? >? ? ?"avg_prob_frame_5")
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > write.csv(final_frame_6,
+>      >? ? ?"OneMillion_Trials_Ten_Times_Results.csv")
+>      >? ? ? >? ? ? > print(final_frame_6)
+>      >? ? ? >? ? ? > print(paste("The average probability of success
+>     when doing
+>      >? ? ? >? ? ?1,000,000 trials
+>      >? ? ? >? ? ? > 10 times is:", average_prob_frame_6))
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? ?[[alternative HTML version deleted]]
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > ______________________________________________
+>      >? ? ? >? ? ? > R-help at r-project.org <mailto:R-help at r-project.org>
+>     <mailto:R-help at r-project.org <mailto:R-help at r-project.org>>
+>      >? ? ?<mailto:R-help at r-project.org <mailto:R-help at r-project.org>
+>     <mailto:R-help at r-project.org <mailto:R-help at r-project.org>>> mailing
+>     list
+>      >? ? ? >? ? ?-- To UNSUBSCRIBE and more, see
+>      >? ? ? >? ? ? > https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>
+>      >? ? ?<https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>>
+>      >? ? ? >? ? ?<https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>
+>      >? ? ?<https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>>>
+>      >? ? ? >? ? ? > PLEASE do read the posting guide
+>      >? ? ? > http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>      >? ? ?<http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>>
+>      >? ? ? >? ? ?<http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>      >? ? ?<http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>>>
+>      >? ? ? >? ? ? > and provide commented, minimal, self-contained,
+>      >? ? ?reproducible code.
+>      >? ? ? >
+>      >
+>
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Apr 25 09:15:09 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 25 Apr 2022 08:15:09 +0100
+Subject: [R] Issues when setting k to 1L
+In-Reply-To: <1697459832.504545.1650851149670@mail.yahoo.com>
+References: <CAMOcQfNVqZzxD8SUpQL76n+94-kKMyeNR0Lo=wKTxmPDvn9KNg@mail.gmail.com>
+ <1697459832.504545.1650851149670@mail.yahoo.com>
+Message-ID: <36944176-db4c-088a-6c10-2408902ddc75@sapo.pt>
+
+Hello,
+
+Inliner.
+
+?s 02:45 de 25/04/2022, Avi Gross via R-help escreveu:
+> Try:?average_prob_frame_6 <- rowMeans(prob_frame_6, na.rm=TRUE)
+> Any NA propagates into calculations to make it NA.
+> Then again, should there be any NA?
+
+Yes, na.rm = TRUE is a good idea.
+And no, there should be no NA's in prob_frame_6.
+
+
+Rui Barradas
+
+> 
+> 
+> 
+> -----Original Message-----
+> From: Paul Bernal <paulbernal07 at gmail.com>
+> To: Rui Barradas <ruipbarradas at sapo.pt>; R <r-help at r-project.org>
+> Sent: Sun, Apr 24, 2022 8:56 pm
+> Subject: [R] Issues when setting k to 1L
+> 
+> Dear Rui,
+> 
+> I made the modification to k <- 1L (see the code below), but I get the
+> following odd result (maybe I am forgetting to do something):
+> print(final_frame_6)
+>  ? ? ? ? p1 NA NA NA NA NA NA NA NA NA average_prob_frame_6
+> 1 0.437738 NA NA NA NA NA NA NA NA NA? ? ? ? ? ? ? ? ? NA
+>> print(paste("The average probability of success when doing 1,000,000
+> single trials is:", average_prob_frame_6))
+> [1] "The average probability of success when doing 1,000,000 single trials
+> is: NA"
+>>
+> 
+> #single 1,000,000 trials
+> 
+> # these two are equal
+> cnames0 <-
+> c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+> cnames <- month.abb
+> identical(cnames0, cnames)
+> # [1] TRUE
+> 
+> # performing 1,000,000 simulations 10 times
+> num_trials_6 <- 1e6
+> dice_rolls_6 <- num_trials_6*12
+> num_dice_6 <- 1
+> dice_sides_6 <- 6
+> 
+> set.seed(2022)
+> 
+> prob_frame_6 <- as.data.frame(matrix(ncol = 10L, nrow = 1L))
+> K <- 1L
+> for(k in seq_len(K)){
+>  ? #
+>  ? dice_simul_6 <- sample(dice_sides_6, dice_rolls_6, replace = TRUE)
+>  ? # constructing matrix containing results of all dice rolls by month
+>  ? prob_matrix_6 <- matrix(dice_simul_6, ncol = 12, byrow = TRUE)
+> 
+>  ? # naming each column by it's corresponding month name
+>  ? colnames(prob_matrix_6) <- month.abb
+> 
+>  ? # calculating column? which will have a 1
+>  ? # if trial was successful and a 0 otherwise
+>  ? success <- integer(num_trials_6)
+>  ? for(i in seq_len(num_trials_6)){
+>  ? ? success[i] <- as.integer(all(1:6 %in% prob_matrix_6[i, ]))
+>  ? }
+> 
+>  ? #calculating probability of success
+> 
+>  ? p6 <- mean(success)
+>  ? prob_frame_6[1, k] <- p6
+> }
+> 
+> colnames(prob_frame_6) <- sprintf("p%d", seq_len(K))
+> average_prob_frame_6 <- rowMeans(prob_frame_6)
+> final_frame_6 <- cbind(prob_frame_6, average_prob_frame_6)
+> 
+> write.csv(final_frame_6, "OneMillion_Trials_Ten_Times_Results.csv")
+> 
+> print(final_frame_6)
+> print(paste("The average probability of success when doing 1,000,000 single
+> trials is:", average_prob_frame_6))
+> 
+>  ??? [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Apr 25 09:25:28 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 25 Apr 2022 08:25:28 +0100
+Subject: [R] Issues when setting k to 1L
+In-Reply-To: <36944176-db4c-088a-6c10-2408902ddc75@sapo.pt>
+References: <CAMOcQfNVqZzxD8SUpQL76n+94-kKMyeNR0Lo=wKTxmPDvn9KNg@mail.gmail.com>
+ <1697459832.504545.1650851149670@mail.yahoo.com>
+ <36944176-db4c-088a-6c10-2408902ddc75@sapo.pt>
+Message-ID: <87a1c3c6-6993-f5e8-3afd-91468dd28d05@sapo.pt>
+
+Hello,
+
+Sorry, it's "inline", the final "r" is a letter next to the "e", a mistake.
+
+Rui Barradas
+
+?s 08:15 de 25/04/2022, Rui Barradas escreveu:
+> Hello,
+> 
+> Inliner.
+> 
+> ?s 02:45 de 25/04/2022, Avi Gross via R-help escreveu:
+>> Try:?average_prob_frame_6 <- rowMeans(prob_frame_6, na.rm=TRUE)
+>> Any NA propagates into calculations to make it NA.
+>> Then again, should there be any NA?
+> 
+> Yes, na.rm = TRUE is a good idea.
+> And no, there should be no NA's in prob_frame_6.
+> 
+> 
+> Rui Barradas
+> 
+>>
+>>
+>>
+>> -----Original Message-----
+>> From: Paul Bernal <paulbernal07 at gmail.com>
+>> To: Rui Barradas <ruipbarradas at sapo.pt>; R <r-help at r-project.org>
+>> Sent: Sun, Apr 24, 2022 8:56 pm
+>> Subject: [R] Issues when setting k to 1L
+>>
+>> Dear Rui,
+>>
+>> I made the modification to k <- 1L (see the code below), but I get the
+>> following odd result (maybe I am forgetting to do something):
+>> print(final_frame_6)
+>> ?? ? ? ? p1 NA NA NA NA NA NA NA NA NA average_prob_frame_6
+>> 1 0.437738 NA NA NA NA NA NA NA NA NA? ? ? ? ? ? ? ? ? NA
+>>> print(paste("The average probability of success when doing 1,000,000
+>> single trials is:", average_prob_frame_6))
+>> [1] "The average probability of success when doing 1,000,000 single 
+>> trials
+>> is: NA"
+>>>
+>>
+>> #single 1,000,000 trials
+>>
+>> # these two are equal
+>> cnames0 <-
+>> c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec") 
+>>
+>> cnames <- month.abb
+>> identical(cnames0, cnames)
+>> # [1] TRUE
+>>
+>> # performing 1,000,000 simulations 10 times
+>> num_trials_6 <- 1e6
+>> dice_rolls_6 <- num_trials_6*12
+>> num_dice_6 <- 1
+>> dice_sides_6 <- 6
+>>
+>> set.seed(2022)
+>>
+>> prob_frame_6 <- as.data.frame(matrix(ncol = 10L, nrow = 1L))
+>> K <- 1L
+>> for(k in seq_len(K)){
+>> ?? #
+>> ?? dice_simul_6 <- sample(dice_sides_6, dice_rolls_6, replace = TRUE)
+>> ?? # constructing matrix containing results of all dice rolls by month
+>> ?? prob_matrix_6 <- matrix(dice_simul_6, ncol = 12, byrow = TRUE)
+>>
+>> ?? # naming each column by it's corresponding month name
+>> ?? colnames(prob_matrix_6) <- month.abb
+>>
+>> ?? # calculating column? which will have a 1
+>> ?? # if trial was successful and a 0 otherwise
+>> ?? success <- integer(num_trials_6)
+>> ?? for(i in seq_len(num_trials_6)){
+>> ?? ? success[i] <- as.integer(all(1:6 %in% prob_matrix_6[i, ]))
+>> ?? }
+>>
+>> ?? #calculating probability of success
+>>
+>> ?? p6 <- mean(success)
+>> ?? prob_frame_6[1, k] <- p6
+>> }
+>>
+>> colnames(prob_frame_6) <- sprintf("p%d", seq_len(K))
+>> average_prob_frame_6 <- rowMeans(prob_frame_6)
+>> final_frame_6 <- cbind(prob_frame_6, average_prob_frame_6)
+>>
+>> write.csv(final_frame_6, "OneMillion_Trials_Ten_Times_Results.csv")
+>>
+>> print(final_frame_6)
+>> print(paste("The average probability of success when doing 1,000,000 
+>> single
+>> trials is:", average_prob_frame_6))
+>>
+>> ???? [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>> ????[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Apr 25 09:41:15 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 25 Apr 2022 08:41:15 +0100
+Subject: [R] R Code Execution taking forever
+In-Reply-To: <CAMOcQfPbGQZdk81XTVGr7CJcgTvicVgeq7O7X+DK=wtr=GW2RQ@mail.gmail.com>
+References: <CAMOcQfN1U-gMbAtM5JA9VLmwyKESPo8NAPs=0gmBrtON5zq0dg@mail.gmail.com>
+ <3ea85564-5162-ebcc-3697-73a7df86dcbd@sapo.pt>
+ <CAMOcQfO3MVMbkWcQQcQv4CwZgWpNFci9OVqJZZom4i9Ah14FRA@mail.gmail.com>
+ <92e4acee-31db-425a-1e33-d057dc1fb280@sapo.pt>
+ <CAMOcQfOt3qHO3NvYch1J2u7Y=1obK0Gn8N2fePBjfLWAr_NHkA@mail.gmail.com>
+ <39d15320-7f6c-bf54-3e09-801ce4fdcb4c@sapo.pt>
+ <CAMOcQfMHQXVETm_aDnVMt_9ZEGKGdw9XscuZtqEu+4SMXMsgjg@mail.gmail.com>
+ <aa1b5f41-2a21-fe10-5145-7dfaec4dbda2@sapo.pt>
+ <CAMOcQfPbGQZdk81XTVGr7CJcgTvicVgeq7O7X+DK=wtr=GW2RQ@mail.gmail.com>
+Message-ID: <27c2ccd2-dfd6-f75b-9dc5-47ae647e5c40@sapo.pt>
+
+Hello,
+
+Yes, that's it.
+Now the results dataframe prob_frame_6  is created with the right number 
+of columns, this number depends on the number of iterations K. Before it 
+would always have 10 columns.
+
+In the example run below I have timed the code with K <- 20L and changed 
+the final print instruction a bit to make it more general purpose.
+
+
+
+system.time({
+
+   options(width=205)
+
+   # these two are equal
+   cnames0 <- 
+c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+   cnames <- month.abb
+   identical(cnames0, cnames)
+   # [1] TRUE
+
+   # performing 1,000,000 simulations 10 times
+   num_trials_6 <- 1e6
+   dice_rolls_6 <- num_trials_6*12
+   num_dice_6 <- 1
+   dice_sides_6 <- 6
+
+   set.seed(2022)
+
+   K <- 20L
+   prob_frame_6 <- as.data.frame(matrix(ncol = K, nrow = 1L))
+
+   for(k in seq_len(K)){
+     #
+     dice_simul_6 <- sample(dice_sides_6, dice_rolls_6, replace = TRUE)
+     # constructing matrix containing results of all dice rolls by month
+     prob_matrix_6 <- matrix(dice_simul_6, ncol = 12, byrow = TRUE)
+
+     # naming each column by it's corresponding month name
+     colnames(prob_matrix_6) <- month.abb
+
+     # calculating column  which will have a 1
+     # if trial was successful and a 0 otherwise
+     success <- integer(num_trials_6)
+     for(i in seq_len(num_trials_6)){
+       success[i] <- as.integer(all(1:6 %in% prob_matrix_6[i, ]))
+     }
+
+     #calculating probability of success
+
+     p6 <- mean(success)
+     prob_frame_6[1, k] <- p6
+   }
+
+   colnames(prob_frame_6) <- sprintf("p%d", seq_len(K))
+   average_prob_frame_6 <- rowMeans(prob_frame_6)
+   final_frame_6 <- cbind(prob_frame_6, average_prob_frame_6)
+
+   write.csv(final_frame_6, "OneMillion_Trials_Ten_Times_Results.csv")
+
+   print(final_frame_6)
+   fmt <- "The average probability of success when doing %s trials %d 
+times is: %0.5g"
+   txt <- sprintf(fmt, formatC(num_trials_6, format = "fg", big.mark = 
+","), K, average_prob_frame_6)
+   print(txt)
+})
+#>         p1       p2       p3       p4       p5       p6       p7 
+   p8       p9      p10      p11      p12      p13      p14      p15 
+   p16     p17      p18      p19      p20 average_prob_frame_6
+#> 1 0.437738 0.438101 0.438051 0.437195 0.437623 0.437977 0.437828 
+0.437546 0.437663 0.438468 0.437435 0.438332 0.438678 0.438268 0.438047 
+0.438817 0.43817 0.437762 0.438403 0.437472            0.4379787
+#> [1] "The average probability of success when doing 1,000,000 trials 
+20 times is: 0.43798"
+#>    user  system elapsed
+#>   62.25    0.44   62.71
+
+
+Hope this helps,
+
+Rui Barradas
+
+?s 08:24 de 25/04/2022, Paul Bernal escreveu:
+> Dear friend Rui,
+> 
+> So, if I understood correctly, I should do this:
+> 
+> K <- 1L
+> prob_frame_6 <- as.data.frame(matrix(ncol = K, nrow = 1L))
+> 
+> Instead of this:
+> 
+> prob_frame_6 <- as.data.frame(matrix(ncol = 10L, nrow = 1L))
+> K <- 1
+> 
+> Right?
+> 
+> Cheers,
+> Paul
+> 
+> Do I should do this:
+> 
+> El El lun, 25 de abr. de 2022 a la(s) 2:11 a.?m., Rui Barradas 
+> <ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>> escribi?:
+> 
+>     Hello,
+> 
+>     You forgot to cc the list.
+> 
+>     The bug comes from creating a results data.frame with 10 columns when
+>     there's only one iteration K. Swap these lines
+> 
+> 
+>     prob_frame_6 <- as.data.frame(matrix(ncol = 10L, nrow = 1L))
+>     K <- 1
+> 
+> 
+>     and set ncol = K:
+> 
+> 
+>     K <- 1L
+>     prob_frame_6 <- as.data.frame(matrix(ncol = K, nrow = 1L))
+> 
+> 
+>     You now have final_frame_6 with 2 columns, one from prob_frame_6 and
+>     the
+>     other its row mean.
+>     Try also with K <- 2L or another number of iterations.
+> 
+> 
+>     Hope this helps,
+> 
+>     Rui Barradas
+> 
+> 
+>     ?s 01:49 de 25/04/2022, Paul Bernal escreveu:
+>      > Dear Rui,
+>      >
+>      > Hope you are doing great.
+>      >
+>      > This is the code based on yours (I modified it to run just 1 time
+>      > instead of 10 times):
+>      >
+>      > #performing 1,000,000 single trials
+>      >
+>      > # these two are equal
+>      > cnames0 <-
+>      >
+>     c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+>      > cnames <- month.abb
+>      > identical(cnames0, cnames)
+>      > # [1] TRUE
+>      >
+>      > # performing 1,000,000 simulations 10 times
+>      > num_trials_6 <- 1e6
+>      > dice_rolls_6 <- num_trials_6*12
+>      > num_dice_6 <- 1
+>      > dice_sides_6 <- 6
+>      >
+>      > set.seed(2022)
+>      >
+>      > prob_frame_6 <- as.data.frame(matrix(ncol = 10L, nrow = 1L))
+>      > K <- 1
+>      > for(k in seq_len(K)){
+>      >? ? #
+>      >? ? dice_simul_6 <- sample(dice_sides_6, dice_rolls_6, replace = TRUE)
+>      >? ? # constructing matrix containing results of all dice rolls by
+>     month
+>      >? ? prob_matrix_6 <- matrix(dice_simul_6, ncol = 12, byrow = TRUE)
+>      >
+>      >? ? # naming each column by it's corresponding month name
+>      >? ? colnames(prob_matrix_6) <- month.abb
+>      >
+>      >? ? # calculating column ?which will have a 1
+>      >? ? # if trial was successful and a 0 otherwise
+>      >? ? success <- integer(num_trials_6)
+>      >? ? for(i in seq_len(num_trials_6)){
+>      >? ? ? success[i] <- as.integer(all(1:6 %in% prob_matrix_6[i, ]))
+>      >? ? }
+>      >
+>      >? ? #calculating probability of success
+>      >
+>      >? ? p6 <- mean(success)
+>      >? ? prob_frame_6[1, k] <- p6
+>      > }
+>      >
+>      > colnames(prob_frame_6) <- sprintf("p%d", seq_len(K))
+>      > average_prob_frame_6 <- rowMeans(prob_frame_6)
+>      > final_frame_6 <- cbind(prob_frame_6, average_prob_frame_6)
+>      >
+>      > write.csv(final_frame_6, "OneMillion_Trials_Ten_Times_Results.csv")
+>      >
+>      > print(final_frame_6)
+>      > print(paste("The average probability of success when doing 1,000,000
+>      > single trials is:", average_prob_frame_6))
+>      >
+>      > however, for some reason I get this result:
+>      >
+>      >? > print(final_frame_6)
+>      >? ? ? ? ? p1 NA NA NA NA NA NA NA NA NA average_prob_frame_6
+>      > 1 0.437738 NA NA NA NA NA NA NA NA NA ? ? ? ? ? ? ? ? ? NA
+>      >? > print(paste("The average probability of success when doing
+>     1,000,000
+>      > single trials is:", average_prob_frame_6))
+>      > [1] "The average probability of success when doing 1,000,000 single
+>      > trials is: NA"
+>      >
+>      > Any idea of why this could be happening?
+>      >
+>      > Best,
+>      > Paul
+>      >
+>      >
+>      >
+>      > El dom, 24 abr 2022 a las 9:38, Rui Barradas
+>     (<ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>
+>      > <mailto:ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>>>)
+>     escribi?:
+>      >
+>      >? ? ?Hello,
+>      >
+>      >? ? ?Thanks for the link, the package is TeachingDemos, it's the
+>     function
+>      >? ? ?that's named dice. And the source code shows that it calls
+>     sample()
+>      >? ? ?in a
+>      >? ? ?way similar to mine, so the code I posted should give
+>     approximately the
+>      >? ? ?same results.
+>      >
+>      >? ? ?To run just once, change to K <- 1L, right before the main
+>     for loop.
+>      >
+>      >? ? ?Hope this helps,
+>      >
+>      >? ? ?Rui Barradas
+>      >
+>      >? ? ??s 15:24 de 24/04/2022, Paul Bernal escreveu:
+>      >? ? ? > Dear friend Rui,
+>      >? ? ? >
+>      >? ? ? > Thank you so much for your extremely valuable help.
+>      >? ? ? >
+>      >? ? ? > This is the dice function I used:
+>      >? ? ? >
+>      >
+>     https://www.rdocumentation.org/packages/TeachingDemos/versions/2.12/topics/dice
+>     <https://www.rdocumentation.org/packages/TeachingDemos/versions/2.12/topics/dice>
+>      >   
+>      ?<https://www.rdocumentation.org/packages/TeachingDemos/versions/2.12/topics/dice <https://www.rdocumentation.org/packages/TeachingDemos/versions/2.12/topics/dice>>
+>      >
+>      >? ? ? >
+>      >   
+>      ?<https://www.rdocumentation.org/packages/TeachingDemos/versions/2.12/topics/dice <https://www.rdocumentation.org/packages/TeachingDemos/versions/2.12/topics/dice>
+>      >   
+>      ?<https://www.rdocumentation.org/packages/TeachingDemos/versions/2.12/topics/dice <https://www.rdocumentation.org/packages/TeachingDemos/versions/2.12/topics/dice>>>
+>      >? ? ? >
+>      >? ? ? > One question, how would I modify your code to run it for
+>      >? ? ?1,000,000 rolls
+>      >? ? ? > 1 time?
+>      >? ? ? >
+>      >? ? ? > Best,
+>      >? ? ? > Paul
+>      >? ? ? >
+>      >? ? ? > El dom, 24 abr 2022 a las 8:58, Rui Barradas
+>      >? ? ?(<ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>
+>     <mailto:ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>>
+>      >? ? ? > <mailto:ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>
+>     <mailto:ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>>>>)
+>      >? ? ?escribi?:
+>      >? ? ? >
+>      >? ? ? >? ? ?Hello,
+>      >? ? ? >
+>      >? ? ? >? ? ?I still can't find the package dice you are using,
+>     it's not
+>      >? ? ?the one on
+>      >? ? ? >? ? ?CRAN, that one only has two functions, like I said
+>     earlier.
+>      >? ? ? >
+>      >? ? ? >? ? ?Anyway, I have replaced function dice(9 by a call to
+>     sample().
+>      >? ? ? >? ? ?And simplified the code a lot. It takes half a minute
+>     to run the
+>      >? ? ? >? ? ?1,000,000 simulations K = 10 times (upper case K).
+>      >? ? ? >? ? ?See if this is what you want.
+>      >? ? ? >
+>      >? ? ? >
+>      >? ? ? >? ? ?# these two are equal
+>      >? ? ? >? ? ?cnames0 <-
+>      >? ? ? >
+>      >     
+>      ?c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+>      >? ? ? >? ? ?cnames <- month.abb
+>      >? ? ? >? ? ?identical(cnames0, cnames)
+>      >? ? ? >? ? ?# [1] TRUE
+>      >? ? ? >
+>      >? ? ? >? ? ?# performing 1,000,000 simulations 10 times
+>      >? ? ? >? ? ?num_trials_6 <- 1e6
+>      >? ? ? >? ? ?dice_rolls_6 <- num_trials_6*12
+>      >? ? ? >? ? ?num_dice_6 <- 1
+>      >? ? ? >? ? ?dice_sides_6 <- 6
+>      >? ? ? >
+>      >? ? ? >? ? ?set.seed(2022)
+>      >? ? ? >
+>      >? ? ? >? ? ?prob_frame_6 <- as.data.frame(matrix(ncol = 10L, nrow
+>     = 1L))
+>      >? ? ? >? ? ?K <- 10L
+>      >? ? ? >? ? ?for(k in seq_len(K)){
+>      >? ? ? >? ? ? ? ?#
+>      >? ? ? >? ? ? ? ?dice_simul_6 <- sample(dice_sides_6, dice_rolls_6,
+>      >? ? ?replace = TRUE)
+>      >? ? ? >? ? ? ? ?# constructing matrix containing results of all dice
+>      >? ? ?rolls by month
+>      >? ? ? >? ? ? ? ?prob_matrix_6 <- matrix(dice_simul_6, ncol = 12,
+>     byrow =
+>      >? ? ?TRUE)
+>      >? ? ? >
+>      >? ? ? >? ? ? ? ?# naming each column by it's corresponding month name
+>      >? ? ? >? ? ? ? ?colnames(prob_matrix_6) <- month.abb
+>      >? ? ? >
+>      >? ? ? >? ? ? ? ?# calculating column? which will have a 1
+>      >? ? ? >? ? ? ? ?# if trial was successful and a 0 otherwise
+>      >? ? ? >? ? ? ? ?success <- integer(num_trials_6)
+>      >? ? ? >? ? ? ? ?for(i in seq_len(num_trials_6)){
+>      >? ? ? >? ? ? ? ? ?success[i] <- as.integer(all(1:6 %in%
+>     prob_matrix_6[i, ]))
+>      >? ? ? >? ? ? ? ?}
+>      >? ? ? >
+>      >? ? ? >? ? ? ? ?#calculating probability of success
+>      >? ? ? >
+>      >? ? ? >? ? ? ? ?p6 <- mean(success)
+>      >? ? ? >? ? ? ? ?prob_frame_6[1, k] <- p6
+>      >? ? ? >? ? ?}
+>      >? ? ? >
+>      >? ? ? >? ? ?colnames(prob_frame_6) <- sprintf("p%d", seq_len(K))
+>      >? ? ? >? ? ?average_prob_frame_6 <- rowMeans(prob_frame_6)
+>      >? ? ? >? ? ?final_frame_6 <- cbind(prob_frame_6, average_prob_frame_6)
+>      >? ? ? >
+>      >? ? ? >? ? ?write.csv(final_frame_6,
+>      >? ? ?"OneMillion_Trials_Ten_Times_Results.csv")
+>      >? ? ? >
+>      >? ? ? >? ? ?print(final_frame_6)
+>      >? ? ? >? ? ?print(paste("The average probability of success when doing
+>      >? ? ?1,000,000
+>      >? ? ? >? ? ?trials 10 times is:", average_prob_frame_6))
+>      >? ? ? >
+>      >? ? ? >
+>      >? ? ? >? ? ?Hope this helps,
+>      >? ? ? >
+>      >? ? ? >? ? ?Rui Barradas
+>      >? ? ? >
+>      >? ? ? >? ? ??s 12:14 de 24/04/2022, Paul Bernal escreveu:
+>      >? ? ? >? ? ? > Dear Rui,
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > There is a package called dice, that package is the
+>     one I am
+>      >? ? ? >? ? ?using. This
+>      >? ? ? >? ? ? > package has a funci?n called dice.
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > Best,
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > Paul
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? > El El dom, 24 de abr. de 2022 a la(s) 4:43 a.?m.,
+>     Rui Barradas
+>      >? ? ? >? ? ? > <ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>
+>     <mailto:ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>>
+>      >? ? ?<mailto:ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>
+>     <mailto:ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>>>
+>      >? ? ? >? ? ?<mailto:ruipbarradas at sapo.pt
+>     <mailto:ruipbarradas at sapo.pt> <mailto:ruipbarradas at sapo.pt
+>     <mailto:ruipbarradas at sapo.pt>>
+>      >? ? ?<mailto:ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>
+>     <mailto:ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>>>>> escribi?:
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ?Hello,
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ?I'm having trouble running the code, where does
+>      >? ? ?function dice
+>      >? ? ? >? ? ?come from?
+>      >? ? ? >? ? ? >? ? ?CRAN package dice only has two functions,
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ?getEventProb
+>      >? ? ? >? ? ? >? ? ?getSumProbs
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ?not a function dice.
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ?Can you post a link to where the
+>     package/function can
+>      >? ? ?be found?
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ?Rui Barradas
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ??s 02:00 de 24/04/2022, Paul Bernal escreveu:
+>      >? ? ? >? ? ? >? ? ? > Dear R friends,
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? > Hope you are doing great. The reason why I am
+>      >? ? ?contacting
+>      >? ? ? >? ? ?you all, is
+>      >? ? ? >? ? ? >? ? ? > because the code I am sharing with you takes
+>      >? ? ?forever. It
+>      >? ? ? >? ? ?started
+>      >? ? ? >? ? ? >? ? ?running at
+>      >? ? ? >? ? ? >? ? ? > 2:00 AM today, and it's 7:52 PM and is still
+>      >? ? ?running (see
+>      >? ? ? >? ? ?code at
+>      >? ? ? >? ? ? >? ? ?the end
+>      >? ? ? >? ? ? >? ? ? > of this mail).
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? > I am using Rx64? 4.1.2, and the code is being
+>      >? ? ?executed in
+>      >? ? ? >? ? ? >? ? ?RStudio. The
+>      >? ? ? >? ? ? >? ? ? > RStudio version I am currently using is Version
+>      >? ? ?2022.02.0
+>      >? ? ? >? ? ?Build 443
+>      >? ? ? >? ? ? >? ? ? > "Prairie Trillium" Release (9f796939,
+>     2022-02-16)
+>      >? ? ?for Windows.
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? > My PC specs:
+>      >? ? ? >? ? ? >? ? ? > Processor: Intel(R) Core(TM) i5-10310U CPU @
+>     1.70 GHz
+>      >? ? ? >? ? ? >? ? ? > Installed RAM: 16.0 GB (15.6 GB usable)
+>      >? ? ? >? ? ? >? ? ? > System type: 64-bit operating system, x64-based
+>      >? ? ?processor
+>      >? ? ? >? ? ? >? ? ? > Local Disc(C:) Free Space: 274 GB
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? > I am wondering if there is/are a set of system
+>      >? ? ?variable(s) or
+>      >? ? ? >? ? ? >? ? ?something I
+>      >? ? ? >? ? ? >? ? ? > could do to improve the performance of the
+>     program.
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? > It is really odd this code has taken this
+>     much (and
+>      >? ? ?it is
+>      >? ? ? >? ? ?still
+>      >? ? ? >? ? ? >? ? ?running).
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? > Any help and/or guidance would be greatly
+>     appreciated.
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? > Best regards,
+>      >? ? ? >? ? ? >? ? ? > Paul
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? > #performing 1,000,000 simulations 10 times
+>      >? ? ? >? ? ? >? ? ? > num_trials_6 = 1000000
+>      >? ? ? >? ? ? >? ? ? > dice_rolls_6 = num_trials_6*12
+>      >? ? ? >? ? ? >? ? ? > num_dice_6 = 1
+>      >? ? ? >? ? ? >? ? ? > dice_sides_6 = 6
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? > prob_frame_6 <- data.frame(matrix(ncol = 10,
+>     nrow = 1))
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? > k <- 0
+>      >? ? ? >? ? ? >? ? ? > while(k < 10){
+>      >? ? ? >? ? ? >? ? ? >? ? dice_simul_6 = data.frame(dice(rolls =
+>     dice_rolls_6,
+>      >? ? ? >? ? ?ndice =
+>      >? ? ? >? ? ? >? ? ?num_dice_6,
+>      >? ? ? >? ? ? >? ? ? > sides = dice_sides_6, plot.it
+>     <http://plot.it> <http://plot.it <http://plot.it>>
+>      >? ? ?<http://plot.it <http://plot.it> <http://plot.it
+>     <http://plot.it>>>
+>      >? ? ? >? ? ?<http://plot.it <http://plot.it> <http://plot.it
+>     <http://plot.it>> <http://plot.it <http://plot.it>
+>      >? ? ?<http://plot.it <http://plot.it>>>> = FALSE))
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? >? ? #constructing matrix containing results
+>     of all dice
+>      >? ? ? >? ? ?rolls by month
+>      >? ? ? >? ? ? >? ? ? >? ? prob_matrix_6 <-
+>      >? ? ?data.frame(matrix(dice_simul_6[,1], ncol =
+>      >? ? ? >? ? ? >? ? ?12, byrow =
+>      >? ? ? >? ? ? >? ? ? > TRUE))
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? >? ? #naming each column by it's corresponding
+>     month name
+>      >? ? ? >? ? ? >? ? ? >? ? colnames(prob_matrix_6) <-
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >
+>      >? ? ? >
+>      >     
+>      ?c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? >? ? #assigning each person?s name depending
+>     on the
+>      >? ? ?number
+>      >? ? ? >? ? ?showed
+>      >? ? ? >? ? ? >? ? ?in the dice
+>      >? ? ? >? ? ? >? ? ? > once rolled
+>      >? ? ? >? ? ? >? ? ? >? ? for (i in 1:nrow(prob_matrix_6)){
+>      >? ? ? >? ? ? >? ? ? >? ? ? for (j in 1:ncol(prob_matrix_6)){
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? if (prob_matrix_6[i,j] == 1){
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? ? prob_matrix_6[i,j] = "Alice"
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? }
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? if (prob_matrix_6[i,j] == 2){
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? ? prob_matrix_6[i,j] = "Bob"
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? }
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? if (prob_matrix_6[i,j] == 3){
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? ? prob_matrix_6[i,j] = "Charlie"
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? }
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? if (prob_matrix_6[i,j] == 4){
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? ? prob_matrix_6[i,j] = "Don"
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? }
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? if (prob_matrix_6[i,j] == 5){
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? ? prob_matrix_6[i,j] = "Ellen"
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? }
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? if (prob_matrix_6[i,j] == 6){
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? ? prob_matrix_6[i,j] = "Fred"
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? }
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? >? ? ? }
+>      >? ? ? >? ? ? >? ? ? >? ? }
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? >? ? #calculating column? which will have a 1 if
+>      >? ? ?trial was
+>      >? ? ? >? ? ? >? ? ?successful and a 0
+>      >? ? ? >? ? ? >? ? ? > otherwise
+>      >? ? ? >? ? ? >? ? ? >? ? prob_matrix_6['success'] <- for (i in
+>      >? ? ? >? ? ?1:nrow(prob_matrix_6)){
+>      >? ? ? >? ? ? >? ? ? >? ? ? if (("Alice" %in% prob_matrix_6[i,]) &
+>     ("Bob" %in%
+>      >? ? ? >? ? ? >? ? ?prob_matrix_6[i,]) &
+>      >? ? ? >? ? ? >? ? ? > ("Charlie" %in% prob_matrix_6[i,]) & ("Don" %in%
+>      >? ? ? >? ? ?prob_matrix_6[i,]) &
+>      >? ? ? >? ? ? >? ? ? > ("Ellen" %in% prob_matrix_6[i,]) & ("Fred" %in%
+>      >? ? ? >? ? ?prob_matrix_6[i,])){
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? prob_matrix_6[i,13] = 1
+>      >? ? ? >? ? ? >? ? ? >? ? ? }else{
+>      >? ? ? >? ? ? >? ? ? >? ? ? ? prob_matrix_6[i,13] = 0
+>      >? ? ? >? ? ? >? ? ? >? ? ? }
+>      >? ? ? >? ? ? >? ? ? >? ? }
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? >? ? #relabeling column v13 so that its new
+>     name is
+>      >? ? ?success
+>      >? ? ? >? ? ? >? ? ? >? ? colnames(prob_matrix_6)[13] <- "success"
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? >? ? #calculating probability of success
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? >? ? p6 =
+>     sum(prob_matrix_6$success)/nrow(prob_matrix_6)
+>      >? ? ? >? ? ? >? ? ? >? ? prob_frame_6 <- cbind(prob_frame_6, p6)
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? >? ? k = k + 1
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? > }
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? > prob_frame_6 <- prob_frame_6[11:20]
+>      >? ? ? >? ? ? >? ? ? > colnames(prob_frame_6) <-
+>      >? ? ? >? ? ? >? ? ? >
+>     c("p1","p2","p3","p4","p5","p6","p7","p8","p9","p10")
+>      >? ? ? >? ? ? >? ? ? > average_prob_frame_6 <- rowMeans(prob_frame_6)
+>      >? ? ? >? ? ? >? ? ? > trial_1000000_10_frame <- cbind(prob_frame_6,
+>      >? ? ? >? ? ?average_prob_frame_6)
+>      >? ? ? >? ? ? >? ? ? > final_frame_6 <- trial_1000000_10_frame
+>      >? ? ? >? ? ? >? ? ? > colnames(final_frame_6) <-
+>      >? ? ? >? ? ? >? ? ? >
+>     c("p1","p2","p3","p4","p5","p6","p7","p8","p9","p10",
+>      >? ? ? >? ? ? >? ? ?"avg_prob_frame_5")
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? > write.csv(final_frame_6,
+>      >? ? ? >? ? ?"OneMillion_Trials_Ten_Times_Results.csv")
+>      >? ? ? >? ? ? >? ? ? > print(final_frame_6)
+>      >? ? ? >? ? ? >? ? ? > print(paste("The average probability of success
+>      >? ? ?when doing
+>      >? ? ? >? ? ? >? ? ?1,000,000 trials
+>      >? ? ? >? ? ? >? ? ? > 10 times is:", average_prob_frame_6))
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? >? ? ? ?[[alternative HTML version deleted]]
+>      >? ? ? >? ? ? >? ? ? >
+>      >? ? ? >? ? ? >? ? ? > ______________________________________________
+>      >? ? ? >? ? ? >? ? ? > R-help at r-project.org
+>     <mailto:R-help at r-project.org> <mailto:R-help at r-project.org
+>     <mailto:R-help at r-project.org>>
+>      >? ? ?<mailto:R-help at r-project.org <mailto:R-help at r-project.org>
+>     <mailto:R-help at r-project.org <mailto:R-help at r-project.org>>>
+>      >? ? ? >? ? ?<mailto:R-help at r-project.org
+>     <mailto:R-help at r-project.org> <mailto:R-help at r-project.org
+>     <mailto:R-help at r-project.org>>
+>      >? ? ?<mailto:R-help at r-project.org <mailto:R-help at r-project.org>
+>     <mailto:R-help at r-project.org <mailto:R-help at r-project.org>>>> mailing
+>      >? ? ?list
+>      >? ? ? >? ? ? >? ? ?-- To UNSUBSCRIBE and more, see
+>      >? ? ? >? ? ? >? ? ? > https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>
+>      >? ? ?<https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>>
+>      >? ? ? >? ? ?<https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>
+>      >? ? ?<https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>>>
+>      >? ? ? >? ? ? >? ? ?<https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>
+>      >? ? ?<https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>>
+>      >? ? ? >? ? ?<https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>
+>      >? ? ?<https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>>>>
+>      >? ? ? >? ? ? >? ? ? > PLEASE do read the posting guide
+>      >? ? ? >? ? ? > http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>      >? ? ?<http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>>
+>      >? ? ? >? ? ?<http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>      >? ? ?<http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>>>
+>      >? ? ? >? ? ? >? ? ?<http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>      >? ? ?<http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>>
+>      >? ? ? >? ? ?<http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>      >? ? ?<http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>>>>
+>      >? ? ? >? ? ? >? ? ? > and provide commented, minimal, self-contained,
+>      >? ? ? >? ? ?reproducible code.
+>      >? ? ? >? ? ? >
+>      >? ? ? >
+>      >
+>
+
+
+From yongchu@ng99 @end|ng |rom qq@com  Sun Apr 24 03:38:16 2022
+From: yongchu@ng99 @end|ng |rom qq@com (=?gb18030?B?08C0tA==?=)
+Date: Sun, 24 Apr 2022 09:38:16 +0800
+Subject: [R] about opening R script Chinese annotation garble problem
+Message-ID: <tencent_82D863BBEAA3B88125F6D1FF41F885529406@qq.com>
+
+Garbled characters appear in Chinese annotation when opening program script using RGui (see attached picture). I use a variety of methods have not been solved, I hope to help me solve this problem. Thank you.
+
+From uwe @end|ng |rom |re|er@de  Sun Apr 24 17:05:55 2022
+From: uwe @end|ng |rom |re|er@de (Uwe Freier)
+Date: Sun, 24 Apr 2022 17:05:55 +0200
+Subject: [R] Confusing fori or ifelse result in matrix manipulation
+Message-ID: <09a90ba0470a47626f93455aeb0e83e3@freier.de>
+
+Hello,
+
+sorry for the newbie question but I can't find out where I'm wrong.
+
+A <- matrix(1:9,ncol=3)
+x <- c(0,1,0)
+M <- matrix(ncol=3,nrow=3)
+for(i in 1:3) {
+  M[,i] <- ifelse(x[i] == 0, A[,i], 0)
+}
+
+expected:
+
+> M
+      [,1] [,2] [,3]
+[1,]    1    0    7
+[2,]    2    0    8
+[3,]    3    0    9
+
+
+but the result is:
+
+> M
+      [,1] [,2] [,3]
+[1,]    1    0    7
+[2,]    1    0    7
+[3,]    1    0    7
+
+
+If I do it "manually":
+
+> M[,1] <- A[,1]
+> M[,2] <- 0
+> M[,3] <- A[,3]
+
+M is as expected, where is my misconception?
+
+Thanks for any hint and best regards,
+
+Uwe
+
+
+From n|co|@@@deg@|||er @end|ng |rom |ree@|r  Sun Apr 24 22:43:21 2022
+From: n|co|@@@deg@|||er @end|ng |rom |ree@|r (Nicolas Degallier)
+Date: Sun, 24 Apr 2022 22:43:21 +0200
+Subject: [R] conversion of d m s (lat) d m s (long) coordinates into decimal
+ coordinates
+Message-ID: <A4CD90DD-8EEF-410B-B528-9B0EC92DECD0@free.fr>
+
+Dear R Users,
+
+I am using a 'simple' script to draw maps with points.
+It runs fine with the following libraries:
+library(sp)
+library(maptools)
+library(maps)
+library(mapdata)
+library(RColorBrewer)
+library(MASS)
+library(rgeos)
+library(GISTools)
+
+Until now, to prepare the input data, I have used manually some free net converter because the number of points to plot was not too high.
+Now I have much more points coordinates to convert from a GPS ? ' " (d m s) format to a decimal format which will be accepted by the R script to build maps.
+
+My initial data is of the form (tab delimited text file):
+
+nom	lat	long
+"D. antoinei"	6?04' S	50?12'W
+"D. antoinei"	3?45'S	49?40'W
+"D. antoinei"	3?1'49"N	53?6'24"W
+"D. barberoi"	13?03.3?S	71?32.7?W
+"D. barberoi"	10?59.3?S	75?25.5?W" 
+
+and I need them in the format (tab delimited):
+
+nom	lat	long
+"D. antoinei"	-11.944478527683975	-71.28298997950684
+"D. antoinei"	-12.833333	-69.333333
+"D. antoinei"	3.333333	-60.283333
+"D. barberoi"	-10.366667	-67.683333
+"D. barberoi"	-15.314500	-55.970300
+
+Is there some 'simple' R script to do such a conversion?
+I am using R v. 3.2.1. on a iMac OS 10.6.8.
+
+May be this topic had already been resolved but I was unable to find the result in the FAQs.
+Cheers
+Nicolas Degallier
+
+
+<nicolas.degallier at free.fr>
+<omalodes at yahoo.fr>
+
+Publications :
+https://www.documentation.ird.fr/listes/parauteur/DEGALLIER/NICOLAS/tout/annee
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Apr 25 10:49:22 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 25 Apr 2022 11:49:22 +0300
+Subject: [R] Confusing fori or ifelse result in matrix manipulation
+In-Reply-To: <09a90ba0470a47626f93455aeb0e83e3@freier.de>
+References: <09a90ba0470a47626f93455aeb0e83e3@freier.de>
+Message-ID: <20220425114922.01b83e99@arachnoid>
+
+? Sun, 24 Apr 2022 17:05:55 +0200
+Uwe Freier <uwe at freier.de> ?????:
+
+> ifelse(x[i] == 0, A[,i], 0)
+
+Hint: what does ifelse return instead of a vector of length nrow(A)?
+
+Since you're checking conditions of length 1, you can safely use `if
+(x[i] == 0) A[,i] else 0` here, or you can transform the `x` vector
+into a boolean matrix of the correct shape to guide the substitution:
+
+X <- matrix(as.logical(x), nrow(A), ncol(A), byrow = TRUE)
+ifelse(X, 0, A)
+
+-- 
+Best regards,
+Ivan
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Apr 25 11:12:43 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 25 Apr 2022 10:12:43 +0100
+Subject: [R] 
+ conversion of d m s (lat) d m s (long) coordinates into decimal
+ coordinates
+In-Reply-To: <A4CD90DD-8EEF-410B-B528-9B0EC92DECD0@free.fr>
+References: <A4CD90DD-8EEF-410B-B528-9B0EC92DECD0@free.fr>
+Message-ID: <4d991288-6f43-8d6a-9a88-67076316ecb9@sapo.pt>
+
+Hello,
+
+See if this StackOverflow.com post [1] solves your problem.
+
+Also, examples should be minimal, you don't need all those packages to 
+solve this problem.
+
+
+[1]  https://stackoverflow.com/a/69485865/8245406
+
+
+Hope this helps,
+
+Rui Barradas
+
+?s 21:43 de 24/04/2022, Nicolas Degallier escreveu:
+> Dear R Users,
+> 
+> I am using a 'simple' script to draw maps with points.
+> It runs fine with the following libraries:
+> library(sp)
+> library(maptools)
+> library(maps)
+> library(mapdata)
+> library(RColorBrewer)
+> library(MASS)
+> library(rgeos)
+> library(GISTools)
+> 
+> Until now, to prepare the input data, I have used manually some free net converter because the number of points to plot was not too high.
+> Now I have much more points coordinates to convert from a GPS ? ' " (d m s) format to a decimal format which will be accepted by the R script to build maps.
+> 
+> My initial data is of the form (tab delimited text file):
+> 
+> nom	lat	long
+> "D. antoinei"	6?04' S	50?12'W
+> "D. antoinei"	3?45'S	49?40'W
+> "D. antoinei"	3?1'49"N	53?6'24"W
+> "D. barberoi"	13?03.3?S	71?32.7?W
+> "D. barberoi"	10?59.3?S	75?25.5?W"
+> 
+> and I need them in the format (tab delimited):
+> 
+> nom	lat	long
+> "D. antoinei"	-11.944478527683975	-71.28298997950684
+> "D. antoinei"	-12.833333	-69.333333
+> "D. antoinei"	3.333333	-60.283333
+> "D. barberoi"	-10.366667	-67.683333
+> "D. barberoi"	-15.314500	-55.970300
+> 
+> Is there some 'simple' R script to do such a conversion?
+> I am using R v. 3.2.1. on a iMac OS 10.6.8.
+> 
+> May be this topic had already been resolved but I was unable to find the result in the FAQs.
+> Cheers
+> Nicolas Degallier
+> 
+> 
+> <nicolas.degallier at free.fr>
+> <omalodes at yahoo.fr>
+> 
+> Publications :
+> https://www.documentation.ird.fr/listes/parauteur/DEGALLIER/NICOLAS/tout/annee
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Apr 25 12:06:39 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 25 Apr 2022 11:06:39 +0100
+Subject: [R] 
+ conversion of d m s (lat) d m s (long) coordinates into decimal
+ coordinates
+In-Reply-To: <7360CF88-97B5-484B-A15F-046CA8670061@free.fr>
+References: <A4CD90DD-8EEF-410B-B528-9B0EC92DECD0@free.fr>
+ <4d991288-6f43-8d6a-9a88-67076316ecb9@sapo.pt>
+ <7360CF88-97B5-484B-A15F-046CA8670061@free.fr>
+Message-ID: <dfabecf2-15d7-dfa3-b256-5158171bf7e0@sapo.pt>
+
+Hello,
+
+Here is the link to the archived versions of package measurements [1].
+But the edit to that answer has another solution, with sp::char2dms and 
+you are loading package sp.
+
+
+[1] https://cran.hafro.is/src/contrib/Archive/measurements/
+
+Hope this helps,
+
+Rui Barradas
+
+?s 10:57 de 25/04/2022, Nicolas Degallier escreveu:
+> Hi Rui,
+> 
+> Thanks for the information.
+> Unfortunately, my versions of MacOS and of R are too old:
+> 
+>  > install.packages("measurements")
+> 
+> Warning message:
+> package ?measurements? is not available (for R version 3.2.1)
+>  > library(measurements)
+> Warning message:
+> le package ?measurements? a ?t? compil? avec la version R 3.2.5
+> 
+> There is no older package to do the same?
+> Cheers
+> Nicolas
+> 
+> 
+> Le 25 avr. 2022 ? 11:12, Rui Barradas a ?crit :
+> 
+>> Hello,
+>>
+>> See if this StackOverflow.com <http://StackOverflow.com> post [1] 
+>> solves your problem.
+>>
+>> Also, examples should be minimal, you don't need all those packages to 
+>> solve this problem.
+>>
+>>
+>> [1] https://stackoverflow.com/a/69485865/8245406 
+>> <https://stackoverflow.com/a/69485865/8245406>
+>>
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>> ?s 21:43 de 24/04/2022, Nicolas Degallier escreveu:
+>>> Dear R Users,
+>>> I am using a 'simple' script to draw maps with points.
+>>> It runs fine with the following libraries:
+>>> library(sp)
+>>> library(maptools)
+>>> library(maps)
+>>> library(mapdata)
+>>> library(RColorBrewer)
+>>> library(MASS)
+>>> library(rgeos)
+>>> library(GISTools)
+>>> Until now, to prepare the input data, I have used manually some free 
+>>> net converter because the number of points to plot was not too high.
+>>> Now I have much more points coordinates to convert from a GPS ? ' " 
+>>> (d m s) format to a decimal format which will be accepted by the R 
+>>> script to build maps.
+>>> My initial data is of the form (tab delimited text file):
+>>> nomlatlong
+>>> "D. antoinei"6?04' S50?12'W
+>>> "D. antoinei"3?45'S49?40'W
+>>> "D. antoinei"3?1'49"N53?6'24"W
+>>> "D. barberoi"13?03.3?S71?32.7?W
+>>> "D. barberoi"10?59.3?S75?25.5?W"
+>>> and I need them in the format (tab delimited):
+>>> nomlatlong
+>>> "D. antoinei"-11.944478527683975-71.28298997950684
+>>> "D. antoinei"-12.833333-69.333333
+>>> "D. antoinei"3.333333-60.283333
+>>> "D. barberoi"-10.366667-67.683333
+>>> "D. barberoi"-15.314500-55.970300
+>>> Is there some 'simple' R script to do such a conversion?
+>>> I am using R v. 3.2.1. on a iMac OS 10.6.8.
+>>> May be this topic had already been resolved but I was unable to find 
+>>> the result in the FAQs.
+>>> Cheers
+>>> Nicolas Degallier
+>>> <nicolas.degallier at free.fr <mailto:nicolas.degallier at free.fr>>
+>>> <omalodes at yahoo.fr <mailto:omalodes at yahoo.fr>>
+>>> Publications :
+>>> https://www.documentation.ird.fr/listes/parauteur/DEGALLIER/NICOLAS/tout/annee 
+>>> <https://www.documentation.ird.fr/listes/parauteur/DEGALLIER/NICOLAS/tout/annee>
+>>> ______________________________________________
+>>> R-help at r-project.org <mailto:R-help at r-project.org> mailing list -- To 
+>>> UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help 
+>>> <https://stat.ethz.ch/mailman/listinfo/r-help>
+>>> PLEASE do read the posting guide 
+>>> http://www.R-project.org/posting-guide.html 
+>>> <http://www.R-project.org/posting-guide.html>
+>>> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Mon Apr 25 13:16:06 2022
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Mon, 25 Apr 2022 06:16:06 -0500
+Subject: [R] about opening R script Chinese annotation garble problem
+In-Reply-To: <tencent_82D863BBEAA3B88125F6D1FF41F885529406@qq.com>
+References: <tencent_82D863BBEAA3B88125F6D1FF41F885529406@qq.com>
+Message-ID: <fb029612-768c-c2ea-0bd1-9d0b95424f76@effectivedefense.org>
+
+	  Attachments are NOT delivered to the readers of this list.
+
+
+	  PLEASE do read the posting guide 
+http://www.R-project.org/posting-guide.html and provide commented, 
+minimal, self-contained, reproducible code.  This includes 
+sessionInfo().  If you can reproduce it on multiple platforms, that 
+would help.  Can you can post the image to the web someplace (e.g., a 
+Google Drive) and provide the link?  That would help, also.
+
+
+	  Thanks,
+	  Spencer Graves
+
+
+On 4/23/22 8:38 PM, ?? via R-help wrote:
+> Garbled characters appear in Chinese annotation when opening program script using RGui (see attached picture). I use a variety of methods have not been solved, I hope to help me solve this problem. Thank you.
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From petr@p|k@| @end|ng |rom prechez@@cz  Mon Apr 25 15:21:38 2022
+From: petr@p|k@| @end|ng |rom prechez@@cz (PIKAL Petr)
+Date: Mon, 25 Apr 2022 13:21:38 +0000
+Subject: [R] [External] add equation and rsqared to plot
+In-Reply-To: <CAGxFJbQUTiLEu6nJp1aUpbjhTCXSYBqfkiVqsFTaHKFUe0DJVA@mail.gmail.com>
+References: <1649275105409.87603@precheza.cz>
+ <4483DC96-F937-4BB8-B5A1-4485FDF590DB@temple.edu>
+ <1649278042150.16601@precheza.cz>
+ <95448101-08c6-045d-ff79-fb9febf3effb@comcast.net>
+ <1649280964120.57655@precheza.cz>
+ <9ed7092d-b142-9f6f-854e-9e5182b2b466@comcast.net>
+ <96bfd2fd05024b47a33939a9b9d4c19a@SRVEXCHCM1302.precheza.cz>
+ <CAGxFJbToLSGpNxxnJAwMVO59JJJrnY6yiwvxGCu6HFsYpCfBjA@mail.gmail.com>
+ <CAHqSRuT8O0TkjwV_GSjB=z_g4j3q0OW7b_Lu=MaJzs_6PNpENQ@mail.gmail.com>
+ <CAGxFJbQUTiLEu6nJp1aUpbjhTCXSYBqfkiVqsFTaHKFUe0DJVA@mail.gmail.com>
+Message-ID: <be5886de51514dfc8e441a5033fbff63@SRVEXCHCM1302.precheza.cz>
+
+Thanks to all who responded. Now I started a bit to understand what is behind my miserable effort to put some text into graph in required way.
+
+Best regards.
+Petr
+
+> -----Original Message-----
+> From: Bert Gunter <bgunter.4567 at gmail.com>
+> Sent: Friday, April 8, 2022 7:33 PM
+> To: Bill Dunlap <williamwdunlap at gmail.com>
+> Cc: PIKAL Petr <petr.pikal at precheza.cz>; r-help at r-project.org
+> Subject: Re: [R] [External] add equation and rsqared to plot
+> 
+> Thanks, Bill.
+> 
+> This is a subtlety I certainly did not understand.
+> 
+> 
+> Bert
+> 
+> On Fri, Apr 8, 2022 at 10:08 AM Bill Dunlap <williamwdunlap at gmail.com>
+> wrote:
+> >
+> > plotmath also accepts names and calls, which it treats as though they were
+> single-element expressions.  That is why quote() generally works.
+> quote("string") or quote(123) does not invoke plotmath, as quote returns a
+> literal string or number when given such a thing.
+> >
+> > plot(0:1,0:1,type="n")
+> > text(.2, .6, expression(phi^epsilon))
+> > text(.2, .4, quote(phi^epsilon))
+> > text(.7, .6, expression(1234567890123456)) text(.7, .4,
+> > quote(1234567890123456))
+> >
+> > -Bill
+> >
+> > On Fri, Apr 8, 2022 at 9:49 AM Bert Gunter <bgunter.4567 at gmail.com>
+> wrote:
+> >>
+> >> Yes, I also find it somewhat confusing. Perhaps this will help. I
+> >> apologize beforehand if I have misunderstood and you already know all
+> >> this.
+> >>
+> >> The key is to realize that plotmath works with **expressions**,
+> >> unevaluated forms that include special plotmath keywords, like
+> >> 'atop', and symbols. So...
+> >>
+> >> ## simple example with plotmath used in plot's title
+> >>
+> >> ## This will produce an error, as 'atop' is not an R function:
+> >> plot(1,1, main = atop(x,y))
+> >>
+> >> ## to make this work, we need an expression on the rhs of 'main =' .
+> >> A simple way to do this is to use quote():
+> >>
+> >> plot(1,1,main = quote(atop(x,y)))
+> >>
+> >> ## Note that this produce 'x' above 'y' **without quoting x and y**.
+> >> That's because
+> >> ## this is an expression that plotmath parses and evaluates according
+> >> to its own rules, ## shown in ?plotmath
+> >>
+> >> ## Now suppose we have:
+> >> x <- 'first line'
+> >> y <- 'second line'
+> >>
+> >> ## and we want to display these quoted strings instead of 'x' and 'y'
+> >> in the title
+> >>
+> >> ## Then this will *not* work -- it gives the same result as before:
+> >> plot(1,1,main = quote(atop(x,y)))
+> >>
+> >> ## So what is needed here is R's 'computing on the language"
+> >> capability to substitute
+> >> ## the quoted strings for x and y in the expression. Here are two
+> >> simple ways to do this:
+> >>
+> >> ## First using substitute()
+> >>
+> >> plot(1,1, main = substitute(atop(x,y), list (x =x, y = y)))
+> >>
+> >> ## Second, using bquote()
+> >>
+> >> plot(1,1, main = bquote(atop(.(x), .(y))))
+> >>
+> >> ## More complicated expressions can be built up using plotmath's rules.
+> >> ## But you need to be careful about distinguishing plotmath
+> >> expressions and ## ordinary R expressions. For example:
+> >>
+> >> x <- pi/4  ## a number
+> >>
+> >> ## WRONG -- will display as written. bquote() is the same as quote() here.
+> >> plot(1,1, main = bquote(sin(pi/4) == round(x,2)))
+> >>
+> >> ## WRONG -- will substitute value of x rounded to session default ##
+> >> in previous. This is a mistake in using bquote plot(1,1, main =
+> >> bquote(sin(pi/4) == round(.(x), 2)))
+> >>
+> >> ## RIGHT -- use of bquote
+> >> plot(1,1, main = bquote(sin(pi/4) == .(round(x,2)))) ## or -- using
+> >> substitute plot(1,1, main = substitute(sin(pi/4) == x, list(x =
+> >> round(x,2))))
+> >>
+> >> Hope this is helpful and, again, apologies if I have misunderstood.
+> >>
+> >> Bert Gunter
+> >>
+> >> "The trouble with having an open mind is that people keep coming
+> >> along and sticking things into it."
+> >> -- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+> >>
+> >> On Fri, Apr 8, 2022 at 7:42 AM PIKAL Petr <petr.pikal at precheza.cz>
+> wrote:
+> >> >
+> >> > Hallo David
+> >> >
+> >> > Fair enough. Thanks for your explanation, which told me what should be
+> done. It works perfectly for my example but I am still confused how to get
+> expressions given to atop (or other functions) be evaluated and help page
+> does not enlighten me, so I am still puzzled.
+> >> >
+> >> > When I borrow example from help,
+> >> >
+> >> > plot(1:10, type="n", xlab="", ylab="", main = "plot math &
+> >> > numbers") theta <- 1.23 ; mtext(bquote(hat(theta) == .(theta)),
+> >> > line= .25) for(i in 2:9)
+> >> >     text(i, i+1, substitute(list(xi, eta) == group("(",list(x,y),")"),
+> >> >                             list(x = i, y = i+1)))
+> >> >
+> >> > #this is OK
+> >> > ex1 <- expression("      first: {f * minute}(x) " == {f * minute}(x))
+> >> > ex2 <- expression("               second: {f * second}(x) "        == {f *
+> second}(x))
+> >> > text(1, 9.6, ex1, adj=0)
+> >> > text(1, 9.0, ex2, adj=0)
+> >> >
+> >> > #and this is not
+> >> > text(2, 8, expression(atop(ex1, ex2))) text(2, 7, substitute(
+> >> > atop(ex1, ex2), list(ex1=ex1,ex2=ex2)))
+> >> >
+> >> > #and this works
+> >> > text(2, 6, expression(atop(1,2)))
+> >> >
+> >> > I tried to use eval when calling atop, but it did not work either.
+> Therefore some hint in help page could be quite handy.
+> >> >
+> >> > Best regards
+> >> > Petr Pikal
+> >> >
+> >> > S pozdravem | Best Regards
+> >> > RNDr. Petr PIKAL
+> >> > Vedouc? V?zkumu a v?voje | Research Manager PRECHEZA a.s.
+> >> > n?b?. Dr. Edvarda Bene?e 1170/24 | 750 02 P?erov | Czech Republic
+> >> > Tel: +420 581 252 256 | GSM: +420 724 008 364
+> >> > petr.pikal at precheza.cz | www.precheza.cz
+> >> >
+> >> > Osobn? ?daje: Informace o zpracov?n? a ochran? osobn?ch ?daj?
+> >> > obchodn?ch partner? PRECHEZA a.s. jsou zve?ejn?ny na:
+> >> > https://www.precheza.cz/zasady-ochrany-osobnich-udaju/ |
+> >> > Information about processing and protection of business partner?s
+> >> > personal data are available on website:
+> >> > https://www.precheza.cz/en/personal-data-protection-principles/
+> >> > D?v?rnost: Tento e-mail a jak?koliv k n?mu p?ipojen? dokumenty jsou
+> >> > d?v?rn? a podl?haj? tomuto pr?vn? z?vazn?mu prohl??en? o vylou?en?
+> >> > odpov?dnosti: https://www.precheza.cz/01-dovetek/ | This email and
+> >> > any documents attached to it may be confidential and are subject to
+> >> > the legally binding disclaimer:
+> >> > https://www.precheza.cz/en/01-disclaimer/
+> >> >
+> >> > -----Original Message-----
+> >> > From: David Winsemius <dwinsemius at comcast.net>
+> >> > Sent: Thursday, April 7, 2022 12:04 AM
+> >> > To: PIKAL Petr <petr.pikal at precheza.cz>; Richard M. Heiberger
+> >> > <rmh at temple.edu>
+> >> > Cc: r-help at r-project.org
+> >> > Subject: Re: [R] [External] add equation and rsqared to plot
+> >> >
+> >> >
+> >> > On 4/6/22 14:36, PIKAL Petr wrote:
+> >> > > Hallo David
+> >> > >
+> >> > > Thanks for your answer. atop itself somehow cannot use expression
+> made by substitute  although those expressions itself are correct. I asked this
+> question after roughly two hours of unsuccessful atempts.
+> >> > >
+> >> > > The second substitute or bquote solves the problem. Maybe this could
+> propagate to help page, because although atop works smoothly with simple
+> expressions, expressions with substitute are treated in a wrong way (at least
+> by my opinion).
+> >> >
+> >> >
+> >> > It's not a problem with `atop`. It's a problem with your
+> >> > understanding of how R expressions and plotmath functions work. The
+> >> > argument(s) to `expression` are not evaluated. So `atop` was given
+> >> > two expressions `eq` and `req` and they in turn were not evaluated
+> >> > .... just taken as text values inside atop. Using either
+> >> > `substitute` (with a second argument
+> >> > list) or bquote (with its special dot function) forces evaluation by getting
+> from the R symbol table those expressions which you had assigned as values
+> of the symbols `eq` and `req`.
+> >> >
+> >> > The plotmath functions (not just atop but also `paste`, `frac`, `over` and
+> all the rest on the ?plotmath pafge),  are designed to be "like"
+> >> > `expression` in not evaluating their arguments unless a "special value"
+> >> > like a Greek letter name or a defined %<op>% is found. Those functions
+> are handled with a different parser than regular R functions. So they are not
+> designed to go out to the R symbol table (which is where even locally defined
+> object names are kept) to find values.
+> >> >
+> >> >
+> >> > Hope this helps;
+> >> >
+> >> > David.
+> >> >
+> >> >
+> >> > --
+> >> >
+> >> > David.
+> >> >
+> >> > >
+> >> > > Thanks again.
+> >> > >
+> >> > > Best regards.
+> >> > > Petr
+> >> > >
+> >> > >
+> >> > > ________________________________________
+> >> > > Od: David Winsemius <dwinsemius at comcast.net>
+> >> > > Odesl?no: 6. dubna 2022 23:20
+> >> > > Komu: PIKAL Petr; Richard M. Heiberger
+> >> > > Kopie: r-help at r-project.org
+> >> > > P?edm?t: Re: [R] [External] add equation and rsqared to plot
+> >> > >
+> >> > > Try this:
+> >> > >
+> >> > >
+> >> > > lm_eqn = function(m) {
+> >> > >       l <- list(a = format(coef(m)[1], digits = 4),
+> >> > >                 b = format(abs(coef(m)[2]), digits = 4),
+> >> > >                 r2 = format(summary(m)$r.squared, digits = 3),
+> >> > >                 r2adj = format(summary(m)$adj.r.squared, digits = 3));
+> >> > >       if (coef(m)[2] >= 0)  {
+> >> > >           eq <- substitute(italic(y) == a + b %.% italic(x), l)
+> >> > >       } else {
+> >> > >           eq <- substitute(italic(y) == a - b %.% italic(x),l)
+> >> > >
+> >> > >       }
+> >> > >       req <- substitute(italic(r)^2~"="~r2* ","~~italic(adj.r)^2~"="~r2adj,l)
+> >> > >       a_regs <- substitute( atop(eq, req), list(eq=eq,req=req)) }
+> >> > >
+> >> > > --
+> >> > >
+> >> > > David.
+> >> > >
+> >> > > On 4/6/22 13:47, PIKAL Petr wrote:
+> >> > >> Hallo Richard.
+> >> > >>
+> >> > >> Did you try the example? I Used atop but with the syntax I made,
+> >> > >> the result is
+> >> > >>
+> >> > >> eq
+> >> > >> req
+> >> > >>
+> >> > >> but not the equations.
+> >> > >>
+> >> > >> I send the picture, but I am not sure if it will go through.
+> >> > >>
+> >> > >> Best regards
+> >> > >> Petr
+> >> > >>
+> >> > >> ________________________________________
+> >> > >> Od: Richard M. Heiberger <rmh at temple.edu>
+> >> > >> Odesl?no: 6. dubna 2022 22:36
+> >> > >> Komu: PIKAL Petr
+> >> > >> Kopie: r-help at r-project.org
+> >> > >> P?edm?t: Re: [External] [R] add equation and rsqared to plot
+> >> > >>
+> >> > >> I think you are looking for atop(a,b) See ? plotmath
+> >> > >>
+> >> > >>> On Apr 06, 2022, at 15:58, PIKAL Petr <petr.pikal at precheza.cz>
+> wrote:
+> >> > >>>
+> >> > >>> Dear all
+> >> > >>>
+> >> > >>>
+> >> > >>> I want to add equation and rsquared values to plot and I am lost in
+> correct expression form. I want to have 2 lines, one with equation and one
+> with r squared values.
+> >> > >>>
+> >> > >>>
+> >> > >>> Here is what I made.
+> >> > >>>
+> >> > >>> # function to extract values from lm fit.
+> >> > >>>
+> >> > >>>
+> >> > >>> lm_eqn = function(m) {
+> >> > >>>    l <- list(a = format(coef(m)[1], digits = 4),
+> >> > >>>        b = format(abs(coef(m)[2]), digits = 4),
+> >> > >>>        r2 = format(summary(m)$r.squared, digits = 3),
+> >> > >>>        r2adj = format(summary(m)$adj.r.squared, digits = 3));
+> >> > >>>    if (coef(m)[2] >= 0)  {
+> >> > >>>      eq <- substitute(italic(y) == a + b %.% italic(x), l)
+> >> > >>>    } else {
+> >> > >>>      eq <- substitute(italic(y) == a - b %.% italic(x),l)
+> >> > >>>
+> >> > >>>    }
+> >> > >>>    req <- substitute(italic(r)^2~"="~r2*
+> ","~~italic(adj.r)^2~"="~r2adj,l)
+> >> > >>>    expression(atop(eq, req))
+> >> > >>> }
+> >> > >>>
+> >> > >>>
+> >> > >>> #Example
+> >> > >>>
+> >> > >>> x <- 1:10
+> >> > >>> y <- x*5 +rnorm(10)
+> >> > >>> plot(x,y)
+> >> > >>> fit <- lm(y~x)
+> >> > >>> text(4,40, lm_eqn(fit))
+> >> > >>>
+> >> > >>>
+> >> > >>> I know that both eq and req are correct expressions and when the
+> last line in function is either eq or req, the example gives correct result.
+> >> > >>>
+> >> > >>>
+> >> > >>> But how to get both expressions one above the other is mystery.
+> >> > >>>
+> >> > >>> Please help.
+> >> > >>>
+> >> > >>>
+> >> > >>> Best regards.
+> >> > >>>
+> >> > >>> Petr
+> >> > >>>
+> >> > >>>
+> >> > >>>
+> >> > >>> Osobn   daje: Informace o zpracov n  a ochran  osobn ch  daj
+> >> > >>> obchodn ch partner  PRECHEZA a.s. jsou zve ejn ny na:
+> >> > >>> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F
+> >> > >>> %2Fww
+> >> > >>> w.precheza.cz%2Fzasady-ochrany-osobnich-
+> udaju%2F&amp;data=04%7C
+> >> > >>> 01%7C
+> >> > >>>
+> rmh%40temple.edu%7C3b28fb8737e146a9ee3208da1807da2e%7C716e81ef
+> b
+> >> > >>> 52244
+> >> > >>>
+> 738e3110bd02ccf6e5%7C0%7C0%7C637848719391803553%7CUnknown%7
+> CTWF
+> >> > >>> pbGZs
+> >> > >>>
+> b3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI
+> >> > >>> 6Mn0%
+> >> > >>>
+> 3D%7C3000&amp;sdata=MBtbONfsiMExWy0uorZMR1DglZindxErRMsooTztf
+> Uo
+> >> > >>> %3D&a
+> >> > >>> mp;reserved=0 | Information about processing and protection of
+> >> > >>> business partner's personal data are available on website:
+> >> > >>> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F
+> >> > >>> %2Fww
+> >> > >>> w.precheza.cz%2Fen%2Fpersonal-data-protection-
+> principles%2F&amp
+> >> > >>> ;data
+> >> > >>>
+> =04%7C01%7Crmh%40temple.edu%7C3b28fb8737e146a9ee3208da1807da2
+> e%
+> >> > >>> 7C716
+> >> > >>>
+> e81efb52244738e3110bd02ccf6e5%7C0%7C0%7C637848719391803553%7C
+> Un
+> >> > >>> known
+> >> > >>>
+> %7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1h
+> >> > >>> aWwiL
+> >> > >>>
+> CJXVCI6Mn0%3D%7C3000&amp;sdata=2YDPoejYRlphL6h%2FWFmEEyR44Kd
+> mH2
+> >> > >>> GDC9r
+> >> > >>> dLhFn4aU%3D&amp;reserved=0
+> >> > >>> D v rnost: Tento e-mail a jak koliv k n mu p ipojen  dokumenty
+> >> > >>> jsou d v rn  a podl haj  tomuto pr vn  z vazn mu prohl en  o
+> >> > >>> vylou en odpov dnosti:
+> >> > >>> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F
+> >> > >>> %2Fww
+> >> > >>> w.precheza.cz%2F01-
+> dovetek%2F&amp;data=04%7C01%7Crmh%40temple.e
+> >> > >>> du%7C
+> >> > >>>
+> 3b28fb8737e146a9ee3208da1807da2e%7C716e81efb52244738e3110bd02c
+> c
+> >> > >>> f6e5%
+> >> > >>>
+> 7C0%7C0%7C637848719391803553%7CUnknown%7CTWFpbGZsb3d8eyJWIj
+> oiMC
+> >> > >>> 4wLjA
+> >> > >>>
+> wMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000&amp;
+> >> > >>> sdata
+> >> > >>>
+> =z7TNZSbfNXlB%2FZt0ekl8P1kTu1l0eBFVoLvewSSdQDg%3D&amp;reserved=
+> >> > >>> 0 | This email and any documents attached to it may be
+> >> > >>> confidential and are subject to the legally binding disclaimer:
+> >> > >>> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F
+> >> > >>> %2Fww
+> >> > >>> w.precheza.cz%2Fen%2F01-
+> disclaimer%2F&amp;data=04%7C01%7Crmh%40
+> >> > >>> templ
+> >> > >>>
+> e.edu%7C3b28fb8737e146a9ee3208da1807da2e%7C716e81efb52244738e3
+> 1
+> >> > >>> 10bd0
+> >> > >>>
+> 2ccf6e5%7C0%7C0%7C637848719391803553%7CUnknown%7CTWFpbGZsb3
+> d8ey
+> >> > >>> JWIjo
+> >> > >>>
+> iMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3
+> >> > >>> 000&a
+> >> > >>>
+> mp;sdata=RCUE7DJbn54MvhWX4bqiNtPzoJLl7NK9tieMlFpe2rg%3D&amp;res
+> >> > >>> erved
+> >> > >>> =0
+> >> > >>>
+> >> > >>>
+> >> > >>>         [[alternative HTML version deleted]]
+> >> > >>>
+> >> > >>> ______________________________________________
+> >> > >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more,
+> >> > >>> see https://stat.ethz.ch/mailman/listinfo/r-help
+> >> > >>> PLEASE do read the posting guide
+> >> > >>> http://www.R-project.org/posting-guide.html
+> >> > >>> and provide commented, minimal, self-contained, reproducible
+> code.
+> >> > >> Osobn? ?daje: Informace o zpracov?n? a ochran? osobn?ch ?daj?
+> >> > >> obchodn?ch partner? PRECHEZA a.s. jsou zve?ejn?ny na:
+> >> > >> https://www.precheza.cz/zasady-ochrany-osobnich-udaju/ |
+> >> > >> Information about processing and protection of business
+> >> > >> partner?s personal data are available on website:
+> >> > >> https://www.precheza.cz/en/personal-data-protection-principles/
+> >> > >> D?v?rnost: Tento e-mail a jak?koliv k n?mu p?ipojen? dokumenty
+> >> > >> jsou d?v?rn? a podl?haj? tomuto pr?vn? z?vazn?mu prohl??en? o
+> >> > >> vylou?en?
+> >> > >> odpov?dnosti: https://www.precheza.cz/01-dovetek/ | This email
+> >> > >> and any documents attached to it may be confidential and are
+> >> > >> subject to the legally binding disclaimer:
+> >> > >> https://www.precheza.cz/en/01-disclaimer/
+> >> > >>
+> >> > >>
+> >> > >> ______________________________________________
+> >> > >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more,
+> >> > >> see https://stat.ethz.ch/mailman/listinfo/r-help
+> >> > >> PLEASE do read the posting guide
+> >> > >> http://www.R-project.org/posting-guide.html
+> >> > >> and provide commented, minimal, self-contained, reproducible code.
+> >> > ______________________________________________
+> >> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> > https://stat.ethz.ch/mailman/listinfo/r-help
+> >> > PLEASE do read the posting guide
+> >> > http://www.R-project.org/posting-guide.html
+> >> > and provide commented, minimal, self-contained, reproducible code.
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide
+> >> http://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+
+From tebert @end|ng |rom u||@edu  Mon Apr 25 16:01:15 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Mon, 25 Apr 2022 14:01:15 +0000
+Subject: [R] Confusing fori or ifelse result in matrix manipulation
+In-Reply-To: <09a90ba0470a47626f93455aeb0e83e3@freier.de>
+References: <09a90ba0470a47626f93455aeb0e83e3@freier.de>
+Message-ID: <BN6PR2201MB1553F06C70875D683CC87366CFF89@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+A <- matrix(1:9,ncol=3)
+x <- c(0,1,0)
+M <- matrix(ncol=3,nrow=3)
+M<-A
+for(i in 1:3) {
+  if(x[i]){
+    M[,i] <-0
+    }
+  } 
+}
+M
+
+The outcome you want is to set all of the middle column values to zero. So I used x as a logical in an if test and when true everything in that column is set to zero.
+
+Your approach also works but you must go through each element explicitly.
+A <- matrix(1:9,ncol=3)
+x <- c(0,1,0)
+M <- matrix(ncol=3,nrow=3)
+for(j in 1:3){
+  for(i in 1:3){
+    ifelse(x[i]==1, M[j,i]<-0, M[j,i]<-A[j,i])
+  }
+}
+M
+
+
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Uwe Freier
+Sent: Sunday, April 24, 2022 11:06 AM
+To: r-help at r-project.org
+Subject: [R] Confusing fori or ifelse result in matrix manipulation
+
+[External Email]
+
+Hello,
+
+sorry for the newbie question but I can't find out where I'm wrong.
+
+A <- matrix(1:9,ncol=3)
+x <- c(0,1,0)
+M <- matrix(ncol=3,nrow=3)
+for(i in 1:3) {
+  M[,i] <- ifelse(x[i] == 0, A[,i], 0)
+}
+
+expected:
+
+> M
+      [,1] [,2] [,3]
+[1,]    1    0    7
+[2,]    2    0    8
+[3,]    3    0    9
+
+
+but the result is:
+
+> M
+      [,1] [,2] [,3]
+[1,]    1    0    7
+[2,]    1    0    7
+[3,]    1    0    7
+
+
+If I do it "manually":
+
+> M[,1] <- A[,1]
+> M[,2] <- 0
+> M[,3] <- A[,3]
+
+M is as expected, where is my misconception?
+
+Thanks for any hint and best regards,
+
+Uwe
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=K2RWPvtxaxwigGGH2oOrg8qiDWC5KTu60b8Wjybwsg4&e=
+PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=L9VXAAYzIzrG2h17hBO-Qfg_EoS2mRQbjs3sRESp62Q&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From |v@n@c@|@ndr@ @end|ng |rom rgzm@de  Mon Apr 25 16:18:15 2022
+From: |v@n@c@|@ndr@ @end|ng |rom rgzm@de (Ivan Calandra)
+Date: Mon, 25 Apr 2022 16:18:15 +0200
+Subject: [R] Confusing fori or ifelse result in matrix manipulation
+In-Reply-To: <BN6PR2201MB1553F06C70875D683CC87366CFF89@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <09a90ba0470a47626f93455aeb0e83e3@freier.de>
+ <BN6PR2201MB1553F06C70875D683CC87366CFF89@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <7bbaddbb-b373-3c95-9ff5-f9353f8b8c11@rgzm.de>
+
+Hi Uwe,
+
+If I understood the problem completely and building up on Tim's answer, 
+this is even easier:
+M <- A <- matrix(1:9, ncol = 3)
+x <- c(0, 1, 0)
+M[, x == 1] <- 0
+M
+
+The original issue was with the way ifelse works. The explanation is in 
+the help page: "ifelse returns a value with the same shape as test||".
+So, because x[i] == 0 returns a single value (TRUE or FALSE), ifelse 
+will also return a single value (either A[, i][1] or 0) and not a vector 
+of length 3 as you wanted. This single value is recycled to fill M[, i], 
+hence the result.
+
+HTH,
+Ivan
+
+--
+Dr. Ivan Calandra
+Imaging lab
+RGZM - MONREPOS Archaeological Research Centre
+Schloss Monrepos
+56567 Neuwied, Germany
++49 (0) 2631 9772-243
+https://www.researchgate.net/profile/Ivan_Calandra
+
+On 25/04/2022 16:01, Ebert,Timothy Aaron wrote:
+> A <- matrix(1:9,ncol=3)
+> x <- c(0,1,0)
+> M <- matrix(ncol=3,nrow=3)
+> M<-A
+> for(i in 1:3) {
+>    if(x[i]){
+>      M[,i] <-0
+>      }
+>    }
+> }
+> M
+>
+> The outcome you want is to set all of the middle column values to zero. So I used x as a logical in an if test and when true everything in that column is set to zero.
+>
+> Your approach also works but you must go through each element explicitly.
+> A <- matrix(1:9,ncol=3)
+> x <- c(0,1,0)
+> M <- matrix(ncol=3,nrow=3)
+> for(j in 1:3){
+>    for(i in 1:3){
+>      ifelse(x[i]==1, M[j,i]<-0, M[j,i]<-A[j,i])
+>    }
+> }
+> M
+>
+>
+>
+> Tim
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Uwe Freier
+> Sent: Sunday, April 24, 2022 11:06 AM
+> To: r-help at r-project.org
+> Subject: [R] Confusing fori or ifelse result in matrix manipulation
+>
+> [External Email]
+>
+> Hello,
+>
+> sorry for the newbie question but I can't find out where I'm wrong.
+>
+> A <- matrix(1:9,ncol=3)
+> x <- c(0,1,0)
+> M <- matrix(ncol=3,nrow=3)
+> for(i in 1:3) {
+>    M[,i] <- ifelse(x[i] == 0, A[,i], 0)
+> }
+>
+> expected:
+>
+>> M
+>        [,1] [,2] [,3]
+> [1,]    1    0    7
+> [2,]    2    0    8
+> [3,]    3    0    9
+>
+>
+> but the result is:
+>
+>> M
+>        [,1] [,2] [,3]
+> [1,]    1    0    7
+> [2,]    1    0    7
+> [3,]    1    0    7
+>
+>
+> If I do it "manually":
+>
+>> M[,1] <- A[,1]
+>> M[,2] <- 0
+>> M[,3] <- A[,3]
+> M is as expected, where is my misconception?
+>
+> Thanks for any hint and best regards,
+>
+> Uwe
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=K2RWPvtxaxwigGGH2oOrg8qiDWC5KTu60b8Wjybwsg4&e=
+> PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=L9VXAAYzIzrG2h17hBO-Qfg_EoS2mRQbjs3sRESp62Q&e=
+> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Mon Apr 25 16:30:14 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Mon, 25 Apr 2022 07:30:14 -0700
+Subject: [R] Confusing fori or ifelse result in matrix manipulation
+In-Reply-To: <7bbaddbb-b373-3c95-9ff5-f9353f8b8c11@rgzm.de>
+References: <09a90ba0470a47626f93455aeb0e83e3@freier.de>
+ <BN6PR2201MB1553F06C70875D683CC87366CFF89@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <7bbaddbb-b373-3c95-9ff5-f9353f8b8c11@rgzm.de>
+Message-ID: <CAGxFJbQ94kb9GzyiafWzRF9ObTCS-LUs7MxDdhgUD5e6nmmUug@mail.gmail.com>
+
+x == 1 is the same as M[, x] so your expression is the same as
+M[, c(FALSE, TRUE, FALSE)] <- 0
+which is the same as M[, 2]  <- 0
+
+So what is the point of all this, exactly?
+
+Bert
+
+On Mon, Apr 25, 2022 at 7:18 AM Ivan Calandra <ivan.calandra at rgzm.de> wrote:
+>
+> Hi Uwe,
+>
+> If I understood the problem completely and building up on Tim's answer,
+> this is even easier:
+> M <- A <- matrix(1:9, ncol = 3)
+> x <- c(0, 1, 0)
+> M[, x == 1] <- 0
+> M
+>
+> The original issue was with the way ifelse works. The explanation is in
+> the help page: "ifelse returns a value with the same shape as test||".
+> So, because x[i] == 0 returns a single value (TRUE or FALSE), ifelse
+> will also return a single value (either A[, i][1] or 0) and not a vector
+> of length 3 as you wanted. This single value is recycled to fill M[, i],
+> hence the result.
+>
+> HTH,
+> Ivan
+>
+> --
+> Dr. Ivan Calandra
+> Imaging lab
+> RGZM - MONREPOS Archaeological Research Centre
+> Schloss Monrepos
+> 56567 Neuwied, Germany
+> +49 (0) 2631 9772-243
+> https://www.researchgate.net/profile/Ivan_Calandra
+>
+> On 25/04/2022 16:01, Ebert,Timothy Aaron wrote:
+> > A <- matrix(1:9,ncol=3)
+> > x <- c(0,1,0)
+> > M <- matrix(ncol=3,nrow=3)
+> > M<-A
+> > for(i in 1:3) {
+> >    if(x[i]){
+> >      M[,i] <-0
+> >      }
+> >    }
+> > }
+> > M
+> >
+> > The outcome you want is to set all of the middle column values to zero. So I used x as a logical in an if test and when true everything in that column is set to zero.
+> >
+> > Your approach also works but you must go through each element explicitly.
+> > A <- matrix(1:9,ncol=3)
+> > x <- c(0,1,0)
+> > M <- matrix(ncol=3,nrow=3)
+> > for(j in 1:3){
+> >    for(i in 1:3){
+> >      ifelse(x[i]==1, M[j,i]<-0, M[j,i]<-A[j,i])
+> >    }
+> > }
+> > M
+> >
+> >
+> >
+> > Tim
+> >
+> > -----Original Message-----
+> > From: R-help <r-help-bounces at r-project.org> On Behalf Of Uwe Freier
+> > Sent: Sunday, April 24, 2022 11:06 AM
+> > To: r-help at r-project.org
+> > Subject: [R] Confusing fori or ifelse result in matrix manipulation
+> >
+> > [External Email]
+> >
+> > Hello,
+> >
+> > sorry for the newbie question but I can't find out where I'm wrong.
+> >
+> > A <- matrix(1:9,ncol=3)
+> > x <- c(0,1,0)
+> > M <- matrix(ncol=3,nrow=3)
+> > for(i in 1:3) {
+> >    M[,i] <- ifelse(x[i] == 0, A[,i], 0)
+> > }
+> >
+> > expected:
+> >
+> >> M
+> >        [,1] [,2] [,3]
+> > [1,]    1    0    7
+> > [2,]    2    0    8
+> > [3,]    3    0    9
+> >
+> >
+> > but the result is:
+> >
+> >> M
+> >        [,1] [,2] [,3]
+> > [1,]    1    0    7
+> > [2,]    1    0    7
+> > [3,]    1    0    7
+> >
+> >
+> > If I do it "manually":
+> >
+> >> M[,1] <- A[,1]
+> >> M[,2] <- 0
+> >> M[,3] <- A[,3]
+> > M is as expected, where is my misconception?
+> >
+> > Thanks for any hint and best regards,
+> >
+> > Uwe
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=K2RWPvtxaxwigGGH2oOrg8qiDWC5KTu60b8Wjybwsg4&e=
+> > PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=L9VXAAYzIzrG2h17hBO-Qfg_EoS2mRQbjs3sRESp62Q&e=
+> > and provide commented, minimal, self-contained, reproducible code.
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From er|cjberger @end|ng |rom gm@||@com  Mon Apr 25 16:33:13 2022
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Mon, 25 Apr 2022 17:33:13 +0300
+Subject: [R] Confusing fori or ifelse result in matrix manipulation
+In-Reply-To: <CAGxFJbQ94kb9GzyiafWzRF9ObTCS-LUs7MxDdhgUD5e6nmmUug@mail.gmail.com>
+References: <09a90ba0470a47626f93455aeb0e83e3@freier.de>
+ <BN6PR2201MB1553F06C70875D683CC87366CFF89@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <7bbaddbb-b373-3c95-9ff5-f9353f8b8c11@rgzm.de>
+ <CAGxFJbQ94kb9GzyiafWzRF9ObTCS-LUs7MxDdhgUD5e6nmmUug@mail.gmail.com>
+Message-ID: <CAGgJW77JvsgrmZoMn4LhXymSju9Rd4mC_XqZ25MmjwK9YkW-1Q@mail.gmail.com>
+
+M[,x==1] is not the same as M[,x] :-)
+However, M[,!!x] is the same as M[,x==1] and saves one character!
+The point of this is "I can name that tune in ... " (as if that was not
+obvious)
+
+
+
+On Mon, Apr 25, 2022 at 5:30 PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> x == 1 is the same as M[, x] so your expression is the same as
+> M[, c(FALSE, TRUE, FALSE)] <- 0
+> which is the same as M[, 2]  <- 0
+>
+> So what is the point of all this, exactly?
+>
+> Bert
+>
+> On Mon, Apr 25, 2022 at 7:18 AM Ivan Calandra <ivan.calandra at rgzm.de>
+> wrote:
+> >
+> > Hi Uwe,
+> >
+> > If I understood the problem completely and building up on Tim's answer,
+> > this is even easier:
+> > M <- A <- matrix(1:9, ncol = 3)
+> > x <- c(0, 1, 0)
+> > M[, x == 1] <- 0
+> > M
+> >
+> > The original issue was with the way ifelse works. The explanation is in
+> > the help page: "ifelse returns a value with the same shape as test||".
+> > So, because x[i] == 0 returns a single value (TRUE or FALSE), ifelse
+> > will also return a single value (either A[, i][1] or 0) and not a vector
+> > of length 3 as you wanted. This single value is recycled to fill M[, i],
+> > hence the result.
+> >
+> > HTH,
+> > Ivan
+> >
+> > --
+> > Dr. Ivan Calandra
+> > Imaging lab
+> > RGZM - MONREPOS Archaeological Research Centre
+> > Schloss Monrepos
+> > 56567 Neuwied, Germany
+> > +49 (0) 2631 9772-243
+> > https://www.researchgate.net/profile/Ivan_Calandra
+> >
+> > On 25/04/2022 16:01, Ebert,Timothy Aaron wrote:
+> > > A <- matrix(1:9,ncol=3)
+> > > x <- c(0,1,0)
+> > > M <- matrix(ncol=3,nrow=3)
+> > > M<-A
+> > > for(i in 1:3) {
+> > >    if(x[i]){
+> > >      M[,i] <-0
+> > >      }
+> > >    }
+> > > }
+> > > M
+> > >
+> > > The outcome you want is to set all of the middle column values to
+> zero. So I used x as a logical in an if test and when true everything in
+> that column is set to zero.
+> > >
+> > > Your approach also works but you must go through each element
+> explicitly.
+> > > A <- matrix(1:9,ncol=3)
+> > > x <- c(0,1,0)
+> > > M <- matrix(ncol=3,nrow=3)
+> > > for(j in 1:3){
+> > >    for(i in 1:3){
+> > >      ifelse(x[i]==1, M[j,i]<-0, M[j,i]<-A[j,i])
+> > >    }
+> > > }
+> > > M
+> > >
+> > >
+> > >
+> > > Tim
+> > >
+> > > -----Original Message-----
+> > > From: R-help <r-help-bounces at r-project.org> On Behalf Of Uwe Freier
+> > > Sent: Sunday, April 24, 2022 11:06 AM
+> > > To: r-help at r-project.org
+> > > Subject: [R] Confusing fori or ifelse result in matrix manipulation
+> > >
+> > > [External Email]
+> > >
+> > > Hello,
+> > >
+> > > sorry for the newbie question but I can't find out where I'm wrong.
+> > >
+> > > A <- matrix(1:9,ncol=3)
+> > > x <- c(0,1,0)
+> > > M <- matrix(ncol=3,nrow=3)
+> > > for(i in 1:3) {
+> > >    M[,i] <- ifelse(x[i] == 0, A[,i], 0)
+> > > }
+> > >
+> > > expected:
+> > >
+> > >> M
+> > >        [,1] [,2] [,3]
+> > > [1,]    1    0    7
+> > > [2,]    2    0    8
+> > > [3,]    3    0    9
+> > >
+> > >
+> > > but the result is:
+> > >
+> > >> M
+> > >        [,1] [,2] [,3]
+> > > [1,]    1    0    7
+> > > [2,]    1    0    7
+> > > [3,]    1    0    7
+> > >
+> > >
+> > > If I do it "manually":
+> > >
+> > >> M[,1] <- A[,1]
+> > >> M[,2] <- 0
+> > >> M[,3] <- A[,3]
+> > > M is as expected, where is my misconception?
+> > >
+> > > Thanks for any hint and best regards,
+> > >
+> > > Uwe
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=K2RWPvtxaxwigGGH2oOrg8qiDWC5KTu60b8Wjybwsg4&e=
+> > > PLEASE do read the posting guide
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=L9VXAAYzIzrG2h17hBO-Qfg_EoS2mRQbjs3sRESp62Q&e=
+> > > and provide commented, minimal, self-contained, reproducible code.
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |v@n@c@|@ndr@ @end|ng |rom rgzm@de  Mon Apr 25 16:38:25 2022
+From: |v@n@c@|@ndr@ @end|ng |rom rgzm@de (Ivan Calandra)
+Date: Mon, 25 Apr 2022 16:38:25 +0200
+Subject: [R] Confusing fori or ifelse result in matrix manipulation
+In-Reply-To: <CAGxFJbQ94kb9GzyiafWzRF9ObTCS-LUs7MxDdhgUD5e6nmmUug@mail.gmail.com>
+References: <09a90ba0470a47626f93455aeb0e83e3@freier.de>
+ <BN6PR2201MB1553F06C70875D683CC87366CFF89@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <7bbaddbb-b373-3c95-9ff5-f9353f8b8c11@rgzm.de>
+ <CAGxFJbQ94kb9GzyiafWzRF9ObTCS-LUs7MxDdhgUD5e6nmmUug@mail.gmail.com>
+Message-ID: <59e74e3a-c6f9-ffbb-10f9-21bafd830fd3@rgzm.de>
+
+Indeed, M[, x] <- 0 does the same, but only if x is 0's and 1's only, 
+right? I thought that it might not always be the case so I choose this 
+maybe superflous approach.
+
+M[, 2] does the same of course in the example, but I was assuming that 
+the columns to change to zero are not known in advance and are based on 
+data contained in another vector. Where that vector comes from is 
+important too because the whole thing might be unnecessary. Is that 
+maybe what you were hinting at, Bert?
+
+Maybe Uwe can tell us more about what/why he wants to do!
+
+Ivan
+
+--
+Dr. Ivan Calandra
+Imaging lab
+RGZM - MONREPOS Archaeological Research Centre
+Schloss Monrepos
+56567 Neuwied, Germany
++49 (0) 2631 9772-243
+https://www.researchgate.net/profile/Ivan_Calandra
+
+On 25/04/2022 16:30, Bert Gunter wrote:
+> x == 1 is the same as M[, x] so your expression is the same as
+> M[, c(FALSE, TRUE, FALSE)] <- 0
+> which is the same as M[, 2]  <- 0
+>
+> So what is the point of all this, exactly?
+>
+> Bert
+>
+> On Mon, Apr 25, 2022 at 7:18 AM Ivan Calandra <ivan.calandra at rgzm.de> wrote:
+>> Hi Uwe,
+>>
+>> If I understood the problem completely and building up on Tim's answer,
+>> this is even easier:
+>> M <- A <- matrix(1:9, ncol = 3)
+>> x <- c(0, 1, 0)
+>> M[, x == 1] <- 0
+>> M
+>>
+>> The original issue was with the way ifelse works. The explanation is in
+>> the help page: "ifelse returns a value with the same shape as test||".
+>> So, because x[i] == 0 returns a single value (TRUE or FALSE), ifelse
+>> will also return a single value (either A[, i][1] or 0) and not a vector
+>> of length 3 as you wanted. This single value is recycled to fill M[, i],
+>> hence the result.
+>>
+>> HTH,
+>> Ivan
+>>
+>> --
+>> Dr. Ivan Calandra
+>> Imaging lab
+>> RGZM - MONREPOS Archaeological Research Centre
+>> Schloss Monrepos
+>> 56567 Neuwied, Germany
+>> +49 (0) 2631 9772-243
+>> https://www.researchgate.net/profile/Ivan_Calandra
+>>
+>> On 25/04/2022 16:01, Ebert,Timothy Aaron wrote:
+>>> A <- matrix(1:9,ncol=3)
+>>> x <- c(0,1,0)
+>>> M <- matrix(ncol=3,nrow=3)
+>>> M<-A
+>>> for(i in 1:3) {
+>>>     if(x[i]){
+>>>       M[,i] <-0
+>>>       }
+>>>     }
+>>> }
+>>> M
+>>>
+>>> The outcome you want is to set all of the middle column values to zero. So I used x as a logical in an if test and when true everything in that column is set to zero.
+>>>
+>>> Your approach also works but you must go through each element explicitly.
+>>> A <- matrix(1:9,ncol=3)
+>>> x <- c(0,1,0)
+>>> M <- matrix(ncol=3,nrow=3)
+>>> for(j in 1:3){
+>>>     for(i in 1:3){
+>>>       ifelse(x[i]==1, M[j,i]<-0, M[j,i]<-A[j,i])
+>>>     }
+>>> }
+>>> M
+>>>
+>>>
+>>>
+>>> Tim
+>>>
+>>> -----Original Message-----
+>>> From: R-help <r-help-bounces at r-project.org> On Behalf Of Uwe Freier
+>>> Sent: Sunday, April 24, 2022 11:06 AM
+>>> To: r-help at r-project.org
+>>> Subject: [R] Confusing fori or ifelse result in matrix manipulation
+>>>
+>>> [External Email]
+>>>
+>>> Hello,
+>>>
+>>> sorry for the newbie question but I can't find out where I'm wrong.
+>>>
+>>> A <- matrix(1:9,ncol=3)
+>>> x <- c(0,1,0)
+>>> M <- matrix(ncol=3,nrow=3)
+>>> for(i in 1:3) {
+>>>     M[,i] <- ifelse(x[i] == 0, A[,i], 0)
+>>> }
+>>>
+>>> expected:
+>>>
+>>>> M
+>>>         [,1] [,2] [,3]
+>>> [1,]    1    0    7
+>>> [2,]    2    0    8
+>>> [3,]    3    0    9
+>>>
+>>>
+>>> but the result is:
+>>>
+>>>> M
+>>>         [,1] [,2] [,3]
+>>> [1,]    1    0    7
+>>> [2,]    1    0    7
+>>> [3,]    1    0    7
+>>>
+>>>
+>>> If I do it "manually":
+>>>
+>>>> M[,1] <- A[,1]
+>>>> M[,2] <- 0
+>>>> M[,3] <- A[,3]
+>>> M is as expected, where is my misconception?
+>>>
+>>> Thanks for any hint and best regards,
+>>>
+>>> Uwe
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=K2RWPvtxaxwigGGH2oOrg8qiDWC5KTu60b8Wjybwsg4&e=
+>>> PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=L9VXAAYzIzrG2h17hBO-Qfg_EoS2mRQbjs3sRESp62Q&e=
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Mon Apr 25 16:39:33 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Mon, 25 Apr 2022 07:39:33 -0700
+Subject: [R] Confusing fori or ifelse result in matrix manipulation
+In-Reply-To: <CAGgJW77JvsgrmZoMn4LhXymSju9Rd4mC_XqZ25MmjwK9YkW-1Q@mail.gmail.com>
+References: <09a90ba0470a47626f93455aeb0e83e3@freier.de>
+ <BN6PR2201MB1553F06C70875D683CC87366CFF89@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <7bbaddbb-b373-3c95-9ff5-f9353f8b8c11@rgzm.de>
+ <CAGxFJbQ94kb9GzyiafWzRF9ObTCS-LUs7MxDdhgUD5e6nmmUug@mail.gmail.com>
+ <CAGgJW77JvsgrmZoMn4LhXymSju9Rd4mC_XqZ25MmjwK9YkW-1Q@mail.gmail.com>
+Message-ID: <CAGxFJbSSh7w_31=3E+yOoWxsv+BA-36TOwzRTWNM3KguuWYm2A@mail.gmail.com>
+
+Yes, sorry. But it's with the logical cast it's still M[, c(FALSE,
+TRUE, FALSE)] which is M[, 2], and so I still don't get the point.
+
+Bert Gunter
+
+"The trouble with having an open mind is that people keep coming along
+and sticking things into it."
+-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+
+On Mon, Apr 25, 2022 at 7:33 AM Eric Berger <ericjberger at gmail.com> wrote:
+>
+> M[,x==1] is not the same as M[,x] :-)
+> However, M[,!!x] is the same as M[,x==1] and saves one character!
+> The point of this is "I can name that tune in ... " (as if that was not obvious)
+>
+>
+>
+> On Mon, Apr 25, 2022 at 5:30 PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>>
+>> x == 1 is the same as M[, x] so your expression is the same as
+>> M[, c(FALSE, TRUE, FALSE)] <- 0
+>> which is the same as M[, 2]  <- 0
+>>
+>> So what is the point of all this, exactly?
+>>
+>> Bert
+>>
+>> On Mon, Apr 25, 2022 at 7:18 AM Ivan Calandra <ivan.calandra at rgzm.de> wrote:
+>> >
+>> > Hi Uwe,
+>> >
+>> > If I understood the problem completely and building up on Tim's answer,
+>> > this is even easier:
+>> > M <- A <- matrix(1:9, ncol = 3)
+>> > x <- c(0, 1, 0)
+>> > M[, x == 1] <- 0
+>> > M
+>> >
+>> > The original issue was with the way ifelse works. The explanation is in
+>> > the help page: "ifelse returns a value with the same shape as test||".
+>> > So, because x[i] == 0 returns a single value (TRUE or FALSE), ifelse
+>> > will also return a single value (either A[, i][1] or 0) and not a vector
+>> > of length 3 as you wanted. This single value is recycled to fill M[, i],
+>> > hence the result.
+>> >
+>> > HTH,
+>> > Ivan
+>> >
+>> > --
+>> > Dr. Ivan Calandra
+>> > Imaging lab
+>> > RGZM - MONREPOS Archaeological Research Centre
+>> > Schloss Monrepos
+>> > 56567 Neuwied, Germany
+>> > +49 (0) 2631 9772-243
+>> > https://www.researchgate.net/profile/Ivan_Calandra
+>> >
+>> > On 25/04/2022 16:01, Ebert,Timothy Aaron wrote:
+>> > > A <- matrix(1:9,ncol=3)
+>> > > x <- c(0,1,0)
+>> > > M <- matrix(ncol=3,nrow=3)
+>> > > M<-A
+>> > > for(i in 1:3) {
+>> > >    if(x[i]){
+>> > >      M[,i] <-0
+>> > >      }
+>> > >    }
+>> > > }
+>> > > M
+>> > >
+>> > > The outcome you want is to set all of the middle column values to zero. So I used x as a logical in an if test and when true everything in that column is set to zero.
+>> > >
+>> > > Your approach also works but you must go through each element explicitly.
+>> > > A <- matrix(1:9,ncol=3)
+>> > > x <- c(0,1,0)
+>> > > M <- matrix(ncol=3,nrow=3)
+>> > > for(j in 1:3){
+>> > >    for(i in 1:3){
+>> > >      ifelse(x[i]==1, M[j,i]<-0, M[j,i]<-A[j,i])
+>> > >    }
+>> > > }
+>> > > M
+>> > >
+>> > >
+>> > >
+>> > > Tim
+>> > >
+>> > > -----Original Message-----
+>> > > From: R-help <r-help-bounces at r-project.org> On Behalf Of Uwe Freier
+>> > > Sent: Sunday, April 24, 2022 11:06 AM
+>> > > To: r-help at r-project.org
+>> > > Subject: [R] Confusing fori or ifelse result in matrix manipulation
+>> > >
+>> > > [External Email]
+>> > >
+>> > > Hello,
+>> > >
+>> > > sorry for the newbie question but I can't find out where I'm wrong.
+>> > >
+>> > > A <- matrix(1:9,ncol=3)
+>> > > x <- c(0,1,0)
+>> > > M <- matrix(ncol=3,nrow=3)
+>> > > for(i in 1:3) {
+>> > >    M[,i] <- ifelse(x[i] == 0, A[,i], 0)
+>> > > }
+>> > >
+>> > > expected:
+>> > >
+>> > >> M
+>> > >        [,1] [,2] [,3]
+>> > > [1,]    1    0    7
+>> > > [2,]    2    0    8
+>> > > [3,]    3    0    9
+>> > >
+>> > >
+>> > > but the result is:
+>> > >
+>> > >> M
+>> > >        [,1] [,2] [,3]
+>> > > [1,]    1    0    7
+>> > > [2,]    1    0    7
+>> > > [3,]    1    0    7
+>> > >
+>> > >
+>> > > If I do it "manually":
+>> > >
+>> > >> M[,1] <- A[,1]
+>> > >> M[,2] <- 0
+>> > >> M[,3] <- A[,3]
+>> > > M is as expected, where is my misconception?
+>> > >
+>> > > Thanks for any hint and best regards,
+>> > >
+>> > > Uwe
+>> > >
+>> > > ______________________________________________
+>> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=K2RWPvtxaxwigGGH2oOrg8qiDWC5KTu60b8Wjybwsg4&e=
+>> > > PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=L9VXAAYzIzrG2h17hBO-Qfg_EoS2mRQbjs3sRESp62Q&e=
+>> > > and provide commented, minimal, self-contained, reproducible code.
+>> > >
+>> > > ______________________________________________
+>> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > > https://stat.ethz.ch/mailman/listinfo/r-help
+>> > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> > > and provide commented, minimal, self-contained, reproducible code.
+>> >
+>> > ______________________________________________
+>> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > https://stat.ethz.ch/mailman/listinfo/r-help
+>> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> > and provide commented, minimal, self-contained, reproducible code.
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Mon Apr 25 16:44:12 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Mon, 25 Apr 2022 07:44:12 -0700
+Subject: [R] about opening R script Chinese annotation garble problem
+In-Reply-To: <fb029612-768c-c2ea-0bd1-9d0b95424f76@effectivedefense.org>
+References: <tencent_82D863BBEAA3B88125F6D1FF41F885529406@qq.com>
+ <fb029612-768c-c2ea-0bd1-9d0b95424f76@effectivedefense.org>
+Message-ID: <5E582590-CD07-43A4-8BA2-075640DA0563@dcn.davis.ca.us>
+
+Some are, per the Posting Guide. But it can be challenging to convince your mail client to send them with the appropriate MIME settings, so attachments are generally best avoided.
+
+Character encodings are a non-trivial challenge also... results are highly sensitive to operating-system configuration and use of "fileEncoding" and "encoding" text input options, as well as the output device support for text encodings (including thr R console/terminal). This [1] has been informative for me, though I am by no means an expert. If OP can frame the question with knowledge from that blog and include the output from the sessionInfo() function, they might get a more informative response here.
+
+[1] https://kevinushey.github.io/blog/2018/02/21/string-encoding-and-r/
+
+On April 25, 2022 4:16:06 AM PDT, Spencer Graves <spencer.graves at effectivedefense.org> wrote:
+>	  Attachments are NOT delivered to the readers of this list.
+>
+>
+>	  PLEASE do read the posting guide http://www.R-project.org/posting-guide.html and provide commented, minimal, self-contained, reproducible code.  This includes sessionInfo().  If you can reproduce it on multiple platforms, that would help.  Can you can post the image to the web someplace (e.g., a Google Drive) and provide the link?  That would help, also.
+>
+>
+>	  Thanks,
+>	  Spencer Graves
+>
+>
+>On 4/23/22 8:38 PM, ?? via R-help wrote:
+>> Garbled characters appear in Chinese annotation when opening program script using RGui (see attached picture). I use a variety of methods have not been solved, I hope to help me solve this problem. Thank you.
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From er|cjberger @end|ng |rom gm@||@com  Mon Apr 25 16:44:10 2022
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Mon, 25 Apr 2022 17:44:10 +0300
+Subject: [R] Confusing fori or ifelse result in matrix manipulation
+In-Reply-To: <59e74e3a-c6f9-ffbb-10f9-21bafd830fd3@rgzm.de>
+References: <09a90ba0470a47626f93455aeb0e83e3@freier.de>
+ <BN6PR2201MB1553F06C70875D683CC87366CFF89@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <7bbaddbb-b373-3c95-9ff5-f9353f8b8c11@rgzm.de>
+ <CAGxFJbQ94kb9GzyiafWzRF9ObTCS-LUs7MxDdhgUD5e6nmmUug@mail.gmail.com>
+ <59e74e3a-c6f9-ffbb-10f9-21bafd830fd3@rgzm.de>
+Message-ID: <CAGgJW75hUsy6+iveN9Pys=gvkWnsM9dYYKY6SbLY+8NguJzZjA@mail.gmail.com>
+
+M[,x] <- 0 *does not do the same* !! even if x only contains 0's and 1's
+
+To understand this, note that
+M[,c(2,3)]
+gives columns 2 and 3
+M[,c(0,3)]
+gives the 3rd column and
+M[,c(0,1,0)]
+gives the *first* column!!
+
+
+
+On Mon, Apr 25, 2022 at 5:41 PM Ivan Calandra <ivan.calandra at rgzm.de> wrote:
+
+> Indeed, M[, x] <- 0 does the same, but only if x is 0's and 1's only,
+> right? I thought that it might not always be the case so I choose this
+> maybe superflous approach.
+>
+> M[, 2] does the same of course in the example, but I was assuming that
+> the columns to change to zero are not known in advance and are based on
+> data contained in another vector. Where that vector comes from is
+> important too because the whole thing might be unnecessary. Is that
+> maybe what you were hinting at, Bert?
+>
+> Maybe Uwe can tell us more about what/why he wants to do!
+>
+> Ivan
+>
+> --
+> Dr. Ivan Calandra
+> Imaging lab
+> RGZM - MONREPOS Archaeological Research Centre
+> Schloss Monrepos
+> 56567 Neuwied, Germany
+> +49 (0) 2631 9772-243
+> https://www.researchgate.net/profile/Ivan_Calandra
+>
+> On 25/04/2022 16:30, Bert Gunter wrote:
+> > x == 1 is the same as M[, x] so your expression is the same as
+> > M[, c(FALSE, TRUE, FALSE)] <- 0
+> > which is the same as M[, 2]  <- 0
+> >
+> > So what is the point of all this, exactly?
+> >
+> > Bert
+> >
+> > On Mon, Apr 25, 2022 at 7:18 AM Ivan Calandra <ivan.calandra at rgzm.de>
+> wrote:
+> >> Hi Uwe,
+> >>
+> >> If I understood the problem completely and building up on Tim's answer,
+> >> this is even easier:
+> >> M <- A <- matrix(1:9, ncol = 3)
+> >> x <- c(0, 1, 0)
+> >> M[, x == 1] <- 0
+> >> M
+> >>
+> >> The original issue was with the way ifelse works. The explanation is in
+> >> the help page: "ifelse returns a value with the same shape as test||".
+> >> So, because x[i] == 0 returns a single value (TRUE or FALSE), ifelse
+> >> will also return a single value (either A[, i][1] or 0) and not a vector
+> >> of length 3 as you wanted. This single value is recycled to fill M[, i],
+> >> hence the result.
+> >>
+> >> HTH,
+> >> Ivan
+> >>
+> >> --
+> >> Dr. Ivan Calandra
+> >> Imaging lab
+> >> RGZM - MONREPOS Archaeological Research Centre
+> >> Schloss Monrepos
+> >> 56567 Neuwied, Germany
+> >> +49 (0) 2631 9772-243
+> >> https://www.researchgate.net/profile/Ivan_Calandra
+> >>
+> >> On 25/04/2022 16:01, Ebert,Timothy Aaron wrote:
+> >>> A <- matrix(1:9,ncol=3)
+> >>> x <- c(0,1,0)
+> >>> M <- matrix(ncol=3,nrow=3)
+> >>> M<-A
+> >>> for(i in 1:3) {
+> >>>     if(x[i]){
+> >>>       M[,i] <-0
+> >>>       }
+> >>>     }
+> >>> }
+> >>> M
+> >>>
+> >>> The outcome you want is to set all of the middle column values to
+> zero. So I used x as a logical in an if test and when true everything in
+> that column is set to zero.
+> >>>
+> >>> Your approach also works but you must go through each element
+> explicitly.
+> >>> A <- matrix(1:9,ncol=3)
+> >>> x <- c(0,1,0)
+> >>> M <- matrix(ncol=3,nrow=3)
+> >>> for(j in 1:3){
+> >>>     for(i in 1:3){
+> >>>       ifelse(x[i]==1, M[j,i]<-0, M[j,i]<-A[j,i])
+> >>>     }
+> >>> }
+> >>> M
+> >>>
+> >>>
+> >>>
+> >>> Tim
+> >>>
+> >>> -----Original Message-----
+> >>> From: R-help <r-help-bounces at r-project.org> On Behalf Of Uwe Freier
+> >>> Sent: Sunday, April 24, 2022 11:06 AM
+> >>> To: r-help at r-project.org
+> >>> Subject: [R] Confusing fori or ifelse result in matrix manipulation
+> >>>
+> >>> [External Email]
+> >>>
+> >>> Hello,
+> >>>
+> >>> sorry for the newbie question but I can't find out where I'm wrong.
+> >>>
+> >>> A <- matrix(1:9,ncol=3)
+> >>> x <- c(0,1,0)
+> >>> M <- matrix(ncol=3,nrow=3)
+> >>> for(i in 1:3) {
+> >>>     M[,i] <- ifelse(x[i] == 0, A[,i], 0)
+> >>> }
+> >>>
+> >>> expected:
+> >>>
+> >>>> M
+> >>>         [,1] [,2] [,3]
+> >>> [1,]    1    0    7
+> >>> [2,]    2    0    8
+> >>> [3,]    3    0    9
+> >>>
+> >>>
+> >>> but the result is:
+> >>>
+> >>>> M
+> >>>         [,1] [,2] [,3]
+> >>> [1,]    1    0    7
+> >>> [2,]    1    0    7
+> >>> [3,]    1    0    7
+> >>>
+> >>>
+> >>> If I do it "manually":
+> >>>
+> >>>> M[,1] <- A[,1]
+> >>>> M[,2] <- 0
+> >>>> M[,3] <- A[,3]
+> >>> M is as expected, where is my misconception?
+> >>>
+> >>> Thanks for any hint and best regards,
+> >>>
+> >>> Uwe
+> >>>
+> >>> ______________________________________________
+> >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=K2RWPvtxaxwigGGH2oOrg8qiDWC5KTu60b8Wjybwsg4&e=
+> >>> PLEASE do read the posting guide
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=L9VXAAYzIzrG2h17hBO-Qfg_EoS2mRQbjs3sRESp62Q&e=
+> >>> and provide commented, minimal, self-contained, reproducible code.
+> >>>
+> >>> ______________________________________________
+> >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> >>> and provide commented, minimal, self-contained, reproducible code.
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Mon Apr 25 16:51:13 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Mon, 25 Apr 2022 07:51:13 -0700
+Subject: [R] Confusing fori or ifelse result in matrix manipulation
+In-Reply-To: <CAGxFJbSSh7w_31=3E+yOoWxsv+BA-36TOwzRTWNM3KguuWYm2A@mail.gmail.com>
+References: <09a90ba0470a47626f93455aeb0e83e3@freier.de>
+ <BN6PR2201MB1553F06C70875D683CC87366CFF89@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <7bbaddbb-b373-3c95-9ff5-f9353f8b8c11@rgzm.de>
+ <CAGxFJbQ94kb9GzyiafWzRF9ObTCS-LUs7MxDdhgUD5e6nmmUug@mail.gmail.com>
+ <CAGgJW77JvsgrmZoMn4LhXymSju9Rd4mC_XqZ25MmjwK9YkW-1Q@mail.gmail.com>
+ <CAGxFJbSSh7w_31=3E+yOoWxsv+BA-36TOwzRTWNM3KguuWYm2A@mail.gmail.com>
+Message-ID: <CAGxFJbQomZ4NPNfi+oN7wDuQcWEHpqvUQhdWOzxdttvPeAw=4Q@mail.gmail.com>
+
+Oh, I get it. The context was in  choosing columns to set to 0 via a
+**predicate**.
+
+Sorry for the noise.
+
+
+Bert
+
+On Mon, Apr 25, 2022 at 7:39 AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> Yes, sorry. But it's with the logical cast it's still M[, c(FALSE,
+> TRUE, FALSE)] which is M[, 2], and so I still don't get the point.
+>
+> Bert Gunter
+>
+> "The trouble with having an open mind is that people keep coming along
+> and sticking things into it."
+> -- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+>
+> On Mon, Apr 25, 2022 at 7:33 AM Eric Berger <ericjberger at gmail.com> wrote:
+> >
+> > M[,x==1] is not the same as M[,x] :-)
+> > However, M[,!!x] is the same as M[,x==1] and saves one character!
+> > The point of this is "I can name that tune in ... " (as if that was not obvious)
+> >
+> >
+> >
+> > On Mon, Apr 25, 2022 at 5:30 PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >>
+> >> x == 1 is the same as M[, x] so your expression is the same as
+> >> M[, c(FALSE, TRUE, FALSE)] <- 0
+> >> which is the same as M[, 2]  <- 0
+> >>
+> >> So what is the point of all this, exactly?
+> >>
+> >> Bert
+> >>
+> >> On Mon, Apr 25, 2022 at 7:18 AM Ivan Calandra <ivan.calandra at rgzm.de> wrote:
+> >> >
+> >> > Hi Uwe,
+> >> >
+> >> > If I understood the problem completely and building up on Tim's answer,
+> >> > this is even easier:
+> >> > M <- A <- matrix(1:9, ncol = 3)
+> >> > x <- c(0, 1, 0)
+> >> > M[, x == 1] <- 0
+> >> > M
+> >> >
+> >> > The original issue was with the way ifelse works. The explanation is in
+> >> > the help page: "ifelse returns a value with the same shape as test||".
+> >> > So, because x[i] == 0 returns a single value (TRUE or FALSE), ifelse
+> >> > will also return a single value (either A[, i][1] or 0) and not a vector
+> >> > of length 3 as you wanted. This single value is recycled to fill M[, i],
+> >> > hence the result.
+> >> >
+> >> > HTH,
+> >> > Ivan
+> >> >
+> >> > --
+> >> > Dr. Ivan Calandra
+> >> > Imaging lab
+> >> > RGZM - MONREPOS Archaeological Research Centre
+> >> > Schloss Monrepos
+> >> > 56567 Neuwied, Germany
+> >> > +49 (0) 2631 9772-243
+> >> > https://www.researchgate.net/profile/Ivan_Calandra
+> >> >
+> >> > On 25/04/2022 16:01, Ebert,Timothy Aaron wrote:
+> >> > > A <- matrix(1:9,ncol=3)
+> >> > > x <- c(0,1,0)
+> >> > > M <- matrix(ncol=3,nrow=3)
+> >> > > M<-A
+> >> > > for(i in 1:3) {
+> >> > >    if(x[i]){
+> >> > >      M[,i] <-0
+> >> > >      }
+> >> > >    }
+> >> > > }
+> >> > > M
+> >> > >
+> >> > > The outcome you want is to set all of the middle column values to zero. So I used x as a logical in an if test and when true everything in that column is set to zero.
+> >> > >
+> >> > > Your approach also works but you must go through each element explicitly.
+> >> > > A <- matrix(1:9,ncol=3)
+> >> > > x <- c(0,1,0)
+> >> > > M <- matrix(ncol=3,nrow=3)
+> >> > > for(j in 1:3){
+> >> > >    for(i in 1:3){
+> >> > >      ifelse(x[i]==1, M[j,i]<-0, M[j,i]<-A[j,i])
+> >> > >    }
+> >> > > }
+> >> > > M
+> >> > >
+> >> > >
+> >> > >
+> >> > > Tim
+> >> > >
+> >> > > -----Original Message-----
+> >> > > From: R-help <r-help-bounces at r-project.org> On Behalf Of Uwe Freier
+> >> > > Sent: Sunday, April 24, 2022 11:06 AM
+> >> > > To: r-help at r-project.org
+> >> > > Subject: [R] Confusing fori or ifelse result in matrix manipulation
+> >> > >
+> >> > > [External Email]
+> >> > >
+> >> > > Hello,
+> >> > >
+> >> > > sorry for the newbie question but I can't find out where I'm wrong.
+> >> > >
+> >> > > A <- matrix(1:9,ncol=3)
+> >> > > x <- c(0,1,0)
+> >> > > M <- matrix(ncol=3,nrow=3)
+> >> > > for(i in 1:3) {
+> >> > >    M[,i] <- ifelse(x[i] == 0, A[,i], 0)
+> >> > > }
+> >> > >
+> >> > > expected:
+> >> > >
+> >> > >> M
+> >> > >        [,1] [,2] [,3]
+> >> > > [1,]    1    0    7
+> >> > > [2,]    2    0    8
+> >> > > [3,]    3    0    9
+> >> > >
+> >> > >
+> >> > > but the result is:
+> >> > >
+> >> > >> M
+> >> > >        [,1] [,2] [,3]
+> >> > > [1,]    1    0    7
+> >> > > [2,]    1    0    7
+> >> > > [3,]    1    0    7
+> >> > >
+> >> > >
+> >> > > If I do it "manually":
+> >> > >
+> >> > >> M[,1] <- A[,1]
+> >> > >> M[,2] <- 0
+> >> > >> M[,3] <- A[,3]
+> >> > > M is as expected, where is my misconception?
+> >> > >
+> >> > > Thanks for any hint and best regards,
+> >> > >
+> >> > > Uwe
+> >> > >
+> >> > > ______________________________________________
+> >> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=K2RWPvtxaxwigGGH2oOrg8qiDWC5KTu60b8Wjybwsg4&e=
+> >> > > PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=L9VXAAYzIzrG2h17hBO-Qfg_EoS2mRQbjs3sRESp62Q&e=
+> >> > > and provide commented, minimal, self-contained, reproducible code.
+> >> > >
+> >> > > ______________________________________________
+> >> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> >> > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> >> > > and provide commented, minimal, self-contained, reproducible code.
+> >> >
+> >> > ______________________________________________
+> >> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> > https://stat.ethz.ch/mailman/listinfo/r-help
+> >> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> >> > and provide commented, minimal, self-contained, reproducible code.
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+
+
+From |v@n@c@|@ndr@ @end|ng |rom rgzm@de  Mon Apr 25 16:52:03 2022
+From: |v@n@c@|@ndr@ @end|ng |rom rgzm@de (Ivan Calandra)
+Date: Mon, 25 Apr 2022 16:52:03 +0200
+Subject: [R] Confusing fori or ifelse result in matrix manipulation
+In-Reply-To: <CAGgJW75hUsy6+iveN9Pys=gvkWnsM9dYYKY6SbLY+8NguJzZjA@mail.gmail.com>
+References: <09a90ba0470a47626f93455aeb0e83e3@freier.de>
+ <BN6PR2201MB1553F06C70875D683CC87366CFF89@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <7bbaddbb-b373-3c95-9ff5-f9353f8b8c11@rgzm.de>
+ <CAGxFJbQ94kb9GzyiafWzRF9ObTCS-LUs7MxDdhgUD5e6nmmUug@mail.gmail.com>
+ <59e74e3a-c6f9-ffbb-10f9-21bafd830fd3@rgzm.de>
+ <CAGgJW75hUsy6+iveN9Pys=gvkWnsM9dYYKY6SbLY+8NguJzZjA@mail.gmail.com>
+Message-ID: <d9f89bb8-a45b-f30c-fcb9-f65d800a5892@rgzm.de>
+
+Indeed, of course, my bad! I got confused by Bert's answer...
+
+So my first suggestion to do M[, x == 1] was correct :)
+
+--
+Dr. Ivan Calandra
+Imaging lab
+RGZM - MONREPOS Archaeological Research Centre
+Schloss Monrepos
+56567 Neuwied, Germany
++49 (0) 2631 9772-243
+https://www.researchgate.net/profile/Ivan_Calandra
+
+On 25/04/2022 16:44, Eric Berger wrote:
+> M[,x] <- 0 *does not do the same* !! even if x only contains 0's and 1's
+>
+> To understand this, note that
+> M[,c(2,3)]
+> gives columns 2 and 3
+> M[,c(0,3)]
+> gives the 3rd column and
+> M[,c(0,1,0)]
+> gives the *first* column!!
+>
+>
+>
+> On Mon, Apr 25, 2022 at 5:41 PM Ivan Calandra <ivan.calandra at rgzm.de> 
+> wrote:
+>
+>     Indeed, M[, x] <- 0 does the same, but only if x is 0's and 1's only,
+>     right? I thought that it might not always be the case so I choose
+>     this
+>     maybe superflous approach.
+>
+>     M[, 2] does the same of course in the example, but I was assuming
+>     that
+>     the columns to change to zero are not known in advance and are
+>     based on
+>     data contained in another vector. Where that vector comes from is
+>     important too because the whole thing might be unnecessary. Is that
+>     maybe what you were hinting at, Bert?
+>
+>     Maybe Uwe can tell us more about what/why he wants to do!
+>
+>     Ivan
+>
+>     --
+>     Dr. Ivan Calandra
+>     Imaging lab
+>     RGZM - MONREPOS Archaeological Research Centre
+>     Schloss Monrepos
+>     56567 Neuwied, Germany
+>     +49 (0) 2631 9772-243
+>     https://www.researchgate.net/profile/Ivan_Calandra
+>
+>     On 25/04/2022 16:30, Bert Gunter wrote:
+>     > x == 1 is the same as M[, x] so your expression is the same as
+>     > M[, c(FALSE, TRUE, FALSE)] <- 0
+>     > which is the same as M[, 2]? <- 0
+>     >
+>     > So what is the point of all this, exactly?
+>     >
+>     > Bert
+>     >
+>     > On Mon, Apr 25, 2022 at 7:18 AM Ivan Calandra
+>     <ivan.calandra at rgzm.de> wrote:
+>     >> Hi Uwe,
+>     >>
+>     >> If I understood the problem completely and building up on Tim's
+>     answer,
+>     >> this is even easier:
+>     >> M <- A <- matrix(1:9, ncol = 3)
+>     >> x <- c(0, 1, 0)
+>     >> M[, x == 1] <- 0
+>     >> M
+>     >>
+>     >> The original issue was with the way ifelse works. The
+>     explanation is in
+>     >> the help page: "ifelse returns a value with the same shape as
+>     test||".
+>     >> So, because x[i] == 0 returns a single value (TRUE or FALSE),
+>     ifelse
+>     >> will also return a single value (either A[, i][1] or 0) and not
+>     a vector
+>     >> of length 3 as you wanted. This single value is recycled to
+>     fill M[, i],
+>     >> hence the result.
+>     >>
+>     >> HTH,
+>     >> Ivan
+>     >>
+>     >> --
+>     >> Dr. Ivan Calandra
+>     >> Imaging lab
+>     >> RGZM - MONREPOS Archaeological Research Centre
+>     >> Schloss Monrepos
+>     >> 56567 Neuwied, Germany
+>     >> +49 (0) 2631 9772-243
+>     >> https://www.researchgate.net/profile/Ivan_Calandra
+>     >>
+>     >> On 25/04/2022 16:01, Ebert,Timothy Aaron wrote:
+>     >>> A <- matrix(1:9,ncol=3)
+>     >>> x <- c(0,1,0)
+>     >>> M <- matrix(ncol=3,nrow=3)
+>     >>> M<-A
+>     >>> for(i in 1:3) {
+>     >>>? ? ?if(x[i]){
+>     >>>? ? ? ?M[,i] <-0
+>     >>>? ? ? ?}
+>     >>>? ? ?}
+>     >>> }
+>     >>> M
+>     >>>
+>     >>> The outcome you want is to set all of the middle column values
+>     to zero. So I used x as a logical in an if test and when true
+>     everything in that column is set to zero.
+>     >>>
+>     >>> Your approach also works but you must go through each element
+>     explicitly.
+>     >>> A <- matrix(1:9,ncol=3)
+>     >>> x <- c(0,1,0)
+>     >>> M <- matrix(ncol=3,nrow=3)
+>     >>> for(j in 1:3){
+>     >>>? ? ?for(i in 1:3){
+>     >>>? ? ? ?ifelse(x[i]==1, M[j,i]<-0, M[j,i]<-A[j,i])
+>     >>>? ? ?}
+>     >>> }
+>     >>> M
+>     >>>
+>     >>>
+>     >>>
+>     >>> Tim
+>     >>>
+>     >>> -----Original Message-----
+>     >>> From: R-help <r-help-bounces at r-project.org> On Behalf Of Uwe
+>     Freier
+>     >>> Sent: Sunday, April 24, 2022 11:06 AM
+>     >>> To: r-help at r-project.org
+>     >>> Subject: [R] Confusing fori or ifelse result in matrix
+>     manipulation
+>     >>>
+>     >>> [External Email]
+>     >>>
+>     >>> Hello,
+>     >>>
+>     >>> sorry for the newbie question but I can't find out where I'm
+>     wrong.
+>     >>>
+>     >>> A <- matrix(1:9,ncol=3)
+>     >>> x <- c(0,1,0)
+>     >>> M <- matrix(ncol=3,nrow=3)
+>     >>> for(i in 1:3) {
+>     >>>? ? ?M[,i] <- ifelse(x[i] == 0, A[,i], 0)
+>     >>> }
+>     >>>
+>     >>> expected:
+>     >>>
+>     >>>> M
+>     >>>? ? ? ? ?[,1] [,2] [,3]
+>     >>> [1,]? ? 1? ? 0? ? 7
+>     >>> [2,]? ? 2? ? 0? ? 8
+>     >>> [3,]? ? 3? ? 0? ? 9
+>     >>>
+>     >>>
+>     >>> but the result is:
+>     >>>
+>     >>>> M
+>     >>>? ? ? ? ?[,1] [,2] [,3]
+>     >>> [1,]? ? 1? ? 0? ? 7
+>     >>> [2,]? ? 1? ? 0? ? 7
+>     >>> [3,]? ? 1? ? 0? ? 7
+>     >>>
+>     >>>
+>     >>> If I do it "manually":
+>     >>>
+>     >>>> M[,1] <- A[,1]
+>     >>>> M[,2] <- 0
+>     >>>> M[,3] <- A[,3]
+>     >>> M is as expected, where is my misconception?
+>     >>>
+>     >>> Thanks for any hint and best regards,
+>     >>>
+>     >>> Uwe
+>     >>>
+>     >>> ______________________________________________
+>     >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more,
+>     see
+>     https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=K2RWPvtxaxwigGGH2oOrg8qiDWC5KTu60b8Wjybwsg4&e=
+>     <https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=K2RWPvtxaxwigGGH2oOrg8qiDWC5KTu60b8Wjybwsg4&e=>
+>     >>> PLEASE do read the posting guide
+>     https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=L9VXAAYzIzrG2h17hBO-Qfg_EoS2mRQbjs3sRESp62Q&e=
+>     <https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=L9VXAAYzIzrG2h17hBO-Qfg_EoS2mRQbjs3sRESp62Q&e=>
+>     >>> and provide commented, minimal, self-contained, reproducible code.
+>     >>>
+>     >>> ______________________________________________
+>     >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>     >>> https://stat.ethz.ch/mailman/listinfo/r-help
+>     >>> PLEASE do read the posting guide
+>     http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>     >>> and provide commented, minimal, self-contained, reproducible code.
+>     >> ______________________________________________
+>     >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>     >> https://stat.ethz.ch/mailman/listinfo/r-help
+>     >> PLEASE do read the posting guide
+>     http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>     >> and provide commented, minimal, self-contained, reproducible code.
+>
+>     ______________________________________________
+>     R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>     https://stat.ethz.ch/mailman/listinfo/r-help
+>     PLEASE do read the posting guide
+>     http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>     and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Apr 25 17:25:13 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 25 Apr 2022 16:25:13 +0100
+Subject: [R] Confusing fori or ifelse result in matrix manipulation
+In-Reply-To: <d9f89bb8-a45b-f30c-fcb9-f65d800a5892@rgzm.de>
+References: <09a90ba0470a47626f93455aeb0e83e3@freier.de>
+ <BN6PR2201MB1553F06C70875D683CC87366CFF89@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <7bbaddbb-b373-3c95-9ff5-f9353f8b8c11@rgzm.de>
+ <CAGxFJbQ94kb9GzyiafWzRF9ObTCS-LUs7MxDdhgUD5e6nmmUug@mail.gmail.com>
+ <59e74e3a-c6f9-ffbb-10f9-21bafd830fd3@rgzm.de>
+ <CAGgJW75hUsy6+iveN9Pys=gvkWnsM9dYYKY6SbLY+8NguJzZjA@mail.gmail.com>
+ <d9f89bb8-a45b-f30c-fcb9-f65d800a5892@rgzm.de>
+Message-ID: <fc17126e-7dad-1f26-9843-a701df2b196c@sapo.pt>
+
+Hello,
+
+If !!x obfuscates what the is doing, there's
+
+
+M[, as.logical(x)] <- 0
+
+
+Hope this helps,
+
+Rui Barradas
+
+?s 15:52 de 25/04/2022, Ivan Calandra escreveu:
+> Indeed, of course, my bad! I got confused by Bert's answer...
+> 
+> So my first suggestion to do M[, x == 1] was correct :)
+> 
+> -- 
+> Dr. Ivan Calandra
+> Imaging lab
+> RGZM - MONREPOS Archaeological Research Centre
+> Schloss Monrepos
+> 56567 Neuwied, Germany
+> +49 (0) 2631 9772-243
+> https://www.researchgate.net/profile/Ivan_Calandra
+> 
+> On 25/04/2022 16:44, Eric Berger wrote:
+>> M[,x] <- 0 *does not do the same* !! even if x only contains 0's and 1's
+>>
+>> To understand this, note that
+>> M[,c(2,3)]
+>> gives columns 2 and 3
+>> M[,c(0,3)]
+>> gives the 3rd column and
+>> M[,c(0,1,0)]
+>> gives the *first* column!!
+>>
+>>
+>>
+>> On Mon, Apr 25, 2022 at 5:41 PM Ivan Calandra <ivan.calandra at rgzm.de> 
+>> wrote:
+>>
+>> ??? Indeed, M[, x] <- 0 does the same, but only if x is 0's and 1's only,
+>> ??? right? I thought that it might not always be the case so I choose
+>> ??? this
+>> ??? maybe superflous approach.
+>>
+>> ??? M[, 2] does the same of course in the example, but I was assuming
+>> ??? that
+>> ??? the columns to change to zero are not known in advance and are
+>> ??? based on
+>> ??? data contained in another vector. Where that vector comes from is
+>> ??? important too because the whole thing might be unnecessary. Is that
+>> ??? maybe what you were hinting at, Bert?
+>>
+>> ??? Maybe Uwe can tell us more about what/why he wants to do!
+>>
+>> ??? Ivan
+>>
+>> ??? --
+>> ??? Dr. Ivan Calandra
+>> ??? Imaging lab
+>> ??? RGZM - MONREPOS Archaeological Research Centre
+>> ??? Schloss Monrepos
+>> ??? 56567 Neuwied, Germany
+>> ??? +49 (0) 2631 9772-243
+>> ??? https://www.researchgate.net/profile/Ivan_Calandra
+>>
+>> ??? On 25/04/2022 16:30, Bert Gunter wrote:
+>> ??? > x == 1 is the same as M[, x] so your expression is the same as
+>> ??? > M[, c(FALSE, TRUE, FALSE)] <- 0
+>> ??? > which is the same as M[, 2]? <- 0
+>> ??? >
+>> ??? > So what is the point of all this, exactly?
+>> ??? >
+>> ??? > Bert
+>> ??? >
+>> ??? > On Mon, Apr 25, 2022 at 7:18 AM Ivan Calandra
+>> ??? <ivan.calandra at rgzm.de> wrote:
+>> ??? >> Hi Uwe,
+>> ??? >>
+>> ??? >> If I understood the problem completely and building up on Tim's
+>> ??? answer,
+>> ??? >> this is even easier:
+>> ??? >> M <- A <- matrix(1:9, ncol = 3)
+>> ??? >> x <- c(0, 1, 0)
+>> ??? >> M[, x == 1] <- 0
+>> ??? >> M
+>> ??? >>
+>> ??? >> The original issue was with the way ifelse works. The
+>> ??? explanation is in
+>> ??? >> the help page: "ifelse returns a value with the same shape as
+>> ??? test||".
+>> ??? >> So, because x[i] == 0 returns a single value (TRUE or FALSE),
+>> ??? ifelse
+>> ??? >> will also return a single value (either A[, i][1] or 0) and not
+>> ??? a vector
+>> ??? >> of length 3 as you wanted. This single value is recycled to
+>> ??? fill M[, i],
+>> ??? >> hence the result.
+>> ??? >>
+>> ??? >> HTH,
+>> ??? >> Ivan
+>> ??? >>
+>> ??? >> --
+>> ??? >> Dr. Ivan Calandra
+>> ??? >> Imaging lab
+>> ??? >> RGZM - MONREPOS Archaeological Research Centre
+>> ??? >> Schloss Monrepos
+>> ??? >> 56567 Neuwied, Germany
+>> ??? >> +49 (0) 2631 9772-243
+>> ??? >> https://www.researchgate.net/profile/Ivan_Calandra
+>> ??? >>
+>> ??? >> On 25/04/2022 16:01, Ebert,Timothy Aaron wrote:
+>> ??? >>> A <- matrix(1:9,ncol=3)
+>> ??? >>> x <- c(0,1,0)
+>> ??? >>> M <- matrix(ncol=3,nrow=3)
+>> ??? >>> M<-A
+>> ??? >>> for(i in 1:3) {
+>> ??? >>>? ? ?if(x[i]){
+>> ??? >>>? ? ? ?M[,i] <-0
+>> ??? >>>? ? ? ?}
+>> ??? >>>? ? ?}
+>> ??? >>> }
+>> ??? >>> M
+>> ??? >>>
+>> ??? >>> The outcome you want is to set all of the middle column values
+>> ??? to zero. So I used x as a logical in an if test and when true
+>> ??? everything in that column is set to zero.
+>> ??? >>>
+>> ??? >>> Your approach also works but you must go through each element
+>> ??? explicitly.
+>> ??? >>> A <- matrix(1:9,ncol=3)
+>> ??? >>> x <- c(0,1,0)
+>> ??? >>> M <- matrix(ncol=3,nrow=3)
+>> ??? >>> for(j in 1:3){
+>> ??? >>>? ? ?for(i in 1:3){
+>> ??? >>>? ? ? ?ifelse(x[i]==1, M[j,i]<-0, M[j,i]<-A[j,i])
+>> ??? >>>? ? ?}
+>> ??? >>> }
+>> ??? >>> M
+>> ??? >>>
+>> ??? >>>
+>> ??? >>>
+>> ??? >>> Tim
+>> ??? >>>
+>> ??? >>> -----Original Message-----
+>> ??? >>> From: R-help <r-help-bounces at r-project.org> On Behalf Of Uwe
+>> ??? Freier
+>> ??? >>> Sent: Sunday, April 24, 2022 11:06 AM
+>> ??? >>> To: r-help at r-project.org
+>> ??? >>> Subject: [R] Confusing fori or ifelse result in matrix
+>> ??? manipulation
+>> ??? >>>
+>> ??? >>> [External Email]
+>> ??? >>>
+>> ??? >>> Hello,
+>> ??? >>>
+>> ??? >>> sorry for the newbie question but I can't find out where I'm
+>> ??? wrong.
+>> ??? >>>
+>> ??? >>> A <- matrix(1:9,ncol=3)
+>> ??? >>> x <- c(0,1,0)
+>> ??? >>> M <- matrix(ncol=3,nrow=3)
+>> ??? >>> for(i in 1:3) {
+>> ??? >>>? ? ?M[,i] <- ifelse(x[i] == 0, A[,i], 0)
+>> ??? >>> }
+>> ??? >>>
+>> ??? >>> expected:
+>> ??? >>>
+>> ??? >>>> M
+>> ??? >>>? ? ? ? ?[,1] [,2] [,3]
+>> ??? >>> [1,]? ? 1? ? 0? ? 7
+>> ??? >>> [2,]? ? 2? ? 0? ? 8
+>> ??? >>> [3,]? ? 3? ? 0? ? 9
+>> ??? >>>
+>> ??? >>>
+>> ??? >>> but the result is:
+>> ??? >>>
+>> ??? >>>> M
+>> ??? >>>? ? ? ? ?[,1] [,2] [,3]
+>> ??? >>> [1,]? ? 1? ? 0? ? 7
+>> ??? >>> [2,]? ? 1? ? 0? ? 7
+>> ??? >>> [3,]? ? 1? ? 0? ? 7
+>> ??? >>>
+>> ??? >>>
+>> ??? >>> If I do it "manually":
+>> ??? >>>
+>> ??? >>>> M[,1] <- A[,1]
+>> ??? >>>> M[,2] <- 0
+>> ??? >>>> M[,3] <- A[,3]
+>> ??? >>> M is as expected, where is my misconception?
+>> ??? >>>
+>> ??? >>> Thanks for any hint and best regards,
+>> ??? >>>
+>> ??? >>> Uwe
+>> ??? >>>
+>> ??? >>> ______________________________________________
+>> ??? >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more,
+>> ??? see
+>>     
+>> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=K2RWPvtxaxwigGGH2oOrg8qiDWC5KTu60b8Wjybwsg4&e= 
+>>
+>>     
+>> <https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=K2RWPvtxaxwigGGH2oOrg8qiDWC5KTu60b8Wjybwsg4&e=> 
+>>
+>> ??? >>> PLEASE do read the posting guide
+>>     
+>> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=L9VXAAYzIzrG2h17hBO-Qfg_EoS2mRQbjs3sRESp62Q&e= 
+>>
+>>     
+>> <https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=eyJm06tVDfKvtMDgz6oIWM-WVdoW3Szzb5G6rq0cCO_cB6ljj2x80E4oRkt3Vgba&s=L9VXAAYzIzrG2h17hBO-Qfg_EoS2mRQbjs3sRESp62Q&e=> 
+>>
+>> ??? >>> and provide commented, minimal, self-contained, reproducible 
+>> code.
+>> ??? >>>
+>> ??? >>> ______________________________________________
+>> ??? >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> ??? >>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> ??? >>> PLEASE do read the posting guide
+>> ??? http://www.R-project.org/posting-guide.html
+>> ??? <http://www.R-project.org/posting-guide.html>
+>> ??? >>> and provide commented, minimal, self-contained, reproducible 
+>> code.
+>> ??? >> ______________________________________________
+>> ??? >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> ??? >> https://stat.ethz.ch/mailman/listinfo/r-help
+>> ??? >> PLEASE do read the posting guide
+>> ??? http://www.R-project.org/posting-guide.html
+>> ??? <http://www.R-project.org/posting-guide.html>
+>> ??? >> and provide commented, minimal, self-contained, reproducible code.
+>>
+>> ??? ______________________________________________
+>> ??? R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> ??? https://stat.ethz.ch/mailman/listinfo/r-help
+>> ??? PLEASE do read the posting guide
+>> ??? http://www.R-project.org/posting-guide.html
+>> ??? <http://www.R-project.org/posting-guide.html>
+>> ??? and provide commented, minimal, self-contained, reproducible code.
+>>
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Mon Apr 25 17:52:10 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Mon, 25 Apr 2022 08:52:10 -0700
+Subject: [R] about opening R script Chinese annotation garble problem
+In-Reply-To: <tencent_82D863BBEAA3B88125F6D1FF41F885529406@qq.com>
+References: <tencent_82D863BBEAA3B88125F6D1FF41F885529406@qq.com>
+Message-ID: <CAHqSRuQRcG1bs4qh487O3Sfz8gX3gXD7WepGtueKOOaN8hHY0Q@mail.gmail.com>
+
+The answer depends on the encoding of the file containing the Chinese
+characters and on the version of R (since you are using Windows).  I copied
+your subject line into Wordpad and and added some syntax to make a valid R
+expression
+  s <- "?? via R-help"
+I then saved it with the type "Unicode Text Document".  In my version of
+Wordpad this means UTF-16.  The bytes in the file are
+  4.2.0> readBin("Chinese-utf-16.txt", what="raw",
+n=file.size("Chinese-utf-16.txt"))
+   [1] ff fe 73 00 20 00 3c 00 2d 00 20 00 22 00 38 6c 1b 52
+  [19] 20 00 76 00 69 00 61 00 20 00 52 00 2d 00 68 00 65 00
+  [37] 6c 00 70 00 22 00 0d 00 0a 00
+All the nulls in the file are a hint that this is encoded using UTF-16, not
+UTF-8.
+
+With R-4.2.0 (released a few days ago) I can source the file with
+  4.2.0> source("Chinese-utf-16.txt", encoding="UTF-16")
+  4.2.0> s
+  [1] "?? via R-help"
+  4.2.0> Encoding(s)
+  [1] "UTF-8"
+
+With R-4.1.2 I get
+  > source("Chinese-utf-16.txt", encoding="UTF-16")
+  Error in source("Chinese-utf-16.txt", encoding = "UTF-16") :
+    Chinese-utf-16.txt:1:6: unexpected INCOMPLETE_STRING
+  1: s <- "
+           ^
+  In addition: Warning message:
+  In readLines(file, warn = FALSE) :
+    invalid input found on input connection 'Chinese-utf-16.txt'
+  > source(file("Chinese-utf-16.txt", encoding="UTF-16"))
+  > s
+  [1] "<U+6C38><U+521B> via R-help"
+  > source(file("Chinese-utf-16.txt", encoding="UTF-16"), encoding="UTF-8")
+  > s
+  [1] "?? via R-help"
+  > Encoding(s)
+  [1] "UTF-8"
+  > charToRaw(s)
+   [1] e6 b0 b8 e5 88 9b 20 76 69 61 20 52 2d 68 65 6c 70
+
+R-4.2.0 makes this much easier.
+
+-Bill
+
+On Mon, Apr 25, 2022 at 1:04 AM ?? via R-help <r-help at r-project.org> wrote:
+
+> Garbled characters appear in Chinese annotation when opening program
+> script using RGui (see attached picture). I use a variety of methods have
+> not been solved, I hope to help me solve this problem. Thank you.
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Mon Apr 25 19:52:26 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Mon, 25 Apr 2022 10:52:26 -0700
+Subject: [R] about opening R script Chinese annotation garble problem
+In-Reply-To: <CAHqSRuQRcG1bs4qh487O3Sfz8gX3gXD7WepGtueKOOaN8hHY0Q@mail.gmail.com>
+References: <tencent_82D863BBEAA3B88125F6D1FF41F885529406@qq.com>
+ <CAHqSRuQRcG1bs4qh487O3Sfz8gX3gXD7WepGtueKOOaN8hHY0Q@mail.gmail.com>
+Message-ID: <CAHqSRuRHQ9qgmX1mC7-tEs+FubC0kCragCZW83T4=BKLnUL8fQ@mail.gmail.com>
+
+If your file is encoded as UTF-8 (as most stuff on the internet is, there
+will be no null bytes in the file), then R-4.2.0 on a recent enough version
+of Windows can source() it without mentioning the encoding.
+
+-Bill
+
+On Mon, Apr 25, 2022 at 8:52 AM Bill Dunlap <williamwdunlap at gmail.com>
+wrote:
+
+> The answer depends on the encoding of the file containing the Chinese
+> characters and on the version of R (since you are using Windows).  I copied
+> your subject line into Wordpad and and added some syntax to make a valid R
+> expression
+>   s <- "?? via R-help"
+> I then saved it with the type "Unicode Text Document".  In my version of
+> Wordpad this means UTF-16.  The bytes in the file are
+>   4.2.0> readBin("Chinese-utf-16.txt", what="raw",
+> n=file.size("Chinese-utf-16.txt"))
+>    [1] ff fe 73 00 20 00 3c 00 2d 00 20 00 22 00 38 6c 1b 52
+>   [19] 20 00 76 00 69 00 61 00 20 00 52 00 2d 00 68 00 65 00
+>   [37] 6c 00 70 00 22 00 0d 00 0a 00
+> All the nulls in the file are a hint that this is encoded using UTF-16,
+> not UTF-8.
+>
+> With R-4.2.0 (released a few days ago) I can source the file with
+>   4.2.0> source("Chinese-utf-16.txt", encoding="UTF-16")
+>   4.2.0> s
+>   [1] "?? via R-help"
+>   4.2.0> Encoding(s)
+>   [1] "UTF-8"
+>
+> With R-4.1.2 I get
+>   > source("Chinese-utf-16.txt", encoding="UTF-16")
+>   Error in source("Chinese-utf-16.txt", encoding = "UTF-16") :
+>     Chinese-utf-16.txt:1:6: unexpected INCOMPLETE_STRING
+>   1: s <- "
+>            ^
+>   In addition: Warning message:
+>   In readLines(file, warn = FALSE) :
+>     invalid input found on input connection 'Chinese-utf-16.txt'
+>   > source(file("Chinese-utf-16.txt", encoding="UTF-16"))
+>   > s
+>   [1] "<U+6C38><U+521B> via R-help"
+>   > source(file("Chinese-utf-16.txt", encoding="UTF-16"), encoding="UTF-8")
+>   > s
+>   [1] "?? via R-help"
+>   > Encoding(s)
+>   [1] "UTF-8"
+>   > charToRaw(s)
+>    [1] e6 b0 b8 e5 88 9b 20 76 69 61 20 52 2d 68 65 6c 70
+>
+> R-4.2.0 makes this much easier.
+>
+> -Bill
+>
+> On Mon, Apr 25, 2022 at 1:04 AM ?? via R-help <r-help at r-project.org>
+> wrote:
+>
+>> Garbled characters appear in Chinese annotation when opening program
+>> script using RGui (see attached picture). I use a variety of methods have
+>> not been solved, I hope to help me solve this problem. Thank you.
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
