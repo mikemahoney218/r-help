@@ -1,0 +1,715 @@
+From t@n@@@ @end|ng |rom gm@||@com  Sun May  1 01:22:44 2022
+From: t@n@@@ @end|ng |rom gm@||@com (Bogdan Tanasa)
+Date: Sat, 30 Apr 2022 16:22:44 -0700
+Subject: [R] hdf5 files
+Message-ID: <CA+JEM03JtrYRPstfH_fxp60G-Mgd9fZbTWk7z+BV9-TT6Tbk4w@mail.gmail.com>
+
+Dear all,
+
+is there a way to read rge hd5 files in R without using hdf5r library ?
+
+Thanks,
+
+Bogdan
+
+	[[alternative HTML version deleted]]
+
+
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Sun May  1 14:36:54 2022
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Sun, 1 May 2022 12:36:54 +0000
+Subject: [R] struccchange on zoo time series
+Message-ID: <BL0PR01MB403699823A70BE131E24D30DFAFE9@BL0PR01MB4036.prod.exchangelabs.com>
+
+I am trying to replicate empirical fluctuation process fit (efp) described in the book "Applied Econometrics with R". ?This fit works when data input is an object of class ts, but not when data input is object of class zoo. ?I prefer to use zoo because it provides better housekeeping with dates. ?Is it possible to achieve the fit with zoo?
+
+library(AER)
+library(strucchange)
+
+data(UKDriverDeaths)
+dd <- log(UKDriverDeaths)
+dd.z <- zoo(dd, order.by = as.yearmon(time(dd)))
+dd.z <- merge(dd = dd.z, dd.lag1 = lag(dd.z, k = -1),
+? ? ? ? ? ? ? dd.lag12 = lag(dd.z, k = -12))
+
+# Does not work
+dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = na.trim(dd.z),
+? ? ? ? ? ? ? ?type = "OLS-CUSUM")
+# Error message
+# Error in eval(attr(mt, "variables")[[2]], data, env) : 
+# numeric 'envir' arg not of length one
+
+# Works
+dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = ts(na.trim(dd.z)),
+? ? ? ? ? ? ? ?type = "OLS-CUSUM")
+
+# But time stamps are lost
+plot(dd.ocus)
+# Time indexed from 0 to 180
+
+Thanks,
+Naresh
+
+From er|cjberger @end|ng |rom gm@||@com  Sun May  1 16:18:54 2022
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Sun, 1 May 2022 17:18:54 +0300
+Subject: [R] struccchange on zoo time series
+In-Reply-To: <BL0PR01MB403699823A70BE131E24D30DFAFE9@BL0PR01MB4036.prod.exchangelabs.com>
+References: <BL0PR01MB403699823A70BE131E24D30DFAFE9@BL0PR01MB4036.prod.exchangelabs.com>
+Message-ID: <CAGgJW75mEhw064ixXcr8rWJCvbfE33EOTXkb3gQ1ABYPkitZLA@mail.gmail.com>
+
+Hi Naresh,
+The tsbox package on CRAN -
+https://cran.r-project.org/web/packages/tsbox/index.html - has the
+following description:
+
+tsbox: Class-Agnostic Time Series
+
+Time series toolkit with identical behavior for all time series
+classes: 'ts','xts', 'data.frame', 'data.table', 'tibble', 'zoo',
+'timeSeries', 'tsibble', 'tis' or 'irts'. Also converts reliably
+between these classes.
+
+Hopefully this will provide you the necessary tools to solve your problem.
+
+Good luck,
+Eric
+
+
+
+On Sun, May 1, 2022 at 3:37 PM Naresh Gurbuxani
+<naresh_gurbuxani at hotmail.com> wrote:
+>
+> I am trying to replicate empirical fluctuation process fit (efp) described in the book "Applied Econometrics with R".  This fit works when data input is an object of class ts, but not when data input is object of class zoo.  I prefer to use zoo because it provides better housekeeping with dates.  Is it possible to achieve the fit with zoo?
+>
+> library(AER)
+> library(strucchange)
+>
+> data(UKDriverDeaths)
+> dd <- log(UKDriverDeaths)
+> dd.z <- zoo(dd, order.by = as.yearmon(time(dd)))
+> dd.z <- merge(dd = dd.z, dd.lag1 = lag(dd.z, k = -1),
+>               dd.lag12 = lag(dd.z, k = -12))
+>
+> # Does not work
+> dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = na.trim(dd.z),
+>                type = "OLS-CUSUM")
+> # Error message
+> # Error in eval(attr(mt, "variables")[[2]], data, env) :
+> # numeric 'envir' arg not of length one
+>
+> # Works
+> dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = ts(na.trim(dd.z)),
+>                type = "OLS-CUSUM")
+>
+> # But time stamps are lost
+> plot(dd.ocus)
+> # Time indexed from 0 to 180
+>
+> Thanks,
+> Naresh
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From Ach|m@Ze||e|@ @end|ng |rom u|bk@@c@@t  Sun May  1 16:53:33 2022
+From: Ach|m@Ze||e|@ @end|ng |rom u|bk@@c@@t (Achim Zeileis)
+Date: Sun, 1 May 2022 16:53:33 +0200 (CEST)
+Subject: [R] struccchange on zoo time series
+In-Reply-To: <BL0PR01MB403699823A70BE131E24D30DFAFE9@BL0PR01MB4036.prod.exchangelabs.com>
+References: <BL0PR01MB403699823A70BE131E24D30DFAFE9@BL0PR01MB4036.prod.exchangelabs.com>
+Message-ID: <f9eca0cf-b41f-9e89-7beb-fce16ce9d24@uibk.ac.at>
+
+On Sun, 1 May 2022, Naresh Gurbuxani wrote:
+
+> I am trying to replicate empirical fluctuation process fit (efp) 
+> described in the book "Applied Econometrics with R". ?This fit works 
+> when data input is an object of class ts, but not when data input is 
+> object of class zoo. ?I prefer to use zoo because it provides better 
+> housekeeping with dates. ?Is it possible to achieve the fit with zoo?
+
+The efp() function has been written before zoo was available and is hence 
+confined to ts objects. The gefp() function _g_enenralizes the efp idea 
+and also works with zoo series out of the box - and also with models other 
+than lm()..
+
+Internally gefp always computes a score-based CUSUM process, based on 
+which various structural change tests can be computed that encompass the 
+OLS-based CUSUM test. Typically, I would recommend to compute the supLM 
+test, though, which is more powerful against many structural change 
+alternatives. See ?gefp and the references therein for more details. A 
+worked example is included below.
+
+> library(AER)
+> library(strucchange)
+>
+> data(UKDriverDeaths)
+> dd <- log(UKDriverDeaths)
+> dd.z <- zoo(dd, order.by = as.yearmon(time(dd)))
+> dd.z <- merge(dd = dd.z, dd.lag1 = lag(dd.z, k = -1),
+> ? ? ? ? ? ? ? dd.lag12 = lag(dd.z, k = -12))
+
+Then you can continue with the following for the full score-based CUSUM 
+process and corresponding supLM test with 10% trimming:
+
+dd.scus <- gefp(dd ~ dd.lag1 + dd.lag12, fit = lm, data = dd.z)
+plot(dd.scus, functional = supLM(0.1))
+sctest(dd.scus, functional = supLM(0.1))
+## 	M-fluctuation test
+## 
+## data:  dd.scus
+## f(efp) = 17.128, p-value = 0.01711
+
+The OLS-based CUSUM test is also a special case but then you need to test 
+just the first score without decorrelation:
+
+dd.ocus <- gefp(dd ~ dd.lag1 + dd.lag12, fit = lm, data = dd.z,
+   parm = 1, decorrelate = FALSE)
+plot(dd.ocus)
+sctest(dd.ocus)
+## 	M-fluctuation test
+## 
+## data:  dd.ocus
+## f(efp) = 1.4991, p-value = 0.02234
+
+Compared to the book the results differ slightly due to different degrees 
+of freedom adjustments that are used by default.
+
+Best,
+Achim
+
+> # Does not work
+> dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = na.trim(dd.z),
+> ? ? ? ? ? ? ? ?type = "OLS-CUSUM")
+> # Error message
+> # Error in eval(attr(mt, "variables")[[2]], data, env) :
+> # numeric 'envir' arg not of length one
+>
+> # Works
+> dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = ts(na.trim(dd.z)),
+> ? ? ? ? ? ? ? ?type = "OLS-CUSUM")
+>
+> # But time stamps are lost
+> plot(dd.ocus)
+> # Time indexed from 0 to 180
+>
+> Thanks,
+> Naresh
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+From Ach|m@Ze||e|@ @end|ng |rom u|bk@@c@@t  Sun May  1 16:56:18 2022
+From: Ach|m@Ze||e|@ @end|ng |rom u|bk@@c@@t (Achim Zeileis)
+Date: Sun, 1 May 2022 16:56:18 +0200 (CEST)
+Subject: [R] struccchange on zoo time series
+In-Reply-To: <CAGgJW75mEhw064ixXcr8rWJCvbfE33EOTXkb3gQ1ABYPkitZLA@mail.gmail.com>
+References: <BL0PR01MB403699823A70BE131E24D30DFAFE9@BL0PR01MB4036.prod.exchangelabs.com>
+ <CAGgJW75mEhw064ixXcr8rWJCvbfE33EOTXkb3gQ1ABYPkitZLA@mail.gmail.com>
+Message-ID: <c6deedf4-8631-f2ec-bec-d8abbb8cca5a@uibk.ac.at>
+
+On Sun, 1 May 2022, Eric Berger wrote:
+
+> Hi Naresh,
+> The tsbox package on CRAN -
+> https://cran.r-project.org/web/packages/tsbox/index.html - has the
+> following description:
+>
+> tsbox: Class-Agnostic Time Series
+>
+> Time series toolkit with identical behavior for all time series
+> classes: 'ts','xts', 'data.frame', 'data.table', 'tibble', 'zoo',
+> 'timeSeries', 'tsibble', 'tis' or 'irts'. Also converts reliably
+> between these classes.
+>
+> Hopefully this will provide you the necessary tools to solve your problem.
+
+Not really because the code inside strucchange::efp does not use tsbox but 
+just ts directly.
+
+Best,
+Achim
+
+> Good luck,
+> Eric
+>
+>
+>
+> On Sun, May 1, 2022 at 3:37 PM Naresh Gurbuxani
+> <naresh_gurbuxani at hotmail.com> wrote:
+>>
+>> I am trying to replicate empirical fluctuation process fit (efp) described in the book "Applied Econometrics with R".  This fit works when data input is an object of class ts, but not when data input is object of class zoo.  I prefer to use zoo because it provides better housekeeping with dates.  Is it possible to achieve the fit with zoo?
+>>
+>> library(AER)
+>> library(strucchange)
+>>
+>> data(UKDriverDeaths)
+>> dd <- log(UKDriverDeaths)
+>> dd.z <- zoo(dd, order.by = as.yearmon(time(dd)))
+>> dd.z <- merge(dd = dd.z, dd.lag1 = lag(dd.z, k = -1),
+>>               dd.lag12 = lag(dd.z, k = -12))
+>>
+>> # Does not work
+>> dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = na.trim(dd.z),
+>>                type = "OLS-CUSUM")
+>> # Error message
+>> # Error in eval(attr(mt, "variables")[[2]], data, env) :
+>> # numeric 'envir' arg not of length one
+>>
+>> # Works
+>> dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = ts(na.trim(dd.z)),
+>>                type = "OLS-CUSUM")
+>>
+>> # But time stamps are lost
+>> plot(dd.ocus)
+>> # Time indexed from 0 to 180
+>>
+>> Thanks,
+>> Naresh
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From er|cjberger @end|ng |rom gm@||@com  Sun May  1 16:58:52 2022
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Sun, 1 May 2022 17:58:52 +0300
+Subject: [R] struccchange on zoo time series
+In-Reply-To: <c6deedf4-8631-f2ec-bec-d8abbb8cca5a@uibk.ac.at>
+References: <BL0PR01MB403699823A70BE131E24D30DFAFE9@BL0PR01MB4036.prod.exchangelabs.com>
+ <CAGgJW75mEhw064ixXcr8rWJCvbfE33EOTXkb3gQ1ABYPkitZLA@mail.gmail.com>
+ <c6deedf4-8631-f2ec-bec-d8abbb8cca5a@uibk.ac.at>
+Message-ID: <CAGgJW76hJx-0E6jVJqP5mFapvtm1fTUzBW11GtsbWcZdUF1g_g@mail.gmail.com>
+
+Hi Achim,
+My point was that tsbox (apparently) provides tools to convert zoo -->
+ts which should help the OP.
+
+On Sun, May 1, 2022 at 5:56 PM Achim Zeileis <Achim.Zeileis at uibk.ac.at> wrote:
+>
+> On Sun, 1 May 2022, Eric Berger wrote:
+>
+> > Hi Naresh,
+> > The tsbox package on CRAN -
+> > https://cran.r-project.org/web/packages/tsbox/index.html - has the
+> > following description:
+> >
+> > tsbox: Class-Agnostic Time Series
+> >
+> > Time series toolkit with identical behavior for all time series
+> > classes: 'ts','xts', 'data.frame', 'data.table', 'tibble', 'zoo',
+> > 'timeSeries', 'tsibble', 'tis' or 'irts'. Also converts reliably
+> > between these classes.
+> >
+> > Hopefully this will provide you the necessary tools to solve your problem.
+>
+> Not really because the code inside strucchange::efp does not use tsbox but
+> just ts directly.
+>
+> Best,
+> Achim
+>
+> > Good luck,
+> > Eric
+> >
+> >
+> >
+> > On Sun, May 1, 2022 at 3:37 PM Naresh Gurbuxani
+> > <naresh_gurbuxani at hotmail.com> wrote:
+> >>
+> >> I am trying to replicate empirical fluctuation process fit (efp) described in the book "Applied Econometrics with R".  This fit works when data input is an object of class ts, but not when data input is object of class zoo.  I prefer to use zoo because it provides better housekeeping with dates.  Is it possible to achieve the fit with zoo?
+> >>
+> >> library(AER)
+> >> library(strucchange)
+> >>
+> >> data(UKDriverDeaths)
+> >> dd <- log(UKDriverDeaths)
+> >> dd.z <- zoo(dd, order.by = as.yearmon(time(dd)))
+> >> dd.z <- merge(dd = dd.z, dd.lag1 = lag(dd.z, k = -1),
+> >>               dd.lag12 = lag(dd.z, k = -12))
+> >>
+> >> # Does not work
+> >> dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = na.trim(dd.z),
+> >>                type = "OLS-CUSUM")
+> >> # Error message
+> >> # Error in eval(attr(mt, "variables")[[2]], data, env) :
+> >> # numeric 'envir' arg not of length one
+> >>
+> >> # Works
+> >> dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = ts(na.trim(dd.z)),
+> >>                type = "OLS-CUSUM")
+> >>
+> >> # But time stamps are lost
+> >> plot(dd.ocus)
+> >> # Time indexed from 0 to 180
+> >>
+> >> Thanks,
+> >> Naresh
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> >
+
+
+From Ach|m@Ze||e|@ @end|ng |rom u|bk@@c@@t  Sun May  1 17:58:19 2022
+From: Ach|m@Ze||e|@ @end|ng |rom u|bk@@c@@t (Achim Zeileis)
+Date: Sun, 1 May 2022 17:58:19 +0200 (CEST)
+Subject: [R] struccchange on zoo time series
+In-Reply-To: <CAGgJW76hJx-0E6jVJqP5mFapvtm1fTUzBW11GtsbWcZdUF1g_g@mail.gmail.com>
+References: <BL0PR01MB403699823A70BE131E24D30DFAFE9@BL0PR01MB4036.prod.exchangelabs.com>
+ <CAGgJW75mEhw064ixXcr8rWJCvbfE33EOTXkb3gQ1ABYPkitZLA@mail.gmail.com>
+ <c6deedf4-8631-f2ec-bec-d8abbb8cca5a@uibk.ac.at>
+ <CAGgJW76hJx-0E6jVJqP5mFapvtm1fTUzBW11GtsbWcZdUF1g_g@mail.gmail.com>
+Message-ID: <54d8ec58-e6b2-36d4-a6bc-599a8108580@uibk.ac.at>
+
+On Sun, 1 May 2022, Eric Berger wrote:
+
+> Hi Achim,
+> My point was that tsbox (apparently) provides tools to convert zoo -->
+> ts which should help the OP.
+
+Not necessarily, because ts can only represent regular and plain numeric 
+time indexes whereas zoo (and also xts and tsibble) can represent 
+irregular time indexes of different classes as well. Also, zoo (and also 
+xts and tsibble) can convert to many other time series classes (including 
+ts) directly, there is no need to go via tsbox for that.
+
+In this particular case it would be possible, though, to convert back and 
+forth between ts and zoo because the data is simply monthly. This can be 
+done with as.ts() and as.zoo(), respectively.
+
+dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = as.ts(na.trim(dd.z)),
+                type = "OLS-CUSUM")
+
+
+> On Sun, May 1, 2022 at 5:56 PM Achim Zeileis <Achim.Zeileis at uibk.ac.at> wrote:
+>>
+>> On Sun, 1 May 2022, Eric Berger wrote:
+>>
+>>> Hi Naresh,
+>>> The tsbox package on CRAN -
+>>> https://cran.r-project.org/web/packages/tsbox/index.html - has the
+>>> following description:
+>>>
+>>> tsbox: Class-Agnostic Time Series
+>>>
+>>> Time series toolkit with identical behavior for all time series
+>>> classes: 'ts','xts', 'data.frame', 'data.table', 'tibble', 'zoo',
+>>> 'timeSeries', 'tsibble', 'tis' or 'irts'. Also converts reliably
+>>> between these classes.
+>>>
+>>> Hopefully this will provide you the necessary tools to solve your problem.
+>>
+>> Not really because the code inside strucchange::efp does not use tsbox but
+>> just ts directly.
+>>
+>> Best,
+>> Achim
+>>
+>>> Good luck,
+>>> Eric
+>>>
+>>>
+>>>
+>>> On Sun, May 1, 2022 at 3:37 PM Naresh Gurbuxani
+>>> <naresh_gurbuxani at hotmail.com> wrote:
+>>>>
+>>>> I am trying to replicate empirical fluctuation process fit (efp) described in the book "Applied Econometrics with R".  This fit works when data input is an object of class ts, but not when data input is object of class zoo.  I prefer to use zoo because it provides better housekeeping with dates.  Is it possible to achieve the fit with zoo?
+>>>>
+>>>> library(AER)
+>>>> library(strucchange)
+>>>>
+>>>> data(UKDriverDeaths)
+>>>> dd <- log(UKDriverDeaths)
+>>>> dd.z <- zoo(dd, order.by = as.yearmon(time(dd)))
+>>>> dd.z <- merge(dd = dd.z, dd.lag1 = lag(dd.z, k = -1),
+>>>>               dd.lag12 = lag(dd.z, k = -12))
+>>>>
+>>>> # Does not work
+>>>> dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = na.trim(dd.z),
+>>>>                type = "OLS-CUSUM")
+>>>> # Error message
+>>>> # Error in eval(attr(mt, "variables")[[2]], data, env) :
+>>>> # numeric 'envir' arg not of length one
+>>>>
+>>>> # Works
+>>>> dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = ts(na.trim(dd.z)),
+>>>>                type = "OLS-CUSUM")
+>>>>
+>>>> # But time stamps are lost
+>>>> plot(dd.ocus)
+>>>> # Time indexed from 0 to 180
+>>>>
+>>>> Thanks,
+>>>> Naresh
+>>>> ______________________________________________
+>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>
+
+
+From er|cjberger @end|ng |rom gm@||@com  Sun May  1 18:13:41 2022
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Sun, 1 May 2022 19:13:41 +0300
+Subject: [R] struccchange on zoo time series
+In-Reply-To: <54d8ec58-e6b2-36d4-a6bc-599a8108580@uibk.ac.at>
+References: <BL0PR01MB403699823A70BE131E24D30DFAFE9@BL0PR01MB4036.prod.exchangelabs.com>
+ <CAGgJW75mEhw064ixXcr8rWJCvbfE33EOTXkb3gQ1ABYPkitZLA@mail.gmail.com>
+ <c6deedf4-8631-f2ec-bec-d8abbb8cca5a@uibk.ac.at>
+ <CAGgJW76hJx-0E6jVJqP5mFapvtm1fTUzBW11GtsbWcZdUF1g_g@mail.gmail.com>
+ <54d8ec58-e6b2-36d4-a6bc-599a8108580@uibk.ac.at>
+Message-ID: <CAGgJW75uAd6-oo767_mrjvmO8QYr_B_Uc_9SU9_+pRcEfJeo-w@mail.gmail.com>
+
+Thanks
+
+
+On Sun, May 1, 2022 at 6:58 PM Achim Zeileis <Achim.Zeileis at uibk.ac.at> wrote:
+>
+> On Sun, 1 May 2022, Eric Berger wrote:
+>
+> > Hi Achim,
+> > My point was that tsbox (apparently) provides tools to convert zoo -->
+> > ts which should help the OP.
+>
+> Not necessarily, because ts can only represent regular and plain numeric
+> time indexes whereas zoo (and also xts and tsibble) can represent
+> irregular time indexes of different classes as well. Also, zoo (and also
+> xts and tsibble) can convert to many other time series classes (including
+> ts) directly, there is no need to go via tsbox for that.
+>
+> In this particular case it would be possible, though, to convert back and
+> forth between ts and zoo because the data is simply monthly. This can be
+> done with as.ts() and as.zoo(), respectively.
+>
+> dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = as.ts(na.trim(dd.z)),
+>                 type = "OLS-CUSUM")
+>
+>
+> > On Sun, May 1, 2022 at 5:56 PM Achim Zeileis <Achim.Zeileis at uibk.ac.at> wrote:
+> >>
+> >> On Sun, 1 May 2022, Eric Berger wrote:
+> >>
+> >>> Hi Naresh,
+> >>> The tsbox package on CRAN -
+> >>> https://cran.r-project.org/web/packages/tsbox/index.html - has the
+> >>> following description:
+> >>>
+> >>> tsbox: Class-Agnostic Time Series
+> >>>
+> >>> Time series toolkit with identical behavior for all time series
+> >>> classes: 'ts','xts', 'data.frame', 'data.table', 'tibble', 'zoo',
+> >>> 'timeSeries', 'tsibble', 'tis' or 'irts'. Also converts reliably
+> >>> between these classes.
+> >>>
+> >>> Hopefully this will provide you the necessary tools to solve your problem.
+> >>
+> >> Not really because the code inside strucchange::efp does not use tsbox but
+> >> just ts directly.
+> >>
+> >> Best,
+> >> Achim
+> >>
+> >>> Good luck,
+> >>> Eric
+> >>>
+> >>>
+> >>>
+> >>> On Sun, May 1, 2022 at 3:37 PM Naresh Gurbuxani
+> >>> <naresh_gurbuxani at hotmail.com> wrote:
+> >>>>
+> >>>> I am trying to replicate empirical fluctuation process fit (efp) described in the book "Applied Econometrics with R".  This fit works when data input is an object of class ts, but not when data input is object of class zoo.  I prefer to use zoo because it provides better housekeeping with dates.  Is it possible to achieve the fit with zoo?
+> >>>>
+> >>>> library(AER)
+> >>>> library(strucchange)
+> >>>>
+> >>>> data(UKDriverDeaths)
+> >>>> dd <- log(UKDriverDeaths)
+> >>>> dd.z <- zoo(dd, order.by = as.yearmon(time(dd)))
+> >>>> dd.z <- merge(dd = dd.z, dd.lag1 = lag(dd.z, k = -1),
+> >>>>               dd.lag12 = lag(dd.z, k = -12))
+> >>>>
+> >>>> # Does not work
+> >>>> dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = na.trim(dd.z),
+> >>>>                type = "OLS-CUSUM")
+> >>>> # Error message
+> >>>> # Error in eval(attr(mt, "variables")[[2]], data, env) :
+> >>>> # numeric 'envir' arg not of length one
+> >>>>
+> >>>> # Works
+> >>>> dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = ts(na.trim(dd.z)),
+> >>>>                type = "OLS-CUSUM")
+> >>>>
+> >>>> # But time stamps are lost
+> >>>> plot(dd.ocus)
+> >>>> # Time indexed from 0 to 180
+> >>>>
+> >>>> Thanks,
+> >>>> Naresh
+> >>>> ______________________________________________
+> >>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> >>>> and provide commented, minimal, self-contained, reproducible code.
+> >>>
+> >>> ______________________________________________
+> >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> >>> and provide commented, minimal, self-contained, reproducible code.
+> >>>
+> >
+
+
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Sun May  1 18:23:06 2022
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Sun, 1 May 2022 16:23:06 +0000
+Subject: [R] struccchange on zoo time series
+In-Reply-To: <CAGgJW75uAd6-oo767_mrjvmO8QYr_B_Uc_9SU9_+pRcEfJeo-w@mail.gmail.com>
+References: <BL0PR01MB403699823A70BE131E24D30DFAFE9@BL0PR01MB4036.prod.exchangelabs.com>
+ <CAGgJW75mEhw064ixXcr8rWJCvbfE33EOTXkb3gQ1ABYPkitZLA@mail.gmail.com>
+ <c6deedf4-8631-f2ec-bec-d8abbb8cca5a@uibk.ac.at>
+ <CAGgJW76hJx-0E6jVJqP5mFapvtm1fTUzBW11GtsbWcZdUF1g_g@mail.gmail.com>
+ <54d8ec58-e6b2-36d4-a6bc-599a8108580@uibk.ac.at>
+ <CAGgJW75uAd6-oo767_mrjvmO8QYr_B_Uc_9SU9_+pRcEfJeo-w@mail.gmail.com>
+Message-ID: <BL0PR01MB40364D14F4B9E7F14B432122FAFE9@BL0PR01MB4036.prod.exchangelabs.com>
+
+Thanks all for detailed replies, which go beyond a narrow answer to my question.
+
+Naresh
+
+Sent from my iPhone
+
+> On May 1, 2022, at 12:14 PM, Eric Berger <ericjberger at gmail.com> wrote:
+> 
+> Thanks
+> 
+> 
+>> On Sun, May 1, 2022 at 6:58 PM Achim Zeileis <Achim.Zeileis at uibk.ac.at> wrote:
+>> 
+>>> On Sun, 1 May 2022, Eric Berger wrote:
+>>> 
+>>> Hi Achim,
+>>> My point was that tsbox (apparently) provides tools to convert zoo -->
+>>> ts which should help the OP.
+>> 
+>> Not necessarily, because ts can only represent regular and plain numeric
+>> time indexes whereas zoo (and also xts and tsibble) can represent
+>> irregular time indexes of different classes as well. Also, zoo (and also
+>> xts and tsibble) can convert to many other time series classes (including
+>> ts) directly, there is no need to go via tsbox for that.
+>> 
+>> In this particular case it would be possible, though, to convert back and
+>> forth between ts and zoo because the data is simply monthly. This can be
+>> done with as.ts() and as.zoo(), respectively.
+>> 
+>> dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = as.ts(na.trim(dd.z)),
+>>                type = "OLS-CUSUM")
+>> 
+>> 
+>>>> On Sun, May 1, 2022 at 5:56 PM Achim Zeileis <Achim.Zeileis at uibk.ac.at> wrote:
+>>>> 
+>>>>> On Sun, 1 May 2022, Eric Berger wrote:
+>>>>> 
+>>>>> Hi Naresh,
+>>>>> The tsbox package on CRAN -
+>>>>> https://cran.r-project.org/web/packages/tsbox/index.html - has the
+>>>>> following description:
+>>>>> 
+>>>>> tsbox: Class-Agnostic Time Series
+>>>>> 
+>>>>> Time series toolkit with identical behavior for all time series
+>>>>> classes: 'ts','xts', 'data.frame', 'data.table', 'tibble', 'zoo',
+>>>>> 'timeSeries', 'tsibble', 'tis' or 'irts'. Also converts reliably
+>>>>> between these classes.
+>>>>> 
+>>>>> Hopefully this will provide you the necessary tools to solve your problem.
+>>>> 
+>>>> Not really because the code inside strucchange::efp does not use tsbox but
+>>>> just ts directly.
+>>>> 
+>>>> Best,
+>>>> Achim
+>>>> 
+>>>>> Good luck,
+>>>>> Eric
+>>>>> 
+>>>>> 
+>>>>> 
+>>>>> On Sun, May 1, 2022 at 3:37 PM Naresh Gurbuxani
+>>>>> <naresh_gurbuxani at hotmail.com> wrote:
+>>>>>> 
+>>>>>> I am trying to replicate empirical fluctuation process fit (efp) described in the book "Applied Econometrics with R".  This fit works when data input is an object of class ts, but not when data input is object of class zoo.  I prefer to use zoo because it provides better housekeeping with dates.  Is it possible to achieve the fit with zoo?
+>>>>>> 
+>>>>>> library(AER)
+>>>>>> library(strucchange)
+>>>>>> 
+>>>>>> data(UKDriverDeaths)
+>>>>>> dd <- log(UKDriverDeaths)
+>>>>>> dd.z <- zoo(dd, order.by = as.yearmon(time(dd)))
+>>>>>> dd.z <- merge(dd = dd.z, dd.lag1 = lag(dd.z, k = -1),
+>>>>>>              dd.lag12 = lag(dd.z, k = -12))
+>>>>>> 
+>>>>>> # Does not work
+>>>>>> dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = na.trim(dd.z),
+>>>>>>               type = "OLS-CUSUM")
+>>>>>> # Error message
+>>>>>> # Error in eval(attr(mt, "variables")[[2]], data, env) :
+>>>>>> # numeric 'envir' arg not of length one
+>>>>>> 
+>>>>>> # Works
+>>>>>> dd.ocus <- efp(dd ~ dd.lag1 + dd.lag12, data = ts(na.trim(dd.z)),
+>>>>>>               type = "OLS-CUSUM")
+>>>>>> 
+>>>>>> # But time stamps are lost
+>>>>>> plot(dd.ocus)
+>>>>>> # Time indexed from 0 to 180
+>>>>>> 
+>>>>>> Thanks,
+>>>>>> Naresh
+>>>>>> ______________________________________________
+>>>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>>> 
+>>>>> ______________________________________________
+>>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>>> 
+>>> 
+
+
