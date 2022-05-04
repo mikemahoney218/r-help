@@ -1000,3 +1000,1589 @@ Department of Statistics and        Fax:               319-335-3017
 Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
 
 
+From bgunter@4567 @end|ng |rom gm@||@com  Tue May  3 03:45:40 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Mon, 2 May 2022 18:45:40 -0700
+Subject: [R] Somewhat disconcerting behavior of seq.int()
+Message-ID: <CAGxFJbTpcwho-XxanKdzb4X_U5t-SbbB5LHNCYMz=Vj7ActLWw@mail.gmail.com>
+
+** Disconcerting to me, anyway; perhaps not to others**
+(Apologies if this has been discussed before. I was a bit nonplussed by
+it, but maybe I'm just clueless.) Anyway:
+
+Here are two almost identical versions of the Sieve of Eratosthenes.
+The difference between them is only in the call to seq.int() that is
+highlighted
+
+sieve1 <- function(m){
+   if(m < 2) return(NULL)
+   a <- floor(sqrt(m))
+   pr <- Recall(a)
+####################
+   s <- seq.int(2, to = m) ## Only difference here
+######################
+   for( i in pr) s <- s[as.logical(s %% i)]
+   c(pr,s)
+}
+
+sieve2 <- function(m){
+   if(m < 2) return(NULL)
+   a <- floor(sqrt(m))
+   pr <- Recall(a)
+####################
+   s <- seq.int(2, to = m, by =1) ## Only difference here
+#######################
+   for( i in pr) s <- s[as.logical(s %% i)]
+   c(pr,s)
+}
+
+However, execution time is *quite* different.
+
+library(microbenchmark)
+
+> microbenchmark(l1 <- sieve1(1e5), times =50)
+Unit: milliseconds
+                expr      min       lq     mean  median       uq      max
+ l1 <- sieve1(1e+05) 3.957084 3.997959 4.732045 4.01698 4.184918 7.627751
+ neval
+    50
+
+> microbenchmark(l2 <- sieve2(1e5), times =50)
+Unit: milliseconds
+                expr      min      lq     mean   median       uq      max
+ l2 <- sieve2(1e+05) 681.6209 682.555 683.8279 682.9368 685.2253 687.9464
+ neval
+    50
+
+Now note that:
+> identical(l1, l2)
+[1] FALSE
+
+## Because:
+> str(l1)
+ int [1:9592] 2 3 5 7 11 13 17 19 23 29 ...
+
+> str(l2)
+ num [1:9592] 2 3 5 7 11 13 17 19 23 29 ...
+
+I therefore assume that seq.int(), an internal generic, is dispatching
+to a method that uses integer arithmetic for sieve1 and floating point
+for sieve2. Is this correct? If not, what do I fail to understand? And
+is this indeed the source of the large difference in execution time?
+
+Further, ?seq.int says:
+"The interpretation of the unnamed arguments of seq and seq.int is not
+standard, and it is recommended always to name the arguments when
+programming."
+
+The above suggests that maybe this advice should be qualified, and/or
+adding some comments to the Help file regarding this behavior might be
+useful to na?fs like me.
+
+In case it makes a difference (and it might!):
+
+> sessionInfo()
+R version 4.2.0 (2022-04-22)
+Platform: x86_64-apple-darwin17.0 (64-bit)
+Running under: macOS Monterey 12.3.1
+
+Matrix products: default
+LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+other attached packages:
+[1] microbenchmark_1.4.9
+
+loaded via a namespace (and not attached):
+[1] compiler_4.2.0 tools_4.2.0
+
+
+Thanks for any enlightenment and again apologies if I am plowing old ground.
+
+Best to all,
+
+Bert Gunter
+
+
+From @kw@|mmo @end|ng |rom gm@||@com  Tue May  3 04:00:36 2022
+From: @kw@|mmo @end|ng |rom gm@||@com (Andrew Simmons)
+Date: Mon, 2 May 2022 22:00:36 -0400
+Subject: [R] Somewhat disconcerting behavior of seq.int()
+In-Reply-To: <CAGxFJbTpcwho-XxanKdzb4X_U5t-SbbB5LHNCYMz=Vj7ActLWw@mail.gmail.com>
+References: <CAGxFJbTpcwho-XxanKdzb4X_U5t-SbbB5LHNCYMz=Vj7ActLWw@mail.gmail.com>
+Message-ID: <CAPcHnpS5Lsq5nZe-ZWNM1vfNFep0KKw7BjghdKmfmpgfiCbn8Q@mail.gmail.com>
+
+A sequence where 'from' and 'to' are both integer valued (not necessarily
+class integer) will use R_compact_intrange; the return value is an integer
+vector and is stored with minimal space.
+
+In your case, you specified a 'from', 'to', and 'by'; if all are integer
+class, then the return value is also integer class. I think if 'from' and
+'to' are integer valued and 'by' is integer class, the return value is
+integer class, might want to check that though. In your case, I think
+replacing 'by = 1' with 'by = 1L' will mean the sequences are identical,
+though it may still take longer than not specifying at all.
+
+On Mon, May 2, 2022, 21:46 Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> ** Disconcerting to me, anyway; perhaps not to others**
+> (Apologies if this has been discussed before. I was a bit nonplussed by
+> it, but maybe I'm just clueless.) Anyway:
+>
+> Here are two almost identical versions of the Sieve of Eratosthenes.
+> The difference between them is only in the call to seq.int() that is
+> highlighted
+>
+> sieve1 <- function(m){
+>    if(m < 2) return(NULL)
+>    a <- floor(sqrt(m))
+>    pr <- Recall(a)
+> ####################
+>    s <- seq.int(2, to = m) ## Only difference here
+> ######################
+>    for( i in pr) s <- s[as.logical(s %% i)]
+>    c(pr,s)
+> }
+>
+> sieve2 <- function(m){
+>    if(m < 2) return(NULL)
+>    a <- floor(sqrt(m))
+>    pr <- Recall(a)
+> ####################
+>    s <- seq.int(2, to = m, by =1) ## Only difference here
+> #######################
+>    for( i in pr) s <- s[as.logical(s %% i)]
+>    c(pr,s)
+> }
+>
+> However, execution time is *quite* different.
+>
+> library(microbenchmark)
+>
+> > microbenchmark(l1 <- sieve1(1e5), times =50)
+> Unit: milliseconds
+>                 expr      min       lq     mean  median       uq      max
+>  l1 <- sieve1(1e+05) 3.957084 3.997959 4.732045 4.01698 4.184918 7.627751
+>  neval
+>     50
+>
+> > microbenchmark(l2 <- sieve2(1e5), times =50)
+> Unit: milliseconds
+>                 expr      min      lq     mean   median       uq      max
+>  l2 <- sieve2(1e+05) 681.6209 682.555 683.8279 682.9368 685.2253 687.9464
+>  neval
+>     50
+>
+> Now note that:
+> > identical(l1, l2)
+> [1] FALSE
+>
+> ## Because:
+> > str(l1)
+>  int [1:9592] 2 3 5 7 11 13 17 19 23 29 ...
+>
+> > str(l2)
+>  num [1:9592] 2 3 5 7 11 13 17 19 23 29 ...
+>
+> I therefore assume that seq.int(), an internal generic, is dispatching
+> to a method that uses integer arithmetic for sieve1 and floating point
+> for sieve2. Is this correct? If not, what do I fail to understand? And
+> is this indeed the source of the large difference in execution time?
+>
+> Further, ?seq.int says:
+> "The interpretation of the unnamed arguments of seq and seq.int is not
+> standard, and it is recommended always to name the arguments when
+> programming."
+>
+> The above suggests that maybe this advice should be qualified, and/or
+> adding some comments to the Help file regarding this behavior might be
+> useful to na?fs like me.
+>
+> In case it makes a difference (and it might!):
+>
+> > sessionInfo()
+> R version 4.2.0 (2022-04-22)
+> Platform: x86_64-apple-darwin17.0 (64-bit)
+> Running under: macOS Monterey 12.3.1
+>
+> Matrix products: default
+> LAPACK:
+> /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+>
+> locale:
+> [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+>
+> attached base packages:
+> [1] stats     graphics  grDevices utils     datasets  methods   base
+>
+> other attached packages:
+> [1] microbenchmark_1.4.9
+>
+> loaded via a namespace (and not attached):
+> [1] compiler_4.2.0 tools_4.2.0
+>
+>
+> Thanks for any enlightenment and again apologies if I am plowing old
+> ground.
+>
+> Best to all,
+>
+> Bert Gunter
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue May  3 05:02:16 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Mon, 2 May 2022 20:02:16 -0700
+Subject: [R] Somewhat disconcerting behavior of seq.int()
+In-Reply-To: <CAPcHnpS5Lsq5nZe-ZWNM1vfNFep0KKw7BjghdKmfmpgfiCbn8Q@mail.gmail.com>
+References: <CAGxFJbTpcwho-XxanKdzb4X_U5t-SbbB5LHNCYMz=Vj7ActLWw@mail.gmail.com>
+ <CAPcHnpS5Lsq5nZe-ZWNM1vfNFep0KKw7BjghdKmfmpgfiCbn8Q@mail.gmail.com>
+Message-ID: <CAGxFJbQFGDJkvoRcLEurqAP0pRE9DF1pqvB508fhznQK06afZg@mail.gmail.com>
+
+Thank you Andrew.
+
+My response is: not quite, but you essentially explained it. Just
+replacing "by = 1" by "by = 1L" was not sufficient (I had actually
+tried that). But what I really needed to do was add an explicit cast
+of the sieve2 sequence to integer:
+
+sieve2 <- function(m){
+   if(m < 2) return(NULL)
+   a <- floor(sqrt(m))
+   pr <- Recall(a)
+###################### explicit cast
+   s <- as.integer(seq.int(2L, to = m, by =1)) ## Only difference here
+#####################
+   for( i in pr) s <- s[as.logical(s %% i)]
+   c(pr,s)
+}
+
+> microbenchmark(l1 <- sieve1(1e5), times =50)
+Unit: milliseconds
+                expr      min       lq     mean   median       uq
+ l1 <- sieve1(1e+05) 3.957168 4.001834 4.772071 4.018396 4.538917
+      max neval
+ 8.135334    50
+> microbenchmark(l2 <- sieve2(1e5), times =50)
+Unit: milliseconds
+                expr     min       lq     mean   median       uq   max
+ l2 <- sieve2(1e+05) 3.98475 4.041709 4.805767 4.068167 4.446917 8.422
+ neval
+    50
+> identical(l1,l2)
+[1] TRUE
+> identical(l1,l2)
+[1] TRUE
+
+So it is the %% generic that made the difference in timings in integer
+vs. double. And the Help file does warn about this:
+
+VALUE:
+"seq.int and the default method of seq for numeric arguments return a
+vector of type "integer" or "double": programmers should not rely on
+which."
+
+So I would have to say that it was my error (or failure to pay
+attention, anyway).
+
+Again, thanks for your help on this. It made the difference for me.
+
+Bert
+
+On Mon, May 2, 2022 at 7:00 PM Andrew Simmons <akwsimmo at gmail.com> wrote:
+>
+> A sequence where 'from' and 'to' are both integer valued (not necessarily class integer) will use R_compact_intrange; the return value is an integer vector and is stored with minimal space.
+>
+> In your case, you specified a 'from', 'to', and 'by'; if all are integer class, then the return value is also integer class. I think if 'from' and 'to' are integer valued and 'by' is integer class, the return value is integer class, might want to check that though. In your case, I think replacing 'by = 1' with 'by = 1L' will mean the sequences are identical, though it may still take longer than not specifying at all.
+>
+> On Mon, May 2, 2022, 21:46 Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>>
+>> ** Disconcerting to me, anyway; perhaps not to others**
+>> (Apologies if this has been discussed before. I was a bit nonplussed by
+>> it, but maybe I'm just clueless.) Anyway:
+>>
+>> Here are two almost identical versions of the Sieve of Eratosthenes.
+>> The difference between them is only in the call to seq.int() that is
+>> highlighted
+>>
+>> sieve1 <- function(m){
+>>    if(m < 2) return(NULL)
+>>    a <- floor(sqrt(m))
+>>    pr <- Recall(a)
+>> ####################
+>>    s <- seq.int(2, to = m) ## Only difference here
+>> ######################
+>>    for( i in pr) s <- s[as.logical(s %% i)]
+>>    c(pr,s)
+>> }
+>>
+>> sieve2 <- function(m){
+>>    if(m < 2) return(NULL)
+>>    a <- floor(sqrt(m))
+>>    pr <- Recall(a)
+>> ####################
+>>    s <- seq.int(2, to = m, by =1) ## Only difference here
+>> #######################
+>>    for( i in pr) s <- s[as.logical(s %% i)]
+>>    c(pr,s)
+>> }
+>>
+>> However, execution time is *quite* different.
+>>
+>> library(microbenchmark)
+>>
+>> > microbenchmark(l1 <- sieve1(1e5), times =50)
+>> Unit: milliseconds
+>>                 expr      min       lq     mean  median       uq      max
+>>  l1 <- sieve1(1e+05) 3.957084 3.997959 4.732045 4.01698 4.184918 7.627751
+>>  neval
+>>     50
+>>
+>> > microbenchmark(l2 <- sieve2(1e5), times =50)
+>> Unit: milliseconds
+>>                 expr      min      lq     mean   median       uq      max
+>>  l2 <- sieve2(1e+05) 681.6209 682.555 683.8279 682.9368 685.2253 687.9464
+>>  neval
+>>     50
+>>
+>> Now note that:
+>> > identical(l1, l2)
+>> [1] FALSE
+>>
+>> ## Because:
+>> > str(l1)
+>>  int [1:9592] 2 3 5 7 11 13 17 19 23 29 ...
+>>
+>> > str(l2)
+>>  num [1:9592] 2 3 5 7 11 13 17 19 23 29 ...
+>>
+>> I therefore assume that seq.int(), an internal generic, is dispatching
+>> to a method that uses integer arithmetic for sieve1 and floating point
+>> for sieve2. Is this correct? If not, what do I fail to understand? And
+>> is this indeed the source of the large difference in execution time?
+>>
+>> Further, ?seq.int says:
+>> "The interpretation of the unnamed arguments of seq and seq.int is not
+>> standard, and it is recommended always to name the arguments when
+>> programming."
+>>
+>> The above suggests that maybe this advice should be qualified, and/or
+>> adding some comments to the Help file regarding this behavior might be
+>> useful to na?fs like me.
+>>
+>> In case it makes a difference (and it might!):
+>>
+>> > sessionInfo()
+>> R version 4.2.0 (2022-04-22)
+>> Platform: x86_64-apple-darwin17.0 (64-bit)
+>> Running under: macOS Monterey 12.3.1
+>>
+>> Matrix products: default
+>> LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+>>
+>> locale:
+>> [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+>>
+>> attached base packages:
+>> [1] stats     graphics  grDevices utils     datasets  methods   base
+>>
+>> other attached packages:
+>> [1] microbenchmark_1.4.9
+>>
+>> loaded via a namespace (and not attached):
+>> [1] compiler_4.2.0 tools_4.2.0
+>>
+>>
+>> Thanks for any enlightenment and again apologies if I am plowing old ground.
+>>
+>> Best to all,
+>>
+>> Bert Gunter
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Tue May  3 05:52:56 2022
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Mon, 2 May 2022 22:52:56 -0500 (CDT)
+Subject: [R] [External]  Somewhat disconcerting behavior of seq.int()
+In-Reply-To: <CAGxFJbTpcwho-XxanKdzb4X_U5t-SbbB5LHNCYMz=Vj7ActLWw@mail.gmail.com>
+References: <CAGxFJbTpcwho-XxanKdzb4X_U5t-SbbB5LHNCYMz=Vj7ActLWw@mail.gmail.com>
+Message-ID: <bb29aaeb-39ad-559f-286e-ee9a9894fbd3@uiowa.edu>
+
+Something is very different about your system. On my Linux system I get
+
+> microbenchmark(l1 <- sieve1(1e5), times =50)
+Unit: milliseconds
+                 expr     min       lq     mean   median       uq     max neval
+  l1 <- sieve1(1e+05) 5.04615 5.350576 6.967507 5.787626 7.323502 28.3085    50
+> microbenchmark(l2 <- sieve2(1e5), times =50)
+Unit: milliseconds
+                 expr      min       lq     mean   median      uq      max neval
+  l2 <- sieve2(1e+05) 14.58763 15.79368 17.00738 16.29299 17.0723 30.57338    50
+
+Similar on an Intel Mac.
+
+Best,
+
+luke
+
+On Tue, 3 May 2022, Bert Gunter wrote:
+
+> ** Disconcerting to me, anyway; perhaps not to others**
+> (Apologies if this has been discussed before. I was a bit nonplussed by
+> it, but maybe I'm just clueless.) Anyway:
+>
+> Here are two almost identical versions of the Sieve of Eratosthenes.
+> The difference between them is only in the call to seq.int() that is
+> highlighted
+>
+> sieve1 <- function(m){
+>   if(m < 2) return(NULL)
+>   a <- floor(sqrt(m))
+>   pr <- Recall(a)
+> ####################
+>   s <- seq.int(2, to = m) ## Only difference here
+> ######################
+>   for( i in pr) s <- s[as.logical(s %% i)]
+>   c(pr,s)
+> }
+>
+> sieve2 <- function(m){
+>   if(m < 2) return(NULL)
+>   a <- floor(sqrt(m))
+>   pr <- Recall(a)
+> ####################
+>   s <- seq.int(2, to = m, by =1) ## Only difference here
+> #######################
+>   for( i in pr) s <- s[as.logical(s %% i)]
+>   c(pr,s)
+> }
+>
+> However, execution time is *quite* different.
+>
+> library(microbenchmark)
+>
+>> microbenchmark(l1 <- sieve1(1e5), times =50)
+> Unit: milliseconds
+>                expr      min       lq     mean  median       uq      max
+> l1 <- sieve1(1e+05) 3.957084 3.997959 4.732045 4.01698 4.184918 7.627751
+> neval
+>    50
+>
+>> microbenchmark(l2 <- sieve2(1e5), times =50)
+> Unit: milliseconds
+>                expr      min      lq     mean   median       uq      max
+> l2 <- sieve2(1e+05) 681.6209 682.555 683.8279 682.9368 685.2253 687.9464
+> neval
+>    50
+>
+> Now note that:
+>> identical(l1, l2)
+> [1] FALSE
+>
+> ## Because:
+>> str(l1)
+> int [1:9592] 2 3 5 7 11 13 17 19 23 29 ...
+>
+>> str(l2)
+> num [1:9592] 2 3 5 7 11 13 17 19 23 29 ...
+>
+> I therefore assume that seq.int(), an internal generic, is dispatching
+> to a method that uses integer arithmetic for sieve1 and floating point
+> for sieve2. Is this correct? If not, what do I fail to understand? And
+> is this indeed the source of the large difference in execution time?
+>
+> Further, ?seq.int says:
+> "The interpretation of the unnamed arguments of seq and seq.int is not
+> standard, and it is recommended always to name the arguments when
+> programming."
+>
+> The above suggests that maybe this advice should be qualified, and/or
+> adding some comments to the Help file regarding this behavior might be
+> useful to na?fs like me.
+>
+> In case it makes a difference (and it might!):
+>
+>> sessionInfo()
+> R version 4.2.0 (2022-04-22)
+> Platform: x86_64-apple-darwin17.0 (64-bit)
+> Running under: macOS Monterey 12.3.1
+>
+> Matrix products: default
+> LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+>
+> locale:
+> [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+>
+> attached base packages:
+> [1] stats     graphics  grDevices utils     datasets  methods   base
+>
+> other attached packages:
+> [1] microbenchmark_1.4.9
+>
+> loaded via a namespace (and not attached):
+> [1] compiler_4.2.0 tools_4.2.0
+>
+>
+> Thanks for any enlightenment and again apologies if I am plowing old ground.
+>
+> Best to all,
+>
+> Bert Gunter
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue May  3 06:37:37 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Mon, 2 May 2022 21:37:37 -0700
+Subject: [R] [External]  Somewhat disconcerting behavior of seq.int()
+In-Reply-To: <bb29aaeb-39ad-559f-286e-ee9a9894fbd3@uiowa.edu>
+References: <CAGxFJbTpcwho-XxanKdzb4X_U5t-SbbB5LHNCYMz=Vj7ActLWw@mail.gmail.com>
+ <bb29aaeb-39ad-559f-286e-ee9a9894fbd3@uiowa.edu>
+Message-ID: <CAGxFJbRCVoxU8Cifm=EDMW=b4swn3=XEz0Kn20P4y+kqPa4GMw@mail.gmail.com>
+
+Well, I'm on an M1 Mac, so that is certainly different than either of
+your systems. I installed the precompiled binary, which may also have
+something to do with it. Whether these make a difference I have no
+clue.
+
+However, the fact remains that the Help file *does* warn that the type
+of the seq.int() value is essentially indeterminate, and when I
+explicitly cast it to integer, all is well. So mea culpa.
+
+I will fool around some tomorrow with more careful profiling to see if
+I can learn anything, but the best I say at present is: it is what it
+is. Unless, of course, someone provides an answer before then.
+
+Bert Gunter
+
+
+On Mon, May 2, 2022 at 8:53 PM <luke-tierney at uiowa.edu> wrote:
+>
+> Something is very different about your system. On my Linux system I get
+>
+> > microbenchmark(l1 <- sieve1(1e5), times =50)
+> Unit: milliseconds
+>                  expr     min       lq     mean   median       uq     max neval
+>   l1 <- sieve1(1e+05) 5.04615 5.350576 6.967507 5.787626 7.323502 28.3085    50
+> > microbenchmark(l2 <- sieve2(1e5), times =50)
+> Unit: milliseconds
+>                  expr      min       lq     mean   median      uq      max neval
+>   l2 <- sieve2(1e+05) 14.58763 15.79368 17.00738 16.29299 17.0723 30.57338    50
+>
+> Similar on an Intel Mac.
+>
+> Best,
+>
+> luke
+>
+> On Tue, 3 May 2022, Bert Gunter wrote:
+>
+> > ** Disconcerting to me, anyway; perhaps not to others**
+> > (Apologies if this has been discussed before. I was a bit nonplussed by
+> > it, but maybe I'm just clueless.) Anyway:
+> >
+> > Here are two almost identical versions of the Sieve of Eratosthenes.
+> > The difference between them is only in the call to seq.int() that is
+> > highlighted
+> >
+> > sieve1 <- function(m){
+> >   if(m < 2) return(NULL)
+> >   a <- floor(sqrt(m))
+> >   pr <- Recall(a)
+> > ####################
+> >   s <- seq.int(2, to = m) ## Only difference here
+> > ######################
+> >   for( i in pr) s <- s[as.logical(s %% i)]
+> >   c(pr,s)
+> > }
+> >
+> > sieve2 <- function(m){
+> >   if(m < 2) return(NULL)
+> >   a <- floor(sqrt(m))
+> >   pr <- Recall(a)
+> > ####################
+> >   s <- seq.int(2, to = m, by =1) ## Only difference here
+> > #######################
+> >   for( i in pr) s <- s[as.logical(s %% i)]
+> >   c(pr,s)
+> > }
+> >
+> > However, execution time is *quite* different.
+> >
+> > library(microbenchmark)
+> >
+> >> microbenchmark(l1 <- sieve1(1e5), times =50)
+> > Unit: milliseconds
+> >                expr      min       lq     mean  median       uq      max
+> > l1 <- sieve1(1e+05) 3.957084 3.997959 4.732045 4.01698 4.184918 7.627751
+> > neval
+> >    50
+> >
+> >> microbenchmark(l2 <- sieve2(1e5), times =50)
+> > Unit: milliseconds
+> >                expr      min      lq     mean   median       uq      max
+> > l2 <- sieve2(1e+05) 681.6209 682.555 683.8279 682.9368 685.2253 687.9464
+> > neval
+> >    50
+> >
+> > Now note that:
+> >> identical(l1, l2)
+> > [1] FALSE
+> >
+> > ## Because:
+> >> str(l1)
+> > int [1:9592] 2 3 5 7 11 13 17 19 23 29 ...
+> >
+> >> str(l2)
+> > num [1:9592] 2 3 5 7 11 13 17 19 23 29 ...
+> >
+> > I therefore assume that seq.int(), an internal generic, is dispatching
+> > to a method that uses integer arithmetic for sieve1 and floating point
+> > for sieve2. Is this correct? If not, what do I fail to understand? And
+> > is this indeed the source of the large difference in execution time?
+> >
+> > Further, ?seq.int says:
+> > "The interpretation of the unnamed arguments of seq and seq.int is not
+> > standard, and it is recommended always to name the arguments when
+> > programming."
+> >
+> > The above suggests that maybe this advice should be qualified, and/or
+> > adding some comments to the Help file regarding this behavior might be
+> > useful to na?fs like me.
+> >
+> > In case it makes a difference (and it might!):
+> >
+> >> sessionInfo()
+> > R version 4.2.0 (2022-04-22)
+> > Platform: x86_64-apple-darwin17.0 (64-bit)
+> > Running under: macOS Monterey 12.3.1
+> >
+> > Matrix products: default
+> > LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+> >
+> > locale:
+> > [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+> >
+> > attached base packages:
+> > [1] stats     graphics  grDevices utils     datasets  methods   base
+> >
+> > other attached packages:
+> > [1] microbenchmark_1.4.9
+> >
+> > loaded via a namespace (and not attached):
+> > [1] compiler_4.2.0 tools_4.2.0
+> >
+> >
+> > Thanks for any enlightenment and again apologies if I am plowing old ground.
+> >
+> > Best to all,
+> >
+> > Bert Gunter
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+> --
+> Luke Tierney
+> Ralph E. Wareham Professor of Mathematical Sciences
+> University of Iowa                  Phone:             319-335-3386
+> Department of Statistics and        Fax:               319-335-3017
+>     Actuarial Science
+> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue May  3 07:08:48 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Mon, 2 May 2022 22:08:48 -0700
+Subject: [R] [External]  Somewhat disconcerting behavior of seq.int()
+In-Reply-To: <CAGxFJbRCVoxU8Cifm=EDMW=b4swn3=XEz0Kn20P4y+kqPa4GMw@mail.gmail.com>
+References: <CAGxFJbTpcwho-XxanKdzb4X_U5t-SbbB5LHNCYMz=Vj7ActLWw@mail.gmail.com>
+ <bb29aaeb-39ad-559f-286e-ee9a9894fbd3@uiowa.edu>
+ <CAGxFJbRCVoxU8Cifm=EDMW=b4swn3=XEz0Kn20P4y+kqPa4GMw@mail.gmail.com>
+Message-ID: <CAGxFJbQN3Jz4nQbj5D05R-ksmtwaurYB8jSk_x-EeU4XBjCoNQ@mail.gmail.com>
+
+Just confirming that it's %% in integers vs. doubles on my system:
+
+> s1 <- seq.int(2, 1e5, by =1) ## doubles
+> s2 = as.integer(s1)
+
+##  **Note units below**
+
+> microbenchmark( v1 <- s1 %% 2, times = 50) ## floating point
+Unit: milliseconds
+        expr      min       lq    mean   median       uq      max neval
+ v1 <- s1%%2 69.28204 69.60496 69.8957 69.81379 70.01729 71.36125    50
+
+> microbenchmark( v2 <- s2 %% 2L, times = 50)  ## integer
+Unit: microseconds
+         expr     min      lq     mean   median      uq     max neval
+ v2 <- s2%%2L 166.626 167.042 172.7431 170.5215 177.667 194.334    50
+
+I have no idea why the big difference, but I am pretty sure it's way
+beyond me. Maybe Mac gurus can figure it out. I may post this on
+r-sig-mac to see.
+
+Bert
+
+On Mon, May 2, 2022 at 9:37 PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> Well, I'm on an M1 Mac, so that is certainly different than either of
+> your systems. I installed the precompiled binary, which may also have
+> something to do with it. Whether these make a difference I have no
+> clue.
+>
+> However, the fact remains that the Help file *does* warn that the type
+> of the seq.int() value is essentially indeterminate, and when I
+> explicitly cast it to integer, all is well. So mea culpa.
+>
+> I will fool around some tomorrow with more careful profiling to see if
+> I can learn anything, but the best I say at present is: it is what it
+> is. Unless, of course, someone provides an answer before then.
+>
+> Bert Gunter
+>
+>
+> On Mon, May 2, 2022 at 8:53 PM <luke-tierney at uiowa.edu> wrote:
+> >
+> > Something is very different about your system. On my Linux system I get
+> >
+> > > microbenchmark(l1 <- sieve1(1e5), times =50)
+> > Unit: milliseconds
+> >                  expr     min       lq     mean   median       uq     max neval
+> >   l1 <- sieve1(1e+05) 5.04615 5.350576 6.967507 5.787626 7.323502 28.3085    50
+> > > microbenchmark(l2 <- sieve2(1e5), times =50)
+> > Unit: milliseconds
+> >                  expr      min       lq     mean   median      uq      max neval
+> >   l2 <- sieve2(1e+05) 14.58763 15.79368 17.00738 16.29299 17.0723 30.57338    50
+> >
+> > Similar on an Intel Mac.
+> >
+> > Best,
+> >
+> > luke
+> >
+> > On Tue, 3 May 2022, Bert Gunter wrote:
+> >
+> > > ** Disconcerting to me, anyway; perhaps not to others**
+> > > (Apologies if this has been discussed before. I was a bit nonplussed by
+> > > it, but maybe I'm just clueless.) Anyway:
+> > >
+> > > Here are two almost identical versions of the Sieve of Eratosthenes.
+> > > The difference between them is only in the call to seq.int() that is
+> > > highlighted
+> > >
+> > > sieve1 <- function(m){
+> > >   if(m < 2) return(NULL)
+> > >   a <- floor(sqrt(m))
+> > >   pr <- Recall(a)
+> > > ####################
+> > >   s <- seq.int(2, to = m) ## Only difference here
+> > > ######################
+> > >   for( i in pr) s <- s[as.logical(s %% i)]
+> > >   c(pr,s)
+> > > }
+> > >
+> > > sieve2 <- function(m){
+> > >   if(m < 2) return(NULL)
+> > >   a <- floor(sqrt(m))
+> > >   pr <- Recall(a)
+> > > ####################
+> > >   s <- seq.int(2, to = m, by =1) ## Only difference here
+> > > #######################
+> > >   for( i in pr) s <- s[as.logical(s %% i)]
+> > >   c(pr,s)
+> > > }
+> > >
+> > > However, execution time is *quite* different.
+> > >
+> > > library(microbenchmark)
+> > >
+> > >> microbenchmark(l1 <- sieve1(1e5), times =50)
+> > > Unit: milliseconds
+> > >                expr      min       lq     mean  median       uq      max
+> > > l1 <- sieve1(1e+05) 3.957084 3.997959 4.732045 4.01698 4.184918 7.627751
+> > > neval
+> > >    50
+> > >
+> > >> microbenchmark(l2 <- sieve2(1e5), times =50)
+> > > Unit: milliseconds
+> > >                expr      min      lq     mean   median       uq      max
+> > > l2 <- sieve2(1e+05) 681.6209 682.555 683.8279 682.9368 685.2253 687.9464
+> > > neval
+> > >    50
+> > >
+> > > Now note that:
+> > >> identical(l1, l2)
+> > > [1] FALSE
+> > >
+> > > ## Because:
+> > >> str(l1)
+> > > int [1:9592] 2 3 5 7 11 13 17 19 23 29 ...
+> > >
+> > >> str(l2)
+> > > num [1:9592] 2 3 5 7 11 13 17 19 23 29 ...
+> > >
+> > > I therefore assume that seq.int(), an internal generic, is dispatching
+> > > to a method that uses integer arithmetic for sieve1 and floating point
+> > > for sieve2. Is this correct? If not, what do I fail to understand? And
+> > > is this indeed the source of the large difference in execution time?
+> > >
+> > > Further, ?seq.int says:
+> > > "The interpretation of the unnamed arguments of seq and seq.int is not
+> > > standard, and it is recommended always to name the arguments when
+> > > programming."
+> > >
+> > > The above suggests that maybe this advice should be qualified, and/or
+> > > adding some comments to the Help file regarding this behavior might be
+> > > useful to na?fs like me.
+> > >
+> > > In case it makes a difference (and it might!):
+> > >
+> > >> sessionInfo()
+> > > R version 4.2.0 (2022-04-22)
+> > > Platform: x86_64-apple-darwin17.0 (64-bit)
+> > > Running under: macOS Monterey 12.3.1
+> > >
+> > > Matrix products: default
+> > > LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+> > >
+> > > locale:
+> > > [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+> > >
+> > > attached base packages:
+> > > [1] stats     graphics  grDevices utils     datasets  methods   base
+> > >
+> > > other attached packages:
+> > > [1] microbenchmark_1.4.9
+> > >
+> > > loaded via a namespace (and not attached):
+> > > [1] compiler_4.2.0 tools_4.2.0
+> > >
+> > >
+> > > Thanks for any enlightenment and again apologies if I am plowing old ground.
+> > >
+> > > Best to all,
+> > >
+> > > Bert Gunter
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+> > >
+> >
+> > --
+> > Luke Tierney
+> > Ralph E. Wareham Professor of Mathematical Sciences
+> > University of Iowa                  Phone:             319-335-3386
+> > Department of Statistics and        Fax:               319-335-3017
+> >     Actuarial Science
+> > 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+> > Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+
+From @te|@nML @end|ng |rom co||oc@t|on@@de  Tue May  3 09:25:46 2022
+From: @te|@nML @end|ng |rom co||oc@t|on@@de (Stephanie Evert)
+Date: Tue, 3 May 2022 09:25:46 +0200
+Subject: [R] [External]  Somewhat disconcerting behavior of seq.int()
+In-Reply-To: <CAGxFJbQN3Jz4nQbj5D05R-ksmtwaurYB8jSk_x-EeU4XBjCoNQ@mail.gmail.com>
+References: <CAGxFJbTpcwho-XxanKdzb4X_U5t-SbbB5LHNCYMz=Vj7ActLWw@mail.gmail.com>
+ <bb29aaeb-39ad-559f-286e-ee9a9894fbd3@uiowa.edu>
+ <CAGxFJbRCVoxU8Cifm=EDMW=b4swn3=XEz0Kn20P4y+kqPa4GMw@mail.gmail.com>
+ <CAGxFJbQN3Jz4nQbj5D05R-ksmtwaurYB8jSk_x-EeU4XBjCoNQ@mail.gmail.com>
+Message-ID: <16B71787-EA35-44AF-B280-B9B6D61096BF@collocations.de>
+
+
+
+> On 3 May 2022, at 07:08, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> 
+>> microbenchmark( v1 <- s1 %% 2, times = 50) ## floating point
+> Unit: milliseconds
+>        expr      min       lq    mean   median       uq      max neval
+> v1 <- s1%%2 69.28204 69.60496 69.8957 69.81379 70.01729 71.36125    50
+> 
+>> microbenchmark( v2 <- s2 %% 2L, times = 50)  ## integer
+> Unit: microseconds
+>         expr     min      lq     mean   median      uq     max neval
+> v2 <- s2%%2L 166.626 167.042 172.7431 170.5215 177.667 194.334    50
+> 
+> I have no idea why the big difference, but I am pretty sure it's way
+> beyond me. Maybe Mac gurus can figure it out. I may post this on
+> r-sig-mac to see.
+
+Very likely some inefficiency of the Intel emulator on your M1 mac.  I can imagine it has to do with the substantial differences between Intel and Arm floating-point architectures.
+
+Why not try with a native M1 version of R?
+
+Best,
+Stephanie
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue May  3 16:41:33 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 3 May 2022 07:41:33 -0700
+Subject: [R] [External] Somewhat disconcerting behavior of seq.int()
+In-Reply-To: <16B71787-EA35-44AF-B280-B9B6D61096BF@collocations.de>
+References: <CAGxFJbTpcwho-XxanKdzb4X_U5t-SbbB5LHNCYMz=Vj7ActLWw@mail.gmail.com>
+ <bb29aaeb-39ad-559f-286e-ee9a9894fbd3@uiowa.edu>
+ <CAGxFJbRCVoxU8Cifm=EDMW=b4swn3=XEz0Kn20P4y+kqPa4GMw@mail.gmail.com>
+ <CAGxFJbQN3Jz4nQbj5D05R-ksmtwaurYB8jSk_x-EeU4XBjCoNQ@mail.gmail.com>
+ <16B71787-EA35-44AF-B280-B9B6D61096BF@collocations.de>
+Message-ID: <CAGxFJbT1=bQdvjVNAWwH3QXShiv+Tuks8jObzNeON8kJN3mH5A@mail.gmail.com>
+
+Thank you. But the binary I installed *was* the "Apple silicon arm64
+build, signed and notarized package."
+
+Bert
+
+On Tue, May 3, 2022 at 12:25 AM Stephanie Evert
+<stefanML at collocations.de> wrote:
+>
+>
+>
+> > On 3 May 2022, at 07:08, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> >> microbenchmark( v1 <- s1 %% 2, times = 50) ## floating point
+> > Unit: milliseconds
+> >        expr      min       lq    mean   median       uq      max neval
+> > v1 <- s1%%2 69.28204 69.60496 69.8957 69.81379 70.01729 71.36125    50
+> >
+> >> microbenchmark( v2 <- s2 %% 2L, times = 50)  ## integer
+> > Unit: microseconds
+> >         expr     min      lq     mean   median      uq     max neval
+> > v2 <- s2%%2L 166.626 167.042 172.7431 170.5215 177.667 194.334    50
+> >
+> > I have no idea why the big difference, but I am pretty sure it's way
+> > beyond me. Maybe Mac gurus can figure it out. I may post this on
+> > r-sig-mac to see.
+>
+> Very likely some inefficiency of the Intel emulator on your M1 mac.  I can imagine it has to do with the substantial differences between Intel and Arm floating-point architectures.
+>
+> Why not try with a native M1 version of R?
+>
+> Best,
+> Stephanie
+
+
+From myer9108 @end|ng |rom v@nd@|@@u|d@ho@edu  Mon May  2 19:50:50 2022
+From: myer9108 @end|ng |rom v@nd@|@@u|d@ho@edu (Myers, Cheyanne (myer9108@vandals.uidaho.edu))
+Date: Mon, 2 May 2022 17:50:50 +0000
+Subject: [R] Gas Flux Equation
+Message-ID: <BY5PR04MB6294AA8C5C16908F97F6E4B8F0C19@BY5PR04MB6294.namprd04.prod.outlook.com>
+
+Hello
+
+i was wondering if anyone could send me the equation used for the linear and HMR function in the gasfluxes package.
+
+Thank you,
+
+CHEYANNE MYERS, B. S.
+Graduate Research Associate
+
+College of Agricultural and Life Sciences
+Animal Vet and Food Sciences
+Office: 223G
+Email: myer9108 at vandals.uidaho.edu<mailto:myer9108 at vandals.uidaho.edu>
+208-812-2414 (Cell)
+
+[University of Idaho]
+
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue May  3 17:23:42 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 3 May 2022 08:23:42 -0700
+Subject: [R] [External]  Somewhat disconcerting behavior of seq.int()
+In-Reply-To: <bb29aaeb-39ad-559f-286e-ee9a9894fbd3@uiowa.edu>
+References: <CAGxFJbTpcwho-XxanKdzb4X_U5t-SbbB5LHNCYMz=Vj7ActLWw@mail.gmail.com>
+ <bb29aaeb-39ad-559f-286e-ee9a9894fbd3@uiowa.edu>
+Message-ID: <CAGxFJbRZh_L2B0sMwtQ83LWQgkjTRprVUTiby7QrErG++M6Kcg@mail.gmail.com>
+
+I resolved the problem by reinstalling R. See below. No clue as to
+what may have been the cause (just an ignorant wild guess that is not
+worth sharing).
+
+Thanks again to all for your help.
+Bert
+
+> s1 <- seq.int(2, 1e5, by =1)
+> s2 = as.integer(s1)
+>
+> microbenchmark( v1 <- s1 %% 2, times = 50)
+Unit: microseconds
+        expr     min      lq     mean   median      uq     max neval
+ v1 <- s1%%2 396.839 410.943 433.6234 432.3245 457.068 491.057    50
+> microbenchmark( v2 <- s2 %% 2L, times = 50)
+Unit: microseconds
+         expr     min      lq     mean  median      uq    max neval
+ v2 <- s2%%2L 145.837 150.019 159.5441 162.032 164.943 177.12    50
+
+
+sieve1 <- function(m){
+   if(m < 2) return(NULL)
+   a <- floor(sqrt(m))
+   pr <- Recall(a)
+   s <- seq.int(2, to = m) ## Only difference here
+   for( i in pr) s <- s[as.logical(s %% i)]
+   c(pr,s)
+}
+
+sieve2 <- function(m){
+   if(m < 2) return(NULL)
+   a <- floor(sqrt(m))
+   pr <- Recall(a)
+   s <-seq.int(2L, to = m, by =1) ## Only difference here
+   for( i in pr) s <- s[as.logical(s %% i)]
+   c(pr,s)
+}
+
+> microbenchmark(l1 <- sieve1(1e5), times =50)
+Unit: milliseconds
+                expr     min       lq     mean  median       uq      max
+ l1 <- sieve1(1e+05) 3.69533 4.068307 5.679122 4.28327 7.561425 10.07493
+ neval
+    50
+> microbenchmark(l2 <- sieve2(1e5), times =50)
+Unit: milliseconds
+                expr      min       lq     mean   median       uq
+ l2 <- sieve2(1e+05) 5.367679 6.128229 8.013111 8.940788 9.430246
+      max neval
+ 11.52822    50
+
+On Mon, May 2, 2022 at 8:53 PM <luke-tierney at uiowa.edu> wrote:
+>
+> Something is very different about your system. On my Linux system I get
+>
+> > microbenchmark(l1 <- sieve1(1e5), times =50)
+> Unit: milliseconds
+>                  expr     min       lq     mean   median       uq     max neval
+>   l1 <- sieve1(1e+05) 5.04615 5.350576 6.967507 5.787626 7.323502 28.3085    50
+> > microbenchmark(l2 <- sieve2(1e5), times =50)
+> Unit: milliseconds
+>                  expr      min       lq     mean   median      uq      max neval
+>   l2 <- sieve2(1e+05) 14.58763 15.79368 17.00738 16.29299 17.0723 30.57338    50
+>
+> Similar on an Intel Mac.
+>
+> Best,
+>
+> luke
+>
+> On Tue, 3 May 2022, Bert Gunter wrote:
+>
+> > ** Disconcerting to me, anyway; perhaps not to others**
+> > (Apologies if this has been discussed before. I was a bit nonplussed by
+> > it, but maybe I'm just clueless.) Anyway:
+> >
+> > Here are two almost identical versions of the Sieve of Eratosthenes.
+> > The difference between them is only in the call to seq.int() that is
+> > highlighted
+> >
+> > sieve1 <- function(m){
+> >   if(m < 2) return(NULL)
+> >   a <- floor(sqrt(m))
+> >   pr <- Recall(a)
+> > ####################
+> >   s <- seq.int(2, to = m) ## Only difference here
+> > ######################
+> >   for( i in pr) s <- s[as.logical(s %% i)]
+> >   c(pr,s)
+> > }
+> >
+> > sieve2 <- function(m){
+> >   if(m < 2) return(NULL)
+> >   a <- floor(sqrt(m))
+> >   pr <- Recall(a)
+> > ####################
+> >   s <- seq.int(2, to = m, by =1) ## Only difference here
+> > #######################
+> >   for( i in pr) s <- s[as.logical(s %% i)]
+> >   c(pr,s)
+> > }
+> >
+> > However, execution time is *quite* different.
+> >
+> > library(microbenchmark)
+> >
+> >> microbenchmark(l1 <- sieve1(1e5), times =50)
+> > Unit: milliseconds
+> >                expr      min       lq     mean  median       uq      max
+> > l1 <- sieve1(1e+05) 3.957084 3.997959 4.732045 4.01698 4.184918 7.627751
+> > neval
+> >    50
+> >
+> >> microbenchmark(l2 <- sieve2(1e5), times =50)
+> > Unit: milliseconds
+> >                expr      min      lq     mean   median       uq      max
+> > l2 <- sieve2(1e+05) 681.6209 682.555 683.8279 682.9368 685.2253 687.9464
+> > neval
+> >    50
+> >
+> > Now note that:
+> >> identical(l1, l2)
+> > [1] FALSE
+> >
+> > ## Because:
+> >> str(l1)
+> > int [1:9592] 2 3 5 7 11 13 17 19 23 29 ...
+> >
+> >> str(l2)
+> > num [1:9592] 2 3 5 7 11 13 17 19 23 29 ...
+> >
+> > I therefore assume that seq.int(), an internal generic, is dispatching
+> > to a method that uses integer arithmetic for sieve1 and floating point
+> > for sieve2. Is this correct? If not, what do I fail to understand? And
+> > is this indeed the source of the large difference in execution time?
+> >
+> > Further, ?seq.int says:
+> > "The interpretation of the unnamed arguments of seq and seq.int is not
+> > standard, and it is recommended always to name the arguments when
+> > programming."
+> >
+> > The above suggests that maybe this advice should be qualified, and/or
+> > adding some comments to the Help file regarding this behavior might be
+> > useful to na?fs like me.
+> >
+> > In case it makes a difference (and it might!):
+> >
+> >> sessionInfo()
+> > R version 4.2.0 (2022-04-22)
+> > Platform: x86_64-apple-darwin17.0 (64-bit)
+> > Running under: macOS Monterey 12.3.1
+> >
+> > Matrix products: default
+> > LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+> >
+> > locale:
+> > [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+> >
+> > attached base packages:
+> > [1] stats     graphics  grDevices utils     datasets  methods   base
+> >
+> > other attached packages:
+> > [1] microbenchmark_1.4.9
+> >
+> > loaded via a namespace (and not attached):
+> > [1] compiler_4.2.0 tools_4.2.0
+> >
+> >
+> > Thanks for any enlightenment and again apologies if I am plowing old ground.
+> >
+> > Best to all,
+> >
+> > Bert Gunter
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+> --
+> Luke Tierney
+> Ralph E. Wareham Professor of Mathematical Sciences
+> University of Iowa                  Phone:             319-335-3386
+> Department of Statistics and        Fax:               319-335-3017
+>     Actuarial Science
+> 241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+> Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Tue May  3 17:29:15 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 03 May 2022 08:29:15 -0700
+Subject: [R] Gas Flux Equation
+In-Reply-To: <BY5PR04MB6294AA8C5C16908F97F6E4B8F0C19@BY5PR04MB6294.namprd04.prod.outlook.com>
+References: <BY5PR04MB6294AA8C5C16908F97F6E4B8F0C19@BY5PR04MB6294.namprd04.prod.outlook.com>
+Message-ID: <59FE3E7D-9F31-4031-9A6A-E36AA95C57EB@dcn.davis.ca.us>
+
+Unlikely, but you can download the source file for the package and read it for yourself if it is not in the help file.
+
+On May 2, 2022 10:50:50 AM PDT, "Myers, Cheyanne (myer9108--- via R-help" <r-help at r-project.org> wrote:
+>Hello
+>
+>i was wondering if anyone could send me the equation used for the linear and HMR function in the gasfluxes package.
+>
+>Thank you,
+>
+>CHEYANNE MYERS, B. S.
+>Graduate Research Associate
+>
+>College of Agricultural and Life Sciences
+>Animal Vet and Food Sciences
+>Office: 223G
+>Email: myer9108 at vandals.uidaho.edu<mailto:myer9108 at vandals.uidaho.edu>
+>208-812-2414 (Cell)
+>
+>[University of Idaho]
+>
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue May  3 17:29:46 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 3 May 2022 08:29:46 -0700
+Subject: [R] Gas Flux Equation
+In-Reply-To: <BY5PR04MB6294AA8C5C16908F97F6E4B8F0C19@BY5PR04MB6294.namprd04.prod.outlook.com>
+References: <BY5PR04MB6294AA8C5C16908F97F6E4B8F0C19@BY5PR04MB6294.namprd04.prod.outlook.com>
+Message-ID: <CAGxFJbSajUvgbYuZV_U9Q=YA2MNkvUm1Ra1cM5Y9xv0VGvfJFA@mail.gmail.com>
+
+?HMR.fit appeared to contain (at least part of) what you asked for.
+Have you checked the package documentation, including the package
+vignette?
+
+Bert Gunter
+
+"The trouble with having an open mind is that people keep coming along
+and sticking things into it."
+-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+
+On Tue, May 3, 2022 at 8:15 AM Myers, Cheyanne (myer9108--- via R-help
+<r-help at r-project.org> wrote:
+>
+> Hello
+>
+> i was wondering if anyone could send me the equation used for the linear and HMR function in the gasfluxes package.
+>
+> Thank you,
+>
+> CHEYANNE MYERS, B. S.
+> Graduate Research Associate
+>
+> College of Agricultural and Life Sciences
+> Animal Vet and Food Sciences
+> Office: 223G
+> Email: myer9108 at vandals.uidaho.edu<mailto:myer9108 at vandals.uidaho.edu>
+> 208-812-2414 (Cell)
+>
+> [University of Idaho]
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @v|gro@@ @end|ng |rom ver|zon@net  Tue May  3 17:46:38 2022
+From: @v|gro@@ @end|ng |rom ver|zon@net (Avi Gross)
+Date: Tue, 3 May 2022 15:46:38 +0000 (UTC)
+Subject: [R] [External] Somewhat disconcerting behavior of seq.int()
+In-Reply-To: <CAGxFJbT1=bQdvjVNAWwH3QXShiv+Tuks8jObzNeON8kJN3mH5A@mail.gmail.com>
+References: <CAGxFJbTpcwho-XxanKdzb4X_U5t-SbbB5LHNCYMz=Vj7ActLWw@mail.gmail.com>
+ <bb29aaeb-39ad-559f-286e-ee9a9894fbd3@uiowa.edu>
+ <CAGxFJbRCVoxU8Cifm=EDMW=b4swn3=XEz0Kn20P4y+kqPa4GMw@mail.gmail.com>
+ <CAGxFJbQN3Jz4nQbj5D05R-ksmtwaurYB8jSk_x-EeU4XBjCoNQ@mail.gmail.com>
+ <16B71787-EA35-44AF-B280-B9B6D61096BF@collocations.de>
+ <CAGxFJbT1=bQdvjVNAWwH3QXShiv+Tuks8jObzNeON8kJN3mH5A@mail.gmail.com>
+Message-ID: <1496634189.2231752.1651592798084@mail.yahoo.com>
+
+I ahve no comment on what version of the software on what machine architecture might cause the issue?mentioned with differences in speed.
+I have a more general question about increments.
+The issue here is about creating a sequence starting at some value and ending no later than?another value with an optional step size for the increment that by default is exactly 1.
+So how would you normally do this and does it matter?
+In some languages like C, the increment can be done many ways including val++, or?val += 1, or val = val +1 ...
+Those could produce identical code or different code. The compiler may optimize it or?go and evaluate things twice at times. You might have hardware that contains a registerthat has a rapid increment by 1 instruction built in but not for a decrement by one, let alone?increment by 12.?
+And as has been discussed here, data types of various size ints (or float representations?of an integer) may need all kinds of conversions to operate on the same playing field. Who?hasn't used a language where a boolean value can be treated like a zero or a one but stored?compactly and yet if it is added to a large integer, needs some conversions?
+How many assumptions can we really make about how someone wrote a function we use??Is it possible that the programmer for something like seq.int() decided to optimize their code.perhaps written in a dialect of C, so that when the default for "by=" is not mentioned, it increments?using val++ while if it is specified even as "by=1" it switches to incrementing using something?like "val = val + by" which may turn out to be slower?
+I end by saying I am NOT talking about the complaint here as it seems likely to be specific?to their setup. But more globally, it is possible that choices in how something is programmed?can affect the outcome and assuming it was done the way you would is not always?warranted. Languages that are more flexible, such as interpreted languages that allow?many kinds of polymorphism can be very nice but with lots of overhead as underneath it?all, the deeper programming levels require precision and for each part to be exactly what fits?at that point. You can choose to store your numbers in various size containers, but at some level?they tend to e unpacked and converted before being handed to something in software or hardware?that expects EXACTLY one way. You may save on storage but sacrifice speed or other things.
+
+
+
+-----Original Message-----
+From: Bert Gunter <bgunter.4567 at gmail.com>
+To: Stephanie Evert <stefanML at collocations.de>
+Cc: R-help Mailing List <R-help at r-project.org>
+Sent: Tue, May 3, 2022 10:41 am
+Subject: Re: [R] [External] Somewhat disconcerting behavior of seq.int()
+
+Thank you. But the binary I installed *was* the "Apple silicon arm64
+build, signed and notarized package."
+
+Bert
+
+On Tue, May 3, 2022 at 12:25 AM Stephanie Evert
+<stefanML at collocations.de> wrote:
+>
+>
+>
+> > On 3 May 2022, at 07:08, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> >> microbenchmark( v1 <- s1 %% 2, times = 50) ## floating point
+> > Unit: milliseconds
+> >? ? ? ? expr? ? ? min? ? ? lq? ? mean? median? ? ? uq? ? ? max neval
+> > v1 <- s1%%2 69.28204 69.60496 69.8957 69.81379 70.01729 71.36125? ? 50
+> >
+> >> microbenchmark( v2 <- s2 %% 2L, times = 50)? ## integer
+> > Unit: microseconds
+> >? ? ? ? expr? ? min? ? ? lq? ? mean? median? ? ? uq? ? max neval
+> > v2 <- s2%%2L 166.626 167.042 172.7431 170.5215 177.667 194.334? ? 50
+> >
+> > I have no idea why the big difference, but I am pretty sure it's way
+> > beyond me. Maybe Mac gurus can figure it out. I may post this on
+> > r-sig-mac to see.
+>
+> Very likely some inefficiency of the Intel emulator on your M1 mac.? I can imagine it has to do with the substantial differences between Intel and Arm floating-point architectures.
+>
+> Why not try with a native M1 version of R?
+>
+> Best,
+> Stephanie
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From tebert @end|ng |rom u||@edu  Tue May  3 18:16:55 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Tue, 3 May 2022 16:16:55 +0000
+Subject: [R] [External] Somewhat disconcerting behavior of seq.int()
+In-Reply-To: <1496634189.2231752.1651592798084@mail.yahoo.com>
+References: <CAGxFJbTpcwho-XxanKdzb4X_U5t-SbbB5LHNCYMz=Vj7ActLWw@mail.gmail.com>
+ <bb29aaeb-39ad-559f-286e-ee9a9894fbd3@uiowa.edu>
+ <CAGxFJbRCVoxU8Cifm=EDMW=b4swn3=XEz0Kn20P4y+kqPa4GMw@mail.gmail.com>
+ <CAGxFJbQN3Jz4nQbj5D05R-ksmtwaurYB8jSk_x-EeU4XBjCoNQ@mail.gmail.com>
+ <16B71787-EA35-44AF-B280-B9B6D61096BF@collocations.de>
+ <CAGxFJbT1=bQdvjVNAWwH3QXShiv+Tuks8jObzNeON8kJN3mH5A@mail.gmail.com>
+ <1496634189.2231752.1651592798084@mail.yahoo.com>
+Message-ID: <BN6PR2201MB155318D12015AE3BC1E2F9F2CFC09@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+microbenchmark(sieve1(1e5),sieve2(1e5), times =50)
+
+Unit: milliseconds
+                expr       min               lq                  mean            median      uq                  max          neval cld
+ sieve1(1e+05)  6.863301     7.259901    10.89202      10.6819      13.7993       18.3648          50  a 
+ sieve2(1e+05) 22.996701 28.284901     32.54760      30.1501      31.0805      166.4092        50   b
+
+The difference is small but significant.
+
+By setting "by" you are executing some different piece of code regardless of whether the step size equals the default. I tried by = TRUE, by=1L, and by=1.0 but all of those variants gave non-significant differences in execution time even with times=500.
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Avi Gross via R-help
+Sent: Tuesday, May 3, 2022 11:47 AM
+Cc: R-help at r-project.org
+Subject: Re: [R] [External] Somewhat disconcerting behavior of seq.int()
+
+[External Email]
+
+I ahve no comment on what version of the software on what machine architecture might cause the issue mentioned with differences in speed.
+I have a more general question about increments.
+The issue here is about creating a sequence starting at some value and ending no later than another value with an optional step size for the increment that by default is exactly 1.
+So how would you normally do this and does it matter?
+In some languages like C, the increment can be done many ways including val++, or val += 1, or val = val +1 ...
+Those could produce identical code or different code. The compiler may optimize it or go and evaluate things twice at times. You might have hardware that contains a registerthat has a rapid increment by 1 instruction built in but not for a decrement by one, let alone increment by 12.
+And as has been discussed here, data types of various size ints (or float representations of an integer) may need all kinds of conversions to operate on the same playing field. Who hasn't used a language where a boolean value can be treated like a zero or a one but stored compactly and yet if it is added to a large integer, needs some conversions?
+How many assumptions can we really make about how someone wrote a function we use? Is it possible that the programmer for something like seq.int() decided to optimize their code.perhaps written in a dialect of C, so that when the default for "by=" is not mentioned, it increments using val++ while if it is specified even as "by=1" it switches to incrementing using something like "val = val + by" which may turn out to be slower?
+I end by saying I am NOT talking about the complaint here as it seems likely to be specific to their setup. But more globally, it is possible that choices in how something is programmed can affect the outcome and assuming it was done the way you would is not always warranted. Languages that are more flexible, such as interpreted languages that allow many kinds of polymorphism can be very nice but with lots of overhead as underneath it all, the deeper programming levels require precision and for each part to be exactly what fits at that point. You can choose to store your numbers in various size containers, but at some level they tend to e unpacked and converted before being handed to something in software or hardware that expects EXACTLY one way. You may save on storage but sacrifice speed or other things.
+
+
+
+-----Original Message-----
+From: Bert Gunter <bgunter.4567 at gmail.com>
+To: Stephanie Evert <stefanML at collocations.de>
+Cc: R-help Mailing List <R-help at r-project.org>
+Sent: Tue, May 3, 2022 10:41 am
+Subject: Re: [R] [External] Somewhat disconcerting behavior of seq.int()
+
+Thank you. But the binary I installed *was* the "Apple silicon arm64 build, signed and notarized package."
+
+Bert
+
+On Tue, May 3, 2022 at 12:25 AM Stephanie Evert <stefanML at collocations.de> wrote:
+>
+>
+>
+> > On 3 May 2022, at 07:08, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> >> microbenchmark( v1 <- s1 %% 2, times = 50) ## floating point
+> > Unit: milliseconds
+> >?       expr      min      lq    mean  median      uq      max neval
+> > v1 <- s1%%2 69.28204 69.60496 69.8957 69.81379 70.01729 71.36125    50
+> >
+> >> microbenchmark( v2 <- s2 %% 2L, times = 50)  ## integer
+> > Unit: microseconds
+> >?       expr    min      lq    mean  median      uq    max neval
+> > v2 <- s2%%2L 166.626 167.042 172.7431 170.5215 177.667 194.334    50
+> >
+> > I have no idea why the big difference, but I am pretty sure it's way 
+> > beyond me. Maybe Mac gurus can figure it out. I may post this on 
+> > r-sig-mac to see.
+>
+> Very likely some inefficiency of the Intel emulator on your M1 mac.  I can imagine it has to do with the substantial differences between Intel and Arm floating-point architectures.
+>
+> Why not try with a native M1 version of R?
+>
+> Best,
+> Stephanie
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=GcWRKLnAFuhomCgVbp6K_6w4IZ6FKDQtwH9ziOpgA35oOVWpYhUruurscWYNqP1p&s=IV_pvMX6BFzDQ6XLe--bqFKiyaklMFk0vwnmDDVc42k&e=
+PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=GcWRKLnAFuhomCgVbp6K_6w4IZ6FKDQtwH9ziOpgA35oOVWpYhUruurscWYNqP1p&s=DMG-KdLD8dCjjVX1iizZc-FiM8Cn8i1D-MwKt26sBNo&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=GcWRKLnAFuhomCgVbp6K_6w4IZ6FKDQtwH9ziOpgA35oOVWpYhUruurscWYNqP1p&s=IV_pvMX6BFzDQ6XLe--bqFKiyaklMFk0vwnmDDVc42k&e=
+PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=GcWRKLnAFuhomCgVbp6K_6w4IZ6FKDQtwH9ziOpgA35oOVWpYhUruurscWYNqP1p&s=DMG-KdLD8dCjjVX1iizZc-FiM8Cn8i1D-MwKt26sBNo&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+From c@r|o-g|ov@nn|@c@m@rd@ @end|ng |rom |ned@|r  Tue May  3 22:40:27 2022
+From: c@r|o-g|ov@nn|@c@m@rd@ @end|ng |rom |ned@|r (CAMARDA Carlo Giovanni)
+Date: Tue, 3 May 2022 22:40:27 +0200 (CEST)
+Subject: [R] hessian in solnp
+In-Reply-To: <20220428133000.410a9817@arachnoid>
+References: <2048420867.20259846.1651097765379.JavaMail.zimbra@ined.fr>
+ <20220428133000.410a9817@arachnoid>
+Message-ID: <938661721.21603563.1651610427080.JavaMail.zimbra@ined.fr>
+
+Thanks. Yes, there is a Lagrange multiplier (though really small for the example). However, AFAIK the hessian is the square matrix of second-order partial derivatives and, given the simple constraint in the example, the second (partial) derivatives of the lagrangian function should simplify to the second (partial) derivatives of the loss function. Or do I miss something? Moreover, I would expect smaller standard errors of the estimated parameters when additional constraints are included, and it is not the case in the given example. 
+
+
+De: "Ivan Krylov" <krylov.r00t at gmail.com> 
+?: "CAMARDA Carlo Giovanni via R-help" <r-help at r-project.org> 
+Cc: "Carlo Giovanni Camarda" <carlo-giovanni.camarda at ined.fr> 
+Envoy?: Jeudi 28 Avril 2022 06:30:00 
+Objet: Re: [R] hessian in solnp 
+
+? Thu, 28 Apr 2022 00:16:05 +0200 (CEST) 
+CAMARDA Carlo Giovanni via R-help <r-help at r-project.org> ?????: 
+
+> when a constraint is added, hessian matrix is obviously changing, but 
+> in a way I don't understand. 
+
+Isn't it the point of augmented Lagrange multiplier, to solve the 
+constrained optimisation problem by modifying the loss function and 
+optimising the result in an unconstrained manner? Apologies if I 
+misunderstood your question. 
+
+Starting on 
+<https://github.com/cran/Rsolnp/blob/4b56bb5cd7c5d1096d1ba2f3946df7afa9af4201/R/subnp.R#L282>, 
+we can see how the functions are called: both the loss and the 
+constraint function are concatenated into the `obm` vector (if there's 
+no constraint, the function returns NULL, which is eaten by 
+concatenation), which form the vectors `g` (seems to be the gradient) 
+and `p`, which, in turn, form the matrix `hessv`. 
+
+My reading of the code could be wrong (and so could be my understanding 
+of augmented Lagrangian methods). Contacting maintainer('Rsolnp') could 
+be an option; maybe there's some documentation for the original MATLAB 
+version of the code at <https://web.stanford.edu/~yyye/Col.html>? 
+
+-- 
+Best regards, 
+Ivan 
+
+
+	[[alternative HTML version deleted]]
+
+
+From jerem|eju@te @end|ng |rom gm@||@com  Tue May  3 23:49:06 2022
+From: jerem|eju@te @end|ng |rom gm@||@com (Jeremie Juste)
+Date: Tue, 03 May 2022 23:49:06 +0200
+Subject: [R] customizing edit.data.frame
+In-Reply-To: <e1c4187d9f774aed8aacd27a8eb6022e@SRVEXCHCM1302.precheza.cz>
+ (PIKAL Petr's message of "Mon, 2 May 2022 08:26:01 +0000")
+References: <87zgk2oq0p.fsf@gmail.com>
+ <e1c4187d9f774aed8aacd27a8eb6022e@SRVEXCHCM1302.precheza.cz>
+Message-ID: <877d7270dp.fsf@gmail.com>
+
+Hello Petr
+On Monday,  2 May 2022 at 08:26, PIKAL Petr wrote:
+> I do not have much experience with Linux, Rstudio and ESS, but you can
+> customise R startup by .Rprofile.site .Rconsole files which are situated in
+> /etc directory of your installation
+
+Many thanks for the lead.
+modifying /etc/.Rconsole, did the job, although I admit that I had to
+use the modify the preferences in detault R-GUI on windows to find the right variable names.
+
+If anyone else finds the the red grid of edit(data.frame())
+difficult to use, the following modification might be handy. :-)
+
+## Colours for console and pager(s)
+
+background = white
+normaltext = navy
+usertext = black
+pagerbg = white
+pagertext = navy
+highlight = DarkRed
+dataeditbg = white
+dataedittext = navy
+dataedituser = gray59
+editorbg = white
+editortext = black
+
+
+And I confirm that the above work regardless of the client ESS,RStudio,
+R-Gui, on windows.
+
+Best regards,
+Jeremie
+
+
