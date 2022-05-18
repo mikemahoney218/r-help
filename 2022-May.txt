@@ -10528,3 +10528,457 @@ Rui Barradas
 >>> and provide commented, minimal, self-contained, reproducible code.
 
 
+From petr@p|k@| @end|ng |rom prechez@@cz  Tue May 17 08:23:30 2022
+From: petr@p|k@| @end|ng |rom prechez@@cz (PIKAL Petr)
+Date: Tue, 17 May 2022 06:23:30 +0000
+Subject: [R] ggplot pointrange from other df and missing legend
+In-Reply-To: <61a031ba-8dc5-9d5b-3daa-34a84cb3c8ce@sapo.pt>
+References: <df52d73b10214a46aa105551bf4106bf@SRVEXCHCM1302.precheza.cz>
+ <f51ba422-e33f-1770-5790-1326c5ac42eb@sapo.pt>
+ <230dd7ebc105475f8d02ae4b4801e924@SRVEXCHCM1302.precheza.cz>
+ <61a031ba-8dc5-9d5b-3daa-34a84cb3c8ce@sapo.pt>
+Message-ID: <ccf50fce42b3428fab6fdedb1bdbee08@SRVEXCHCM1302.precheza.cz>
+
+Hallo Rui
+
+Yes, close to. But after some slight changes I got the figure I like.
+
+- in geom_pointrange I used only black
+- commented scale_shape_manual as it is not needed anymore
+- in scale_colour_manual I used values 1 for black colour and labels NULL to supress "black" in measured label
+
+and the plot has all parts as expected.
+
+It is probably due to fact that I used mapping of shape in aesthetics in my original code using one data frame. When I added this aesthetic mapping to my code with two data frames it worked. I learned that first I need to use mapping in aesthetics and then I can to modify it by scale_whatever_manual.
+
+Thank you very much for that lesson. 
+
+Best regards
+Petr
+
+Expected plot, data in two data frames
+
+ggplot() +
+   geom_col(
+     data=test,
+     aes(x=Sample, y=value, fill=SSAtype),
+     position="dodge"
+   ) +
+   geom_pointrange(
+     data=test.ag,
+     aes(x=Sample, y=avg, ymin=avg-odch, ymax=avg+odch, colour="black"),
+     size = 1
+   ) +
+   scale_fill_manual(
+     values=tablePal,
+     name="Calculation\n performed\n according to",
+     labels=c("bla", "blabla")
+   ) +
+   guides(fill = guide_legend(override.aes = list(shape = NA))) +
+#   scale_shape_manual(name = "Measured", values = 19, labels = NULL) +
+   scale_color_manual(name= "Measured", values=1, labels=NULL)
+
+> -----Original Message-----
+> From: Rui Barradas <ruipbarradas at sapo.pt>
+> Sent: Monday, May 16, 2022 5:33 PM
+> To: PIKAL Petr <petr.pikal at precheza.cz>; r-help at r-project.org
+> Subject: Re: [R] ggplot pointrange from other df and missing legend
+> 
+> Hello,
+> 
+> OK, now I understand the problem better. What is the variable defining the
+> points colors? Without a mapping to an aesthetic, there will be no legend. In
+> what follows I map color = Sample and the legend shows up.
+> Then scale_color_manual can change the colors.
+> 
+> Is this it?
+> 
+> 
+> palette("Tableau 10")
+> tablePal <- palette()
+> 
+> ggplot() +
+>    geom_col(
+>      data=test,
+>      aes(x=Sample, y=value, fill=SSAtype),
+>      position="dodge"
+>    ) +
+>    geom_pointrange(
+>      data=test.ag,
+>      aes(x=Sample, y=avg, ymin=avg-odch, ymax=avg+odch, color = Sample),
+>      size = 2
+>    ) +
+>    scale_fill_manual(
+>      values=tablePal,
+>      name="Calculation\n performed\n according to",
+>      labels=c("bla", "blabla")
+>    ) +
+>    guides(fill = guide_legend(override.aes = list(shape = NA))) +
+>    scale_shape_manual(name = "Measured", values = 19, labels = NULL) +
+>    scale_color_manual(values = tablePal[3:5])
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> 
+> ?s 13:21 de 16/05/2022, PIKAL Petr escreveu:
+> > Hallo Rui
+> >
+> > Thanks. After I sent the first mail I noticed the missing tablePal.
+> >
+> > palette("Tableau 10")
+> > tablePal <- palette()
+> >
+> > ggplot() +
+> >     geom_col(
+> >       data=test,
+> >       aes(x=Sample, y=value, fill=SSAtype),
+> >       position="dodge"
+> >     ) +
+> >     geom_pointrange(
+> >       data=test.ag,
+> >       aes(x=Sample, y=avg, ymin=avg-odch, ymax=avg+odch),
+> >       size = 2
+> >     ) +
+> >     scale_fill_manual(
+> >      values=tablePal,
+> >       name="Calculation\n performed\n according to",
+> >       labels=c("bla", "blabla")
+> >     ) +
+> >     scale_shape_manual(name = "Measured", values = 19, labels = NULL)
+> >
+> > You are correct that legend for bars is there. But the legend for points is
+> missing. If I use only geom_point and values from the "test" data, also
+> legend for the point appears. Is it possible that the second legend could be
+> created only if all data are from one data frame?
+> >
+> > Best regards
+> > Petr
+> >
+> >> -----Original Message-----
+> >> From: Rui Barradas <ruipbarradas at sapo.pt>
+> >> Sent: Monday, May 16, 2022 1:53 PM
+> >> To: PIKAL Petr <petr.pikal at precheza.cz>; r-help at r-project.org
+> >> Subject: Re: [R] ggplot pointrange from other df and missing legend
+> >>
+> >> Hello,
+> >>
+> >> In the code below the legend is not missing, I couldn't reproduce that
+> error.
+> >> As for the size of the points, include argument size. I have size=2.
+> >>
+> >> Also:
+> >>    - tablePal is missing, I've chosen colors 2:3;
+> >>    - I have commented out the guides(.), you are setting the shape
+> >> after so it makes no difference.
+> >>
+> >>
+> >> ggplot() +
+> >>     geom_col(
+> >>       data=test,
+> >>       aes(x=Sample, y=value, fill=SSAtype),
+> >>       position="dodge"
+> >>     ) +
+> >>     geom_pointrange(
+> >>       data=test.ag,
+> >>       aes(x=Sample, y=avg, ymin=avg-odch, ymax=avg+odch),
+> >>       size = 2
+> >>     ) +
+> >>     scale_fill_manual(
+> >>       #values=tablePal,
+> >>       values = 2:3,
+> >>       name="Calculation\n performed\n according to",
+> >>       labels=c("bla", "blabla")
+> >>     ) +
+> >>     #guides(fill = guide_legend(override.aes = list(shape = NA))) +
+> >>     scale_shape_manual(name = "Measured", values = 19, labels = NULL)
+> >>
+> >>
+> >> Hope this helps,
+> >>
+> >> Rui Barradas
+> >>
+> >>
+> >> ?s 12:15 de 16/05/2022, PIKAL Petr escreveu:
+> >>> Hallo all
+> >>>
+> >>>
+> >>>
+> >>> Here are the data from dput
+> >>>
+> >>>
+> >>>
+> >>> test <- structure(list(Sample = c("A", "A", "A", "A", "A", "A", "B",
+> >>>
+> >>> "B", "B", "B", "B", "B", "C", "C", "C", "C", "C", "C"), SSAtype =
+> >>> c("one",
+> >>>
+> >>> "one", "one", "two", "two", "two", "one", "one", "one", "two",
+> >>>
+> >>> "two", "two", "one", "one", "one", "two", "two", "two"), value =
+> >>> c(8.587645149,
+> >>>
+> >>> 8.743793651, 8.326440422, 9.255940687, 8.971931555, 8.856323865,
+> >>>
+> >>> 9.650809096, 9.725504448, 9.634449367, 9.69485369, 9.526758476,
+> >>>
+> >>> 10.03758001, 10.76845392, 10.66891602, 10.34894497, 10.76284989,
+> >>>
+> >>> 10.53074081, 11.16464528), SSAmeasuredP = c(8.3, 8.3, 8.3, 8.3,
+> >>>
+> >>> 8.3, 8.3, 9.5, 9.5, 9.5, 9.5, 9.5, 9.5, 11, 11, 11, 11, 11, 11
+> >>>
+> >>> ), identity = c("point", "point", "point", "point", "point",
+> >>>
+> >>> "point", "point", "point", "point", "point", "point", "point",
+> >>>
+> >>> "point", "point", "point", "point", "point", "point")), row.names =
+> >>> c(NA,
+> >>>
+> >>> 18L), class = "data.frame")
+> >>>
+> >>>
+> >>>
+> >>> test.ag <- structure(list(Sample = c("A", "B", "C"), avg = c(8.3,
+> >>> 9.5, 11
+> >>>
+> >>> ), odch = c(0.2, 0.4, 0.3), identity = c("point", "point", "point"
+> >>>
+> >>> )), row.names = c(NA, 3L), class = "data.frame")
+> >>>
+> >>>
+> >>>
+> >>> I try to make some relatively simple barplot and I wanted to add
+> >>> points to it which I somehow did.
+> >>>
+> >>>
+> >>>
+> >>> library(ggplot2)
+> >>>
+> >>>
+> >>>
+> >>> p <- ggplot(test, aes(x=Sample, y=value, fill=SSAtype))
+> >>>
+> >>> p+geom_col(position="dodge")+geom_point(aes(y=SSAmeasuredP,
+> >> shape=identity),
+> >>> size=5)+
+> >>>
+> >>> scale_fill_manual(values=tablePal, name="Calculation\n performed\n
+> >> according
+> >>> to",
+> >>>
+> >>> labels=c("bla", "blabla"))+
+> >>>
+> >>> guides(fill= guide_legend(override.aes = list(shape=NA)))+
+> >>>
+> >>> scale_shape_manual(name = "Measured", values=19, labels=NULL)
+> >>>
+> >>>
+> >>>
+> >>> But instead of points I want to use pointrange with data from other
+> >>> df. I found some help and all is good except size of the points and
+> >>> missing
+> >> legend
+> >>>
+> >>>
+> >>>
+> >>> ggplot()+
+> >>>
+> >>> geom_col(data=test, aes(x=Sample, y=value, fill=SSAtype),
+> >> position="dodge")+
+> >>>
+> >>> scale_fill_manual(values=tablePal, name="Calculation\n performed\n
+> >> according
+> >>> to",
+> >>>
+> >>> labels=c("bla", "blabla"))+
+> >>>
+> >>> geom_pointrange(data=test.ag, aes(x=Sample, y=avg, ymin=avg-odch,
+> >>>
+> >>> ymax=avg+odch)) +
+> >>>
+> >>> guides(fill= guide_legend(override.aes = list(shape=NA)))+
+> >>>
+> >>> scale_shape_manual(name = "Measured", values=19, labels=NULL)
+> >>>
+> >>>
+> >>>
+> >>> Although I will try to find some workable way I also would like to
+> >>> ask for help from R gurus, maybe I overlooked some simple way how to
+> do it.
+> >>>
+> >>>
+> >>>
+> >>> Best regards
+> >>>
+> >>> Petr
+> >>>
+> >>>
+> >>> ______________________________________________
+> >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>> PLEASE do read the posting guide http://www.R-project.org/posting-
+> >> guide.html
+> >>> and provide commented, minimal, self-contained, reproducible code.
+
+From p@u|bern@|07 @end|ng |rom gm@||@com  Tue May 17 18:43:33 2022
+From: p@u|bern@|07 @end|ng |rom gm@||@com (Paul Bernal)
+Date: Tue, 17 May 2022 11:43:33 -0500
+Subject: [R] Error when trying to install package tableHTML
+Message-ID: <CAMOcQfMgKUmxHn9fd4hMOrQbm_2GNCdEhu2gQ=pZW_9oBLBg5g@mail.gmail.com>
+
+Dear friends,
+
+I installed R version 4.2.0 last week and was trying to install package
+tableHTML and I got the following error message when attempting to do so:
+
+Could this be due to network restrictions?
+
+> install.packages("tableHTML")
+--- Please select a CRAN mirror for use in this session ---
+Warning: failed to download mirrors file (cannot open URL '
+https://cran.r-project.org/CRAN_mirrors.csv'); using local file
+'C:/Users/paulbernal/AppData/Local/Programs/R/R-4.2.0/doc/CRAN_mirrors.csv'
+Warning: unable to access index for repository
+https://mirrors.dotsrc.org/cran/src/contrib:
+  cannot open URL 'https://mirrors.dotsrc.org/cran/src/contrib/PACKAGES'
+Warning: unable to access index for repository
+https://mirrors.dotsrc.org/cran/bin/windows/contrib/4.2:
+  cannot open URL '
+https://mirrors.dotsrc.org/cran/bin/windows/contrib/4.2/PACKAGES'
+Warning messages:
+1: In download.file(url, destfile = f, quiet = TRUE) :
+  URL 'https://cran.r-project.org/CRAN_mirrors.csv': status was 'SSL peer
+certificate or SSH remote key was not OK'
+2: package ?tableHTML? is not available for this version of R
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Tue May 17 19:34:57 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 17 May 2022 10:34:57 -0700
+Subject: [R] Error when trying to install package tableHTML
+In-Reply-To: <CAMOcQfMgKUmxHn9fd4hMOrQbm_2GNCdEhu2gQ=pZW_9oBLBg5g@mail.gmail.com>
+References: <CAMOcQfMgKUmxHn9fd4hMOrQbm_2GNCdEhu2gQ=pZW_9oBLBg5g@mail.gmail.com>
+Message-ID: <82EEB74B-F3DB-4957-8360-8DA82EDA37AC@dcn.davis.ca.us>
+
+Seems like that mirror has not been refreshed to have files for 4.2.
+
+On May 17, 2022 9:43:33 AM PDT, Paul Bernal <paulbernal07 at gmail.com> wrote:
+>Dear friends,
+>
+>I installed R version 4.2.0 last week and was trying to install package
+>tableHTML and I got the following error message when attempting to do so:
+>
+>Could this be due to network restrictions?
+>
+>> install.packages("tableHTML")
+>--- Please select a CRAN mirror for use in this session ---
+>Warning: failed to download mirrors file (cannot open URL '
+>https://cran.r-project.org/CRAN_mirrors.csv'); using local file
+>'C:/Users/paulbernal/AppData/Local/Programs/R/R-4.2.0/doc/CRAN_mirrors.csv'
+>Warning: unable to access index for repository
+>https://mirrors.dotsrc.org/cran/src/contrib:
+>  cannot open URL 'https://mirrors.dotsrc.org/cran/src/contrib/PACKAGES'
+>Warning: unable to access index for repository
+>https://mirrors.dotsrc.org/cran/bin/windows/contrib/4.2:
+>  cannot open URL '
+>https://mirrors.dotsrc.org/cran/bin/windows/contrib/4.2/PACKAGES'
+>Warning messages:
+>1: In download.file(url, destfile = f, quiet = TRUE) :
+>  URL 'https://cran.r-project.org/CRAN_mirrors.csv': status was 'SSL peer
+>certificate or SSH remote key was not OK'
+>2: package ?tableHTML? is not available for this version of R
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue May 17 19:48:40 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 17 May 2022 20:48:40 +0300
+Subject: [R] Error when trying to install package tableHTML
+In-Reply-To: <CAMOcQfMgKUmxHn9fd4hMOrQbm_2GNCdEhu2gQ=pZW_9oBLBg5g@mail.gmail.com>
+References: <CAMOcQfMgKUmxHn9fd4hMOrQbm_2GNCdEhu2gQ=pZW_9oBLBg5g@mail.gmail.com>
+Message-ID: <20220517204840.4087caa6@Tarkus>
+
+On Tue, 17 May 2022 11:43:33 -0500
+Paul Bernal <paulbernal07 at gmail.com> wrote:
+
+> Could this be due to network restrictions?
+
+Yes, definitely.
+
+> URL 'https://cran.r-project.org/CRAN_mirrors.csv': status was 'SSL
+> peer certificate or SSH remote key was not OK'
+
+Since most other people seem to be able to access this address, there
+must be something about your network connection. Most likely, this
+error message means that something is intercepting your connections to
+cran.r-project.org / mirrors.dotsrc.org, and your system (or at least
+the part of R which tries to connect there, which should be using the
+same certificate store) is not set up to trust that entity. Is there a
+network administrator you could contact with problems like this one?
+
+-- 
+Best regards,
+Ivan
+
+
+From p@u|bern@|07 @end|ng |rom gm@||@com  Tue May 17 19:56:28 2022
+From: p@u|bern@|07 @end|ng |rom gm@||@com (Paul Bernal)
+Date: Tue, 17 May 2022 12:56:28 -0500
+Subject: [R] Error when trying to install package tableHTML
+In-Reply-To: <20220517204840.4087caa6@Tarkus>
+References: <CAMOcQfMgKUmxHn9fd4hMOrQbm_2GNCdEhu2gQ=pZW_9oBLBg5g@mail.gmail.com>
+ <20220517204840.4087caa6@Tarkus>
+Message-ID: <CAMOcQfMU3qhhLtpRTPRBi3nHNp_cw+i3i+Su2DnnOzbL8=tOGg@mail.gmail.com>
+
+Hi Ivan,
+
+Thank you for your kind feedback. There is a team that I can contact for
+sure.
+
+Best,
+Paul
+
+El mar, 17 may 2022 a las 12:48, Ivan Krylov (<krylov.r00t at gmail.com>)
+escribi?:
+
+> On Tue, 17 May 2022 11:43:33 -0500
+> Paul Bernal <paulbernal07 at gmail.com> wrote:
+>
+> > Could this be due to network restrictions?
+>
+> Yes, definitely.
+>
+> > URL 'https://cran.r-project.org/CRAN_mirrors.csv': status was 'SSL
+> > peer certificate or SSH remote key was not OK'
+>
+> Since most other people seem to be able to access this address, there
+> must be something about your network connection. Most likely, this
+> error message means that something is intercepting your connections to
+> cran.r-project.org / mirrors.dotsrc.org, and your system (or at least
+> the part of R which tries to connect there, which should be using the
+> same certificate store) is not set up to trust that entity. Is there a
+> network administrator you could contact with problems like this one?
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
