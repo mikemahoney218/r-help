@@ -11702,3 +11702,406 @@ On Wed, May 18, 2022 at 5:35 PM Leonard Mada <leo.mada at syonic.eu> wrote:
 > >> and provide commented, minimal, self-contained, reproducible code.
 
 
+From r@|pho|@@on @end|ng |rom bt|nternet@com  Wed May 18 17:33:22 2022
+From: r@|pho|@@on @end|ng |rom bt|nternet@com (ralpholsson)
+Date: Wed, 18 May 2022 16:33:22 +0100 (BST)
+Subject: [R] Windows build 4.2.0 of R: libcurl not picking up self signed
+ certificate from windows os, worked for 4.1.3
+Message-ID: <71feb666.22dcc.180d7cd6047.Webtop.108@btinternet.com>
+
+Hello,
+
+Using the official windows build of R 4.2.0 from the CRAN website I can 
+no longer download files from an internal website with a self signed 
+certificate. This worked under build 4.1.3.
+
+I apologise that the url in the following example is not publicly 
+available and that the example is therefore not directly reproducible, 
+this is a necessary part of the problem due to dealing with self signed 
+certificates.
+
+In 4.2.0:
+
+> libcurlVersion()
+[1] "7.81.0"
+attr(,"ssl_version")
+[1] "(OpenSSL/1.1.1m) Schannel"
+attr(,"libssh_version")
+[1] "libssh2/1.10.0"
+attr(,"protocols")
+  [1] "dict"    "file"    "ftp"     "ftps"    "gopher"  "gophers" "http" 
+"https"   "imap"    "imaps"   "ldap"    "ldaps"   "mqtt"    "pop3" 
+"pop3s"   "rtsp"    "scp"     "sftp"
+> 
+> download.file("https://my.site.com/index.html","./index.html",method="libcurl")
+trying URL 'https://my.site.com/index.html'
+Error in download.file("https://my.site.com/index.html",  :
+   cannot open URL 'https://my.site.com/index.html'
+In addition: Warning message:
+In download.file("https://my.site.com/index.html",  :
+   URL 'https://my.site.com/index.html': status was 'SSL peer 
+certificate or SSH remote key was not OK'
+
+In 4.1.3:
+
+> libcurlVersion()
+[1] "7.64.1"
+attr(,"ssl_version")
+[1] "(OpenSSL/1.1.1m) Schannel"
+attr(,"libssh_version")
+[1] "libssh2/1.8.2"
+attr(,"protocols")
+  [1] "dict"   "file"   "ftp"    "ftps"   "gopher" "http"   "https" 
+"imap"   "imaps"  "ldap"   "ldaps"  "pop3"   "pop3s"  "rtsp"   "scp" 
+"sftp"   "smtp"   "smtps"  "telnet"
+[20] "tftp"
+> 
+> download.file("https://my.site.com/index.html","./index.html",method="libcurl")
+trying URL 'https://my.site.com/index.html'
+Content length 11082 bytes (10 KB)
+downloaded 10 KB
+
+My reading suggests that since libcurlVersion() reports "Schannel" in 
+both cases it should be picking up the same certificates from the OS.
+
+Please advise, many thanks,
+
+Ralph
+
+
+From r@hep@rd @end|ng |rom @pp|-eco@y@@com  Thu May 19 16:38:45 2022
+From: r@hep@rd @end|ng |rom @pp|-eco@y@@com (Rich Shepard)
+Date: Thu, 19 May 2022 07:38:45 -0700 (PDT)
+Subject: [R] GSL update fails configuration
+Message-ID: <eb591a5c-3667-3f4b-2fbf-2298f1cae47@appl-ecosys.com>
+
+Installed on this workstation is gsl-2.1-x86_64-1.
+
+When I attempt to update the gls package it fails:
+checking for gsl-config... /usr/bin/gsl-config
+checking if GSL version >= 2.1... checking for gcc... gcc
+checking whether the C compiler works... yes
+checking for C compiler default output file name... a.out
+checking for suffix of executables... 
+checking whether we are cross compiling... no
+checking for suffix of object files... o
+checking whether the compiler supports GNU C... yes
+checking whether gcc accepts -g... yes
+checking for gcc option to enable C11 features... none needed
+configure: error: Need GSL version >= 1.16
+ERROR: configuration failed for package ?gsl?
+
+Since GSL-2.1 is found on line 2, why is there the error on line 11 that gsl
+>= 1.16 is needed and not found?
+
+What am I missing here?
+
+Regards,
+
+Rich
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu May 19 17:04:51 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 19 May 2022 18:04:51 +0300
+Subject: [R] GSL update fails configuration
+In-Reply-To: <eb591a5c-3667-3f4b-2fbf-2298f1cae47@appl-ecosys.com>
+References: <eb591a5c-3667-3f4b-2fbf-2298f1cae47@appl-ecosys.com>
+Message-ID: <20220519180451.2292b3c1@arachnoid>
+
+? Thu, 19 May 2022 07:38:45 -0700 (PDT)
+Rich Shepard <rshepard at appl-ecosys.com> ?????:
+
+> Since GSL-2.1 is found on line 2, why is there the error on line 11
+> that gsl >= 1.16 is needed and not found?
+
+In the current CRAN version of the package, the stated dependencies are
+in wild disagreement with each other:
+https://github.com/RobinHankin/gsl/issues/17
+
+DESCRIPTION says that GSL >= 2.1 is required, ./configure error message
+asks for >= 1.16, but the actual test is for GSL >= 2.5:
+https://github.com/cran/gsl/blob/78211300997576f89fae61caada64483dc2538d1/configure.ac#L27
+
+(Well, it's intended to test for >=2.5, but seems to test for any minor
+version of 5 and above instead.)
+
+I'm not sure which GSL features the package actually makes use of. You
+can either try patching ./configure to actually check for GSL >= 2.1
+and rebuilding the package (at which point something else may fail) or
+upgrade GSL to >= 2.5.
+
+-- 
+Best regards,
+Ivan
+
+
+From r@hep@rd @end|ng |rom @pp|-eco@y@@com  Thu May 19 18:19:07 2022
+From: r@hep@rd @end|ng |rom @pp|-eco@y@@com (Rich Shepard)
+Date: Thu, 19 May 2022 09:19:07 -0700 (PDT)
+Subject: [R] GSL update fails configuration
+In-Reply-To: <20220519180451.2292b3c1@arachnoid>
+References: <eb591a5c-3667-3f4b-2fbf-2298f1cae47@appl-ecosys.com>
+ <20220519180451.2292b3c1@arachnoid>
+Message-ID: <ce5a7e7-3366-b04f-11d2-86182a255ece@appl-ecosys.com>
+
+On Thu, 19 May 2022, Ivan Krylov wrote:
+
+> In the current CRAN version of the package, the stated dependencies are in
+> wild disagreement with each other:
+> https://github.com/RobinHankin/gsl/issues/17
+
+Ivan,
+
+Ah, so. I hadn't thought to search there.
+
+> I'm not sure which GSL features the package actually makes use of. You can
+> either try patching ./configure to actually check for GSL >= 2.1 and
+> rebuilding the package (at which point something else may fail) or upgrade
+> GSL to >= 2.5.
+
+Thanks.
+
+Rich
+
+
+From neh@@bo|ogn@90 @end|ng |rom gm@||@com  Thu May 19 23:30:58 2022
+From: neh@@bo|ogn@90 @end|ng |rom gm@||@com (Neha gupta)
+Date: Thu, 19 May 2022 23:30:58 +0200
+Subject: [R] missing values error in if statement
+Message-ID: <CA+nrPntKh_sbwa-ZqsxTG6BTip+Z7W5JV5-tRSB_QwLP_v8-Ew@mail.gmail.com>
+
+Why do I get the following error when my variable in the 'if statement' has
+no missing values.
+
+I check with is.na(my variable) and it has no missing values
+
+Error in if (fraction <= 1) { : missing value where TRUE/FALSE needed
+
+Best regards
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Fri May 20 00:20:15 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Thu, 19 May 2022 15:20:15 -0700
+Subject: [R] missing values error in if statement
+In-Reply-To: <CA+nrPntKh_sbwa-ZqsxTG6BTip+Z7W5JV5-tRSB_QwLP_v8-Ew@mail.gmail.com>
+References: <CA+nrPntKh_sbwa-ZqsxTG6BTip+Z7W5JV5-tRSB_QwLP_v8-Ew@mail.gmail.com>
+Message-ID: <45338E23-044A-4378-8B81-1939AB58CB10@dcn.davis.ca.us>
+
+Not reproducible. Posted HTML.
+
+On May 19, 2022 2:30:58 PM PDT, Neha gupta <neha.bologna90 at gmail.com> wrote:
+>Why do I get the following error when my variable in the 'if statement' has
+>no missing values.
+>
+>I check with is.na(my variable) and it has no missing values
+>
+>Error in if (fraction <= 1) { : missing value where TRUE/FALSE needed
+>
+>Best regards
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From @v|gro@@ @end|ng |rom ver|zon@net  Fri May 20 00:50:46 2022
+From: @v|gro@@ @end|ng |rom ver|zon@net (Avi Gross)
+Date: Thu, 19 May 2022 22:50:46 +0000 (UTC)
+Subject: [R] missing values error in if statement
+In-Reply-To: <45338E23-044A-4378-8B81-1939AB58CB10@dcn.davis.ca.us>
+References: <CA+nrPntKh_sbwa-ZqsxTG6BTip+Z7W5JV5-tRSB_QwLP_v8-Ew@mail.gmail.com>
+ <45338E23-044A-4378-8B81-1939AB58CB10@dcn.davis.ca.us>
+Message-ID: <219729302.322175.1653000646598@mail.yahoo.com>
+
+We are needing more info to reproduce and debug this problem of comparing an object you call?"fraction" to the number 1.
+
+It can only be reproduced if the value/type is known and seen to be compatible with a numeric or logical value.
+
+Those work fine for me. Using a vector of length greater than 1 returns a different error than the one specified.
+
+Why not tell us what typeof(fraction) and class(fraction) return or show how it was made?
+
+One GUESS is that you created or are using a data type?using some package. If so, it will not comparable to an integer?or floating point unless the package made implicit or explicit ways to do the comparison. One obvious way is to?use whatever you need to convert the fraction back to numeric before a comparison, or, if it supports it,?change the "1" to a fraction and use whatever comparison method you have available that can compare two?fractions.
+
+
+-----Original Message-----
+From: Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+To: r-help at r-project.org; Neha gupta <neha.bologna90 at gmail.com>; r-help mailing list <r-help at r-project.org>
+Sent: Thu, May 19, 2022 6:20 pm
+Subject: Re: [R] missing values error in if statement
+
+Not reproducible. Posted HTML.
+
+On May 19, 2022 2:30:58 PM PDT, Neha gupta <neha.bologna90 at gmail.com> wrote:
+>Why do I get the following error when my variable in the 'if statement' has
+>no missing values.
+>
+>I check with is.na(my variable) and it has no missing values
+>
+>Error in if (fraction <= 1) { : missing value where TRUE/FALSE needed
+>
+>Best regards
+>
+>??? [[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From ||809 @end|ng |rom nc|@c@  Fri May 20 01:50:56 2022
+From: ||809 @end|ng |rom nc|@c@ (Brian Lunergan)
+Date: Thu, 19 May 2022 19:50:56 -0400
+Subject: [R] Problem installing/updating nloptr...
+Message-ID: <ec85484c6ac2f6aec89665472a7f79e7019afc52.camel@ncf.ca>
+
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA512
+
+Evening folks:
+
+Running R 4.2.0 on Linux Mint 19.3. When I tried to update package
+nloptr the operation failed with this error text seeming to be key to
+the problem.
+
+CMake Error: The source directory
+"/tmp/RtmpCNCU3l/R.INSTALL21c510095118/nloptr/src/CMAKE_RANLIB=/usr/bin
+/ranlib" does not exist.
+Specify --help for usage, or press the help button on the CMake GUI.
+Unknown argument -j
+Unknown argument 2
+Usage: cmake --build <dir> [options] [-- [native-options]]
+Options:
+  <dir>          = Project binary directory to be built.
+  --target <tgt> = Build <tgt> instead of default targets.
+                   May only be specified once.
+  --config <cfg> = For multi-configuration tools, choose <cfg>.
+  --clean-first  = Build target 'clean' first, then build.
+                   (To clean only, use --target 'clean'.)
+  --use-stderr   = Ignored.  Behavior is default in CMake >= 3.0.
+  --             = Pass remaining options to the native tool.
+CMake Error: The source directory
+"/tmp/RtmpCNCU3l/R.INSTALL21c510095118/nloptr/src/nlopt" does not
+exist.
+Specify --help for usage, or press the help button on the CMake GUI.
+cp: cannot stat 'nlopt/include/*': No such file or directory
+
+Uninstalled the package and tried reinstalling. Same stumble so I now
+no longer have it at all, and it's needed to load Rcmdr.
+
+Any help sorting this out would be appreciated. Please... :-(
+- -- 
+Brian Lunergan
+Russell, Ontario
+Canada
+
+-----BEGIN PGP SIGNATURE-----
+
+iQEzBAEBCgAdFiEEQnNPvUcw8TGKI+uNUQG1sc4S+04FAmKG1+AACgkQUQG1sc4S
++06RxQgAo4Hq7rB99Gpvhv9RvzgvhoxVUXsFYuEmFMzysCIwFzfBVS+ZVgydSoRW
+FfAxZYLruYOU2+i+9PGD/J3cW9sMaXw7NJQRUhYINTc1Q4vrSQZBmvRxwil8tPBq
+z+KB5yxuEVMsyfhSRFjWdRGaBEnxVeRBlPnvWHRYgUYKFqrsosvwY1hdnlIwRMh9
+/J9qfsi98mbSZB2HZd1OaCACxP+fAM0+jQuMJhTSNvvt4l3O583J6ewbvJE53YFT
+2+gU9JJI7yn6rIamX2iHGKaueF9N+HPHMMnLfuO6lsmeE6OfzqyiFzy13Rr3H6yF
+ptDrR2NTURpt5LyipIlK7vamJnt6pA==
+=QWJP
+-----END PGP SIGNATURE-----
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Fri May 20 02:35:05 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Thu, 19 May 2022 17:35:05 -0700
+Subject: [R] Problem installing/updating nloptr...
+In-Reply-To: <ec85484c6ac2f6aec89665472a7f79e7019afc52.camel@ncf.ca>
+References: <ec85484c6ac2f6aec89665472a7f79e7019afc52.camel@ncf.ca>
+Message-ID: <2B5DD732-67C0-4661-B6A1-60A8202AB7A7@dcn.davis.ca.us>
+
+I don't have Mint, but I do have Ubuntu 20.04, and it has /usr/bin/ranlib, which is supplied by the binutils Ubuntu package. Have you apt installed the r-base-dev package?
+
+On May 19, 2022 4:50:56 PM PDT, Brian Lunergan <ff809 at ncf.ca> wrote:
+>-----BEGIN PGP SIGNED MESSAGE-----
+>Hash: SHA512
+>
+>Evening folks:
+>
+>Running R 4.2.0 on Linux Mint 19.3. When I tried to update package
+>nloptr the operation failed with this error text seeming to be key to
+>the problem.
+>
+>CMake Error: The source directory
+>"/tmp/RtmpCNCU3l/R.INSTALL21c510095118/nloptr/src/CMAKE_RANLIB=/usr/bin
+>/ranlib" does not exist.
+>Specify --help for usage, or press the help button on the CMake GUI.
+>Unknown argument -j
+>Unknown argument 2
+>Usage: cmake --build <dir> [options] [-- [native-options]]
+>Options:
+>  <dir>          = Project binary directory to be built.
+>  --target <tgt> = Build <tgt> instead of default targets.
+>                   May only be specified once.
+>  --config <cfg> = For multi-configuration tools, choose <cfg>.
+>  --clean-first  = Build target 'clean' first, then build.
+>                   (To clean only, use --target 'clean'.)
+>  --use-stderr   = Ignored.  Behavior is default in CMake >= 3.0.
+>  --             = Pass remaining options to the native tool.
+>CMake Error: The source directory
+>"/tmp/RtmpCNCU3l/R.INSTALL21c510095118/nloptr/src/nlopt" does not
+>exist.
+>Specify --help for usage, or press the help button on the CMake GUI.
+>cp: cannot stat 'nlopt/include/*': No such file or directory
+>
+>Uninstalled the package and tried reinstalling. Same stumble so I now
+>no longer have it at all, and it's needed to load Rcmdr.
+>
+>Any help sorting this out would be appreciated. Please... :-(
+>- -- 
+>Brian Lunergan
+>Russell, Ontario
+>Canada
+>
+>-----BEGIN PGP SIGNATURE-----
+>
+>iQEzBAEBCgAdFiEEQnNPvUcw8TGKI+uNUQG1sc4S+04FAmKG1+AACgkQUQG1sc4S
+>+06RxQgAo4Hq7rB99Gpvhv9RvzgvhoxVUXsFYuEmFMzysCIwFzfBVS+ZVgydSoRW
+>FfAxZYLruYOU2+i+9PGD/J3cW9sMaXw7NJQRUhYINTc1Q4vrSQZBmvRxwil8tPBq
+>z+KB5yxuEVMsyfhSRFjWdRGaBEnxVeRBlPnvWHRYgUYKFqrsosvwY1hdnlIwRMh9
+>/J9qfsi98mbSZB2HZd1OaCACxP+fAM0+jQuMJhTSNvvt4l3O583J6ewbvJE53YFT
+>2+gU9JJI7yn6rIamX2iHGKaueF9N+HPHMMnLfuO6lsmeE6OfzqyiFzy13Rr3H6yF
+>ptDrR2NTURpt5LyipIlK7vamJnt6pA==
+>=QWJP
+>-----END PGP SIGNATURE-----
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
