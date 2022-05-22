@@ -16388,3 +16388,1093 @@ On Fri, May 20, 2022 at 3:47 PM Rui Barradas <ruipbarradas at sapo.pt> wrote:
 	[[alternative HTML version deleted]]
 
 
+From @v|gro@@ @end|ng |rom ver|zon@net  Sat May 21 04:54:38 2022
+From: @v|gro@@ @end|ng |rom ver|zon@net (Avi Gross)
+Date: Sat, 21 May 2022 02:54:38 +0000 (UTC)
+Subject: [R] missing values error in if statement
+In-Reply-To: <CA+nrPntg5KeC+V5fLZN-w9jG8NuN13BkcTEHrNUqiP47qZksGQ@mail.gmail.com>
+References: <CA+nrPntKh_sbwa-ZqsxTG6BTip+Z7W5JV5-tRSB_QwLP_v8-Ew@mail.gmail.com>
+ <45338E23-044A-4378-8B81-1939AB58CB10@dcn.davis.ca.us>
+ <CA+nrPntWs4AxKJbPpciwsykcfoW3SPJp2-qZ87rO4Q1TkxCWrA@mail.gmail.com>
+ <CA+nrPnu4QVV7ie=+eEQQgwmPmF6Wq2BwtkO=RGPkk4_uMUji-A@mail.gmail.com>
+ <a9d0bb2df26345a4bf6308843fde610d@SRVEXCHCM1302.precheza.cz>
+ <CA+nrPntg5KeC+V5fLZN-w9jG8NuN13BkcTEHrNUqiP47qZksGQ@mail.gmail.com>
+Message-ID: <20481953.585845.1653101678901@mail.yahoo.com>
+
+Neha,
+
+This forum tends to be focused on General R help and your initial?question might have qualified.?
+
+As you helped us understand better, it became obvious the proximal source?of your problem was deep in a package that created a special plot driver?called if the argument to the generic plot() function was of class?fairness_object
+
+I have no experience using that package and probably few others?here do either. Your traceback shows an error happening several?functions deeper. Your bug can be in "fc" as a variable before?plotting it or something not anticipated or coded for in the custom plot?function.
+
+Yes, an "if" statement is the proximal point of failure but I suggest?it did exactly what it should do given the arguments. Some people writecode protectively like checking for is.na() before calling anything that might?break badly or surrounding an area of code with a try() of some kind to catch and handle errors.
+
+You have used various packages in your code so you need to monitor if any of the?functions you used to change your data introduced an NA. If not, the package maintainer?or some forum that focuses on it may be your best bet.?
+
+Failing that, are there other packages you might use to do your analysis, perhaps?including parts you write for yourself by hand?
+
+
+-----Original Message-----
+From: Neha gupta <neha.bologna90 at gmail.com>
+To: PIKAL Petr <petr.pikal at precheza.cz>
+Cc: r-help mailing list <r-help at r-project.org>
+Sent: Fri, May 20, 2022 9:22 am
+Subject: Re: [R] missing values error in if statement
+
+What do you mean by "fraction" ?
+
+traceback()
+4: readable_number(max_value - min_value, FALSE)
+3: get_nice_ticks(lower_bound, upper_bound)
+2: plot.fairness_object(fc)
+1: plot(fc)
+
+On Fri, May 20, 2022 at 3:18 PM PIKAL Petr <petr.pikal at precheza.cz> wrote:
+
+> Hallo
+>
+> From what you say the error comes from
+>
+> > fraction <- NA
+> > if(fraction <= 1) print(5)
+> Error in if (fraction <= 1) print(5) :
+>? missing value where TRUE/FALSE needed
+> >
+> so somewhere fraction is set to NA during your code.
+>
+> I would consult traceback, you could try debug used functions but maybe you
+> should start with explainer, prot and privileged, if they are as expected
+> by
+> fairness_check
+>
+> > > fc= fairness_check(explainer,
+> > >? ? ? ? ? ? ? ? ? ? ? ? ? protected = prot,
+> > >? ? ? ? ? ? ? ? ? ? privileged = privileged)
+>
+> Cheers
+> Petr
+>
+> > -----Original Message-----
+> > From: R-help <r-help-bounces at r-project.org> On Behalf Of Neha gupta
+> > Sent: Friday, May 20, 2022 3:03 PM
+> > To: Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+> > Cc: r-help mailing list <r-help at r-project.org>
+> > Subject: Re: [R] missing values error in if statement
+> >
+> > Actually I am not very sure where exactly the error raised but when I run
+> the
+> > plot(fc) , it shows the error.
+> >
+> > I checked it online and people suggested that it may come with missing
+> > values in 'if' or 'while; statements etc.
+> >
+> > I do not know how your code works and mine not.
+> >
+> > Best regards
+> >
+> > On Fri, May 20, 2022 at 10:16 AM Neha gupta
+> > <neha.bologna90 at gmail.com>
+> > wrote:
+> >
+> > > I am sorry.. The code is here and data is provided at the end of this
+> > > email.
+> > >
+> > > data = readARFF("aho.arff")
+> > >
+> > > index= sample(1:nrow(data), 0.7*nrow(data)) train= data[index,] test=
+> > > data[-index,]
+> > >
+> > > task = TaskClassif$new("data", backend = train, target = "isKilled")
+> > > learner= lrn("classif.randomForest", predict_type = "prob") model=
+> > > learner$train(task )
+> > >
+> > > ///explainer is created to identify a bias in a particular feature
+> > > i.e. CE feature in this case
+> > >
+> > > explainer = explain_mlr3(model,
+> > >? ? ? ? ? ? ? ? ? ? ? ? ? data = test[,-15],
+> > >? ? ? ? ? ? ? ? ? ? ? ? ? y = as.numeric(test$isKilled)-1,
+> > >? ? ? ? ? ? ? ? ? ? ? ? ? label="RF")
+> > > prot <- ifelse(test$CE == '2', 1, 0)? ? ? /// Error comes here
+> > > privileged <- '1'
+> > >
+> > >
+> > > fc= fairness_check(explainer,
+> > >? ? ? ? ? ? ? ? ? ? ? ? ? protected = prot,
+> > >? ? ? ? ? ? ? ? ? ? privileged = privileged)
+> > > plot(fc)
+> > >
+> > >
+> > > ////////////////////////////////////////// my data is
+> > >
+> > > dput(test)
+> > > structure(list(DepthTree = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+> > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+> > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+> > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+> > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+> > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+> > > 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 1), NumSubclass = c(0,
+> > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+> > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > 0, 0, 0, 0, 0, 0, 2), McCabe = c(1, 1, 1, 3, 3, 3, 3, 1, 2, 3, 3, 3,
+> > > 3, 3, 3, 3, 3, 2, 2, 2, 1, 2, 2, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+> > > 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+> > > 3, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 2, 2, 2, 2, 5, 5, 5, 5, 5,
+> > > 5, 5, 5, 5, 5, 5, 5, 5, 5, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2,
+> > > 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 4, 4, 1, 1, 2, 2,
+> > > 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1), LOC = c(3,
+> > > 3, 4, 10, 10, 10, 10, 4, 5, 22, 22, 22, 22, 22, 22, 22, 22, 3, 3, 3,
+> > > 3, 8, 8, 4, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+> > > 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 8, 8, 8, 16, 16, 16, 16, 16,
+> > > 16, 16, 16, 16, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 7, 7,
+> > > 7, 7, 18, 18, 18, 18, 18, 18, 15, 15, 15, 15, 15, 15, 15, 15, 6, 6, 6,
+> > > 15, 15, 15, 15, 15, 15, 9, 9, 9, 9, 9, 9, 9, 4, 4, 3, 3, 3, 3, 4, 4,
+> > > 4, 5, 8, 8, 3, 3, 3, 7, 7, 3, 3, 15, 15, 15, 15, 15, 15, 15, 15, 3, 3,
+> > > 3, 4, 4, 4, 4, 8, 8, 8, 8, 4, 3), DepthNested = c(1, 1, 1, 2, 2, 2, 2,
+> > > 1, 2, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 2, 2, 1, 3, 3, 3, 3, 3, 3,
+> > > 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+> > > 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+> > > 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+> > > 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2,
+> > > 2, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1,
+> > > 1), CA = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+> > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+> > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2,
+> > > 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+> > > 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+> > > 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1,
+> > > 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1), CE = c(2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+> > > 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+> > > 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+> > > 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0,
+> > > 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 2, 2),
+> > > Instability = c(0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+> > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+> > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+> > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+> > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+> > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+> > > 0.667, 0.667, 0.667, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.667, 0.667, 0.667,
+> > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0, 0, 0, 0, 0.667,
+> > > 0.667), numCovered = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 123,
+> > > 54, 54, 54, 123, 54, 54, 39, 84, 54, 54, 15, 138, 189, 189, 189, 27,
+> > > 51, 33, 6, 27, 27, 150, 150, 150, 54, 150, 54, 54, 150, 117, 51, 66,
+> > > 60, 15, 15, 72, 12, 45, 255, 255, 129, 129, 129, 0, 129, 0, 0, 6, 6,
+> > > 6, 303, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 12, 12, 12, 18, 12,
+> > > 12, 48, 12, 1557, 48, 12, 171, 0, 0, 0, 141, 141, 45, 141, 18, 39),
+> > > operator = structure(c(4L, 13L, 13L, 1L, 4L, 9L, 12L, 4L, 11L, 4L, 7L,
+> > > 8L, 8L, 8L, 8L, 8L, 9L, 7L, 8L, 8L, 6L, 7L, 8L, 4L, 1L, 2L, 3L, 4L,
+> > > 7L, 8L, 8L, 8L, 8L, 8L, 9L, 11L, 12L, 12L, 4L, 6L, 7L, 7L, 7L, 8L, 8L,
+> > > 8L, 8L, 8L, 6L, 9L, 9L, 4L, 7L, 7L, 8L, 8L, 8L, 8L, 8L, 10L, 1L, 1L,
+> > > 1L, 7L, 7L, 8L, 8L, 8L, 8L, 8L, 13L, 13L, 7L, 8L, 8L, 9L, 8L, 8L, 8L,
+> > > 8L, 9L, 10L, 1L, 4L, 4L, 6L, 7L, 8L, 8L, 8L, 9L, 10L, 10L, 7L, 8L, 8L,
+> > > 10L, 11L, 11L, 7L, 8L, 4L, 8L, 9L, 10L, 10L, 4L, 10L, 7L, 7L, 10L, 6L,
+> > > 8L, 8L, 10L, 8L, 8L, 10L, 9L, 8L, 10L, 7L, 7L, 13L, 2L, 2L, 2L, 8L,
+> > > 8L, 8L, 8L, 8L, 11L, 10L, 10L, 13L, 13L, 8L, 8L, 8L, 6L, 7L, 8L, 10L,
+> > > 13L, 13L), .Label = c("T0", "T1", "T2", "T3", "T4", "T5", "T6", "T7",
+> > > "T8", "T9", "T10", "T11", "T12", "T13", "T14", "T15"), class =
+> > > "factor"), methodReturn = structure(c(2L, 2L, 2L, 2L, 2L, 2L, 2L, 4L,
+> > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L,
+> > > 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 2L, 2L, 2L, 2L,
+> > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L,
+> > > 4L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+> > > 4L, 4L, 4L, 4L, 4L, 4L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 4L, 4L, 4L,
+> > > 4L, 4L, 4L, 4L, 4L, 4L, 1L, 1L, 3L, 3L, 3L, 3L, 3L, 1L, 1L, 3L, 3L,
+> > > 3L, 1L, 4L, 4L, 4L, 2L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 2L, 2L, 4L, 4L,
+> > > 4L, 4L, 4L, 4L, 4L, 4L, 3L, 3L, 2L, 2L, 4L, 4L, 4L, 1L, 1L, 1L, 1L,
+> > > 2L, 2L), .Label = c("I", "V", "Z", "method", "D", "[D", "[[D", "J",
+> > > "[I", "C", "[J", "[C", "[S", "F", "[F", "[B", "S", "B", "[Z", "[[S",
+> > > "[[B", "[[Z"), class = "factor"), numTestsCover = c(16, 16, 16, 15,
+> > > 15, 16, 15, 4, 16, 16, 15, 16, 15, 15, 15, 15, 15, 3, 3, 3, 2, 16, 11,
+> > > 4, 16, 3, 16, 16, 16, 16, 16, 4, 16, 16, 16, 4, 16, 16, 3, 3, 3, 2, 4,
+> > > 3, 2, 1, 4, 1, 15, 16, 15, 2, 3, 2, 3, 3, 2, 2, 2, 3, 4, 5, 5, 5, 4,
+> > > 5, 5, 4, 4, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4, 2, 4, 4, 4, 4, 4, 5, 4, 5,
+> > > 5, 4, 4, 4, 4, 4, 4, 4, 4, 3, 4, 4, 4, 6, 6, 6, 0, 6, 0, 0, 2, 2, 2,
+> > > 7, 0, 0, 0, 15, 16, 16, 16, 15, 17, 17, 17, 15, 5, 4, 4, 4, 3, 4, 4,
+> > > 3, 4, 16, 16, 4, 17, 0, 0, 0, 5, 5, 3, 5, 2, 3), mutantAssert = c(55,
+> > > 55, 55, 55, 55, 55, 55, 13, 55, 55, 55, 55, 55, 55, 55, 55, 55, 9, 9,
+> > > 9, 9, 55, 41, 13, 55, 5, 55, 55, 55, 55, 55, 13, 55, 55, 55, 13, 55,
+> > > 55, 13, 13, 13, 8, 13, 13, 8, 4, 13, 4, 55, 55, 55, 9, 9, 9, 9, 9, 9,
+> > > 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 5,
+> > > 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 6, 9, 9, 9, 14, 14,
+> > > 14, 0, 14, 0, 0, 2, 2, 2, 15, 0, 0, 0, 55, 58, 58, 55, 55, 58, 58, 58,
+> > > 55, 9, 6, 6, 6, 6, 6, 6, 6, 6, 55, 55, 13, 57, 0, 0, 0, 11, 11, 7, 11,
+> > > 9, 9), classAssert = c(3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+> > > 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+> > > 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0,
+> > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10,
+> > > 10, 10, 10, 10, 10, 10, 10, 10, 10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+> > > 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 1, 1, 1, 1, 3, 3, 3, 3, 0, 0), isKilled
+> > > = structure(c(2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+> > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+> > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+> > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 1L, 1L, 1L, 1L, 1L,
+> > > 1L, 1L, 1L, 1L, 1L, 2L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,
+> > > 2L, 1L, 2L, 1L, 2L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 2L, 1L,
+> > > 1L, 1L, 1L, 1L, 1L, 2L, 1L, 2L, 2L, 1L, 1L, 1L, 1L, 2L, 2L, 2L, 2L,
+> > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 1L, 1L, 2L, 1L, 1L, 1L, 1L, 1L, 2L,
+> > > 1L, 1L, 1L, 1L, 2L, 2L, 2L, 1L, 1L, 1L, 1L, 2L, 1L), .Label = c("yes",
+> > > "no"), class = "factor")), row.names = c(3L, 4L, 5L, 7L, 9L, 17L, 20L,
+> > > 21L, 26L, 28L, 32L, 33L, 40L, 43L, 45L, 49L, 54L, 62L, 64L, 65L, 70L,
+> > > 75L, 77L, 81L, 84L, 86L, 88L, 89L, 93L, 95L, 97L, 99L, 101L, 102L,
+> > > 106L, 111L, 112L, 113L, 118L, 122L, 125L, 128L, 129L, 134L, 141L,
+> > > 142L, 143L, 146L, 156L, 168L, 169L, 174L, 178L, 179L, 182L, 184L,
+> > > 185L, 192L, 193L, 195L, 197L, 198L, 199L, 203L, 205L, 209L, 211L,
+> > > 215L, 216L, 218L, 220L, 224L, 227L, 228L, 230L, 233L, 243L, 244L,
+> > > 246L, 247L, 251L, 252L, 259L, 262L, 263L, 265L, 270L, 273L, 274L,
+> > > 275L, 284L, 285L, 286L, 291L, 296L, 297L, 300L, 301L, 306L, 314L,
+> > > 316L, 322L, 328L, 331L, 332L, 333L, 336L, 341L, 346L, 347L, 348L,
+> > > 360L, 363L, 366L, 367L, 383L, 392L, 395L, 398L, 404L, 408L, 409L,
+> > > 410L, 420L, 421L, 426L, 428L, 434L, 437L, 438L, 440L, 441L, 447L,
+> > > 449L, 450L, 452L, 454L, 457L, 458L, 459L, 463L, 465L, 469L, 471L,
+> > > 472L, 483L), class = "data.frame")
+> > >
+> > > On Fri, May 20, 2022 at 12:20 AM Jeff Newmiller
+> > > <jdnewmil at dcn.davis.ca.us>
+> > > wrote:
+> > >
+> > >> Not reproducible. Posted HTML.
+> > >>
+> > >> On May 19, 2022 2:30:58 PM PDT, Neha gupta
+> > <neha.bologna90 at gmail.com>
+> > >> wrote:
+> > >> >Why do I get the following error when my variable in the 'if
+> statement'
+> > >> has
+> > >> >no missing values.
+> > >> >
+> > >> >I check with is.na(my variable) and it has no missing values
+> > >> >
+> > >> >Error in if (fraction <= 1) { : missing value where TRUE/FALSE
+> > >> >needed
+> > >> >
+> > >> >Best regards
+> > >> >
+> > >> >? ? ? [[alternative HTML version deleted]]
+> > >> >
+> > >> >______________________________________________
+> > >> >R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > >> >https://stat.ethz.ch/mailman/listinfo/r-help
+> > >> >PLEASE do read the posting guide
+> > >> http://www.R-project.org/posting-guide.html
+> > >> >and provide commented, minimal, self-contained, reproducible code.
+> > >>
+> > >> --
+> > >> Sent from my phone. Please excuse my brevity.
+> > >>
+> > >
+> >
+> >? ? ? [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-
+> > guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+
+??? [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From neh@@bo|ogn@90 @end|ng |rom gm@||@com  Sat May 21 12:36:56 2022
+From: neh@@bo|ogn@90 @end|ng |rom gm@||@com (Neha gupta)
+Date: Sat, 21 May 2022 12:36:56 +0200
+Subject: [R] missing values error in if statement
+In-Reply-To: <20481953.585845.1653101678901@mail.yahoo.com>
+References: <CA+nrPntKh_sbwa-ZqsxTG6BTip+Z7W5JV5-tRSB_QwLP_v8-Ew@mail.gmail.com>
+ <45338E23-044A-4378-8B81-1939AB58CB10@dcn.davis.ca.us>
+ <CA+nrPntWs4AxKJbPpciwsykcfoW3SPJp2-qZ87rO4Q1TkxCWrA@mail.gmail.com>
+ <CA+nrPnu4QVV7ie=+eEQQgwmPmF6Wq2BwtkO=RGPkk4_uMUji-A@mail.gmail.com>
+ <a9d0bb2df26345a4bf6308843fde610d@SRVEXCHCM1302.precheza.cz>
+ <CA+nrPntg5KeC+V5fLZN-w9jG8NuN13BkcTEHrNUqiP47qZksGQ@mail.gmail.com>
+ <20481953.585845.1653101678901@mail.yahoo.com>
+Message-ID: <CA+nrPnsL++ju0Hj-mco3MV-x3y-Y44BFFgLcrTZ-2NpC=TW43w@mail.gmail.com>
+
+Thank you for all of your comments.
+
+I have contacted the package creator and now waiting for his response.
+
+Best regards
+
+On Saturday, May 21, 2022, Avi Gross <avigross at verizon.net> wrote:
+
+> Neha,
+>
+>
+> This forum tends to be focused on General R help and your initial
+> question might have qualified.
+>
+>
+> As you helped us understand better, it became obvious the proximal source
+> of your problem was deep in a package that created a special plot driver
+> called if the argument to the generic plot() function was of class
+> fairness_object
+>
+>
+> I have no experience using that package and probably few others
+> here do either. Your traceback shows an error happening several
+> functions deeper. Your bug can be in "fc" as a variable before
+> plotting it or something not anticipated or coded for in the custom plot
+> function.
+>
+>
+> Yes, an "if" statement is the proximal point of failure but I suggest
+> it did exactly what it should do given the arguments. Some people write
+> code protectively like checking for is.na() before calling anything that
+> might
+> break badly or surrounding an area of code with a try() of some kind to
+> catch and handle errors.
+>
+>
+> You have used various packages in your code so you need to monitor if any
+> of the
+> functions you used to change your data introduced an NA. If not, the
+> package maintainer
+> or some forum that focuses on it may be your best bet.
+>
+>
+> Failing that, are there other packages you might use to do your analysis,
+> perhaps
+> including parts you write for yourself by hand?
+>
+>
+>
+> -----Original Message-----
+> From: Neha gupta <neha.bologna90 at gmail.com>
+> To: PIKAL Petr <petr.pikal at precheza.cz>
+> Cc: r-help mailing list <r-help at r-project.org>
+> Sent: Fri, May 20, 2022 9:22 am
+> Subject: Re: [R] missing values error in if statement
+>
+> What do you mean by "fraction" ?
+>
+> traceback()
+> 4: readable_number(max_value - min_value, FALSE)
+> 3: get_nice_ticks(lower_bound, upper_bound)
+> 2: plot.fairness_object(fc)
+> 1: plot(fc)
+>
+> On Fri, May 20, 2022 at 3:18 PM PIKAL Petr <petr.pikal at precheza.cz> wrote:
+>
+> > Hallo
+> >
+> > From what you say the error comes from
+> >
+> > > fraction <- NA
+> > > if(fraction <= 1) print(5)
+> > Error in if (fraction <= 1) print(5) :
+> >  missing value where TRUE/FALSE needed
+> > >
+> > so somewhere fraction is set to NA during your code.
+> >
+> > I would consult traceback, you could try debug used functions but maybe
+> you
+> > should start with explainer, prot and privileged, if they are as expected
+> > by
+> > fairness_check
+> >
+> > > > fc= fairness_check(explainer,
+> > > >                          protected = prot,
+> > > >                    privileged = privileged)
+> >
+> > Cheers
+> > Petr
+> >
+> > > -----Original Message-----
+> > > From: R-help <r-help-bounces at r-project.org> On Behalf Of Neha gupta
+> > > Sent: Friday, May 20, 2022 3:03 PM
+> > > To: Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+> > > Cc: r-help mailing list <r-help at r-project.org>
+> > > Subject: Re: [R] missing values error in if statement
+> > >
+> > > Actually I am not very sure where exactly the error raised but when I
+> run
+> > the
+> > > plot(fc) , it shows the error.
+> > >
+> > > I checked it online and people suggested that it may come with missing
+> > > values in 'if' or 'while; statements etc.
+> > >
+> > > I do not know how your code works and mine not.
+> > >
+> > > Best regards
+> > >
+> > > On Fri, May 20, 2022 at 10:16 AM Neha gupta
+> > > <neha.bologna90 at gmail.com>
+> > > wrote:
+> > >
+> > > > I am sorry.. The code is here and data is provided at the end of this
+> > > > email.
+> > > >
+> > > > data = readARFF("aho.arff")
+> > > >
+> > > > index= sample(1:nrow(data), 0.7*nrow(data)) train= data[index,] test=
+> > > > data[-index,]
+> > > >
+> > > > task = TaskClassif$new("data", backend = train, target = "isKilled")
+> > > > learner= lrn("classif.randomForest", predict_type = "prob") model=
+> > > > learner$train(task )
+> > > >
+> > > > ///explainer is created to identify a bias in a particular feature
+> > > > i.e. CE feature in this case
+> > > >
+> > > > explainer = explain_mlr3(model,
+> > > >                          data = test[,-15],
+> > > >                          y = as.numeric(test$isKilled)-1,
+> > > >                          label="RF")
+> > > > prot <- ifelse(test$CE == '2', 1, 0)      /// Error comes here
+> > > > privileged <- '1'
+> > > >
+> > > >
+> > > > fc= fairness_check(explainer,
+> > > >                          protected = prot,
+> > > >                    privileged = privileged)
+> > > > plot(fc)
+> > > >
+> > > >
+> > > > ////////////////////////////////////////// my data is
+> > > >
+> > > > dput(test)
+> > > > structure(list(DepthTree = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+> 1,
+> > > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+> > > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+> > > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+> > > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+> > > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+> > > > 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 1), NumSubclass =
+> c(0,
+> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > > 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > > 0, 0, 0, 0, 0, 0, 2), McCabe = c(1, 1, 1, 3, 3, 3, 3, 1, 2, 3, 3, 3,
+> > > > 3, 3, 3, 3, 3, 2, 2, 2, 1, 2, 2, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+> > > > 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+> > > > 3, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 2, 2, 2, 2, 5, 5, 5, 5, 5,
+> > > > 5, 5, 5, 5, 5, 5, 5, 5, 5, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2,
+> > > > 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 4, 4, 1, 1, 2, 2,
+> > > > 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1), LOC = c(3,
+> > > > 3, 4, 10, 10, 10, 10, 4, 5, 22, 22, 22, 22, 22, 22, 22, 22, 3, 3, 3,
+> > > > 3, 8, 8, 4, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+> > > > 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 8, 8, 8, 16, 16, 16, 16, 16,
+> > > > 16, 16, 16, 16, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 7, 7,
+> > > > 7, 7, 18, 18, 18, 18, 18, 18, 15, 15, 15, 15, 15, 15, 15, 15, 6, 6,
+> 6,
+> > > > 15, 15, 15, 15, 15, 15, 9, 9, 9, 9, 9, 9, 9, 4, 4, 3, 3, 3, 3, 4, 4,
+> > > > 4, 5, 8, 8, 3, 3, 3, 7, 7, 3, 3, 15, 15, 15, 15, 15, 15, 15, 15, 3,
+> 3,
+> > > > 3, 4, 4, 4, 4, 8, 8, 8, 8, 4, 3), DepthNested = c(1, 1, 1, 2, 2, 2,
+> 2,
+> > > > 1, 2, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 2, 2, 1, 3, 3, 3, 3, 3, 3,
+> > > > 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+> > > > 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+> > > > 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+> > > > 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2,
+> > > > 2, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1,
+> > > > 1), CA = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+> 1,
+> > > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+> > > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2,
+> > > > 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+> > > > 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+> > > > 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1,
+> > > > 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1), CE = c(2, 2, 2, 2, 2, 2, 2, 2, 2,
+> 2,
+> > > > 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+> > > > 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+> > > > 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0,
+> > > > 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 2, 2),
+> > > > Instability = c(0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+> > > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+> > > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+> > > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+> > > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+> > > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+> > > > 0.667, 0.667, 0.667, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.667, 0.667, 0.667,
+> > > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0, 0, 0, 0, 0.667,
+> > > > 0.667), numCovered = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> 0,
+> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 123,
+> > > > 54, 54, 54, 123, 54, 54, 39, 84, 54, 54, 15, 138, 189, 189, 189, 27,
+> > > > 51, 33, 6, 27, 27, 150, 150, 150, 54, 150, 54, 54, 150, 117, 51, 66,
+> > > > 60, 15, 15, 72, 12, 45, 255, 255, 129, 129, 129, 0, 129, 0, 0, 6, 6,
+> > > > 6, 303, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 12, 12, 12, 18, 12,
+> > > > 12, 48, 12, 1557, 48, 12, 171, 0, 0, 0, 141, 141, 45, 141, 18, 39),
+> > > > operator = structure(c(4L, 13L, 13L, 1L, 4L, 9L, 12L, 4L, 11L, 4L,
+> 7L,
+> > > > 8L, 8L, 8L, 8L, 8L, 9L, 7L, 8L, 8L, 6L, 7L, 8L, 4L, 1L, 2L, 3L, 4L,
+> > > > 7L, 8L, 8L, 8L, 8L, 8L, 9L, 11L, 12L, 12L, 4L, 6L, 7L, 7L, 7L, 8L,
+> 8L,
+> > > > 8L, 8L, 8L, 6L, 9L, 9L, 4L, 7L, 7L, 8L, 8L, 8L, 8L, 8L, 10L, 1L, 1L,
+> > > > 1L, 7L, 7L, 8L, 8L, 8L, 8L, 8L, 13L, 13L, 7L, 8L, 8L, 9L, 8L, 8L, 8L,
+> > > > 8L, 9L, 10L, 1L, 4L, 4L, 6L, 7L, 8L, 8L, 8L, 9L, 10L, 10L, 7L, 8L,
+> 8L,
+> > > > 10L, 11L, 11L, 7L, 8L, 4L, 8L, 9L, 10L, 10L, 4L, 10L, 7L, 7L, 10L,
+> 6L,
+> > > > 8L, 8L, 10L, 8L, 8L, 10L, 9L, 8L, 10L, 7L, 7L, 13L, 2L, 2L, 2L, 8L,
+> > > > 8L, 8L, 8L, 8L, 11L, 10L, 10L, 13L, 13L, 8L, 8L, 8L, 6L, 7L, 8L, 10L,
+> > > > 13L, 13L), .Label = c("T0", "T1", "T2", "T3", "T4", "T5", "T6", "T7",
+> > > > "T8", "T9", "T10", "T11", "T12", "T13", "T14", "T15"), class =
+> > > > "factor"), methodReturn = structure(c(2L, 2L, 2L, 2L, 2L, 2L, 2L, 4L,
+> > > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L,
+> > > > 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 2L, 2L, 2L, 2L,
+> > > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L,
+> > > > 4L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+> > > > 4L, 4L, 4L, 4L, 4L, 4L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 4L, 4L, 4L,
+> > > > 4L, 4L, 4L, 4L, 4L, 4L, 1L, 1L, 3L, 3L, 3L, 3L, 3L, 1L, 1L, 3L, 3L,
+> > > > 3L, 1L, 4L, 4L, 4L, 2L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 2L, 2L, 4L, 4L,
+> > > > 4L, 4L, 4L, 4L, 4L, 4L, 3L, 3L, 2L, 2L, 4L, 4L, 4L, 1L, 1L, 1L, 1L,
+> > > > 2L, 2L), .Label = c("I", "V", "Z", "method", "D", "[D", "[[D", "J",
+> > > > "[I", "C", "[J", "[C", "[S", "F", "[F", "[B", "S", "B", "[Z", "[[S",
+> > > > "[[B", "[[Z"), class = "factor"), numTestsCover = c(16, 16, 16, 15,
+> > > > 15, 16, 15, 4, 16, 16, 15, 16, 15, 15, 15, 15, 15, 3, 3, 3, 2, 16,
+> 11,
+> > > > 4, 16, 3, 16, 16, 16, 16, 16, 4, 16, 16, 16, 4, 16, 16, 3, 3, 3, 2,
+> 4,
+> > > > 3, 2, 1, 4, 1, 15, 16, 15, 2, 3, 2, 3, 3, 2, 2, 2, 3, 4, 5, 5, 5, 4,
+> > > > 5, 5, 4, 4, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4, 2, 4, 4, 4, 4, 4, 5, 4, 5,
+> > > > 5, 4, 4, 4, 4, 4, 4, 4, 4, 3, 4, 4, 4, 6, 6, 6, 0, 6, 0, 0, 2, 2, 2,
+> > > > 7, 0, 0, 0, 15, 16, 16, 16, 15, 17, 17, 17, 15, 5, 4, 4, 4, 3, 4, 4,
+> > > > 3, 4, 16, 16, 4, 17, 0, 0, 0, 5, 5, 3, 5, 2, 3), mutantAssert = c(55,
+> > > > 55, 55, 55, 55, 55, 55, 13, 55, 55, 55, 55, 55, 55, 55, 55, 55, 9, 9,
+> > > > 9, 9, 55, 41, 13, 55, 5, 55, 55, 55, 55, 55, 13, 55, 55, 55, 13, 55,
+> > > > 55, 13, 13, 13, 8, 13, 13, 8, 4, 13, 4, 55, 55, 55, 9, 9, 9, 9, 9, 9,
+> > > > 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 5,
+> > > > 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 6, 9, 9, 9, 14,
+> 14,
+> > > > 14, 0, 14, 0, 0, 2, 2, 2, 15, 0, 0, 0, 55, 58, 58, 55, 55, 58, 58,
+> 58,
+> > > > 55, 9, 6, 6, 6, 6, 6, 6, 6, 6, 55, 55, 13, 57, 0, 0, 0, 11, 11, 7,
+> 11,
+> > > > 9, 9), classAssert = c(3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+> 3,
+> > > > 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+> > > > 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0,
+> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 10, 10,
+> > > > 10, 10, 10, 10, 10, 10, 10, 10, 10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+> > > > 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 1, 1, 1, 1, 3, 3, 3, 3, 0, 0), isKilled
+> > > > = structure(c(2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+> > > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+> > > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+> > > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 1L, 1L, 1L, 1L, 1L,
+> > > > 1L, 1L, 1L, 1L, 1L, 2L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,
+> > > > 2L, 1L, 2L, 1L, 2L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 2L, 1L,
+> > > > 1L, 1L, 1L, 1L, 1L, 2L, 1L, 2L, 2L, 1L, 1L, 1L, 1L, 2L, 2L, 2L, 2L,
+> > > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 1L, 1L, 2L, 1L, 1L, 1L, 1L, 1L, 2L,
+> > > > 1L, 1L, 1L, 1L, 2L, 2L, 2L, 1L, 1L, 1L, 1L, 2L, 1L), .Label =
+> c("yes",
+> > > > "no"), class = "factor")), row.names = c(3L, 4L, 5L, 7L, 9L, 17L,
+> 20L,
+> > > > 21L, 26L, 28L, 32L, 33L, 40L, 43L, 45L, 49L, 54L, 62L, 64L, 65L, 70L,
+> > > > 75L, 77L, 81L, 84L, 86L, 88L, 89L, 93L, 95L, 97L, 99L, 101L, 102L,
+> > > > 106L, 111L, 112L, 113L, 118L, 122L, 125L, 128L, 129L, 134L, 141L,
+> > > > 142L, 143L, 146L, 156L, 168L, 169L, 174L, 178L, 179L, 182L, 184L,
+> > > > 185L, 192L, 193L, 195L, 197L, 198L, 199L, 203L, 205L, 209L, 211L,
+> > > > 215L, 216L, 218L, 220L, 224L, 227L, 228L, 230L, 233L, 243L, 244L,
+> > > > 246L, 247L, 251L, 252L, 259L, 262L, 263L, 265L, 270L, 273L, 274L,
+> > > > 275L, 284L, 285L, 286L, 291L, 296L, 297L, 300L, 301L, 306L, 314L,
+> > > > 316L, 322L, 328L, 331L, 332L, 333L, 336L, 341L, 346L, 347L, 348L,
+> > > > 360L, 363L, 366L, 367L, 383L, 392L, 395L, 398L, 404L, 408L, 409L,
+> > > > 410L, 420L, 421L, 426L, 428L, 434L, 437L, 438L, 440L, 441L, 447L,
+> > > > 449L, 450L, 452L, 454L, 457L, 458L, 459L, 463L, 465L, 469L, 471L,
+> > > > 472L, 483L), class = "data.frame")
+> > > >
+> > > > On Fri, May 20, 2022 at 12:20 AM Jeff Newmiller
+> > > > <jdnewmil at dcn.davis.ca.us>
+> > > > wrote:
+> > > >
+> > > >> Not reproducible. Posted HTML.
+> > > >>
+> > > >> On May 19, 2022 2:30:58 PM PDT, Neha gupta
+> > > <neha.bologna90 at gmail.com>
+> > > >> wrote:
+> > > >> >Why do I get the following error when my variable in the 'if
+> > statement'
+> > > >> has
+> > > >> >no missing values.
+> > > >> >
+> > > >> >I check with is.na(my variable) and it has no missing values
+> > > >> >
+> > > >> >Error in if (fraction <= 1) { : missing value where TRUE/FALSE
+> > > >> >needed
+> > > >> >
+> > > >> >Best regards
+> > > >> >
+> > > >> >      [[alternative HTML version deleted]]
+> > > >> >
+> > > >> >______________________________________________
+> > > >> >R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > >> >https://stat.ethz.ch/mailman/listinfo/r-help
+> > > >> >PLEASE do read the posting guide
+> > > >> http://www.R-project.org/posting-guide.html
+> <http://www.r-project.org/posting-guide.html>
+> > > >> >and provide commented, minimal, self-contained, reproducible code.
+> > > >>
+> > > >> --
+> > > >> Sent from my phone. Please excuse my brevity.
+>
+> > > >>
+> > > >
+> > >
+> > >      [[alternative HTML version deleted]]
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide http://www.R-project.org/posting-
+> <http://www.r-project.org/posting->
+> > > guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+>     [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/
+> posting-guide.html <http://www.r-project.org/posting-guide.html>
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From neh@@bo|ogn@90 @end|ng |rom gm@||@com  Sat May 21 20:03:56 2022
+From: neh@@bo|ogn@90 @end|ng |rom gm@||@com (Neha gupta)
+Date: Sat, 21 May 2022 20:03:56 +0200
+Subject: [R] missing values error in if statement
+In-Reply-To: <CA+nrPnsL++ju0Hj-mco3MV-x3y-Y44BFFgLcrTZ-2NpC=TW43w@mail.gmail.com>
+References: <CA+nrPntKh_sbwa-ZqsxTG6BTip+Z7W5JV5-tRSB_QwLP_v8-Ew@mail.gmail.com>
+ <45338E23-044A-4378-8B81-1939AB58CB10@dcn.davis.ca.us>
+ <CA+nrPntWs4AxKJbPpciwsykcfoW3SPJp2-qZ87rO4Q1TkxCWrA@mail.gmail.com>
+ <CA+nrPnu4QVV7ie=+eEQQgwmPmF6Wq2BwtkO=RGPkk4_uMUji-A@mail.gmail.com>
+ <a9d0bb2df26345a4bf6308843fde610d@SRVEXCHCM1302.precheza.cz>
+ <CA+nrPntg5KeC+V5fLZN-w9jG8NuN13BkcTEHrNUqiP47qZksGQ@mail.gmail.com>
+ <20481953.585845.1653101678901@mail.yahoo.com>
+ <CA+nrPnsL++ju0Hj-mco3MV-x3y-Y44BFFgLcrTZ-2NpC=TW43w@mail.gmail.com>
+Message-ID: <CA+nrPnt=GL6hAfbecMHAYqS-cWZgRsTWXxwTYgnLYPsGcd1Tmg@mail.gmail.com>
+
+When I try to replace 'CE' variable with another variable in the dataset,
+the error is no longer there.
+
+On Sat, May 21, 2022 at 12:36 PM Neha gupta <neha.bologna90 at gmail.com>
+wrote:
+
+> Thank you for all of your comments.
+>
+> I have contacted the package creator and now waiting for his response.
+>
+> Best regards
+>
+> On Saturday, May 21, 2022, Avi Gross <avigross at verizon.net> wrote:
+>
+>> Neha,
+>>
+>>
+>> This forum tends to be focused on General R help and your initial
+>> question might have qualified.
+>>
+>>
+>> As you helped us understand better, it became obvious the proximal source
+>> of your problem was deep in a package that created a special plot driver
+>> called if the argument to the generic plot() function was of class
+>> fairness_object
+>>
+>>
+>> I have no experience using that package and probably few others
+>> here do either. Your traceback shows an error happening several
+>> functions deeper. Your bug can be in "fc" as a variable before
+>> plotting it or something not anticipated or coded for in the custom plot
+>> function.
+>>
+>>
+>> Yes, an "if" statement is the proximal point of failure but I suggest
+>> it did exactly what it should do given the arguments. Some people write
+>> code protectively like checking for is.na() before calling anything that
+>> might
+>> break badly or surrounding an area of code with a try() of some kind to
+>> catch and handle errors.
+>>
+>>
+>> You have used various packages in your code so you need to monitor if any
+>> of the
+>> functions you used to change your data introduced an NA. If not, the
+>> package maintainer
+>> or some forum that focuses on it may be your best bet.
+>>
+>>
+>> Failing that, are there other packages you might use to do your analysis,
+>> perhaps
+>> including parts you write for yourself by hand?
+>>
+>>
+>>
+>> -----Original Message-----
+>> From: Neha gupta <neha.bologna90 at gmail.com>
+>> To: PIKAL Petr <petr.pikal at precheza.cz>
+>> Cc: r-help mailing list <r-help at r-project.org>
+>> Sent: Fri, May 20, 2022 9:22 am
+>> Subject: Re: [R] missing values error in if statement
+>>
+>> What do you mean by "fraction" ?
+>>
+>> traceback()
+>> 4: readable_number(max_value - min_value, FALSE)
+>> 3: get_nice_ticks(lower_bound, upper_bound)
+>> 2: plot.fairness_object(fc)
+>> 1: plot(fc)
+>>
+>> On Fri, May 20, 2022 at 3:18 PM PIKAL Petr <petr.pikal at precheza.cz>
+>> wrote:
+>>
+>> > Hallo
+>> >
+>> > From what you say the error comes from
+>> >
+>> > > fraction <- NA
+>> > > if(fraction <= 1) print(5)
+>> > Error in if (fraction <= 1) print(5) :
+>> >  missing value where TRUE/FALSE needed
+>> > >
+>> > so somewhere fraction is set to NA during your code.
+>> >
+>> > I would consult traceback, you could try debug used functions but maybe
+>> you
+>> > should start with explainer, prot and privileged, if they are as
+>> expected
+>> > by
+>> > fairness_check
+>> >
+>> > > > fc= fairness_check(explainer,
+>> > > >                          protected = prot,
+>> > > >                    privileged = privileged)
+>> >
+>> > Cheers
+>> > Petr
+>> >
+>> > > -----Original Message-----
+>> > > From: R-help <r-help-bounces at r-project.org> On Behalf Of Neha gupta
+>> > > Sent: Friday, May 20, 2022 3:03 PM
+>> > > To: Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+>> > > Cc: r-help mailing list <r-help at r-project.org>
+>> > > Subject: Re: [R] missing values error in if statement
+>> > >
+>> > > Actually I am not very sure where exactly the error raised but when I
+>> run
+>> > the
+>> > > plot(fc) , it shows the error.
+>> > >
+>> > > I checked it online and people suggested that it may come with missing
+>> > > values in 'if' or 'while; statements etc.
+>> > >
+>> > > I do not know how your code works and mine not.
+>> > >
+>> > > Best regards
+>> > >
+>> > > On Fri, May 20, 2022 at 10:16 AM Neha gupta
+>> > > <neha.bologna90 at gmail.com>
+>> > > wrote:
+>> > >
+>> > > > I am sorry.. The code is here and data is provided at the end of
+>> this
+>> > > > email.
+>> > > >
+>> > > > data = readARFF("aho.arff")
+>> > > >
+>> > > > index= sample(1:nrow(data), 0.7*nrow(data)) train= data[index,]
+>> test=
+>> > > > data[-index,]
+>> > > >
+>> > > > task = TaskClassif$new("data", backend = train, target = "isKilled")
+>> > > > learner= lrn("classif.randomForest", predict_type = "prob") model=
+>> > > > learner$train(task )
+>> > > >
+>> > > > ///explainer is created to identify a bias in a particular feature
+>> > > > i.e. CE feature in this case
+>> > > >
+>> > > > explainer = explain_mlr3(model,
+>> > > >                          data = test[,-15],
+>> > > >                          y = as.numeric(test$isKilled)-1,
+>> > > >                          label="RF")
+>> > > > prot <- ifelse(test$CE == '2', 1, 0)      /// Error comes here
+>> > > > privileged <- '1'
+>> > > >
+>> > > >
+>> > > > fc= fairness_check(explainer,
+>> > > >                          protected = prot,
+>> > > >                    privileged = privileged)
+>> > > > plot(fc)
+>> > > >
+>> > > >
+>> > > > ////////////////////////////////////////// my data is
+>> > > >
+>> > > > dput(test)
+>> > > > structure(list(DepthTree = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+>> 1,
+>> > > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+>> > > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+>> > > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+>> > > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+>> > > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+>> > > > 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1, 1, 1, 2, 1), NumSubclass =
+>> c(0,
+>> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+>> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+>> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+>> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+>> > > > 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0,
+>> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+>> > > > 0, 0, 0, 0, 0, 0, 2), McCabe = c(1, 1, 1, 3, 3, 3, 3, 1, 2, 3, 3, 3,
+>> > > > 3, 3, 3, 3, 3, 2, 2, 2, 1, 2, 2, 1, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+>> > > > 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+>> > > > 3, 3, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 2, 2, 2, 2, 5, 5, 5, 5, 5,
+>> > > > 5, 5, 5, 5, 5, 5, 5, 5, 5, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2,
+>> > > > 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 4, 4, 1, 1, 2, 2,
+>> > > > 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1), LOC = c(3,
+>> > > > 3, 4, 10, 10, 10, 10, 4, 5, 22, 22, 22, 22, 22, 22, 22, 22, 3, 3, 3,
+>> > > > 3, 8, 8, 4, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+>> > > > 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 8, 8, 8, 16, 16, 16, 16, 16,
+>> > > > 16, 16, 16, 16, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 7,
+>> 7,
+>> > > > 7, 7, 18, 18, 18, 18, 18, 18, 15, 15, 15, 15, 15, 15, 15, 15, 6, 6,
+>> 6,
+>> > > > 15, 15, 15, 15, 15, 15, 9, 9, 9, 9, 9, 9, 9, 4, 4, 3, 3, 3, 3, 4, 4,
+>> > > > 4, 5, 8, 8, 3, 3, 3, 7, 7, 3, 3, 15, 15, 15, 15, 15, 15, 15, 15, 3,
+>> 3,
+>> > > > 3, 4, 4, 4, 4, 8, 8, 8, 8, 4, 3), DepthNested = c(1, 1, 1, 2, 2, 2,
+>> 2,
+>> > > > 1, 2, 4, 4, 4, 4, 4, 4, 4, 4, 1, 1, 1, 1, 2, 2, 1, 3, 3, 3, 3, 3, 3,
+>> > > > 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+>> > > > 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+>> > > > 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+>> > > > 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 1, 1, 2,
+>> > > > 2, 1, 1, 3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 1,
+>> > > > 1), CA = c(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+>> 1,
+>> > > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+>> > > > 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2,
+>> > > > 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+>> > > > 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+>> > > > 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1,
+>> > > > 1, 1, 1, 1, 1, 2, 2, 2, 2, 1, 1), CE = c(2, 2, 2, 2, 2, 2, 2, 2, 2,
+>> 2,
+>> > > > 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+>> > > > 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+>> > > > 2, 2, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+>> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+>> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 0,
+>> > > > 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 2, 2, 2, 2, 2, 0, 0, 0, 0, 2, 2),
+>> > > > Instability = c(0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+>> > > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+>> 0.667,
+>> > > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+>> 0.667,
+>> > > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+>> 0.667,
+>> > > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+>> 0.667,
+>> > > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667,
+>> 0.667,
+>> > > > 0.667, 0.667, 0.667, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+>> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+>> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.667, 0.667, 0.667,
+>> > > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+>> > > > 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0.667, 0, 0, 0, 0, 0.667,
+>> > > > 0.667), numCovered = c(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+>> 0,
+>> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+>> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 123,
+>> > > > 54, 54, 54, 123, 54, 54, 39, 84, 54, 54, 15, 138, 189, 189, 189, 27,
+>> > > > 51, 33, 6, 27, 27, 150, 150, 150, 54, 150, 54, 54, 150, 117, 51, 66,
+>> > > > 60, 15, 15, 72, 12, 45, 255, 255, 129, 129, 129, 0, 129, 0, 0, 6, 6,
+>> > > > 6, 303, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 12, 12, 12, 18, 12,
+>> > > > 12, 48, 12, 1557, 48, 12, 171, 0, 0, 0, 141, 141, 45, 141, 18, 39),
+>> > > > operator = structure(c(4L, 13L, 13L, 1L, 4L, 9L, 12L, 4L, 11L, 4L,
+>> 7L,
+>> > > > 8L, 8L, 8L, 8L, 8L, 9L, 7L, 8L, 8L, 6L, 7L, 8L, 4L, 1L, 2L, 3L, 4L,
+>> > > > 7L, 8L, 8L, 8L, 8L, 8L, 9L, 11L, 12L, 12L, 4L, 6L, 7L, 7L, 7L, 8L,
+>> 8L,
+>> > > > 8L, 8L, 8L, 6L, 9L, 9L, 4L, 7L, 7L, 8L, 8L, 8L, 8L, 8L, 10L, 1L, 1L,
+>> > > > 1L, 7L, 7L, 8L, 8L, 8L, 8L, 8L, 13L, 13L, 7L, 8L, 8L, 9L, 8L, 8L,
+>> 8L,
+>> > > > 8L, 9L, 10L, 1L, 4L, 4L, 6L, 7L, 8L, 8L, 8L, 9L, 10L, 10L, 7L, 8L,
+>> 8L,
+>> > > > 10L, 11L, 11L, 7L, 8L, 4L, 8L, 9L, 10L, 10L, 4L, 10L, 7L, 7L, 10L,
+>> 6L,
+>> > > > 8L, 8L, 10L, 8L, 8L, 10L, 9L, 8L, 10L, 7L, 7L, 13L, 2L, 2L, 2L, 8L,
+>> > > > 8L, 8L, 8L, 8L, 11L, 10L, 10L, 13L, 13L, 8L, 8L, 8L, 6L, 7L, 8L,
+>> 10L,
+>> > > > 13L, 13L), .Label = c("T0", "T1", "T2", "T3", "T4", "T5", "T6",
+>> "T7",
+>> > > > "T8", "T9", "T10", "T11", "T12", "T13", "T14", "T15"), class =
+>> > > > "factor"), methodReturn = structure(c(2L, 2L, 2L, 2L, 2L, 2L, 2L,
+>> 4L,
+>> > > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L,
+>> > > > 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 2L, 2L, 2L, 2L,
+>> > > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L,
+>> > > > 4L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+>> > > > 4L, 4L, 4L, 4L, 4L, 4L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 4L, 4L, 4L,
+>> > > > 4L, 4L, 4L, 4L, 4L, 4L, 1L, 1L, 3L, 3L, 3L, 3L, 3L, 1L, 1L, 3L, 3L,
+>> > > > 3L, 1L, 4L, 4L, 4L, 2L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 2L, 2L, 4L, 4L,
+>> > > > 4L, 4L, 4L, 4L, 4L, 4L, 3L, 3L, 2L, 2L, 4L, 4L, 4L, 1L, 1L, 1L, 1L,
+>> > > > 2L, 2L), .Label = c("I", "V", "Z", "method", "D", "[D", "[[D", "J",
+>> > > > "[I", "C", "[J", "[C", "[S", "F", "[F", "[B", "S", "B", "[Z", "[[S",
+>> > > > "[[B", "[[Z"), class = "factor"), numTestsCover = c(16, 16, 16, 15,
+>> > > > 15, 16, 15, 4, 16, 16, 15, 16, 15, 15, 15, 15, 15, 3, 3, 3, 2, 16,
+>> 11,
+>> > > > 4, 16, 3, 16, 16, 16, 16, 16, 4, 16, 16, 16, 4, 16, 16, 3, 3, 3, 2,
+>> 4,
+>> > > > 3, 2, 1, 4, 1, 15, 16, 15, 2, 3, 2, 3, 3, 2, 2, 2, 3, 4, 5, 5, 5, 4,
+>> > > > 5, 5, 4, 4, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4, 2, 4, 4, 4, 4, 4, 5, 4, 5,
+>> > > > 5, 4, 4, 4, 4, 4, 4, 4, 4, 3, 4, 4, 4, 6, 6, 6, 0, 6, 0, 0, 2, 2, 2,
+>> > > > 7, 0, 0, 0, 15, 16, 16, 16, 15, 17, 17, 17, 15, 5, 4, 4, 4, 3, 4, 4,
+>> > > > 3, 4, 16, 16, 4, 17, 0, 0, 0, 5, 5, 3, 5, 2, 3), mutantAssert =
+>> c(55,
+>> > > > 55, 55, 55, 55, 55, 55, 13, 55, 55, 55, 55, 55, 55, 55, 55, 55, 9,
+>> 9,
+>> > > > 9, 9, 55, 41, 13, 55, 5, 55, 55, 55, 55, 55, 13, 55, 55, 55, 13, 55,
+>> > > > 55, 13, 13, 13, 8, 13, 13, 8, 4, 13, 4, 55, 55, 55, 9, 9, 9, 9, 9,
+>> 9,
+>> > > > 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 5,
+>> > > > 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 6, 9, 9, 9, 14,
+>> 14,
+>> > > > 14, 0, 14, 0, 0, 2, 2, 2, 15, 0, 0, 0, 55, 58, 58, 55, 55, 58, 58,
+>> 58,
+>> > > > 55, 9, 6, 6, 6, 6, 6, 6, 6, 6, 55, 55, 13, 57, 0, 0, 0, 11, 11, 7,
+>> 11,
+>> > > > 9, 9), classAssert = c(3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+>> 3,
+>> > > > 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+>> > > > 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0,
+>> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+>> > > > 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 10, 10, 10, 10, 10,
+>> 10,
+>> > > > 10, 10, 10, 10, 10, 10, 10, 10, 10, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+>> > > > 3, 3, 3, 3, 3, 3, 3, 0, 0, 0, 1, 1, 1, 1, 3, 3, 3, 3, 0, 0),
+>> isKilled
+>> > > > = structure(c(2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+>> 2L,
+>> > > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+>> > > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+>> > > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 1L, 1L, 1L, 1L, 1L,
+>> > > > 1L, 1L, 1L, 1L, 1L, 2L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,
+>> > > > 2L, 1L, 2L, 1L, 2L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 2L, 1L,
+>> > > > 1L, 1L, 1L, 1L, 1L, 2L, 1L, 2L, 2L, 1L, 1L, 1L, 1L, 2L, 2L, 2L, 2L,
+>> > > > 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 1L, 1L, 2L, 1L, 1L, 1L, 1L, 1L, 2L,
+>> > > > 1L, 1L, 1L, 1L, 2L, 2L, 2L, 1L, 1L, 1L, 1L, 2L, 1L), .Label =
+>> c("yes",
+>> > > > "no"), class = "factor")), row.names = c(3L, 4L, 5L, 7L, 9L, 17L,
+>> 20L,
+>> > > > 21L, 26L, 28L, 32L, 33L, 40L, 43L, 45L, 49L, 54L, 62L, 64L, 65L,
+>> 70L,
+>> > > > 75L, 77L, 81L, 84L, 86L, 88L, 89L, 93L, 95L, 97L, 99L, 101L, 102L,
+>> > > > 106L, 111L, 112L, 113L, 118L, 122L, 125L, 128L, 129L, 134L, 141L,
+>> > > > 142L, 143L, 146L, 156L, 168L, 169L, 174L, 178L, 179L, 182L, 184L,
+>> > > > 185L, 192L, 193L, 195L, 197L, 198L, 199L, 203L, 205L, 209L, 211L,
+>> > > > 215L, 216L, 218L, 220L, 224L, 227L, 228L, 230L, 233L, 243L, 244L,
+>> > > > 246L, 247L, 251L, 252L, 259L, 262L, 263L, 265L, 270L, 273L, 274L,
+>> > > > 275L, 284L, 285L, 286L, 291L, 296L, 297L, 300L, 301L, 306L, 314L,
+>> > > > 316L, 322L, 328L, 331L, 332L, 333L, 336L, 341L, 346L, 347L, 348L,
+>> > > > 360L, 363L, 366L, 367L, 383L, 392L, 395L, 398L, 404L, 408L, 409L,
+>> > > > 410L, 420L, 421L, 426L, 428L, 434L, 437L, 438L, 440L, 441L, 447L,
+>> > > > 449L, 450L, 452L, 454L, 457L, 458L, 459L, 463L, 465L, 469L, 471L,
+>> > > > 472L, 483L), class = "data.frame")
+>> > > >
+>> > > > On Fri, May 20, 2022 at 12:20 AM Jeff Newmiller
+>> > > > <jdnewmil at dcn.davis.ca.us>
+>> > > > wrote:
+>> > > >
+>> > > >> Not reproducible. Posted HTML.
+>> > > >>
+>> > > >> On May 19, 2022 2:30:58 PM PDT, Neha gupta
+>> > > <neha.bologna90 at gmail.com>
+>> > > >> wrote:
+>> > > >> >Why do I get the following error when my variable in the 'if
+>> > statement'
+>> > > >> has
+>> > > >> >no missing values.
+>> > > >> >
+>> > > >> >I check with is.na(my variable) and it has no missing values
+>> > > >> >
+>> > > >> >Error in if (fraction <= 1) { : missing value where TRUE/FALSE
+>> > > >> >needed
+>> > > >> >
+>> > > >> >Best regards
+>> > > >> >
+>> > > >> >      [[alternative HTML version deleted]]
+>> > > >> >
+>> > > >> >______________________________________________
+>> > > >> >R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > > >> >https://stat.ethz.ch/mailman/listinfo/r-help
+>> > > >> >PLEASE do read the posting guide
+>> > > >> http://www.R-project.org/posting-guide.html
+>> <http://www.r-project.org/posting-guide.html>
+>> > > >> >and provide commented, minimal, self-contained, reproducible code.
+>> > > >>
+>> > > >> --
+>> > > >> Sent from my phone. Please excuse my brevity.
+>>
+>> > > >>
+>> > > >
+>> > >
+>> > >      [[alternative HTML version deleted]]
+>> > >
+>> > > ______________________________________________
+>> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > > https://stat.ethz.ch/mailman/listinfo/r-help
+>> > > PLEASE do read the posting guide http://www.R-project.org/posting-
+>> <http://www.r-project.org/posting->
+>> > > guide.html
+>> > > and provide commented, minimal, self-contained, reproducible code.
+>> >
+>>
+>>     [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> <http://www.r-project.org/posting-guide.html>
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
