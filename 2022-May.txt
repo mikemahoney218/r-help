@@ -23662,3 +23662,1285 @@ On 5/28/22 14:33, Lucas Heber Mariano Dos Santos wrote:
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From @rne@henn|ng@en @end|ng |rom gm@||@com  Sun May 29 06:52:28 2022
+From: @rne@henn|ng@en @end|ng |rom gm@||@com (Arne Henningsen)
+Date: Sun, 29 May 2022 06:52:28 +0200
+Subject: [R] Calling stargazer() with do.call() in R 4.2.0
+In-Reply-To: <CAPcHnpSe8Q0C5cMPfbVtJe8rZeHtYTpG16otS4=zYqjtraVEmA@mail.gmail.com>
+References: <CAMTWbJiVBXDA5ABx2zGOueDk3OOPLCvWcjqJhY21tCSm5YWHMw@mail.gmail.com>
+ <af234546-216c-52d0-060e-d6dbc47dbc7c@statistik.tu-dortmund.de>
+ <CAMTWbJjb+XDS2zL18vScsYJa8+B5SRQdiEaSGUVbatWFYoburQ@mail.gmail.com>
+ <CAPcHnpSe8Q0C5cMPfbVtJe8rZeHtYTpG16otS4=zYqjtraVEmA@mail.gmail.com>
+Message-ID: <CAMTWbJgxm7DmWr-agv5HLyg15wj_qu0055XQ0fLAe=q9hMzjTw@mail.gmail.com>
+
+Dear Andrew
+
+Thanks a lot for investigating the problem and for suggesting a
+solution and a workaround! I have asked the maintainer of the
+'stargazer' package to fix the problem. Until then, we can use the
+workaround that you suggested.
+
+Best regards,
+Arne
+
+On Sat, 28 May 2022 at 23:13, Andrew Simmons <akwsimmo at gmail.com> wrote:
+>
+> Hello,
+>
+>
+> I don't have the slightest clue what stargazer is supposed to be
+> doing, but it seems as though it's trying to create names for the ...
+> list using:
+> object.names.string <- deparse(substitute(list(...)))
+>
+> It makes an error in assuming that the return value of deparse will be
+> a character string. For stargazer(res), object.names.string becomes:
+> "list(res)"
+>
+> while for do.call(stargazer, list(res)), object.names.string becomes:
+> [1] "list(structure(list(coefficients = c(`(Intercept)` =
+> 6.41594246095523, "
+> [2] "UrbanPop = 0.0209346588197249), residuals = c(Alabama =
+> 5.56984732750071, "
+> [3] "Alaska = 2.57919391569797, Arizona = 0.009284833466778, Arkansas
+> = 1.33732459805853, "
+> [4] "California = 0.679003586449805, Colorado = -0.148845848893771, "
+> [5] "Connecticut = -4.72791119007405, Delaware = -2.02323789597542, "
+> [6] "Florida = 7.30928483346678, Georgia = 9.72797800986128, Hawaii =
+> -2.8535191429924, "
+> [7] "Idaho = -4.94641403722037, Illinois = 2.2464808570076, Indiana =
+> -0.576695284237348, "
+> [8] "Iowa = -5.40921801367955, Kansas = -1.79762994305707, Kentucky =
+> 2.19545528041907, "
+> [9] "Louisiana = 7.60237005694293, Maine = -5.3836100607612, Maryland
+> = 3.4814353981232, "
+>  [ reached getOption("max.print") -- omitted 110 entries ]
+>
+> perhaps the package maintainer could change the line from:
+> object.names.string <- deparse(substitute(list(...)))
+> to:
+> object.names.string <- deparse1(substitute(list(...)), collapse = "")
+>
+> or you could change your code to:
+> do.call(stargazer, alist(res))
+>
+> please note that using alist instead of list is only a workaround, you
+> should still let the package maintainer know of this bug. If the
+> maintainer asks, this is what I used to get the strings above:
+> fun <- \(...) deparse(substitute(list(...)))
+> data("USArrests")
+> res <- lm( Murder ~ UrbanPop, data = USArrests)
+> fun(res)
+> print(do.call("fun", list(res)), max = 9)
+>
+> On Sat, May 28, 2022 at 4:41 PM Arne Henningsen
+> <arne.henningsen at gmail.com> wrote:
+> >
+> > On Sat, 28 May 2022 at 01:21, Uwe Ligges
+> > <ligges at statistik.tu-dortmund.de> wrote:
+> > > On 27.05.2022 17:29, Arne Henningsen wrote:
+> > >> Dear all  (cc Marek = maintainer of the stargazer package)
+> > >>
+> > >> We use do.call() to automatically create many LaTeX tables with
+> > >> stargazer but after upgrading to R 4.2.0, this no longer works. I
+> > >> illustrate this with a simple reproducible example:
+> > >>
+> > >> R> data("USArrests")
+> > >> R> res <- lm( Murder ~ UrbanPop, data = USArrests )
+> > >> R> library(stargazer)
+> > >> R> stargazer(res)  # works as expected
+> > >> R> do.call( stargazer, list(res) )
+> > >> Error in if (is.na(s)) { : the condition has length > 1
+> > >
+> > > Without looking at the code in detail: The line aboce suggests the code
+> > > needs an any():    if(any(is.na(x))) raher than if(is.na(x)).
+> >
+> > Yes, this is likely a problem in the 'stargazer' package.
+> >
+> > ... but why does the problem occur when using do.call( stargazer, )
+> > but the problem does *not* occur when using stargazer() directly?
+> >
+> > Best regards,
+> > Arne
+> >
+> > >> Any ideas what we can do so that the last command works with R 4.2.0?
+> > >>
+> > >> /Arne
+> >
+> > --
+> > Arne Henningsen
+> > http://www.arne-henningsen.name
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Arne Henningsen
+http://www.arne-henningsen.name
+
+
+From r @end|ng |rom e|onu@@net  Sun May 29 10:42:26 2022
+From: r @end|ng |rom e|onu@@net (Andreas Matre)
+Date: Sun, 29 May 2022 10:42:26 +0200
+Subject: [R] Use of ellipsis
+In-Reply-To: <20220528093357.2c4d777d@trisector>
+References: <56bccc82-d76d-c06b-f7c7-482dbb4eb2f3@elonus.net>
+ <20220526225723.4f2f8708@Tarkus>
+ <CAGxFJbTviay5BCKFqB5g9O8P_aGze5eQhdZce1FzhUSue9p_nw@mail.gmail.com>
+ <20220527092421.6cbe9b1d@Tarkus>
+ <CAGxFJbQF=70O004Oi0zRf5p+8PPXRXE1weE1UntkTfbvy_bZUg@mail.gmail.com>
+ <20220528093357.2c4d777d@trisector>
+Message-ID: <0b747862-a051-3869-df42-db2e6d69f77c@elonus.net>
+
+
+Thank you very much Ivan and Bert! I used the eval(substitute()) 
+workaround suggested by Ivan and it worked perfectly.
+
+Andreas Matre
+
+
+From neh@@bo|ogn@90 @end|ng |rom gm@||@com  Sun May 29 20:46:07 2022
+From: neh@@bo|ogn@90 @end|ng |rom gm@||@com (Neha gupta)
+Date: Sun, 29 May 2022 20:46:07 +0200
+Subject: [R] How to color boxplots with respect to the variable names
+Message-ID: <CA+nrPnsNujmDydqe4zc9Z3fevnumPFByhjHHDLWKi5=x=_Yf2A@mail.gmail.com>
+
+I have the following data and I need to use a boxplot which displays the
+variables (RF, Ranger, SVM, KNN) with one color, variables (RF_boot,
+Ranger_boot, SVM_boot, KNN_boot) with another color and the variables
+(RF_LOO, SVM_LOO, Ranger_LOO, KNN_LOO) with another color.
+
+How can I do that? Currently, I am using the base boxplot which displays
+them in one color. I know it will be more easily achieved with ggplot but I
+have no experience/knowledge with it.
+
+RF= c(4.7, 1.52, 1.46, 4.5, 0.62, 1.12)
+RF_LOO= c(5.2, 1.52, 1.44, 4.3, 0.64, 1.11)
+RF_boot= c(5.8, 1.5, 1.23, 4.3, 0.64, 1.12)
+Ranger= c(4.5, 1.57, 1.25, 3.75, 0.56, 1.09)
+Ranger_LOO= c(5, 1.56, 1.35, 3.7, 0.6, 1.0)
+Ranger_boot= c(4.2, 1.53, 1.12, 3.7, 0.63, 1.1)
+SVM= c(3.51, 1.34, 0.62, 1.45, 0.5, 1.06)
+SVM_LOO= c(3.6, 1.33, 0.33, 1.4, 0.41, 1.1)
+SVM_boot= c(3.75, 1.35, 0.58, 1.4, 0.4, 1.0)
+KNN= c(2.85, 1.35, 0.25, 1.76, 0.43, 1.25)
+KNN_LOO= c(2.85, 1.34, 0.375, 1.75, 0.44, 1.27)
+KNN_boot= c(2.75, 1.35, 0.375, 1.75, 0.45, 1.27)
+
+My base boxplot is here
+
+colors = rep("blue",12)
+at.x <- seq(1,by=.4, length.out = 10)
+boxplot(RF, RF_LOO, RF_boot, Ranger, Ranger_LOO, Ranger_boot, SVM, SVM_LOO,
+SVM_boot,
+        KNN, KNN_LOO, KNN_boot, range = 0, col=colors, names= c("RF",
+"RF_LOO", "RF_boot",
+        "Ranger", "Ranger_LOO", "Ranger_boot", "SVM", "SVM_LOO", "SVM_boot",
+        "KNN", "KNN_LOO",
+"KNN_boot"),las=2,boxwex=0.5,outline=FALSE,cex.axis=0.8, main="Consistency
+of the 100% features ")
+
+	[[alternative HTML version deleted]]
+
+
+From j@c@eco @end|ng |rom gm@||@com  Sun May 29 21:28:55 2022
+From: j@c@eco @end|ng |rom gm@||@com (Janet Choate)
+Date: Sun, 29 May 2022 12:28:55 -0700
+Subject: [R] categorizing data
+Message-ID: <CAEqw1VzRHstc-MdgYNqDdDhUzpuNuv3KvZvM3JBTCYP2wQqLjg@mail.gmail.com>
+
+Hi R community,
+I have a data frame with three variables, where each row adds up to 90.
+I want to assign a category of low, medium, or high to the values in each
+row - where the lowest value per row will be set to 10, the medium value
+set to 30, and the high value set to 50 - so each row still adds up to 90.
+
+For example:
+Data: Orig
+tree  shrub  grass
+32     11       47
+23      41      26
+49      23      18
+
+Data: New
+tree  shrub  grass
+30      10      50
+10       50     30
+50       30     10
+
+I am not attaching any code here as I have not been able to write anything
+effective! appreciate help with this!
+thank you,
+JC
+
+--
+
+	[[alternative HTML version deleted]]
+
+
+From twoo|m@n @end|ng |rom ont@rgettek@com  Sun May 29 21:42:38 2022
+From: twoo|m@n @end|ng |rom ont@rgettek@com (Tom Woolman)
+Date: Sun, 29 May 2022 15:42:38 -0400
+Subject: [R] categorizing data
+In-Reply-To: <CAEqw1VzRHstc-MdgYNqDdDhUzpuNuv3KvZvM3JBTCYP2wQqLjg@mail.gmail.com>
+References: <CAEqw1VzRHstc-MdgYNqDdDhUzpuNuv3KvZvM3JBTCYP2wQqLjg@mail.gmail.com>
+Message-ID: <0d8f01eb5646f8da35e321991a82bfad@ontargettek.com>
+
+
+Some ideas:
+
+You could create a cluster model with k=3 for each of the 3 variables, 
+to determine what constitutes high/medium/low centroid values for each 
+of the 3 types of plant types. Centroid values could then be used as the 
+upper/lower boundary ranges for high/med/low.
+
+Or utilize a histogram for each variable, and use quantiles or 
+densities, etc. to determine the natural breaks for the high/med/low 
+ranges for each of the IVs.
+
+
+
+
+On 2022-05-29 15:28, Janet Choate wrote:
+> Hi R community,
+> I have a data frame with three variables, where each row adds up to 90.
+> I want to assign a category of low, medium, or high to the values in 
+> each
+> row - where the lowest value per row will be set to 10, the medium 
+> value
+> set to 30, and the high value set to 50 - so each row still adds up to 
+> 90.
+> 
+> For example:
+> Data: Orig
+> tree  shrub  grass
+> 32     11       47
+> 23      41      26
+> 49      23      18
+> 
+> Data: New
+> tree  shrub  grass
+> 30      10      50
+> 10       50     30
+> 50       30     10
+> 
+> I am not attaching any code here as I have not been able to write 
+> anything
+> effective! appreciate help with this!
+> thank you,
+> JC
+> 
+> --
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Sun May 29 21:44:16 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Sun, 29 May 2022 12:44:16 -0700
+Subject: [R] categorizing data
+In-Reply-To: <CAEqw1VzRHstc-MdgYNqDdDhUzpuNuv3KvZvM3JBTCYP2wQqLjg@mail.gmail.com>
+References: <CAEqw1VzRHstc-MdgYNqDdDhUzpuNuv3KvZvM3JBTCYP2wQqLjg@mail.gmail.com>
+Message-ID: <CAHqSRuR5jpH8ofXAyhd2YYxpoY=F8LuxALpsG4PBM8btJ=vLrA@mail.gmail.com>
+
+You could write a function that deals with one row of your data, based on
+the order() function.  E.g.,
+  > to_10_30_50
+  function(x) {
+    stopifnot(is.numeric(x), length(x)==3, sum(x)==90, all(x>0))
+    c(10,30,50)[order(x)]
+  }
+  <bytecode: 0x000001912dcd1bd8>
+  > to_10_30_50(c(23,41,26))
+  [1] 10 50 30
+Then loop over the rows.  Since this is a data.frame and not a matrix, you
+need to coerce each row from a single-row data.frame to a numeric vector:
+  > data <- data.frame(tree=c(32,23,49), shrub=c(11,41,23),
+grass=c(47,26,18))
+  > for(i in 1:nrow(new)) data[i,] <- to_10_30_50(as.numeric(data[i,]))
+  > data
+    tree shrub grass
+  1   30    10    50
+  2   10    50    30
+  3   50    30    10
+
+-Bill
+
+On Sun, May 29, 2022 at 12:29 PM Janet Choate <jsc.eco at gmail.com> wrote:
+
+> Hi R community,
+> I have a data frame with three variables, where each row adds up to 90.
+> I want to assign a category of low, medium, or high to the values in each
+> row - where the lowest value per row will be set to 10, the medium value
+> set to 30, and the high value set to 50 - so each row still adds up to 90.
+>
+> For example:
+> Data: Orig
+> tree  shrub  grass
+> 32     11       47
+> 23      41      26
+> 49      23      18
+>
+> Data: New
+> tree  shrub  grass
+> 30      10      50
+> 10       50     30
+> 50       30     10
+>
+> I am not attaching any code here as I have not been able to write anything
+> effective! appreciate help with this!
+> thank you,
+> JC
+>
+> --
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From rmh @end|ng |rom temp|e@edu  Sun May 29 21:51:19 2022
+From: rmh @end|ng |rom temp|e@edu (Richard M. Heiberger)
+Date: Sun, 29 May 2022 19:51:19 +0000
+Subject: [R] [External]  categorizing data
+In-Reply-To: <CAEqw1VzRHstc-MdgYNqDdDhUzpuNuv3KvZvM3JBTCYP2wQqLjg@mail.gmail.com>
+References: <CAEqw1VzRHstc-MdgYNqDdDhUzpuNuv3KvZvM3JBTCYP2wQqLjg@mail.gmail.com>
+Message-ID: <B5866C30-2A1B-4501-8BC9-96C1F4F8A048@temple.edu>
+
+Orig <- read.table(text="
+tree shrub grass
+32 11 47
+23 41 26
+49 23 18
+", header=TRUE)
+
+New <- Orig
+for (i in seq(nrow(Orig)))
+  New[i,] <- c(10, 30, 50)[order(unlist(Orig[i,]))]
+
+New
+
+
+> On May 29, 2022, at 15:28, Janet Choate <jsc.eco at gmail.com> wrote:
+> 
+> Hi R community,
+> I have a data frame with three variables, where each row adds up to 90.
+> I want to assign a category of low, medium, or high to the values in each
+> row - where the lowest value per row will be set to 10, the medium value
+> set to 30, and the high value set to 50 - so each row still adds up to 90.
+> 
+> For example:
+> Data: Orig
+> tree  shrub  grass
+> 32     11       47
+> 23      41      26
+> 49      23      18
+> 
+> Data: New
+> tree  shrub  grass
+> 30      10      50
+> 10       50     30
+> 50       30     10
+> 
+> I am not attaching any code here as I have not been able to write anything
+> effective! appreciate help with this!
+> thank you,
+> JC
+> 
+> --
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&amp;data=05%7C01%7Crmh%40temple.edu%7C165bca7d509542fc339d08da41a98821%7C716e81efb52244738e3110bd02ccf6e5%7C0%7C0%7C637894493792524879%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=ZxDMzULApfm9p%2BnnXhToAfvFNZx7du6e%2BbqoaNc6iYE%3D&amp;reserved=0
+> PLEASE do read the posting guide https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&amp;data=05%7C01%7Crmh%40temple.edu%7C165bca7d509542fc339d08da41a98821%7C716e81efb52244738e3110bd02ccf6e5%7C0%7C0%7C637894493792524879%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=oVJe7FTikuD7Y59kbg9O1k4od357HPwTcylhTn6ZLWw%3D&amp;reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sun May 29 21:58:29 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sun, 29 May 2022 20:58:29 +0100
+Subject: [R] categorizing data
+In-Reply-To: <CAEqw1VzRHstc-MdgYNqDdDhUzpuNuv3KvZvM3JBTCYP2wQqLjg@mail.gmail.com>
+References: <CAEqw1VzRHstc-MdgYNqDdDhUzpuNuv3KvZvM3JBTCYP2wQqLjg@mail.gmail.com>
+Message-ID: <742cd9ed-c4af-ba34-16b5-e6a02c858cfd@sapo.pt>
+
+Hello,
+
+Here is a way. Define a function to change the values and call it in a 
+apply loop. But Tom's suggestions are more reasonable, you should have a 
+good reason why to change the data.
+
+
+x <- '
+tree  shrub  grass
+32     11       47
+23      41      26
+49      23      18'
+orig <- read.table(textConnection(x), header = TRUE)
+
+f <- function(x) {
+   stopifnot(length(x) == 3L)
+   i_min <- which.min(x)
+   i_max <- which.max(x)
+   s <- (x[i_min] - 10) + (x[i_max] - 50)
+   x[i_min] <- 10
+   x[i_max] <- 50
+   x[-c(i_min, i_max)] <- x[-c(i_min, i_max)] + s
+   x
+}
+
+t(apply(orig, 1, f))
+#       tree shrub grass
+#  [1,]   30    10    50
+#  [2,]   10    50    30
+#  [3,]   50    30    10
+
+
+Hope this helps,
+
+Rui Barradas
+
+?s 20:28 de 29/05/2022, Janet Choate escreveu:
+> Hi R community,
+> I have a data frame with three variables, where each row adds up to 90.
+> I want to assign a category of low, medium, or high to the values in each
+> row - where the lowest value per row will be set to 10, the medium value
+> set to 30, and the high value set to 50 - so each row still adds up to 90.
+> 
+> For example:
+> Data: Orig
+> tree  shrub  grass
+> 32     11       47
+> 23      41      26
+> 49      23      18
+> 
+> Data: New
+> tree  shrub  grass
+> 30      10      50
+> 10       50     30
+> 50       30     10
+> 
+> I am not attaching any code here as I have not been able to write anything
+> effective! appreciate help with this!
+> thank you,
+> JC
+> 
+> --
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @v|gro@@ @end|ng |rom ver|zon@net  Sun May 29 22:15:31 2022
+From: @v|gro@@ @end|ng |rom ver|zon@net (Avi Gross)
+Date: Sun, 29 May 2022 20:15:31 +0000 (UTC)
+Subject: [R] categorizing data
+In-Reply-To: <0d8f01eb5646f8da35e321991a82bfad@ontargettek.com>
+References: <CAEqw1VzRHstc-MdgYNqDdDhUzpuNuv3KvZvM3JBTCYP2wQqLjg@mail.gmail.com>
+ <0d8f01eb5646f8da35e321991a82bfad@ontargettek.com>
+Message-ID: <809232541.2501478.1653855331973@mail.yahoo.com>
+
+Tom,
+You may have a very different impression of what was asked! LOL!
+Unless Janet clarifies what seems a bit like a homework assignment, it seems?to be a fairly simple and straightforward assignment with exactly three rows/columns and?asking how to replace the variables, in a sense, by finding the high and low and?perhaps thus identifying the medium, but to do this for each row without changing?the order of the resulting data.frame.
+I note most techniques people have used focus on columns, not rows, but an all-numeric?data.frame can be transposed, or converted to a matrix and later converted back.
+If this is HW, the question becomes what has been taught so far and is supposed to be?used in solving it. Can they make their own functions perhaps to be called three times,?once per row or column, to replace that row/column, or can they use some form of loop to?iterate over the columns? Does it need to sort of be done in place or can they create gradually?a second data.frame and then move the pointer to it and lots of other similar ideas.
+I am not sure, other than as a HW assignment, why this transformation would need to be done?but of course, there may well be a reason.
+I note that the particular example shown just happens to create almost a magic square as the sum?of rows and columns and the major diagonal happen to be 0, albeit the reverse diagonal is all 50's.?
+Again, there are many solutions imaginable but the goal may be more specific and I shudder to?supply one given that too often questions here are not detailed enough and are misunderstood.?In this case, I thought I understood until I saw what Tom wrote! LOL!
+I will add this. Is it guaranteed that no two items in the same row are never equal or is there some?requirement for how to handle a tie? And note there are base R functions called min() and max()?and you can ask for things like:
+
+if ( current == min(mydata[1,])) ...
+
+
+-----Original Message-----
+From: Tom Woolman <twoolman at ontargettek.com>
+To: Janet Choate <jsc.eco at gmail.com>
+Cc: r-help at r-project.org
+Sent: Sun, May 29, 2022 3:42 pm
+Subject: Re: [R] categorizing data
+
+
+Some ideas:
+
+You could create a cluster model with k=3 for each of the 3 variables, 
+to determine what constitutes high/medium/low centroid values for each 
+of the 3 types of plant types. Centroid values could then be used as the 
+upper/lower boundary ranges for high/med/low.
+
+Or utilize a histogram for each variable, and use quantiles or 
+densities, etc. to determine the natural breaks for the high/med/low 
+ranges for each of the IVs.
+
+
+
+
+On 2022-05-29 15:28, Janet Choate wrote:
+> Hi R community,
+> I have a data frame with three variables, where each row adds up to 90.
+> I want to assign a category of low, medium, or high to the values in 
+> each
+> row - where the lowest value per row will be set to 10, the medium 
+> value
+> set to 30, and the high value set to 50 - so each row still adds up to 
+> 90.
+> 
+> For example:
+> Data: Orig
+> tree? shrub? grass
+> 32? ? 11? ? ? 47
+> 23? ? ? 41? ? ? 26
+> 49? ? ? 23? ? ? 18
+> 
+> Data: New
+> tree? shrub? grass
+> 30? ? ? 10? ? ? 50
+> 10? ? ? 50? ? 30
+> 50? ? ? 30? ? 10
+> 
+> I am not attaching any code here as I have not been able to write 
+> anything
+> effective! appreciate help with this!
+> thank you,
+> JC
+> 
+> --
+> 
+> ??? [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From j@c@eco @end|ng |rom gm@||@com  Sun May 29 22:31:45 2022
+From: j@c@eco @end|ng |rom gm@||@com (Janet Choate)
+Date: Sun, 29 May 2022 13:31:45 -0700
+Subject: [R] categorizing data
+In-Reply-To: <809232541.2501478.1653855331973@mail.yahoo.com>
+References: <CAEqw1VzRHstc-MdgYNqDdDhUzpuNuv3KvZvM3JBTCYP2wQqLjg@mail.gmail.com>
+ <0d8f01eb5646f8da35e321991a82bfad@ontargettek.com>
+ <809232541.2501478.1653855331973@mail.yahoo.com>
+Message-ID: <CAEqw1VwbJDSU+iy9aPcFjo+UmCKkDMe6VwkM_9ztt-L-J=gZtQ@mail.gmail.com>
+
+I'm sorry if this has come across as a homework assignment!I was trying to
+provide a simple example.
+There are actually 38323 rows of data, each row is an observation of the
+percent that each of those veg types occupies in a spatial unit - where
+each line adds to 90 - and values are different every line.
+I need a way to categorize the data, so I can reduce the number of unique
+observations.
+
+So instead of 38323 unique observations - I can reduce this to
+X number of High/Med/Low
+X number of Med/Low/High
+X number of Low/High/Med
+etc... for all combinations
+
+I hope this makes it more clear......
+thank you all for your responses,
+JC
+
+On Sun, May 29, 2022 at 1:16 PM Avi Gross via R-help <r-help at r-project.org>
+wrote:
+
+> Tom,
+> You may have a very different impression of what was asked! LOL!
+> Unless Janet clarifies what seems a bit like a homework assignment, it
+> seems to be a fairly simple and straightforward assignment with exactly
+> three rows/columns and asking how to replace the variables, in a sense, by
+> finding the high and low and perhaps thus identifying the medium, but to do
+> this for each row without changing the order of the resulting data.frame.
+> I note most techniques people have used focus on columns, not rows, but an
+> all-numeric data.frame can be transposed, or converted to a matrix and
+> later converted back.
+> If this is HW, the question becomes what has been taught so far and is
+> supposed to be used in solving it. Can they make their own functions
+> perhaps to be called three times, once per row or column, to replace that
+> row/column, or can they use some form of loop to iterate over the columns?
+> Does it need to sort of be done in place or can they create gradually a
+> second data.frame and then move the pointer to it and lots of other similar
+> ideas.
+> I am not sure, other than as a HW assignment, why this transformation
+> would need to be done but of course, there may well be a reason.
+> I note that the particular example shown just happens to create almost a
+> magic square as the sum of rows and columns and the major diagonal happen
+> to be 0, albeit the reverse diagonal is all 50's.
+> Again, there are many solutions imaginable but the goal may be more
+> specific and I shudder to supply one given that too often questions here
+> are not detailed enough and are misunderstood. In this case, I thought I
+> understood until I saw what Tom wrote! LOL!
+> I will add this. Is it guaranteed that no two items in the same row are
+> never equal or is there some requirement for how to handle a tie? And note
+> there are base R functions called min() and max() and you can ask for
+> things like:
+>
+> if ( current == min(mydata[1,])) ...
+>
+>
+> -----Original Message-----
+> From: Tom Woolman <twoolman at ontargettek.com>
+> To: Janet Choate <jsc.eco at gmail.com>
+> Cc: r-help at r-project.org
+> Sent: Sun, May 29, 2022 3:42 pm
+> Subject: Re: [R] categorizing data
+>
+>
+> Some ideas:
+>
+> You could create a cluster model with k=3 for each of the 3 variables,
+> to determine what constitutes high/medium/low centroid values for each
+> of the 3 types of plant types. Centroid values could then be used as the
+> upper/lower boundary ranges for high/med/low.
+>
+> Or utilize a histogram for each variable, and use quantiles or
+> densities, etc. to determine the natural breaks for the high/med/low
+> ranges for each of the IVs.
+>
+>
+>
+>
+> On 2022-05-29 15:28, Janet Choate wrote:
+> > Hi R community,
+> > I have a data frame with three variables, where each row adds up to 90.
+> > I want to assign a category of low, medium, or high to the values in
+> > each
+> > row - where the lowest value per row will be set to 10, the medium
+> > value
+> > set to 30, and the high value set to 50 - so each row still adds up to
+> > 90.
+> >
+> > For example:
+> > Data: Orig
+> > tree  shrub  grass
+> > 32    11      47
+> > 23      41      26
+> > 49      23      18
+> >
+> > Data: New
+> > tree  shrub  grass
+> > 30      10      50
+> > 10      50    30
+> > 50      30    10
+> >
+> > I am not attaching any code here as I have not been able to write
+> > anything
+> > effective! appreciate help with this!
+> > thank you,
+> > JC
+> >
+> > --
+> >
+> >     [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> > http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+-- 
+Tague Team Lab Manager
+1005 Bren Hall
+UCSB, Santa Barbara, CA.
+
+	[[alternative HTML version deleted]]
+
+
+From @v|gro@@ @end|ng |rom ver|zon@net  Sun May 29 23:51:49 2022
+From: @v|gro@@ @end|ng |rom ver|zon@net (Avi Gross)
+Date: Sun, 29 May 2022 21:51:49 +0000 (UTC)
+Subject: [R] categorizing data
+In-Reply-To: <CAEqw1VwbJDSU+iy9aPcFjo+UmCKkDMe6VwkM_9ztt-L-J=gZtQ@mail.gmail.com>
+References: <CAEqw1VzRHstc-MdgYNqDdDhUzpuNuv3KvZvM3JBTCYP2wQqLjg@mail.gmail.com>
+ <0d8f01eb5646f8da35e321991a82bfad@ontargettek.com>
+ <809232541.2501478.1653855331973@mail.yahoo.com>
+ <CAEqw1VwbJDSU+iy9aPcFjo+UmCKkDMe6VwkM_9ztt-L-J=gZtQ@mail.gmail.com>
+Message-ID: <158826902.2496870.1653861109119@mail.yahoo.com>
+
+Janet,
+Thanks for the clarification.
+What obfuscated your example a bit was specifying replacement by numbers adding up to 90.?Nothing wrong with that but R also often is used with categorical variables like strings of "low"",?"Medium" and "HIGH". You can then calculate other statistics using sum() and other methods but?using 10, 30 and 50 may be what you want or need.
+
+Since you have lots of rows, you may not necessarily want to use some techniques such as?conversions to/from a matrix or transpositions. Others have made suggestion on ways to go and?a fairly straightforward and simple way to go would be a loop from 1 to nrow(df) in which you evaluate?that row. In a sense, it is cleaner to leave the data alone and make your changes to a second?data.frame or three new columns added to the current one and one way is judicious use of ifelse()?combined with min() and max(). Assuming you looped on variable "index" then in your loop youcan refer to the three column entries as df[index,] or df[index, 1:3] to get a horizontal slice as a?vector. you can feed that to min() and max() and have code in your explicit loop like:
+threesome <-?df[index, 1:3] ; low <- min(threesome) ; high <- max(threesome)
+
+Now to populate the three items with a replacement of 10, 30 50 you could use a nested if statement?(or ifelse if doing it vectorized) with logic like:
+
+if (df[index,1] == min) {df[index, 1] <- 10)} else { if?(df[index,1] == max) {df[index, 1] <- 50)}?} else {df[index, 1] <- 30 }
+
+My mailer formats my code horribly, hence the one-line codes as EXAMPLES best written on many lines.The point is you can repeat similar code changing the second through last items in place since you grabbed a?copy of the original contents.
+
+Would I do it this way? Nope. I can see dozens of valid ways including some much more concise?or faster and some using functionality in packages like dplyr. I would likely use a helper function or two?and even replace entire rows at once.
+It sounds like no matter which way you do this, you might want to do something like?the table() command to tabulate each column and count the occurrences.
+Again, others have provided ways that are worth considering and the above is just a way to get?you started with actual code.?
+
+
+
+
+
+
+-----Original Message-----
+From: Janet Choate <jsc.eco at gmail.com>
+To: Avi Gross <avigross at verizon.net>
+Cc: r-help at r-project.org <r-help at r-project.org>
+Sent: Sun, May 29, 2022 4:31 pm
+Subject: Re: [R] categorizing data
+
+I'm sorry if this has come across as a homework assignment!I was trying to provide a simple example.There are actually 38323 rows of data, each row is an observation of the percent that each of those veg types occupies in a spatial unit - where each line adds to 90 - and values are different every line.?I need a way to categorize the?data, so I can reduce the number of unique observations.
+
+So instead of 38323 unique observations - I can reduce this to?X number of High/Med/LowX number of Med/Low/HighX number of Low/High/Medetc... for all combinations
+I hope this makes it more clear......thank you all for your responses,JC
+On Sun, May 29, 2022 at 1:16 PM Avi Gross via R-help <r-help at r-project.org> wrote:
+
+Tom,
+You may have a very different impression of what was asked! LOL!
+Unless Janet clarifies what seems a bit like a homework assignment, it seems?to be a fairly simple and straightforward assignment with exactly three rows/columns and?asking how to replace the variables, in a sense, by finding the high and low and?perhaps thus identifying the medium, but to do this for each row without changing?the order of the resulting data.frame.
+I note most techniques people have used focus on columns, not rows, but an all-numeric?data.frame can be transposed, or converted to a matrix and later converted back.
+If this is HW, the question becomes what has been taught so far and is supposed to be?used in solving it. Can they make their own functions perhaps to be called three times,?once per row or column, to replace that row/column, or can they use some form of loop to?iterate over the columns? Does it need to sort of be done in place or can they create gradually?a second data.frame and then move the pointer to it and lots of other similar ideas.
+I am not sure, other than as a HW assignment, why this transformation would need to be done?but of course, there may well be a reason.
+I note that the particular example shown just happens to create almost a magic square as the sum?of rows and columns and the major diagonal happen to be 0, albeit the reverse diagonal is all 50's.?
+Again, there are many solutions imaginable but the goal may be more specific and I shudder to?supply one given that too often questions here are not detailed enough and are misunderstood.?In this case, I thought I understood until I saw what Tom wrote! LOL!
+I will add this. Is it guaranteed that no two items in the same row are never equal or is there some?requirement for how to handle a tie? And note there are base R functions called min() and max()?and you can ask for things like:
+
+if ( current == min(mydata[1,])) ...
+
+
+-----Original Message-----
+From: Tom Woolman <twoolman at ontargettek.com>
+To: Janet Choate <jsc.eco at gmail.com>
+Cc: r-help at r-project.org
+Sent: Sun, May 29, 2022 3:42 pm
+Subject: Re: [R] categorizing data
+
+
+Some ideas:
+
+You could create a cluster model with k=3 for each of the 3 variables, 
+to determine what constitutes high/medium/low centroid values for each 
+of the 3 types of plant types. Centroid values could then be used as the 
+upper/lower boundary ranges for high/med/low.
+
+Or utilize a histogram for each variable, and use quantiles or 
+densities, etc. to determine the natural breaks for the high/med/low 
+ranges for each of the IVs.
+
+
+
+
+On 2022-05-29 15:28, Janet Choate wrote:
+> Hi R community,
+> I have a data frame with three variables, where each row adds up to 90.
+> I want to assign a category of low, medium, or high to the values in 
+> each
+> row - where the lowest value per row will be set to 10, the medium 
+> value
+> set to 30, and the high value set to 50 - so each row still adds up to 
+> 90.
+> 
+> For example:
+> Data: Orig
+> tree? shrub? grass
+> 32? ? 11? ? ? 47
+> 23? ? ? 41? ? ? 26
+> 49? ? ? 23? ? ? 18
+> 
+> Data: New
+> tree? shrub? grass
+> 30? ? ? 10? ? ? 50
+> 10? ? ? 50? ? 30
+> 50? ? ? 30? ? 10
+> 
+> I am not attaching any code here as I have not been able to write 
+> anything
+> effective! appreciate help with this!
+> thank you,
+> JC
+> 
+> --
+> 
+> ??? [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+? ? ? ? [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Tague Team Lab Manager1005 Bren HallUCSB, Santa Barbara, CA.
+	[[alternative HTML version deleted]]
+
+
+From roy@mende|@@ohn @end|ng |rom no@@@gov  Mon May 30 00:08:12 2022
+From: roy@mende|@@ohn @end|ng |rom no@@@gov (Roy Mendelssohn - NOAA Federal)
+Date: Sun, 29 May 2022 15:08:12 -0700
+Subject: [R] categorizing data
+In-Reply-To: <CAEqw1VwbJDSU+iy9aPcFjo+UmCKkDMe6VwkM_9ztt-L-J=gZtQ@mail.gmail.com>
+References: <CAEqw1VzRHstc-MdgYNqDdDhUzpuNuv3KvZvM3JBTCYP2wQqLjg@mail.gmail.com>
+ <0d8f01eb5646f8da35e321991a82bfad@ontargettek.com>
+ <809232541.2501478.1653855331973@mail.yahoo.com>
+ <CAEqw1VwbJDSU+iy9aPcFjo+UmCKkDMe6VwkM_9ztt-L-J=gZtQ@mail.gmail.com>
+Message-ID: <B742AEFD-F490-450E-8F26-DFA752523628@noaa.gov>
+
+Hi Janet:
+
+here is a start to give you the idea,  now you need  loop either use a "for" or one of the apply functions.
+
+1.  Preallocate new data  (i am lazy so it is array, for example of size three.
+
+2.  order the data and set values.
+
+junk <- array(0, dim = c(2,3))
+values <- c(10, 30, 50)
+junk[1, order(c(32, 11, 17))] <- values
+junk[1, ]
+[1] 50 10 30
+
+
+This works because order() returns the index of the ordering, not the values.
+
+HTH,
+
+-Roy
+> On May 29, 2022, at 1:31 PM, Janet Choate <jsc.eco at gmail.com> wrote:
+> 
+> I'm sorry if this has come across as a homework assignment!I was trying to
+> provide a simple example.
+> There are actually 38323 rows of data, each row is an observation of the
+> percent that each of those veg types occupies in a spatial unit - where
+> each line adds to 90 - and values are different every line.
+> I need a way to categorize the data, so I can reduce the number of unique
+> observations.
+> 
+> So instead of 38323 unique observations - I can reduce this to
+> X number of High/Med/Low
+> X number of Med/Low/High
+> X number of Low/High/Med
+> etc... for all combinations
+> 
+> I hope this makes it more clear......
+> thank you all for your responses,
+> JC
+> 
+> On Sun, May 29, 2022 at 1:16 PM Avi Gross via R-help <r-help at r-project.org>
+> wrote:
+> 
+>> Tom,
+>> You may have a very different impression of what was asked! LOL!
+>> Unless Janet clarifies what seems a bit like a homework assignment, it
+>> seems to be a fairly simple and straightforward assignment with exactly
+>> three rows/columns and asking how to replace the variables, in a sense, by
+>> finding the high and low and perhaps thus identifying the medium, but to do
+>> this for each row without changing the order of the resulting data.frame.
+>> I note most techniques people have used focus on columns, not rows, but an
+>> all-numeric data.frame can be transposed, or converted to a matrix and
+>> later converted back.
+>> If this is HW, the question becomes what has been taught so far and is
+>> supposed to be used in solving it. Can they make their own functions
+>> perhaps to be called three times, once per row or column, to replace that
+>> row/column, or can they use some form of loop to iterate over the columns?
+>> Does it need to sort of be done in place or can they create gradually a
+>> second data.frame and then move the pointer to it and lots of other similar
+>> ideas.
+>> I am not sure, other than as a HW assignment, why this transformation
+>> would need to be done but of course, there may well be a reason.
+>> I note that the particular example shown just happens to create almost a
+>> magic square as the sum of rows and columns and the major diagonal happen
+>> to be 0, albeit the reverse diagonal is all 50's.
+>> Again, there are many solutions imaginable but the goal may be more
+>> specific and I shudder to supply one given that too often questions here
+>> are not detailed enough and are misunderstood. In this case, I thought I
+>> understood until I saw what Tom wrote! LOL!
+>> I will add this. Is it guaranteed that no two items in the same row are
+>> never equal or is there some requirement for how to handle a tie? And note
+>> there are base R functions called min() and max() and you can ask for
+>> things like:
+>> 
+>> if ( current == min(mydata[1,])) ...
+>> 
+>> 
+>> -----Original Message-----
+>> From: Tom Woolman <twoolman at ontargettek.com>
+>> To: Janet Choate <jsc.eco at gmail.com>
+>> Cc: r-help at r-project.org
+>> Sent: Sun, May 29, 2022 3:42 pm
+>> Subject: Re: [R] categorizing data
+>> 
+>> 
+>> Some ideas:
+>> 
+>> You could create a cluster model with k=3 for each of the 3 variables,
+>> to determine what constitutes high/medium/low centroid values for each
+>> of the 3 types of plant types. Centroid values could then be used as the
+>> upper/lower boundary ranges for high/med/low.
+>> 
+>> Or utilize a histogram for each variable, and use quantiles or
+>> densities, etc. to determine the natural breaks for the high/med/low
+>> ranges for each of the IVs.
+>> 
+>> 
+>> 
+>> 
+>> On 2022-05-29 15:28, Janet Choate wrote:
+>>> Hi R community,
+>>> I have a data frame with three variables, where each row adds up to 90.
+>>> I want to assign a category of low, medium, or high to the values in
+>>> each
+>>> row - where the lowest value per row will be set to 10, the medium
+>>> value
+>>> set to 30, and the high value set to 50 - so each row still adds up to
+>>> 90.
+>>> 
+>>> For example:
+>>> Data: Orig
+>>> tree  shrub  grass
+>>> 32    11      47
+>>> 23      41      26
+>>> 49      23      18
+>>> 
+>>> Data: New
+>>> tree  shrub  grass
+>>> 30      10      50
+>>> 10      50    30
+>>> 50      30    10
+>>> 
+>>> I am not attaching any code here as I have not been able to write
+>>> anything
+>>> effective! appreciate help with this!
+>>> thank you,
+>>> JC
+>>> 
+>>> --
+>>> 
+>>>    [[alternative HTML version deleted]]
+>>> 
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>> 
+>>        [[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>> 
+> 
+> 
+> -- 
+> Tague Team Lab Manager
+> 1005 Bren Hall
+> UCSB, Santa Barbara, CA.
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+**********************
+"The contents of this message do not reflect any position of the U.S. Government or NOAA."
+**********************
+Roy Mendelssohn
+Supervisory Operations Research Analyst
+NOAA/NMFS
+Environmental Research Division
+Southwest Fisheries Science Center
+***Note new street address***
+110 McAllister Way
+Santa Cruz, CA 95060
+Phone: (831)-420-3666
+Fax: (831) 420-3980
+e-mail: Roy.Mendelssohn at noaa.gov www: https://www.pfeg.noaa.gov/
+
+"Old age and treachery will overcome youth and skill."
+"From those who have been given much, much will be expected" 
+"the arc of the moral universe is long, but it bends toward justice" -MLK Jr.
+
+
+From drj|m|emon @end|ng |rom gm@||@com  Mon May 30 01:32:19 2022
+From: drj|m|emon @end|ng |rom gm@||@com (Jim Lemon)
+Date: Mon, 30 May 2022 09:32:19 +1000
+Subject: [R] How to color boxplots with respect to the variable names
+In-Reply-To: <CA+nrPnsNujmDydqe4zc9Z3fevnumPFByhjHHDLWKi5=x=_Yf2A@mail.gmail.com>
+References: <CA+nrPnsNujmDydqe4zc9Z3fevnumPFByhjHHDLWKi5=x=_Yf2A@mail.gmail.com>
+Message-ID: <CA+8X3fUYtB1A8Dfv3pgJKk7tzRnzjDpJzYYu+JxJUqKdq66E4A@mail.gmail.com>
+
+Hi Neha,
+As you have a distinguishing feature in the variable names, here is
+one way to do it:
+
+RF<- c(4.7, 1.52, 1.46, 4.5, 0.62, 1.12)
+RF_LOO<- c(5.2, 1.52, 1.44, 4.3, 0.64, 1.11)
+RF_boot<- c(5.8, 1.5, 1.23, 4.3, 0.64, 1.12)
+Ranger<- c(4.5, 1.57, 1.25, 3.75, 0.56, 1.09)
+Ranger_LOO<- c(5, 1.56, 1.35, 3.7, 0.6, 1.0)
+Ranger_boot<- c(4.2, 1.53, 1.12, 3.7, 0.63, 1.1)
+SVM<- c(3.51, 1.34, 0.62, 1.45, 0.5, 1.06)
+SVM_LOO<- c(3.6, 1.33, 0.33, 1.4, 0.41, 1.1)
+SVM_boot<- c(3.75, 1.35, 0.58, 1.4, 0.4, 1.0)
+KNN<- c(2.85, 1.35, 0.25, 1.76, 0.43, 1.25)
+KNN_LOO<- c(2.85, 1.34, 0.375, 1.75, 0.44, 1.27)
+KNN_boot<- c(2.75, 1.35, 0.375, 1.75, 0.45, 1.27)
+varnames<-c("RF","RF_LOO","RF_boot",
+ "RANGER","RANGER_LOO","RANGER_boot",
+ "SVM","SVM_LOO","SVM_boot",
+ "KNN","KNN_LOO","KNN_boot")
+colors<-rep("blue",length(varnames))
+colors[grep("LOO",varnames)]<-"green"
+colors[grep("boot",varnames)]<-"red"
+at.x <- seq(1,by=.4, length.out = 10)
+boxplot(RF, RF_LOO, RF_boot, Ranger, Ranger_LOO, Ranger_boot, SVM, SVM_LOO,
+SVM_boot,
+        KNN, KNN_LOO, KNN_boot, range = 0, col=colors, names= c("RF",
+"RF_LOO", "RF_boot",
+        "Ranger", "Ranger_LOO", "Ranger_boot", "SVM", "SVM_LOO", "SVM_boot",
+        "KNN", "KNN_LOO",
+"KNN_boot"),las=2,boxwex=0.5,outline=FALSE,cex.axis=0.8, main="Consistency
+of the 100% features ")
+legend(8,5.5,c("Raw","LOO","boot"),fill=c("blue","green","red"))
+
+Jim
+
+On Mon, May 30, 2022 at 4:46 AM Neha gupta <neha.bologna90 at gmail.com> wrote:
+>
+> I have the following data and I need to use a boxplot which displays the
+> variables (RF, Ranger, SVM, KNN) with one color, variables (RF_boot,
+> Ranger_boot, SVM_boot, KNN_boot) with another color and the variables
+> (RF_LOO, SVM_LOO, Ranger_LOO, KNN_LOO) with another color.
+>
+> How can I do that? Currently, I am using the base boxplot which displays
+> them in one color. I know it will be more easily achieved with ggplot but I
+> have no experience/knowledge with it.
+>
+> RF= c(4.7, 1.52, 1.46, 4.5, 0.62, 1.12)
+> RF_LOO= c(5.2, 1.52, 1.44, 4.3, 0.64, 1.11)
+> RF_boot= c(5.8, 1.5, 1.23, 4.3, 0.64, 1.12)
+> Ranger= c(4.5, 1.57, 1.25, 3.75, 0.56, 1.09)
+> Ranger_LOO= c(5, 1.56, 1.35, 3.7, 0.6, 1.0)
+> Ranger_boot= c(4.2, 1.53, 1.12, 3.7, 0.63, 1.1)
+> SVM= c(3.51, 1.34, 0.62, 1.45, 0.5, 1.06)
+> SVM_LOO= c(3.6, 1.33, 0.33, 1.4, 0.41, 1.1)
+> SVM_boot= c(3.75, 1.35, 0.58, 1.4, 0.4, 1.0)
+> KNN= c(2.85, 1.35, 0.25, 1.76, 0.43, 1.25)
+> KNN_LOO= c(2.85, 1.34, 0.375, 1.75, 0.44, 1.27)
+> KNN_boot= c(2.75, 1.35, 0.375, 1.75, 0.45, 1.27)
+>
+> My base boxplot is here
+>
+> colors = rep("blue",12)
+> at.x <- seq(1,by=.4, length.out = 10)
+> boxplot(RF, RF_LOO, RF_boot, Ranger, Ranger_LOO, Ranger_boot, SVM, SVM_LOO,
+> SVM_boot,
+>         KNN, KNN_LOO, KNN_boot, range = 0, col=colors, names= c("RF",
+> "RF_LOO", "RF_boot",
+>         "Ranger", "Ranger_LOO", "Ranger_boot", "SVM", "SVM_LOO", "SVM_boot",
+>         "KNN", "KNN_LOO",
+> "KNN_boot"),las=2,boxwex=0.5,outline=FALSE,cex.axis=0.8, main="Consistency
+> of the 100% features ")
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From neh@@bo|ogn@90 @end|ng |rom gm@||@com  Mon May 30 02:47:50 2022
+From: neh@@bo|ogn@90 @end|ng |rom gm@||@com (Neha gupta)
+Date: Mon, 30 May 2022 02:47:50 +0200
+Subject: [R] How to color boxplots with respect to the variable names
+In-Reply-To: <CA+8X3fUYtB1A8Dfv3pgJKk7tzRnzjDpJzYYu+JxJUqKdq66E4A@mail.gmail.com>
+References: <CA+nrPnsNujmDydqe4zc9Z3fevnumPFByhjHHDLWKi5=x=_Yf2A@mail.gmail.com>
+ <CA+8X3fUYtB1A8Dfv3pgJKk7tzRnzjDpJzYYu+JxJUqKdq66E4A@mail.gmail.com>
+Message-ID: <CA+nrPnsUi8ke6hLS_hsTWct4DABw1rMbwKGS8hvabKvMM5=bCw@mail.gmail.com>
+
+Thank you so much Jim for your help.
+
+Best regards
+
+On Monday, May 30, 2022, Jim Lemon <drjimlemon at gmail.com> wrote:
+
+> Hi Neha,
+> As you have a distinguishing feature in the variable names, here is
+> one way to do it:
+>
+> RF<- c(4.7, 1.52, 1.46, 4.5, 0.62, 1.12)
+> RF_LOO<- c(5.2, 1.52, 1.44, 4.3, 0.64, 1.11)
+> RF_boot<- c(5.8, 1.5, 1.23, 4.3, 0.64, 1.12)
+> Ranger<- c(4.5, 1.57, 1.25, 3.75, 0.56, 1.09)
+> Ranger_LOO<- c(5, 1.56, 1.35, 3.7, 0.6, 1.0)
+> Ranger_boot<- c(4.2, 1.53, 1.12, 3.7, 0.63, 1.1)
+> SVM<- c(3.51, 1.34, 0.62, 1.45, 0.5, 1.06)
+> SVM_LOO<- c(3.6, 1.33, 0.33, 1.4, 0.41, 1.1)
+> SVM_boot<- c(3.75, 1.35, 0.58, 1.4, 0.4, 1.0)
+> KNN<- c(2.85, 1.35, 0.25, 1.76, 0.43, 1.25)
+> KNN_LOO<- c(2.85, 1.34, 0.375, 1.75, 0.44, 1.27)
+> KNN_boot<- c(2.75, 1.35, 0.375, 1.75, 0.45, 1.27)
+> varnames<-c("RF","RF_LOO","RF_boot",
+>  "RANGER","RANGER_LOO","RANGER_boot",
+>  "SVM","SVM_LOO","SVM_boot",
+>  "KNN","KNN_LOO","KNN_boot")
+> colors<-rep("blue",length(varnames))
+> colors[grep("LOO",varnames)]<-"green"
+> colors[grep("boot",varnames)]<-"red"
+> at.x <- seq(1,by=.4, length.out = 10)
+> boxplot(RF, RF_LOO, RF_boot, Ranger, Ranger_LOO, Ranger_boot, SVM, SVM_LOO,
+> SVM_boot,
+>         KNN, KNN_LOO, KNN_boot, range = 0, col=colors, names= c("RF",
+> "RF_LOO", "RF_boot",
+>         "Ranger", "Ranger_LOO", "Ranger_boot", "SVM", "SVM_LOO",
+> "SVM_boot",
+>         "KNN", "KNN_LOO",
+> "KNN_boot"),las=2,boxwex=0.5,outline=FALSE,cex.axis=0.8, main="Consistency
+> of the 100% features ")
+> legend(8,5.5,c("Raw","LOO","boot"),fill=c("blue","green","red"))
+>
+> Jim
+>
+> On Mon, May 30, 2022 at 4:46 AM Neha gupta <neha.bologna90 at gmail.com>
+> wrote:
+> >
+> > I have the following data and I need to use a boxplot which displays the
+> > variables (RF, Ranger, SVM, KNN) with one color, variables (RF_boot,
+> > Ranger_boot, SVM_boot, KNN_boot) with another color and the variables
+> > (RF_LOO, SVM_LOO, Ranger_LOO, KNN_LOO) with another color.
+> >
+> > How can I do that? Currently, I am using the base boxplot which displays
+> > them in one color. I know it will be more easily achieved with ggplot
+> but I
+> > have no experience/knowledge with it.
+> >
+> > RF= c(4.7, 1.52, 1.46, 4.5, 0.62, 1.12)
+> > RF_LOO= c(5.2, 1.52, 1.44, 4.3, 0.64, 1.11)
+> > RF_boot= c(5.8, 1.5, 1.23, 4.3, 0.64, 1.12)
+> > Ranger= c(4.5, 1.57, 1.25, 3.75, 0.56, 1.09)
+> > Ranger_LOO= c(5, 1.56, 1.35, 3.7, 0.6, 1.0)
+> > Ranger_boot= c(4.2, 1.53, 1.12, 3.7, 0.63, 1.1)
+> > SVM= c(3.51, 1.34, 0.62, 1.45, 0.5, 1.06)
+> > SVM_LOO= c(3.6, 1.33, 0.33, 1.4, 0.41, 1.1)
+> > SVM_boot= c(3.75, 1.35, 0.58, 1.4, 0.4, 1.0)
+> > KNN= c(2.85, 1.35, 0.25, 1.76, 0.43, 1.25)
+> > KNN_LOO= c(2.85, 1.34, 0.375, 1.75, 0.44, 1.27)
+> > KNN_boot= c(2.75, 1.35, 0.375, 1.75, 0.45, 1.27)
+> >
+> > My base boxplot is here
+> >
+> > colors = rep("blue",12)
+> > at.x <- seq(1,by=.4, length.out = 10)
+> > boxplot(RF, RF_LOO, RF_boot, Ranger, Ranger_LOO, Ranger_boot, SVM,
+> SVM_LOO,
+> > SVM_boot,
+> >         KNN, KNN_LOO, KNN_boot, range = 0, col=colors, names= c("RF",
+> > "RF_LOO", "RF_boot",
+> >         "Ranger", "Ranger_LOO", "Ranger_boot", "SVM", "SVM_LOO",
+> "SVM_boot",
+> >         "KNN", "KNN_LOO",
+> > "KNN_boot"),las=2,boxwex=0.5,outline=FALSE,cex.axis=0.8,
+> main="Consistency
+> > of the 100% features ")
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/
+> posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
