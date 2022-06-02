@@ -27255,3 +27255,172 @@ Best regards,
 Ivan
 
 
+From j@de@shod@@ m@iii@g oii googiem@ii@com  Tue May 31 18:44:01 2022
+From: j@de@shod@@ m@iii@g oii googiem@ii@com (j@de@shod@@ m@iii@g oii googiem@ii@com)
+Date: Tue, 31 May 2022 17:44:01 +0100
+Subject: [R] concurvity/ auto-correlation in GAM predicting deaths from
+ weather time series with distributed lag
+Message-ID: <CANg3_k_GGKZXh2sOJ+casGob_8TAtAtBiTD4M4ER8m7_mbuV7A@mail.gmail.com>
+
+Hello all,
+
+First posting to this list, hope you can bear with me - not a
+statistician here... (my field is public health)
+Have tried posting on Cross Validated (stack exchange) but it seems
+that there are not many people there working with GAMs. Have been
+doing quitea bit of reading/ googling, but am being halted by my lack
+of knowledge of matrix algebra (not a mathematician here either) and
+don't know anyone who works with GAMs, so this list really is my last
+hope in my struggles.
+
+My question is: what should I be more worried about in a time series
+GAM with distributed lag? Highly significant k-index for time terms or
+high concurvity between time and explanatory variables? Or are both
+two sides of the same coin? And what should/ can I do about either?
+For description of the problem, please see below.
+
+I am running various GAM models (using mgcv) to estimate daily number
+of deaths from daily time series of several weather variables such as
+temperature, humidity and precipitation among others. The primary aim
+is to get more insight into the (complex) relationship between these
+variables (rather than pure prediction performance). The models have
+distributed lag terms because deaths may occur over several days
+following exposure. Modelling lag is based on the example in Simon
+Wood's 2017 book, p. 349 (and the gamair package documentation
+(https://cran.r-project.org/web/packages/gamair/gamair.pdf, p. 54)).
+Code is listed at the bottom of this post. Data (as well as R script,
+and model output files) are available on Github:
+https://github.com/JadeShodan/heat-mortality/tree/main/social_media_posts/r_help/concurvity
+
+Model m1 below is relatively simple with just maximum temperature,
+total daily precipitation and lag, and default k for (year) and
+seasonality (doy = day of year). (Heap is a categorical variable
+coding for the fact that all deaths for which no specific date was
+known (data is from a low income country with problematic death
+registration) were assigned to the 15th day of the month in which the
+deaths were thought to have occurred. This categorical variable has
+169 levels (0 for all non-heaping days, 1 for the first heaping day, 2
+for the second ? 168 for the final heaping day over the 14 year
+period).
+
+When I run this model:
+
+m1 <- gam(deaths~te(year, doy, bs = c("cr", "cc")) + heap +
+te(temp_max, lag, k=c(10,4))+ te(precip_daily_total, lag, k=c(10,4)),
+data = dat, family = nb, method = 'REML', select = TRUE, knots =
+knots)
+
+I get a highly significant k-index for (year, doy) - not sure why I am
+getting NAs either:
+
+                                         k'               edf
+k-index   p-value
+te(year,doy)                     19.00000 13.17462    0.93     <2e-16 ***
+te(temp_max,lag)            39.00000  4.23584      NA      NA
+te(precip_daily_total,lag) 36.00000  0.00929      NA      NA
+
+Concurvity between (year, doy) and (temp_max, lag) is very high too (0.83):
+
+                                              para
+te(year,doy)      te(temp_max,lag)      te(precip_daily_total,lag)
+para                                 1.000000e+00     2.437000e-31
+    0.3324461                 0.6666532
+te(year,doy)                      2.149940e-31     1.000000e+00
+0.8285219                  0.5601749
+te(temp_max,lag)            3.329829e-01      8.268335e-01
+1.0000000                  0.5861324
+te(precip_daily_total,lag) 6.666532e-01      5.601749e-01
+0.5975987                 1.0000000
+
+To reduce significance of p for the k-index, increasing k helps
+somewhat, but only up to a point:
+
+m2 <- gam(deaths~te(year, doy, bs = c("cr", "cc"), k=c(7, 20)) + heap
++ te(temp_max, lag, k=c(10,4))+ te(precip_daily_total, lag,
+k=c(10,4)), data = dat, family = nb, method = 'REML', select = TRUE,
+knots = knots)
+
+                                                k'      edf
+k-index p-value
+te(year,doy)                     132.0000  24.9619    0.94    0.01 **
+te(temp_max,lag)            39.0000   3.8914      NA      NA
+te(precip_daily_total,lag)  36.0000   0.0128      NA      NA
+
+However, with increasing k for (year, doy) concurvity for (temp_max,
+lag) and (precipitation, lag) with  (year, doy) increases even more
+(which also happens in models with predictors other than temp_max):
+
+                                           para
+te(year,doy)           te(temp_max,lag)     te(precip_daily_total,lag)
+para                                   1.000000e+00    3.260062e-32
+    0.3235908                  0.6666532
+te(year,doy)                       4.530791e-32     1.000000e+00
+ 0.9206842                  0.7261335
+te(temp_max,lag)              3.298028e-01     9.157306e-01
+1.0000000                  0.5831089
+te(precip_daily_total,lag)   6.666532e-01     7.261335e-01
+0.5805672                  1.0000000
+
+Is this happening because of the lag term? Should I be worried about
+this? Is there anything I can do about this?
+(In models with more explanatory weather variables I have high
+concurvity - over 0.80 - between e.g. humidity and temperature too.
+Both variables are of interest (in fact the purpose of this study) and
+should not be dropped, but I guess that's another story. I posted
+about it on Cross Validated:
+https://stats.stackexchange.com/questions/576688/assessing-impact-of-concurvity-in-gam-using-time-series-of-weather-and-mortality
+and any thoughts about this are welcome too).
+
+Posting output from summary() and gam.check() would make this post too
+long, so instead I've put text files on Github:
+
+output model 1:
+https://github.com/JadeShodan/heat-mortality/blob/main/social_media_posts/r_help/concurvity/model_m1_output.txt
+ouput model 2: https://github.com/JadeShodan/heat-mortality/blob/main/social_media_posts/r_help/concurvity/model_m2_output.txt
+
+
+I'd be very grateful for any help anyone might be able to offer!
+
+Jade
+
+
+###############################  Model code  ################################
+library(readr)
+library(mgcv)
+
+df <- read_rds("data_crossvalidated_post2.rds") # data available on
+github: https://github.com/JadeShodan/heat-mortality
+
+# Create matrices for lagged weather variables (6 day lags)
+lagard <- function(x,n.lag=7) {
+n <- length(x); X <- matrix(NA,n,n.lag)
+for (i in 1:n.lag) X[i:n,i] <- x[i:n-i+1]
+X
+}
+
+dat <- list(lag=matrix(0:6,nrow(df),7,byrow=TRUE),
+deaths=df$deaths_total, doy=df$doy, year = df$year, month = df$month,
+weekday = df$weekday, week = df$week, monthday = df$monthday, time =
+df$time, heap=df$heap, heap_bin = df$heap_bin)
+dat$temp_max <- lagard(df$temp_max)
+dat$precip_daily_total <- lagard( df$precip_daily_total)
+
+
+knots <- list(doy=c(0.5, 366.5)) # set knots for cyclic spline for doy
+m1 <- gam(deaths~te(year, doy, bs = c("cr", "cc")) + heap +
+te(temp_max, lag, k=c(10,4))+ te(precip_daily_total, lag, k=c(10,4)),
+data = dat, family = nb, method = 'REML', select = TRUE, knots =
+knots)
+
+# now increase k for (year, doy)
+m2 <- gam(deaths~te(year, doy, bs = c("cr", "cc"), k=c(7, 20)) + heap
++ te(temp_max, lag, k=c(10,4))+ te(precip_daily_total, lag,
+k=c(10,4)), data = dat, family = nb, method = 'REML', select = TRUE,
+knots = knots)
+
+gam.check(m1, rep=1000)
+gam.check(m2, rep=1000)
+concurvity(m1, full=FALSE)$worst
+concurvity(m2, full=FALSE)$worst
+
+
