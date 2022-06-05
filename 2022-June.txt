@@ -3411,3 +3411,239 @@ and provide commented, minimal, self-contained, reproducible code.
 	[[alternative HTML version deleted]]
 
 
+From djnord|und @end|ng |rom gm@||@com  Sat Jun  4 09:31:29 2022
+From: djnord|und @end|ng |rom gm@||@com (Daniel Nordlund)
+Date: Sat, 4 Jun 2022 00:31:29 -0700
+Subject: [R] bootstrap CI of the difference between 2 Cramer's V
+In-Reply-To: <2109899925.6516974.1653762082722@mail.yahoo.com>
+References: <2109899925.6516974.1653762082722.ref@mail.yahoo.com>
+ <2109899925.6516974.1653762082722@mail.yahoo.com>
+Message-ID: <a5972539-71a0-864e-4843-5144698ac60b@gmail.com>
+
+On 5/28/2022 11:21 AM, varin sacha via R-help wrote:
+> Dear R-experts,
+>
+> While comparing groups, it is better to assess confidence intervals of those differences rather than comparing confidence intervals for each group.
+> I am trying to calculate the CIs of the difference between the two Cramer's V and not the CI to the estimate of each group?s Cramer's V.
+>
+> Here below my toy R example. There are error messages. Any help would be highly appreciated.
+>
+> ##############################
+> library(questionr)
+> library(boot)
+>
+> gender1<-c("M","F","F","F","M","M","F","F","F","M","M","F","M","M","F","M","M","F","M","F","F","F","M","M","M","F","F","M","M","M","F","M","F","F","F","M","M","F","M","F")
+> color1<-c("blue","green","black","black","green","green","blue","blue","green","black","blue","green","blue","black","black","blue","green","blue","green","black","blue","blue","black","black","green","green","blue","green","black","green","blue","black","black","blue","green","green","green","blue","blue","black")
+>
+> gender2<-c("F","F","F","M","M","F","M","M","M","F","F","M","F","M","F","F","M","M","M","F","M","M","M","F","F","F","M","M","M","F","M","M","M","F","F","F","M","F","F","F")
+> color2<-c("green","blue","black","blue","blue","blue","green","blue","green","black","blue","black","blue","blue","black","blue","blue","green","blue","black","blue","blue","black","black","green","blue","black","green","blue","green","black","blue","black","blue","green","blue","green","green","blue","black")
+>
+> f1=data.frame(gender1,color1)
+> tab1<-table(gender1,color1)
+> e1<-cramer.v(tab1)
+>
+> f2=data.frame(gender2,color2)
+> tab2<-table(gender2,color2)
+> e2<-cramer.v(tab2)
+>
+> f3<-data.frame(e1-e2)
+>
+> cramerdiff=function(x,w){
+> y<-tapply(x[w,1], x[w,2],cramer.v)
+> y[1]-y[2]
+> }
+>
+> results<-boot(data=f3,statistic=cramerdiff,R=2000)
+> results
+>
+> boot.ci(results,type="all")
+> ##############################
+>
+>   
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+I don't know if someone responded offline, but if not, there are a 
+couple of problems with your code. ? First, the f3 dataframe is not what 
+you think it is.? Second, your cramerdiff function isn't going to 
+produce the results that you want.
+
+I would put your data into a single dataframe with a variable 
+designating which group data came from.? Then use that variable as the 
+strata variable in the boot function to resample within groups.? So 
+something like this:
+
+f1 <- data.frame(gender=gender1,color=color1,group='grp1')
+f2 <- data.frame(gender=gender2,color=color2,group='grp2')
+f3 <- rbind(f1,f2)
+
+cramerdiff <- function(x, ndx) {
+ ?? # calculate cramer.v for group 1 bootstrap sample
+ ?? g1 <-x[ndx,][x[,3]=='grp1',]
+ ?? cramer_g1 <- cramer.v(table(g1[,1:2]))
+ ?? # calculate cramer.v for group 2 bootstrap sample
+ ?? g2 <-x[ndx,][x[,3]=='grp2',]
+ ?? cramer_g2 <- cramer.v(table(g2[,1:2]))
+ ?? # calculate difference
+ ?? cramer_g1-cramer_g2
+ ?? }
+# use strata parameter in function boot to resample within each group
+results <- boot(data=f3,statistic=cramerdiff, 
+strata=as.factor(f3$group),R=2000)
+results
+boot.ci(results)
+
+
+Hope this is helpful,
+
+Dan
+
+-- 
+Daniel Nordlund
+Port Townsend, WA  USA
+
+
+-- 
+This email has been checked for viruses by Avast antivirus software.
+https://www.avast.com/antivirus
+
+
+From tebert @end|ng |rom u||@edu  Sat Jun  4 13:11:42 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Sat, 4 Jun 2022 11:11:42 +0000
+Subject: [R] bootstrap CI of the difference between 2 Cramer's V
+In-Reply-To: <a5972539-71a0-864e-4843-5144698ac60b@gmail.com>
+References: <2109899925.6516974.1653762082722.ref@mail.yahoo.com>
+ <2109899925.6516974.1653762082722@mail.yahoo.com>
+ <a5972539-71a0-864e-4843-5144698ac60b@gmail.com>
+Message-ID: <BN6PR2201MB15530226780B90DD66CFD955CFA09@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+I would calculate the difference and the CI about that difference. You would not get the same thing by comparing the bootstrap CI of the group means.
+One use for this is to determine if the confidence interval for the difference in means includes zero. An alternative would be to use a more conventional test (rather than calculate a difference) and then find a mean p-value and a confidence interval about the p-value. This gives a better assessment of the p-value but is harder to decide if the test outcome is "significant." 
+
+You might also consider whether you want a permutation test, a randomization test, or a bootstrap. A permutation test will look at all possible combinations of the data once. Use this approach when computationally reasonable. A randomization test will look at a random subset of all possible combinations, but may include repeats of some combinations. Both of these do not replace values. The bootstrap replaces values and will therefore tend to minimize the effects of outliers in the data. With small datasets a risk is that there are few permutations and performing a randomization test with 1,000,000 randomizations on data with 4000 permutations is not good.
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Daniel Nordlund
+Sent: Saturday, June 4, 2022 3:31 AM
+To: varin sacha <varinsacha at yahoo.fr>; r-help at r-project.org
+Subject: Re: [R] bootstrap CI of the difference between 2 Cramer's V
+
+[External Email]
+
+On 5/28/2022 11:21 AM, varin sacha via R-help wrote:
+> Dear R-experts,
+>
+> While comparing groups, it is better to assess confidence intervals of those differences rather than comparing confidence intervals for each group.
+> I am trying to calculate the CIs of the difference between the two Cramer's V and not the CI to the estimate of each group?s Cramer's V.
+>
+> Here below my toy R example. There are error messages. Any help would be highly appreciated.
+>
+> ##############################
+> library(questionr)
+> library(boot)
+>
+> gender1<-c("M","F","F","F","M","M","F","F","F","M","M","F","M","M","F"
+> ,"M","M","F","M","F","F","F","M","M","M","F","F","M","M","M","F","M","
+> F","F","F","M","M","F","M","F")
+> color1<-c("blue","green","black","black","green","green","blue","blue"
+> ,"green","black","blue","green","blue","black","black","blue","green",
+> "blue","green","black","blue","blue","black","black","green","green","
+> blue","green","black","green","blue","black","black","blue","green","g
+> reen","green","blue","blue","black")
+>
+> gender2<-c("F","F","F","M","M","F","M","M","M","F","F","M","F","M","F"
+> ,"F","M","M","M","F","M","M","M","F","F","F","M","M","M","F","M","M","
+> M","F","F","F","M","F","F","F")
+> color2<-c("green","blue","black","blue","blue","blue","green","blue","
+> green","black","blue","black","blue","blue","black","blue","blue","gre
+> en","blue","black","blue","blue","black","black","green","blue","black
+> ","green","blue","green","black","blue","black","blue","green","blue",
+> "green","green","blue","black")
+>
+> f1=data.frame(gender1,color1)
+> tab1<-table(gender1,color1)
+> e1<-cramer.v(tab1)
+>
+> f2=data.frame(gender2,color2)
+> tab2<-table(gender2,color2)
+> e2<-cramer.v(tab2)
+>
+> f3<-data.frame(e1-e2)
+>
+> cramerdiff=function(x,w){
+> y<-tapply(x[w,1], x[w,2],cramer.v)
+> y[1]-y[2]
+> }
+>
+> results<-boot(data=f3,statistic=cramerdiff,R=2000)
+> results
+>
+> boot.ci(results,type="all")
+> ##############################
+>
+>
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mail
+> man_listinfo_r-2Dhelp&d=DwIDaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAs
+> Rzsn7AkP-g&m=9NrsizTQzUnuqLRvbQaINvkX7iBIqmQgfbus-vohqP_KZnrkn_b1iH1ma
+> wVqPzLz&s=a-dJNz_c6kgMANbI7VZ9N96pRhcKodeukMsVJ0Ol2qc&e=
+> PLEASE do read the posting guide 
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.or
+> g_posting-2Dguide.html&d=DwIDaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeA
+> sRzsn7AkP-g&m=9NrsizTQzUnuqLRvbQaINvkX7iBIqmQgfbus-vohqP_KZnrkn_b1iH1m
+> awVqPzLz&s=iLlqKhwHsqxsBYuq5S1ooeyH3sepv85k8fhSi27sOG8&e=
+> and provide commented, minimal, self-contained, reproducible code.
+
+I don't know if someone responded offline, but if not, there are a
+couple of problems with your code.   First, the f3 dataframe is not what
+you think it is.  Second, your cramerdiff function isn't going to produce the results that you want.
+
+I would put your data into a single dataframe with a variable designating which group data came from.  Then use that variable as the strata variable in the boot function to resample within groups.  So something like this:
+
+f1 <- data.frame(gender=gender1,color=color1,group='grp1')
+f2 <- data.frame(gender=gender2,color=color2,group='grp2')
+f3 <- rbind(f1,f2)
+
+cramerdiff <- function(x, ndx) {
+    # calculate cramer.v for group 1 bootstrap sample
+    g1 <-x[ndx,][x[,3]=='grp1',]
+    cramer_g1 <- cramer.v(table(g1[,1:2]))
+    # calculate cramer.v for group 2 bootstrap sample
+    g2 <-x[ndx,][x[,3]=='grp2',]
+    cramer_g2 <- cramer.v(table(g2[,1:2]))
+    # calculate difference
+    cramer_g1-cramer_g2
+    }
+# use strata parameter in function boot to resample within each group results <- boot(data=f3,statistic=cramerdiff,
+strata=as.factor(f3$group),R=2000)
+results
+boot.ci(results)
+
+
+Hope this is helpful,
+
+Dan
+
+--
+Daniel Nordlund
+Port Townsend, WA  USA
+
+
+--
+This email has been checked for viruses by Avast antivirus software.
+https://urldefense.proofpoint.com/v2/url?u=https-3A__www.avast.com_antivirus&d=DwIDaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=9NrsizTQzUnuqLRvbQaINvkX7iBIqmQgfbus-vohqP_KZnrkn_b1iH1mawVqPzLz&s=hO-ovpt1HbZ1YM4mIaOCGdPXuVtxnWfAk8ro5PgkZvw&e=
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwIDaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=9NrsizTQzUnuqLRvbQaINvkX7iBIqmQgfbus-vohqP_KZnrkn_b1iH1mawVqPzLz&s=a-dJNz_c6kgMANbI7VZ9N96pRhcKodeukMsVJ0Ol2qc&e=
+PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwIDaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=9NrsizTQzUnuqLRvbQaINvkX7iBIqmQgfbus-vohqP_KZnrkn_b1iH1mawVqPzLz&s=iLlqKhwHsqxsBYuq5S1ooeyH3sepv85k8fhSi27sOG8&e=
+and provide commented, minimal, self-contained, reproducible code.
+
