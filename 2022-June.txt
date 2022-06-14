@@ -14924,3 +14924,1304 @@ On Mon, Jun 13, 2022 at 12:09 AM anteneh asmare <hanatezera at gmail.com> wrote:
 > > minimal, self-contained, reproducible code.
 
 
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Jun 13 05:13:12 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 13 Jun 2022 04:13:12 +0100
+Subject: [R] Changing sign of columns and values
+In-Reply-To: <CA+8X3fWFE8zShP+depx-TeeFWZaYy=ySZpqDmcJkJwg95BTYcw@mail.gmail.com>
+References: <CA+8X3fUB-vzBi0Jfr66tDUXQT4tctENg4=4sBvWxsiKBaEBUvg@mail.gmail.com>
+ <62a5ca9c.1c69fb81.e10ce.4c1d@mx.google.com>
+ <CAEuJ0VAqKdBpQJ=Bih=9V3=bDQBL05d=okpfRxSa0fqTK4EvBg@mail.gmail.com>
+ <CA+8X3fWFE8zShP+depx-TeeFWZaYy=ySZpqDmcJkJwg95BTYcw@mail.gmail.com>
+Message-ID: <20eea35c-6ed9-8450-ab2f-40d151fb1249@sapo.pt>
+
+Hello,
+
+Using Jim's code, the following is vectorized and the result is 
+identical to the for loop result.
+
+
+# create a copy of df2
+dfnew2 <- df2
+dfnew2[reversals, XAcols] <- rev(dfnew2[reversals, XAcols])
+dfnew2[reversals, idcols] <- maxid - dfnew2[reversals, idcols]
+
+identical(dfnew, dfnew2)
+#[1] TRUE
+
+
+Hope this helps,
+
+Rui Barradas
+
+?s 00:41 de 13/06/2022, Jim Lemon escreveu:
+> Hi Hana,
+> This is a bit more difficult, but the same basic steps apply. See the
+> comments for an explanation.
+> When you submit a problem like this, it is a lot easier if you send
+> the output from "dput" (e.g. dput(df1)) or set your data frames up
+> with "read.table" like I have done in the example below. It make it
+> lots easier for anyone who wants to reply to see what your dataset
+> looks like and input that dataset to devise a solution.
+> I have made some assumptions about marking the rows to be altered and
+> the arithmetic to do on those rows. What follows may not be as general
+> a solution as you want:
+> 
+> df1<-read.table(text=
+>   "SNPID OA    EA
+>   snp001        C     A
+>   snp002        G     A
+>   snp003        C     A
+>   snp004        G     A
+>   snp005        C     T",
+>   header=TRUE,stringsAsFactors=FALSE)
+> 
+> df2<-read.table(text=
+>   "SNPID   OA    EA   id00001 id00002 id00003 id00004 id00005
+>   snp001    A    C    1.01    2       0.97    1.97    1.99
+>   snp002    A    G    1.02    2       1       2       2
+>   snp003    C    A    1       1.03    2       0       1
+>   snp004    A    G    1.02    1.99    2       1.02    1.98
+>   snp005    C    T    1       0       1.01    1       1",
+>   header=TRUE,stringsAsFactors=FALSE)
+> 
+> # get a logical vector of the different XA values
+> reversals<-df1$EA != df2$EA | df1$OA != df2$OA
+> reversals
+> 
+> # set a variable to the maximum value of idxxxxx
+> # just to make the code easier to understand
+> maxid<-2
+> 
+> # create a copy of df2
+> dfnew<-df2
+> 
+> # now swap the XA columns and reflect the
+> # idxxxxxx values of the rows in which
+> # EA and OA are different between df1 and df2
+> # here I have looped through the rows
+> nrows<-dim(dfnew)[1]
+> idcols<-4:8
+> XAcols<-2:3
+> for(i in 1:nrows) {
+>   if(reversals[i]) {
+>    dfnew[i,XAcols]<-rev(dfnew[i,XAcols])
+>    dfnew[i,idcols]<-maxid-dfnew[i,idcols]
+>   }
+> }
+> 
+> dfnew
+> 
+> Jim
+> 
+> On Mon, Jun 13, 2022 at 12:09 AM anteneh asmare <hanatezera at gmail.com> wrote:
+>>
+>> Dear Jim, Morning I have the same issue regarding comparing and
+>> swapping the value of columns fro two different data frames.
+>> I have the following two data frames
+>> Data frame 1
+>> "SNPID" "OA"    "EA"
+>> "snp001"        "C"     "A"
+>> "snp002"        "G"     "A"
+>> "snp003"        "C"     "A"
+>> "snp004"        "G"     "A"
+>> "snp005"        "C"     "T"
+>>
+>> Data frame 2
+>> SNPID   OA      EA      id00001 id00002 id00003 id00004 id00005
+>> snp001     A    C        1.01                      2                      0.97
+>>            1.97                    1.99
+>> snp002    A     G        1.02                     2                        1
+>>           2                            2
+>> snp003    C     A         1                      1.03                       2
+>>            0                            1
+>> snp004   A      G          1.02                    1.99                      2
+>>               1.02                           1.98
+>> snp005  C       T            1                        0                      1.01
+>>                      1                           1
+>>
+>> I want to  if  OA s and EAs in data frame 2 is the same as OAs and EAs
+>>   data frame 1 in such case I want to keep all information in data
+>> fram2 as it is . However if   OA s and EAs in data frame 2 is
+>> different from OAs and EAs  data frame 1, I want to change OA s and
+>> EAs in data frame 2 to  OAs and EAs  data frame 1 and   I want to
+>> redefine the values of the dosages (ids) of the variant (the dosage d
+>> for the i-th individual and the j-th variant would become d_ij
+>> new=2-dij.
+>> Dosage [j,]=2-dosage[j,]
+>> My desire data frame looks like
+>> Dataframe new
+>> SNPID"  "OA"       "EA"        id00001  id00002 id00003 id00004 id00005
+>> "snp001"        "C"     "A"     2-1.01            2- 2    2-    0.97           2-1.97
+>>      2-1.99
+>> "snp002"        "G"     "A"     2- 1.02              2- 2                   2-1
+>>    2-2                     2- 2
+>> "snp003"        "C"     "A"       1                    1.03                         2
+>>              0                          1
+>> "snp004"        "G"     "A"     2-1.02                   2-1.99
+>> 2-2                    2-1.02                    2-1.98
+>> "snp005"        "C"     "T"          1                        0
+>> 1.01                           1                                1
+>>   can you help me the r code for the above.
+>> Kind regards,
+>> Hana
+>>
+>>
+>> On 6/12/22, hanatezera <hanatezera at gmail.com> wrote:
+>>> Dear Jim, Thanks a lot this is exactly i am looking for.Stay safe and
+>>> blessed !Best,Hana
+>>> -------- Original message --------From: Jim Lemon <drjimlemon at gmail.com>
+>>> Date: 6/12/22  6:43 AM  (GMT+03:00) To: hanatezera <hanatezera at gmail.com>
+>>> Cc: r-help mailing list <r-help at r-project.org> Subject: Re: [R] Changing
+>>> sign of columns and values Hi Hana,I didn't look closely. The simplest rule
+>>> that I can see is that theletters (nucleotides?) should be swapped if there
+>>> has been a signchange in the beta value.
+>>> Therefore:mydf<-read.table(text="IDnumber  OA  EA  beta1   C       A
+>>> -0.052   G        A        0.0983   G        T
+>>> -0.789",header=TRUE,stringsAsFactors=FALSE)# logical vector marking the rows
+>>> to be swappedswap_letters<-mydf$beta < 0# save the OA values to be
+>>> swappednewEA<-mydf$OA[swap_letters]# change the OAs to
+>>> EAsmydf$OA[swap_letters]<-mydf$EA[swap_letters]# set the relevant EA values
+>>> to the old OA valuesmydf$EA[swap_letters]<-newEA# change the beta
+>>> valuesmydf$beta<-abs(mydf$beta)mydfJimOn Sun, Jun 12, 2022 at 9:11 AM
+>>> hanatezera <hanatezera at gmail.com> wrote:>> Dear jim thanks for your help! I
+>>> want to change also the value of OA and EF simultaneously.> For instance i
+>>> am looking the data> mydf> IDnumber OA EA  beta> 1        1  A  C  0.050>
+>>> 2        2  G  A 0.098> 3        3  T   G 0.789>> Best,> Hana>>>> --------
+>>> Original message --------> From: Jim Lemon <drjimlemon at gmail.com>> Date:
+>>> 6/12/22 1:59 AM (GMT+03:00)> To: hanatezera <hanatezera at gmail.com>, r-help
+>>> mailing list <r-help at r-project.org>> Subject: Re: [R] Changing sign of
+>>> columns and values>> Hi Hana,> I think this is what you want:>> # first read
+>>> in your example> mydf<-read.table(text=> "IDnumber  OA  EA  beta> 1
+>>> C       A       -0.05> 2   G        A        0.098> 3   G        T
+>>> -0.789",> header=TRUE,stringsAsFactors=FALSE)> # check it> mydf> IDnumber OA
+>>> EA   beta> 1        1  C  A -0.050> 2        2  G  A  0.098> 3        3  G
+>>> T -0.789> # change values of mydf$beta to absolute values>
+>>> mydf$beta<-abs(mydf$beta)> mydf> IDnumber OA EA  beta> 1        1  C  A
+>>> 0.050> 2        2  G  A 0.098> 3        3  G  T 0.789>> Jim>> On Sun, Jun
+>>> 12, 2022 at 8:27 AM hanatezera <hanatezera at gmail.com> wrote:> >> > I have
+>>> the following data set in data frameIDnumber  OA  EA
+>>> beta1                         C       A       -0.052
+>>> G        A        0.0983                          G        T
+>>> -0.789....I want to change the sign of negative beta. If the negative value
+>>> change to postive i want to switch its EA and OA.My desire result will
+>>> beIDnumber  OA  EA  beta1                         A      C
+>>> 0.052                         G        A
+>>> 0.0983                          T         G        0.789....Any one can help
+>>> me with r codes? kind regards,Hana> >         [[alternative HTML version
+>>> deleted]]> >> > ______________________________________________> >
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see> >
+>>> https://stat.ethz.ch/mailman/listinfo/r-help> > PLEASE do read the posting
+>>> guide http://www.R-project.org/posting-guide.html> > and provide commented,
+>>> minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From h@n@tezer@ @end|ng |rom gm@||@com  Mon Jun 13 09:22:19 2022
+From: h@n@tezer@ @end|ng |rom gm@||@com (anteneh asmare)
+Date: Mon, 13 Jun 2022 10:22:19 +0300
+Subject: [R] Changing sign of columns and values
+In-Reply-To: <CA+8X3fWFE8zShP+depx-TeeFWZaYy=ySZpqDmcJkJwg95BTYcw@mail.gmail.com>
+References: <CA+8X3fUB-vzBi0Jfr66tDUXQT4tctENg4=4sBvWxsiKBaEBUvg@mail.gmail.com>
+ <62a5ca9c.1c69fb81.e10ce.4c1d@mx.google.com>
+ <CAEuJ0VAqKdBpQJ=Bih=9V3=bDQBL05d=okpfRxSa0fqTK4EvBg@mail.gmail.com>
+ <CA+8X3fWFE8zShP+depx-TeeFWZaYy=ySZpqDmcJkJwg95BTYcw@mail.gmail.com>
+Message-ID: <CAEuJ0VA6B+LJJRbZGp6D+HP33nmM9L+wdnPakVBg=-CxGkfEig@mail.gmail.com>
+
+Dear Jim,  Good morning, hope you are doing very well, Here I want to
+calculate the specific parameters based on the previous data. I have
+attached below.
+can you help me  with r functions or code to solve the above equations
+Kind regards,
+Hana
+
+
+On 6/13/22, Jim Lemon <drjimlemon at gmail.com> wrote:
+> Hi Hana,
+> This is a bit more difficult, but the same basic steps apply. See the
+> comments for an explanation.
+> When you submit a problem like this, it is a lot easier if you send
+> the output from "dput" (e.g. dput(df1)) or set your data frames up
+> with "read.table" like I have done in the example below. It make it
+> lots easier for anyone who wants to reply to see what your dataset
+> looks like and input that dataset to devise a solution.
+> I have made some assumptions about marking the rows to be altered and
+> the arithmetic to do on those rows. What follows may not be as general
+> a solution as you want:
+>
+> df1<-read.table(text=
+>  "SNPID OA    EA
+>  snp001        C     A
+>  snp002        G     A
+>  snp003        C     A
+>  snp004        G     A
+>  snp005        C     T",
+>  header=TRUE,stringsAsFactors=FALSE)
+>
+> df2<-read.table(text=
+>  "SNPID   OA    EA   id00001 id00002 id00003 id00004 id00005
+>  snp001    A    C    1.01    2       0.97    1.97    1.99
+>  snp002    A    G    1.02    2       1       2       2
+>  snp003    C    A    1       1.03    2       0       1
+>  snp004    A    G    1.02    1.99    2       1.02    1.98
+>  snp005    C    T    1       0       1.01    1       1",
+>  header=TRUE,stringsAsFactors=FALSE)
+>
+> # get a logical vector of the different XA values
+> reversals<-df1$EA != df2$EA | df1$OA != df2$OA
+> reversals
+>
+> # set a variable to the maximum value of idxxxxx
+> # just to make the code easier to understand
+> maxid<-2
+>
+> # create a copy of df2
+> dfnew<-df2
+>
+> # now swap the XA columns and reflect the
+> # idxxxxxx values of the rows in which
+> # EA and OA are different between df1 and df2
+> # here I have looped through the rows
+> nrows<-dim(dfnew)[1]
+> idcols<-4:8
+> XAcols<-2:3
+> for(i in 1:nrows) {
+>  if(reversals[i]) {
+>   dfnew[i,XAcols]<-rev(dfnew[i,XAcols])
+>   dfnew[i,idcols]<-maxid-dfnew[i,idcols]
+>  }
+> }
+>
+> dfnew
+>
+> Jim
+>
+> On Mon, Jun 13, 2022 at 12:09 AM anteneh asmare <hanatezera at gmail.com>
+> wrote:
+>>
+>> Dear Jim, Morning I have the same issue regarding comparing and
+>> swapping the value of columns fro two different data frames.
+>> I have the following two data frames
+>> Data frame 1
+>> "SNPID" "OA"    "EA"
+>> "snp001"        "C"     "A"
+>> "snp002"        "G"     "A"
+>> "snp003"        "C"     "A"
+>> "snp004"        "G"     "A"
+>> "snp005"        "C"     "T"
+>>
+>> Data frame 2
+>> SNPID   OA      EA      id00001 id00002 id00003 id00004 id00005
+>> snp001     A    C        1.01                      2
+>> 0.97
+>>           1.97                    1.99
+>> snp002    A     G        1.02                     2
+>> 1
+>>          2                            2
+>> snp003    C     A         1                      1.03
+>>  2
+>>           0                            1
+>> snp004   A      G          1.02                    1.99
+>>   2
+>>              1.02                           1.98
+>> snp005  C       T            1                        0
+>>   1.01
+>>                     1                           1
+>>
+>> I want to  if  OA s and EAs in data frame 2 is the same as OAs and EAs
+>>  data frame 1 in such case I want to keep all information in data
+>> fram2 as it is . However if   OA s and EAs in data frame 2 is
+>> different from OAs and EAs  data frame 1, I want to change OA s and
+>> EAs in data frame 2 to  OAs and EAs  data frame 1 and   I want to
+>> redefine the values of the dosages (ids) of the variant (the dosage d
+>> for the i-th individual and the j-th variant would become d_ij
+>> new=2-dij.
+>> Dosage [j,]=2-dosage[j,]
+>> My desire data frame looks like
+>> Dataframe new
+>> SNPID"  "OA"       "EA"        id00001  id00002 id00003 id00004 id00005
+>> "snp001"        "C"     "A"     2-1.01            2- 2    2-    0.97
+>>     2-1.97
+>>     2-1.99
+>> "snp002"        "G"     "A"     2- 1.02              2- 2
+>>  2-1
+>>   2-2                     2- 2
+>> "snp003"        "C"     "A"       1                    1.03
+>>          2
+>>             0                          1
+>> "snp004"        "G"     "A"     2-1.02                   2-1.99
+>> 2-2                    2-1.02                    2-1.98
+>> "snp005"        "C"     "T"          1                        0
+>> 1.01                           1                                1
+>>  can you help me the r code for the above.
+>> Kind regards,
+>> Hana
+>>
+>>
+>> On 6/12/22, hanatezera <hanatezera at gmail.com> wrote:
+>> > Dear Jim, Thanks a lot this is exactly i am looking for.Stay safe and
+>> > blessed !Best,Hana
+>> > -------- Original message --------From: Jim Lemon
+>> > <drjimlemon at gmail.com>
+>> > Date: 6/12/22  6:43 AM  (GMT+03:00) To: hanatezera
+>> > <hanatezera at gmail.com>
+>> > Cc: r-help mailing list <r-help at r-project.org> Subject: Re: [R]
+>> > Changing
+>> > sign of columns and values Hi Hana,I didn't look closely. The simplest
+>> > rule
+>> > that I can see is that theletters (nucleotides?) should be swapped if
+>> > there
+>> > has been a signchange in the beta value.
+>> > Therefore:mydf<-read.table(text="IDnumber  OA  EA  beta1   C       A
+>> > -0.052   G        A        0.0983   G        T
+>> > -0.789",header=TRUE,stringsAsFactors=FALSE)# logical vector marking the
+>> > rows
+>> > to be swappedswap_letters<-mydf$beta < 0# save the OA values to be
+>> > swappednewEA<-mydf$OA[swap_letters]# change the OAs to
+>> > EAsmydf$OA[swap_letters]<-mydf$EA[swap_letters]# set the relevant EA
+>> > values
+>> > to the old OA valuesmydf$EA[swap_letters]<-newEA# change the beta
+>> > valuesmydf$beta<-abs(mydf$beta)mydfJimOn Sun, Jun 12, 2022 at 9:11 AM
+>> > hanatezera <hanatezera at gmail.com> wrote:>> Dear jim thanks for your
+>> > help! I
+>> > want to change also the value of OA and EF simultaneously.> For instance
+>> > i
+>> > am looking the data> mydf> IDnumber OA EA  beta> 1        1  A  C
+>> > 0.050>
+>> > 2        2  G  A 0.098> 3        3  T   G 0.789>> Best,> Hana>>>>
+>> > --------
+>> > Original message --------> From: Jim Lemon <drjimlemon at gmail.com>>
+>> > Date:
+>> > 6/12/22 1:59 AM (GMT+03:00)> To: hanatezera <hanatezera at gmail.com>,
+>> > r-help
+>> > mailing list <r-help at r-project.org>> Subject: Re: [R] Changing sign of
+>> > columns and values>> Hi Hana,> I think this is what you want:>> # first
+>> > read
+>> > in your example> mydf<-read.table(text=> "IDnumber  OA  EA  beta> 1
+>> > C       A       -0.05> 2   G        A        0.098> 3   G        T
+>> > -0.789",> header=TRUE,stringsAsFactors=FALSE)> # check it> mydf>
+>> > IDnumber OA
+>> > EA   beta> 1        1  C  A -0.050> 2        2  G  A  0.098> 3        3
+>> > G
+>> > T -0.789> # change values of mydf$beta to absolute values>
+>> > mydf$beta<-abs(mydf$beta)> mydf> IDnumber OA EA  beta> 1        1  C  A
+>> > 0.050> 2        2  G  A 0.098> 3        3  G  T 0.789>> Jim>> On Sun,
+>> > Jun
+>> > 12, 2022 at 8:27 AM hanatezera <hanatezera at gmail.com> wrote:> >> > I
+>> > have
+>> > the following data set in data frameIDnumber  OA  EA
+>> > beta1                         C       A       -0.052
+>> > G        A        0.0983                          G        T
+>> > -0.789....I want to change the sign of negative beta. If the negative
+>> > value
+>> > change to postive i want to switch its EA and OA.My desire result will
+>> > beIDnumber  OA  EA  beta1                         A      C
+>> > 0.052                         G        A
+>> > 0.0983                          T         G        0.789....Any one can
+>> > help
+>> > me with r codes? kind regards,Hana> >         [[alternative HTML
+>> > version
+>> > deleted]]> >> > ______________________________________________> >
+>> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see> >
+>> > https://stat.ethz.ch/mailman/listinfo/r-help> > PLEASE do read the
+>> > posting
+>> > guide http://www.R-project.org/posting-guide.html> > and provide
+>> > commented,
+>> > minimal, self-contained, reproducible code.
+>
+
+From bgreen @end|ng |rom dy@on@br|@net@org@@u  Mon Jun 13 12:21:38 2022
+From: bgreen @end|ng |rom dy@on@br|@net@org@@u (Bob Green)
+Date: Mon, 13 Jun 2022 20:21:38 +1000
+Subject: [R] Error creating a map with packages sf and tidyverse.
+In-Reply-To: <mailman.366961.1.1655114402.34330.r-help@r-project.org>
+References: <mailman.366961.1.1655114402.34330.r-help@r-project.org>
+Message-ID: <mailman.366962.1.1655116326.1223.r-help@r-project.org>
+
+I was hoping for advice about this code that I have run several 
+times. When I recently ran the code, I received the error 
+below:"Error in FUN(X[[i]], ...) : object 'fac' not found"
+
+In R Studio the code runs, but instead of non-red countries being 
+white, they are darker grey.
+
+Is 'fill=fac', no longer valid, or is there some other issue?
+
+Any advice is appreciated,
+
+Regards
+
+Bob
+
+ > library(tidyverse)
+-- Attaching packages 
+----------------------------------------------------------------------------- 
+tidyverse 1.3.1 --
+v ggplot2 3.3.5     v purrr   0.3.4
+v tibble  3.1.3     v dplyr   1.0.7
+v tidyr   1.1.4     v stringr 1.4.0
+v readr   2.1.1     v forcats 0.5.1
+-- Conflicts 
+-------------------------------------------------------------------------------- 
+tidyverse_conflicts() --
+x dplyr::filter() masks stats::filter()
+x dplyr::lag()    masks stats::lag()
+Warning messages:
+1: In (function (kind = NULL, normal.kind = NULL, sample.kind = NULL)  :
+   non-uniform 'Rounding' sampler used
+2: In (function (kind = NULL, normal.kind = NULL, sample.kind = NULL)  :
+   non-uniform 'Rounding' sampler used
+ > library(sf)
+Linking to GEOS 3.9.1, GDAL 3.2.1, PROJ 7.2.1; sf_use_s2() is TRUE
+Warning message:
+package 'sf' was built under R version 4.1.3
+ >
+ >
+ >
+ > world_sf = map_data("world") %>%
++    filter(region != "Antarctica") %>%
++    mutate(region=replace(region, subregion=="Alaska", "USA_Alaska")) %>%
++    st_as_sf(coords=c("long","lat"), crs=4326) %>%
++    group_by(region, group) %>% summarise(geometry=st_combine(geometry)) %>%
++    st_cast("POLYGON") %>% summarise(geometry=st_combine(geometry))
+`summarise()` has grouped output by 'region'. You can override using 
+the `.groups` argument.
+ >
+ > labs = tibble(region = c("Argentina", "Australia", 
+"Barbados","Brazil", "England","Fiji", "France", "French Polynesia", 
+"Ghana", "Italy","Japan", "New Zealand", "Papua New Guinea", "Peru", 
+"Portugal", "Samoa", "Sao Tome and Principe", "Senegal", "Solomon 
+Islands", "South Africa", "Spain", "Trinidad", "Tobago", "Turkey", 
+"UK", "Uruguay", "USA"))
+ > ggplot()+geom_sf(aes(fill=fac))+coord_sf(expand=FALSE)
+Error in FUN(X[[i]], ...) : object 'fac' not found
+ >
+ > labels_sf =  st_point_on_surface(world_sf) %>% right_join(labs, by="region")
+Warning messages:
+1: In st_point_on_surface.sf(world_sf) :
+   st_point_on_surface assumes attributes are constant over geometries of x
+2: In st_point_on_surface.sfc(st_geometry(x)) :
+   st_point_on_surface may not give correct results for longitude/latitude data
+ >
+ >
+ > world_sf %>% mutate(fac = region %in% labs$region)  %>%
++    ggplot()+geom_sf(aes(fill=fac))+coord_sf( expand=FALSE)+
++    theme(axis.title = element_blank(), legend.position = "none")+
++    scale_fill_manual(values=c("FALSE"=NA, "TRUE"="red"))
+ >
+
+
+From mzch|@ht| @end|ng |rom eco@q@u@edu@pk  Mon Jun 13 13:24:21 2022
+From: mzch|@ht| @end|ng |rom eco@q@u@edu@pk (Muhammad Zubair Chishti)
+Date: Mon, 13 Jun 2022 16:24:21 +0500
+Subject: [R] Kindly please help
+Message-ID: <CAMfKi3JL2W8VVUTwvDJb8obWPXXMZi-OM6HZS8b2M1HJ_r1rTA@mail.gmail.com>
+
+Hi, Dear Respected Professor! I hope that you are doing well. Kindly help
+me with the following:
+
+I have the R-codes for the "Quantile Augmented Mean Group" method. The
+relevant codes and data are attached herewith.
+Note: The link to the reference paper is:
+https://www.econ.cam.ac.uk/people-files/emeritus/mhp1/fp20/qmg40-rev21.pdf
+My Issue:
+When I run the given codes to estimate the results for my own data. I have
+to face several errors. I humbly request the experts to help me to estimate
+the results for my data.
+Thank you so much for your precious time.
+
+Regards
+
+Muhammad Zubair Chishti
+Ph.D. Student
+School of Business,
+Zhengzhou University, Henan, China.
+My Google scholar link:
+https://scholar.google.com/citationshl=en&user=YPqNJMwAAAAJ
+My ResearchGate link: https://www.researchgate.net/profile/Muhammad-Chishti
+
+-------------- next part --------------
+An embedded and charset-unspecified text was scrubbed...
+Name: Table.3.1.and.Table.3.2.design1.txt
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20220613/49e4b4c7/attachment.txt>
+
+-------------- next part --------------
+An embedded and charset-unspecified text was scrubbed...
+Name: rq.fit.panel.all.revised.txt
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20220613/49e4b4c7/attachment-0001.txt>
+
+-------------- next part --------------
+An embedded and charset-unspecified text was scrubbed...
+Name: data2.txt
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20220613/49e4b4c7/attachment-0002.txt>
+
+From petr@p|k@| @end|ng |rom prechez@@cz  Mon Jun 13 14:12:26 2022
+From: petr@p|k@| @end|ng |rom prechez@@cz (PIKAL Petr)
+Date: Mon, 13 Jun 2022 12:12:26 +0000
+Subject: [R] A humble request regarding QAMG method in R
+In-Reply-To: <CAMfKi3Kd9oP2nWe6boV4rNjVHAZ4eV=vwpnCAzh=6Gw-ZWrdbg@mail.gmail.com>
+References: <CAMfKi3Kd9oP2nWe6boV4rNjVHAZ4eV=vwpnCAzh=6Gw-ZWrdbg@mail.gmail.com>
+Message-ID: <ff88294596d84a978a510888ec9401b6@SRVEXCHCM1302.precheza.cz>
+
+Hallo
+
+I tried to use your code but after about 20 minutes it still worked so I gave 
+up. After I kill it, there were some warnings
+
+9: In rq.fit.sfn(D, y, rhs = a) :
+  tiny diagonals replaced with Inf when calling blkfct
+
+but I cannot decipher what it is about.
+
+Your code is quite complicated and you hardly get any answer if you do not 
+specify better where are the errors and what they tell, especially if others 
+observe the same (long) calculation.
+
+Use traceback() and/or debug() functions to see what is going on.
+You also maybe could try to test your functions on some smaller data example.
+
+Cheers
+Petr
+
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Muhammad
+> Zubair Chishti
+> Sent: Saturday, June 11, 2022 2:43 PM
+> To: r-help at r-project.org; David Winsemius <dwinsemius at comcast.net>;
+> lists at dewey.myzen.co.uk
+> Subject: [R] A humble request regarding QAMG method in R
+>
+> Hi, Dear Respected Professors! I hope that you are doing well. Now all files
+> are in .txt files. Now kindly help me with the following:
+>
+> I have the R-codes for the "Quantile Augmented Mean Group" method. The
+> relevant codes and data are attached herewith.
+> Note: The link to the reference paper is:
+> https://www.econ.cam.ac.uk/people-files/emeritus/mhp1/fp20/qmg40-
+> rev21.pdf
+> My Issue:
+> When I run the given codes to estimate the results for my own data. I have 
+> to
+> face several errors. I humbly request the experts to help me to estimate the
+> results for my data.
+> Thank you so much for your precious time.
+>
+> Regards
+>
+> Muhammad Zubair Chishti
+> Ph.D. Student
+> School of Business,
+> Zhengzhou University, Henan, China.
+> My Google scholar link:
+> https://scholar.google.com/citationshl=en&user=YPqNJMwAAAAJ
+> My ResearchGate link: https://www.researchgate.net/profile/Muhammad-
+> Chishti
+
+From h@n@tezer@ @end|ng |rom gm@||@com  Mon Jun 13 16:38:58 2022
+From: h@n@tezer@ @end|ng |rom gm@||@com (anteneh asmare)
+Date: Mon, 13 Jun 2022 17:38:58 +0300
+Subject: [R] Changing sign of columns and values
+In-Reply-To: <CAEuJ0VA6B+LJJRbZGp6D+HP33nmM9L+wdnPakVBg=-CxGkfEig@mail.gmail.com>
+References: <CA+8X3fUB-vzBi0Jfr66tDUXQT4tctENg4=4sBvWxsiKBaEBUvg@mail.gmail.com>
+ <62a5ca9c.1c69fb81.e10ce.4c1d@mx.google.com>
+ <CAEuJ0VAqKdBpQJ=Bih=9V3=bDQBL05d=okpfRxSa0fqTK4EvBg@mail.gmail.com>
+ <CA+8X3fWFE8zShP+depx-TeeFWZaYy=ySZpqDmcJkJwg95BTYcw@mail.gmail.com>
+ <CAEuJ0VA6B+LJJRbZGp6D+HP33nmM9L+wdnPakVBg=-CxGkfEig@mail.gmail.com>
+Message-ID: <CAEuJ0VB3zNoXae8Y4Dyi9o5Ou+crGn0XYg3ExD8ako144LDtQA@mail.gmail.com>
+
+Dear, Jim I try the following codes but I got an error
+Dfm1<-data.table(Dfm1)
+# the names of the columns to be multiplied by BETA
+ID_names <- paste0("ID",4:8)
+# the names of the new columns that have been multiplied by beta
+new_ID_names <- paste0("new_",ID_names)
+##### Now with a simple command we get the desired multiplication
+datfm[, (new_ID_names) := .SD *BETA, .SDcols = ID_names]
+datfm
+str(datfm)
+##### The PRS for each individual can be calculated using the colSums
+function in base R:
+PRS<-Dfm1[, colSums(.SD), .SDcols = new_ID_names]
+PRS
+
+On 6/13/22, anteneh asmare <hanatezera at gmail.com> wrote:
+> Dear Jim,  Good morning, hope you are doing very well, Here I want to
+> calculate the specific parameters based on the previous data. I have
+> attached below.
+> can you help me  with r functions or code to solve the above equations
+> Kind regards,
+> Hana
+>
+>
+> On 6/13/22, Jim Lemon <drjimlemon at gmail.com> wrote:
+>> Hi Hana,
+>> This is a bit more difficult, but the same basic steps apply. See the
+>> comments for an explanation.
+>> When you submit a problem like this, it is a lot easier if you send
+>> the output from "dput" (e.g. dput(df1)) or set your data frames up
+>> with "read.table" like I have done in the example below. It make it
+>> lots easier for anyone who wants to reply to see what your dataset
+>> looks like and input that dataset to devise a solution.
+>> I have made some assumptions about marking the rows to be altered and
+>> the arithmetic to do on those rows. What follows may not be as general
+>> a solution as you want:
+>>
+>> df1<-read.table(text=
+>>  "SNPID OA    EA
+>>  snp001        C     A
+>>  snp002        G     A
+>>  snp003        C     A
+>>  snp004        G     A
+>>  snp005        C     T",
+>>  header=TRUE,stringsAsFactors=FALSE)
+>>
+>> df2<-read.table(text=
+>>  "SNPID   OA    EA   id00001 id00002 id00003 id00004 id00005
+>>  snp001    A    C    1.01    2       0.97    1.97    1.99
+>>  snp002    A    G    1.02    2       1       2       2
+>>  snp003    C    A    1       1.03    2       0       1
+>>  snp004    A    G    1.02    1.99    2       1.02    1.98
+>>  snp005    C    T    1       0       1.01    1       1",
+>>  header=TRUE,stringsAsFactors=FALSE)
+>>
+>> # get a logical vector of the different XA values
+>> reversals<-df1$EA != df2$EA | df1$OA != df2$OA
+>> reversals
+>>
+>> # set a variable to the maximum value of idxxxxx
+>> # just to make the code easier to understand
+>> maxid<-2
+>>
+>> # create a copy of df2
+>> dfnew<-df2
+>>
+>> # now swap the XA columns and reflect the
+>> # idxxxxxx values of the rows in which
+>> # EA and OA are different between df1 and df2
+>> # here I have looped through the rows
+>> nrows<-dim(dfnew)[1]
+>> idcols<-4:8
+>> XAcols<-2:3
+>> for(i in 1:nrows) {
+>>  if(reversals[i]) {
+>>   dfnew[i,XAcols]<-rev(dfnew[i,XAcols])
+>>   dfnew[i,idcols]<-maxid-dfnew[i,idcols]
+>>  }
+>> }
+>>
+>> dfnew
+>>
+>> Jim
+>>
+>> On Mon, Jun 13, 2022 at 12:09 AM anteneh asmare <hanatezera at gmail.com>
+>> wrote:
+>>>
+>>> Dear Jim, Morning I have the same issue regarding comparing and
+>>> swapping the value of columns fro two different data frames.
+>>> I have the following two data frames
+>>> Data frame 1
+>>> "SNPID" "OA"    "EA"
+>>> "snp001"        "C"     "A"
+>>> "snp002"        "G"     "A"
+>>> "snp003"        "C"     "A"
+>>> "snp004"        "G"     "A"
+>>> "snp005"        "C"     "T"
+>>>
+>>> Data frame 2
+>>> SNPID   OA      EA      id00001 id00002 id00003 id00004 id00005
+>>> snp001     A    C        1.01                      2
+>>> 0.97
+>>>           1.97                    1.99
+>>> snp002    A     G        1.02                     2
+>>> 1
+>>>          2                            2
+>>> snp003    C     A         1                      1.03
+>>>  2
+>>>           0                            1
+>>> snp004   A      G          1.02                    1.99
+>>>   2
+>>>              1.02                           1.98
+>>> snp005  C       T            1                        0
+>>>   1.01
+>>>                     1                           1
+>>>
+>>> I want to  if  OA s and EAs in data frame 2 is the same as OAs and EAs
+>>>  data frame 1 in such case I want to keep all information in data
+>>> fram2 as it is . However if   OA s and EAs in data frame 2 is
+>>> different from OAs and EAs  data frame 1, I want to change OA s and
+>>> EAs in data frame 2 to  OAs and EAs  data frame 1 and   I want to
+>>> redefine the values of the dosages (ids) of the variant (the dosage d
+>>> for the i-th individual and the j-th variant would become d_ij
+>>> new=2-dij.
+>>> Dosage [j,]=2-dosage[j,]
+>>> My desire data frame looks like
+>>> Dataframe new
+>>> SNPID"  "OA"       "EA"        id00001  id00002 id00003 id00004 id00005
+>>> "snp001"        "C"     "A"     2-1.01            2- 2    2-    0.97
+>>>     2-1.97
+>>>     2-1.99
+>>> "snp002"        "G"     "A"     2- 1.02              2- 2
+>>>  2-1
+>>>   2-2                     2- 2
+>>> "snp003"        "C"     "A"       1                    1.03
+>>>          2
+>>>             0                          1
+>>> "snp004"        "G"     "A"     2-1.02                   2-1.99
+>>> 2-2                    2-1.02                    2-1.98
+>>> "snp005"        "C"     "T"          1                        0
+>>> 1.01                           1                                1
+>>>  can you help me the r code for the above.
+>>> Kind regards,
+>>> Hana
+>>>
+>>>
+>>> On 6/12/22, hanatezera <hanatezera at gmail.com> wrote:
+>>> > Dear Jim, Thanks a lot this is exactly i am looking for.Stay safe and
+>>> > blessed !Best,Hana
+>>> > -------- Original message --------From: Jim Lemon
+>>> > <drjimlemon at gmail.com>
+>>> > Date: 6/12/22  6:43 AM  (GMT+03:00) To: hanatezera
+>>> > <hanatezera at gmail.com>
+>>> > Cc: r-help mailing list <r-help at r-project.org> Subject: Re: [R]
+>>> > Changing
+>>> > sign of columns and values Hi Hana,I didn't look closely. The simplest
+>>> > rule
+>>> > that I can see is that theletters (nucleotides?) should be swapped if
+>>> > there
+>>> > has been a signchange in the beta value.
+>>> > Therefore:mydf<-read.table(text="IDnumber  OA  EA  beta1   C       A
+>>> > -0.052   G        A        0.0983   G        T
+>>> > -0.789",header=TRUE,stringsAsFactors=FALSE)# logical vector marking
+>>> > the
+>>> > rows
+>>> > to be swappedswap_letters<-mydf$beta < 0# save the OA values to be
+>>> > swappednewEA<-mydf$OA[swap_letters]# change the OAs to
+>>> > EAsmydf$OA[swap_letters]<-mydf$EA[swap_letters]# set the relevant EA
+>>> > values
+>>> > to the old OA valuesmydf$EA[swap_letters]<-newEA# change the beta
+>>> > valuesmydf$beta<-abs(mydf$beta)mydfJimOn Sun, Jun 12, 2022 at 9:11 AM
+>>> > hanatezera <hanatezera at gmail.com> wrote:>> Dear jim thanks for your
+>>> > help! I
+>>> > want to change also the value of OA and EF simultaneously.> For
+>>> > instance
+>>> > i
+>>> > am looking the data> mydf> IDnumber OA EA  beta> 1        1  A  C
+>>> > 0.050>
+>>> > 2        2  G  A 0.098> 3        3  T   G 0.789>> Best,> Hana>>>>
+>>> > --------
+>>> > Original message --------> From: Jim Lemon <drjimlemon at gmail.com>>
+>>> > Date:
+>>> > 6/12/22 1:59 AM (GMT+03:00)> To: hanatezera <hanatezera at gmail.com>,
+>>> > r-help
+>>> > mailing list <r-help at r-project.org>> Subject: Re: [R] Changing sign of
+>>> > columns and values>> Hi Hana,> I think this is what you want:>> #
+>>> > first
+>>> > read
+>>> > in your example> mydf<-read.table(text=> "IDnumber  OA  EA  beta> 1
+>>> > C       A       -0.05> 2   G        A        0.098> 3   G        T
+>>> > -0.789",> header=TRUE,stringsAsFactors=FALSE)> # check it> mydf>
+>>> > IDnumber OA
+>>> > EA   beta> 1        1  C  A -0.050> 2        2  G  A  0.098> 3
+>>> > 3
+>>> > G
+>>> > T -0.789> # change values of mydf$beta to absolute values>
+>>> > mydf$beta<-abs(mydf$beta)> mydf> IDnumber OA EA  beta> 1        1  C
+>>> > A
+>>> > 0.050> 2        2  G  A 0.098> 3        3  G  T 0.789>> Jim>> On Sun,
+>>> > Jun
+>>> > 12, 2022 at 8:27 AM hanatezera <hanatezera at gmail.com> wrote:> >> > I
+>>> > have
+>>> > the following data set in data frameIDnumber  OA  EA
+>>> > beta1                         C       A       -0.052
+>>> > G        A        0.0983                          G        T
+>>> > -0.789....I want to change the sign of negative beta. If the negative
+>>> > value
+>>> > change to postive i want to switch its EA and OA.My desire result will
+>>> > beIDnumber  OA  EA  beta1                         A      C
+>>> > 0.052                         G        A
+>>> > 0.0983                          T         G        0.789....Any one
+>>> > can
+>>> > help
+>>> > me with r codes? kind regards,Hana> >         [[alternative HTML
+>>> > version
+>>> > deleted]]> >> > ______________________________________________> >
+>>> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see> >
+>>> > https://stat.ethz.ch/mailman/listinfo/r-help> > PLEASE do read the
+>>> > posting
+>>> > guide http://www.R-project.org/posting-guide.html> > and provide
+>>> > commented,
+>>> > minimal, self-contained, reproducible code.
+>>
+>
+
+
+From h@n@tezer@ @end|ng |rom gm@||@com  Mon Jun 13 21:48:02 2022
+From: h@n@tezer@ @end|ng |rom gm@||@com (anteneh asmare)
+Date: Mon, 13 Jun 2022 22:48:02 +0300
+Subject: [R] Combining Differnt columns in one single column
+Message-ID: <CAEuJ0VAH-gb4mWPOCPwL3hwZrmFGSJRE-3dGJyuL3u07vPWFjg@mail.gmail.com>
+
+Dear All, I have the following column name in different data frame and
+different size
+ID_names1 <- paste0("id0000",1:9)
+ID_names2 <- paste0("id000",10:99)
+ID_names3 <- paste0("id00",100:999)
+ID_names4 <- paste0("id0",1000:9999)
+ID_names5 <- paste0("id",10000:50000)
+Dose it possible to combine in to a single column in r?
+Best,
+Hana
+
+
+From tebert @end|ng |rom u||@edu  Mon Jun 13 22:21:26 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Mon, 13 Jun 2022 20:21:26 +0000
+Subject: [R] Combining Differnt columns in one single column
+In-Reply-To: <CAEuJ0VAH-gb4mWPOCPwL3hwZrmFGSJRE-3dGJyuL3u07vPWFjg@mail.gmail.com>
+References: <CAEuJ0VAH-gb4mWPOCPwL3hwZrmFGSJRE-3dGJyuL3u07vPWFjg@mail.gmail.com>
+Message-ID: <BN6PR2201MB1553CED7003E70B0A65F2E42CFAB9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+ID5 <- as.data.frame(ID_names1)
+colnames(ID5)<-"val" #rename the columns so they have the same name.
+ID6 <- as.data.frame(ID_names2)
+colnames(ID6)<-"val"
+rbind(ID5, ID6)
+
+This works for the first two, just keep doing the same thing for the others.
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of anteneh asmare
+Sent: Monday, June 13, 2022 3:48 PM
+To: r-help at r-project.org
+Subject: [R] Combining Differnt columns in one single column
+
+[External Email]
+
+Dear All, I have the following column name in different data frame and different size
+ID_names1 <- paste0("id0000",1:9)
+ID_names2 <- paste0("id000",10:99)
+ID_names3 <- paste0("id00",100:999)
+ID_names4 <- paste0("id0",1000:9999)
+ID_names5 <- paste0("id",10000:50000)
+Dose it possible to combine in to a single column in r?
+Best,
+Hana
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=cjCY0UmRewiKkMVVxNu2riO8k4tZHD7s7R3R6SC-bwEM5u77LyExCSIzwI-q7Xu_&s=xrZArAFWnJf7ja13EEgxwBj-pMBEXBYSQgc6BhtNPAA&e=
+PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=cjCY0UmRewiKkMVVxNu2riO8k4tZHD7s7R3R6SC-bwEM5u77LyExCSIzwI-q7Xu_&s=oUlYLeH_EF5rwea10resAheSjjvJ6nhUl8wT84OVXZM&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From h@n@tezer@ @end|ng |rom gm@||@com  Mon Jun 13 22:48:32 2022
+From: h@n@tezer@ @end|ng |rom gm@||@com (anteneh asmare)
+Date: Mon, 13 Jun 2022 23:48:32 +0300
+Subject: [R] Combining Differnt columns in one single column
+In-Reply-To: <BN6PR2201MB1553CED7003E70B0A65F2E42CFAB9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <CAEuJ0VAH-gb4mWPOCPwL3hwZrmFGSJRE-3dGJyuL3u07vPWFjg@mail.gmail.com>
+ <BN6PR2201MB1553CED7003E70B0A65F2E42CFAB9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <CAEuJ0VB2qa+gM3w=RrW9SrS7eN+Njf6GB-Yz6s++zwUo7Obu7w@mail.gmail.com>
+
+Dear Tim it works, But i want to treat them as a column name. Is it
+possible to treat as a column name ?
+
+Best,
+Hana
+On 6/13/22, Ebert,Timothy Aaron <tebert at ufl.edu> wrote:
+> ID5 <- as.data.frame(ID_names1)
+> colnames(ID5)<-"val" #rename the columns so they have the same name.
+> ID6 <- as.data.frame(ID_names2)
+> colnames(ID6)<-"val"
+> rbind(ID5, ID6)
+>
+> This works for the first two, just keep doing the same thing for the
+> others.
+> Tim
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of anteneh asmare
+> Sent: Monday, June 13, 2022 3:48 PM
+> To: r-help at r-project.org
+> Subject: [R] Combining Differnt columns in one single column
+>
+> [External Email]
+>
+> Dear All, I have the following column name in different data frame and
+> different size
+> ID_names1 <- paste0("id0000",1:9)
+> ID_names2 <- paste0("id000",10:99)
+> ID_names3 <- paste0("id00",100:999)
+> ID_names4 <- paste0("id0",1000:9999)
+> ID_names5 <- paste0("id",10000:50000)
+> Dose it possible to combine in to a single column in r?
+> Best,
+> Hana
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=cjCY0UmRewiKkMVVxNu2riO8k4tZHD7s7R3R6SC-bwEM5u77LyExCSIzwI-q7Xu_&s=xrZArAFWnJf7ja13EEgxwBj-pMBEXBYSQgc6BhtNPAA&e=
+> PLEASE do read the posting guide
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=cjCY0UmRewiKkMVVxNu2riO8k4tZHD7s7R3R6SC-bwEM5u77LyExCSIzwI-q7Xu_&s=oUlYLeH_EF5rwea10resAheSjjvJ6nhUl8wT84OVXZM&e=
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Jun 13 23:12:53 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 13 Jun 2022 22:12:53 +0100
+Subject: [R] Combining Differnt columns in one single column
+In-Reply-To: <CAEuJ0VAH-gb4mWPOCPwL3hwZrmFGSJRE-3dGJyuL3u07vPWFjg@mail.gmail.com>
+References: <CAEuJ0VAH-gb4mWPOCPwL3hwZrmFGSJRE-3dGJyuL3u07vPWFjg@mail.gmail.com>
+Message-ID: <c9f6cef7-b932-b5bf-6396-6a73f9dbd7fe@sapo.pt>
+
+Hello,
+
+Are you looking for this?
+
+
+ID_names <- sprintf("id%05d", 1:50000)
+head(ID_names)
+#> [1] "id00001" "id00002" "id00003" "id00004" "id00005" "id00006"
+tail(ID_names)
+#> [1] "id49995" "id49996" "id49997" "id49998" "id49999" "id50000"
+
+
+sprintf with the format %05d pads the integers with zeros to length 5.
+And you won't need to combine the 5 vectors, it already is only one.
+
+Hope this helps,
+
+Rui Barradas
+
+?s 20:48 de 13/06/2022, anteneh asmare escreveu:
+> Dear All, I have the following column name in different data frame and
+> different size
+> ID_names1 <- paste0("id0000",1:9)
+> ID_names2 <- paste0("id000",10:99)
+> ID_names3 <- paste0("id00",100:999)
+> ID_names4 <- paste0("id0",1000:9999)
+> ID_names5 <- paste0("id",10000:50000)
+> Dose it possible to combine in to a single column in r?
+> Best,
+> Hana
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From h@n@tezer@ @end|ng |rom gm@||@com  Mon Jun 13 23:38:08 2022
+From: h@n@tezer@ @end|ng |rom gm@||@com (anteneh asmare)
+Date: Tue, 14 Jun 2022 00:38:08 +0300
+Subject: [R] Combining Differnt columns in one single column
+In-Reply-To: <c9f6cef7-b932-b5bf-6396-6a73f9dbd7fe@sapo.pt>
+References: <CAEuJ0VAH-gb4mWPOCPwL3hwZrmFGSJRE-3dGJyuL3u07vPWFjg@mail.gmail.com>
+ <c9f6cef7-b932-b5bf-6396-6a73f9dbd7fe@sapo.pt>
+Message-ID: <CAEuJ0VBft360793LRG_G6hw_U6qTOP9M_CF4c=rADNZcwsEDYA@mail.gmail.com>
+
+Dear Rui,  Thanks a lot! This exactly what I was looking for it.
+Kind regads,
+Hana
+
+On 6/14/22, Rui Barradas <ruipbarradas at sapo.pt> wrote:
+> Hello,
+>
+> Are you looking for this?
+>
+>
+> ID_names <- sprintf("id%05d", 1:50000)
+> head(ID_names)
+> #> [1] "id00001" "id00002" "id00003" "id00004" "id00005" "id00006"
+> tail(ID_names)
+> #> [1] "id49995" "id49996" "id49997" "id49998" "id49999" "id50000"
+>
+>
+> sprintf with the format %05d pads the integers with zeros to length 5.
+> And you won't need to combine the 5 vectors, it already is only one.
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+> ?s 20:48 de 13/06/2022, anteneh asmare escreveu:
+>> Dear All, I have the following column name in different data frame and
+>> different size
+>> ID_names1 <- paste0("id0000",1:9)
+>> ID_names2 <- paste0("id000",10:99)
+>> ID_names3 <- paste0("id00",100:999)
+>> ID_names4 <- paste0("id0",1000:9999)
+>> ID_names5 <- paste0("id",10000:50000)
+>> Dose it possible to combine in to a single column in r?
+>> Best,
+>> Hana
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From drj|m|emon @end|ng |rom gm@||@com  Tue Jun 14 00:26:11 2022
+From: drj|m|emon @end|ng |rom gm@||@com (Jim Lemon)
+Date: Tue, 14 Jun 2022 08:26:11 +1000
+Subject: [R] Changing sign of columns and values
+In-Reply-To: <CAEuJ0VB3zNoXae8Y4Dyi9o5Ou+crGn0XYg3ExD8ako144LDtQA@mail.gmail.com>
+References: <CA+8X3fUB-vzBi0Jfr66tDUXQT4tctENg4=4sBvWxsiKBaEBUvg@mail.gmail.com>
+ <62a5ca9c.1c69fb81.e10ce.4c1d@mx.google.com>
+ <CAEuJ0VAqKdBpQJ=Bih=9V3=bDQBL05d=okpfRxSa0fqTK4EvBg@mail.gmail.com>
+ <CA+8X3fWFE8zShP+depx-TeeFWZaYy=ySZpqDmcJkJwg95BTYcw@mail.gmail.com>
+ <CAEuJ0VA6B+LJJRbZGp6D+HP33nmM9L+wdnPakVBg=-CxGkfEig@mail.gmail.com>
+ <CAEuJ0VB3zNoXae8Y4Dyi9o5Ou+crGn0XYg3ExD8ako144LDtQA@mail.gmail.com>
+Message-ID: <CA+8X3fWzwF-U0xYX_wP4_AzhbOc6RCaX9Rw3BabL6z7BXz5z4g@mail.gmail.com>
+
+Hi Hana,
+The reason that I didn't answer your last request was that I couldn't
+understand it. You attached a spreadsheet that had been pasted
+together from other documents. Point 1 promised a formula for
+calculating PRS, but didn't show it. Point 2 was similarly lacking a
+symbolic formula that could be translated into R code. It was clear to
+me that the original documents that had been cut and pasted into the
+spreadsheet looked very much like homework assignments. As others have
+told you, we avoid doing homework for posters.
+
+Jim
+
+On Tue, Jun 14, 2022 at 12:38 AM anteneh asmare <hanatezera at gmail.com> wrote:
+>
+> Dear, Jim I try the following codes but I got an error
+> Dfm1<-data.table(Dfm1)
+> # the names of the columns to be multiplied by BETA
+> ID_names <- paste0("ID",4:8)
+> # the names of the new columns that have been multiplied by beta
+> new_ID_names <- paste0("new_",ID_names)
+> ##### Now with a simple command we get the desired multiplication
+> datfm[, (new_ID_names) := .SD *BETA, .SDcols = ID_names]
+> datfm
+> str(datfm)
+> ##### The PRS for each individual can be calculated using the colSums
+> function in base R:
+> PRS<-Dfm1[, colSums(.SD), .SDcols = new_ID_names]
+> PRS
+>
+
+
+From tebert @end|ng |rom u||@edu  Tue Jun 14 02:31:54 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Tue, 14 Jun 2022 00:31:54 +0000
+Subject: [R] Combining Differnt columns in one single column
+In-Reply-To: <CAEuJ0VB2qa+gM3w=RrW9SrS7eN+Njf6GB-Yz6s++zwUo7Obu7w@mail.gmail.com>
+References: <CAEuJ0VAH-gb4mWPOCPwL3hwZrmFGSJRE-3dGJyuL3u07vPWFjg@mail.gmail.com>
+ <BN6PR2201MB1553CED7003E70B0A65F2E42CFAB9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <CAEuJ0VB2qa+gM3w=RrW9SrS7eN+Njf6GB-Yz6s++zwUo7Obu7w@mail.gmail.com>
+Message-ID: <BN6PR2201MB1553A5FB7E83717DE7AACE2ECFAA9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+Yes, It just takes another step. Here is the new pattern:
+ID_names1 <- paste0("id0000",1:9)
+ID_names2 <- paste0("id000",10:99)
+ID5 <-as.data.frame(ID_names1) #convert to a dataframe.
+ID5$name<-colnames(ID5) #make a new variable from column name.
+colnames(ID5)<-c("name","val") #rename columns to be consistent for all dataframes.
+ID6 <-as.data.frame(ID_names2)
+ID6$name<-colnames(ID6)
+colnames(ID6)<-c("name","val")
+IDall<-rbind(ID5,ID6) 
+
+
+Tim
+
+-----Original Message-----
+From: anteneh asmare <hanatezera at gmail.com> 
+Sent: Monday, June 13, 2022 4:49 PM
+To: Ebert,Timothy Aaron <tebert at ufl.edu>
+Cc: r-help at r-project.org
+Subject: Re: [R] Combining Differnt columns in one single column
+
+[External Email]
+
+Dear Tim it works, But i want to treat them as a column name. Is it possible to treat as a column name ?
+
+Best,
+Hana
+On 6/13/22, Ebert,Timothy Aaron <tebert at ufl.edu> wrote:
+> ID5 <- as.data.frame(ID_names1)
+> colnames(ID5)<-"val" #rename the columns so they have the same name.
+> ID6 <- as.data.frame(ID_names2)
+> colnames(ID6)<-"val"
+> rbind(ID5, ID6)
+>
+> This works for the first two, just keep doing the same thing for the 
+> others.
+> Tim
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of anteneh 
+> asmare
+> Sent: Monday, June 13, 2022 3:48 PM
+> To: r-help at r-project.org
+> Subject: [R] Combining Differnt columns in one single column
+>
+> [External Email]
+>
+> Dear All, I have the following column name in different data frame and 
+> different size
+> ID_names1 <- paste0("id0000",1:9)
+> ID_names2 <- paste0("id000",10:99)
+> ID_names3 <- paste0("id00",100:999)
+> ID_names4 <- paste0("id0",1000:9999)
+> ID_names5 <- paste0("id",10000:50000)
+> Dose it possible to combine in to a single column in r?
+> Best,
+> Hana
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mail
+> man_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAs
+> Rzsn7AkP-g&m=cjCY0UmRewiKkMVVxNu2riO8k4tZHD7s7R3R6SC-bwEM5u77LyExCSIzw
+> I-q7Xu_&s=xrZArAFWnJf7ja13EEgxwBj-pMBEXBYSQgc6BhtNPAA&e=
+> PLEASE do read the posting guide
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.or
+> g_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeA
+> sRzsn7AkP-g&m=cjCY0UmRewiKkMVVxNu2riO8k4tZHD7s7R3R6SC-bwEM5u77LyExCSIz
+> wI-q7Xu_&s=oUlYLeH_EF5rwea10resAheSjjvJ6nhUl8wT84OVXZM&e=
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+From tebert @end|ng |rom u||@edu  Tue Jun 14 02:43:26 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Tue, 14 Jun 2022 00:43:26 +0000
+Subject: [R] Combining Differnt columns in one single column
+In-Reply-To: <CAEuJ0VB2qa+gM3w=RrW9SrS7eN+Njf6GB-Yz6s++zwUo7Obu7w@mail.gmail.com>
+References: <CAEuJ0VAH-gb4mWPOCPwL3hwZrmFGSJRE-3dGJyuL3u07vPWFjg@mail.gmail.com>
+ <BN6PR2201MB1553CED7003E70B0A65F2E42CFAB9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <CAEuJ0VB2qa+gM3w=RrW9SrS7eN+Njf6GB-Yz6s++zwUo7Obu7w@mail.gmail.com>
+Message-ID: <BN6PR2201MB1553CBBF7B2C5BB4B31CF6C6CFAA9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+Sorry, the last post had a small mistake. I got name and val switched. Here they are in the correct order.
+
+ID_names1 <- paste0("id0000",1:9)
+ID_names2 <- paste0("id000",10:99)
+ID5 <-as.data.frame(ID_names1)
+ID5$name<-colnames(ID5)
+colnames(ID5)<-c("val","name")
+ID6 <-as.data.frame(ID_names2)
+ID6$name<-colnames(ID6)
+colnames(ID6)<-c("val","name")
+IDall<-rbind(ID5,ID6)
+
+
+Tim
+-----Original Message-----
+From: anteneh asmare <hanatezera at gmail.com> 
+Sent: Monday, June 13, 2022 4:49 PM
+To: Ebert,Timothy Aaron <tebert at ufl.edu>
+Cc: r-help at r-project.org
+Subject: Re: [R] Combining Differnt columns in one single column
+
+[External Email]
+
+Dear Tim it works, But i want to treat them as a column name. Is it possible to treat as a column name ?
+
+Best,
+Hana
+On 6/13/22, Ebert,Timothy Aaron <tebert at ufl.edu> wrote:
+> ID5 <- as.data.frame(ID_names1)
+> colnames(ID5)<-"val" #rename the columns so they have the same name.
+> ID6 <- as.data.frame(ID_names2)
+> colnames(ID6)<-"val"
+> rbind(ID5, ID6)
+>
+> This works for the first two, just keep doing the same thing for the 
+> others.
+> Tim
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of anteneh 
+> asmare
+> Sent: Monday, June 13, 2022 3:48 PM
+> To: r-help at r-project.org
+> Subject: [R] Combining Differnt columns in one single column
+>
+> [External Email]
+>
+> Dear All, I have the following column name in different data frame and 
+> different size
+> ID_names1 <- paste0("id0000",1:9)
+> ID_names2 <- paste0("id000",10:99)
+> ID_names3 <- paste0("id00",100:999)
+> ID_names4 <- paste0("id0",1000:9999)
+> ID_names5 <- paste0("id",10000:50000)
+> Dose it possible to combine in to a single column in r?
+> Best,
+> Hana
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mail
+> man_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAs
+> Rzsn7AkP-g&m=cjCY0UmRewiKkMVVxNu2riO8k4tZHD7s7R3R6SC-bwEM5u77LyExCSIzw
+> I-q7Xu_&s=xrZArAFWnJf7ja13EEgxwBj-pMBEXBYSQgc6BhtNPAA&e=
+> PLEASE do read the posting guide
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.or
+> g_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeA
+> sRzsn7AkP-g&m=cjCY0UmRewiKkMVVxNu2riO8k4tZHD7s7R3R6SC-bwEM5u77LyExCSIz
+> wI-q7Xu_&s=oUlYLeH_EF5rwea10resAheSjjvJ6nhUl8wT84OVXZM&e=
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+From @tephen@berm@n @end|ng |rom gmx@net  Mon Jun 13 23:47:29 2022
+From: @tephen@berm@n @end|ng |rom gmx@net (Stephen Berman)
+Date: Mon, 13 Jun 2022 23:47:29 +0200
+Subject: [R] Why does qt() return Inf with certain negative ncp values?
+Message-ID: <874k0oxmku.fsf@rub.de>
+
+Can anyone explain why Inf appears in the following results?
+
+> sapply(-1:-10, \(ncp) qt(1-1*(10^(-4+ncp)), 35, ncp))
+ [1]  3.6527153  3.0627759  2.4158355  1.7380812  1.0506904  0.3700821
+ [7]        Inf -0.9279783 -1.5341759 -2.1085213
+
+> sapply(seq(-6.9, -7.9, -0.1), \(ncp) qt(1-1*(10^(-4+ncp)), 35, ncp))
+ [1] -0.2268386        Inf        Inf        Inf -0.4857400 -0.5497784
+ [7] -0.6135402 -0.6770143 -0.7401974 -0.8030853 -0.8656810
+
+In case it matters:
+
+> sessionInfo()
+R Under development (unstable) (2022-06-05 r82452)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Linux From Scratch r11.0-165
+
+Matrix products: default
+BLAS:   /usr/lib/R/lib/libRblas.so
+LAPACK: /usr/lib/R/lib/libRlapack.so
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C
+ [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.3.0 tools_4.3.0
+
+Thanks.
+Steve Berman
+
+
