@@ -16225,3 +16225,966 @@ Thanks.
 Steve Berman
 
 
+From bgunter@4567 @end|ng |rom gm@||@com  Tue Jun 14 04:28:43 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Mon, 13 Jun 2022 19:28:43 -0700
+Subject: [R] Why does qt() return Inf with certain negative ncp values?
+In-Reply-To: <874k0oxmku.fsf@rub.de>
+References: <874k0oxmku.fsf@rub.de>
+Message-ID: <CAGxFJbTXj_+pisvdmMXyTMiqokPAVx5GKwiA+j_tTrECzoR7dw@mail.gmail.com>
+
+Well, this will likely require close numerical analysis of the algorithm
+used for the calculation, which I can't help with, but I do note for the
+first case (I didn't bother checking the second) it may be useful to note
+that besides returning Inf, I also got with -7 as ncp:
+
+"There were 50 or more warnings"
+all of which were:
+"In qt(1 - 1 * (10^(-11)), 35, -7) :
+  full precision may not have been achieved in 'pnt{final}' "
+
+I got this warning for all the other values of ncp also.
+
+So it looks like: Congratulations, you seem to have defeated the algorithm.
+
+Bert Gunter
+
+"The trouble with having an open mind is that people keep coming along and
+sticking things into it."
+-- Opus (aka Berkeley Breathed in his "Bloom County" comic strip )
+
+
+On Mon, Jun 13, 2022 at 6:14 PM Stephen Berman <stephen.berman at gmx.net>
+wrote:
+
+> Can anyone explain why Inf appears in the following results?
+>
+> > sapply(-1:-10, \(ncp) qt(1-1*(10^(-4+ncp)), 35, ncp))
+>  [1]  3.6527153  3.0627759  2.4158355  1.7380812  1.0506904  0.3700821
+>  [7]        Inf -0.9279783 -1.5341759 -2.1085213
+>
+> > sapply(seq(-6.9, -7.9, -0.1), \(ncp) qt(1-1*(10^(-4+ncp)), 35, ncp))
+>  [1] -0.2268386        Inf        Inf        Inf -0.4857400 -0.5497784
+>  [7] -0.6135402 -0.6770143 -0.7401974 -0.8030853 -0.8656810
+>
+> In case it matters:
+>
+> > sessionInfo()
+> R Under development (unstable) (2022-06-05 r82452)
+> Platform: x86_64-pc-linux-gnu (64-bit)
+> Running under: Linux From Scratch r11.0-165
+>
+> Matrix products: default
+> BLAS:   /usr/lib/R/lib/libRblas.so
+> LAPACK: /usr/lib/R/lib/libRlapack.so
+>
+> locale:
+>  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C
+>  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8
+>  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8
+>  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C
+>  [9] LC_ADDRESS=C               LC_TELEPHONE=C
+> [11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C
+>
+> attached base packages:
+> [1] stats     graphics  grDevices utils     datasets  methods   base
+>
+> loaded via a namespace (and not attached):
+> [1] compiler_4.3.0 tools_4.3.0
+>
+> Thanks.
+> Steve Berman
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Jun 14 12:43:09 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 14 Jun 2022 13:43:09 +0300
+Subject: [R] Install OpenCL
+In-Reply-To: <5e9ca34f-9569-0b7d-e070-d7036f7801b2@gmx.de>
+References: <1e3ff528-1d77-6a66-3184-0f94ce826f62@gmx.de>
+ <20220602184655.1c840903@arachnoid>
+ <5e9ca34f-9569-0b7d-e070-d7036f7801b2@gmx.de>
+Message-ID: <20220614134309.0b390d14@arachnoid>
+
+? Tue, 14 Jun 2022 10:58:59 +0200
+Quirin Stier <Quirin_Stier at gmx.de> ?????:
+
+> Sys.env(OCL="C:/Program Files/NVIDIA GPU Computing
+> Toolkit/CUDA/v11.7/include/CL")
+
+> In file included from buffer.c:2:
+> ocl.h:7:10: fatal error: CL/opencl.h: No such file or directory
+>  ??? 7 | #include <CL/opencl.h>
+>  ????? |????????? ^~~~~~~~~~~~~
+
+Almost there. If you download the package and read the configure.win
+file, or take a look at the GitHub mirror [1], you can see that the
+path it uses by default for the include files is equivalent to the
+following R expression: file.path(Sys.getenv('OCL'), 'include'). On the
+other hand, the code assumes that the include files are available under
+file.path(include_path, 'CL', 'opencl.h').
+
+You can probably find the file C:/Program Files/NVIDIA GPU Computing
+Toolkit/CUDA/v11.7/include/CL/opencl.h, so the proper path to set the
+OCL variable to is "C:/Program Files/NVIDIA GPU Computing
+Toolkit/CUDA/v11.7", without the "include/CL" at the end.
+
+The configure script also assumes that there are library files under
+file.path(Sys.getenv('OCL'), 'lib', architecture, 'OpenCL.lib'). If
+that's not correct, you have to find them and set the OCL32LIB or
+OCL64LIB environment variable to the correct path.
+
+> How can I make sure, that the OpenCL DLLs are available via the
+> %PATH%?
+
+The expression strsplit(Sys.getenv('PATH'), ';')[[1]] will return a
+vector containing paths to directories. One of them must contain the
+OpenCL.dll file in order for everything to work.
+
+-- 
+Best regards,
+Ivan
+
+[1] https://github.com/cran/OpenCL/blob/master/configure.win
+
+
+From h@n@tezer@ @end|ng |rom gm@||@com  Tue Jun 14 13:28:37 2022
+From: h@n@tezer@ @end|ng |rom gm@||@com (anteneh asmare)
+Date: Tue, 14 Jun 2022 14:28:37 +0300
+Subject: [R] Create a categorical variable using the deciles of data
+Message-ID: <CAEuJ0VD66249iN6mAMJcYf=xf_2aktmB-31kx16-su4AT+P6kA@mail.gmail.com>
+
+I want Create a categorical variable using the deciles of the
+following data frame to divide the individuals into 10 groups equally.
+I try the following codes
+data_catigocal<-data.frame(c(1:50000))
+# create categorical vector using deciles
+group_vector <-
+c('0-10','11-20','21-30','31-40','41-50','51-60','61-70','71-80','81-90','91-100')
+# Add categorical variable to the data_catigocal
+data_catigocal$decile <- factor(group_vector)
+# print data frame
+data_catigocal
+
+can any one help me with the r code
+Kind regards,
+Hana
+
+
+From tebert @end|ng |rom u||@edu  Tue Jun 14 14:28:49 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Tue, 14 Jun 2022 12:28:49 +0000
+Subject: [R] Create a categorical variable using the deciles of data
+In-Reply-To: <CAEuJ0VD66249iN6mAMJcYf=xf_2aktmB-31kx16-su4AT+P6kA@mail.gmail.com>
+References: <CAEuJ0VD66249iN6mAMJcYf=xf_2aktmB-31kx16-su4AT+P6kA@mail.gmail.com>
+Message-ID: <BN6PR2201MB15534461FC01AAE729FE92D7CFAA9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+Hana, the "right" answer depends on exactly what you need. Here are three correct solutions. They use the same basic strategy to give different results. There are also other approaches in R to get the same outcome. You could use data_catigocal[i,j] and some for loops. 
+
+size1 <-50000
+ngroup <- 10 # note that size1 must be evenly divisible by ngroup
+group_size <- size1/ngroup
+data_catigocal <-data.frame(c(1:size1))
+data_categorical1<-data_catigocal
+# create categorical vector using deciles 
+group_vector <- c('0-10','11-20','21-30','31-40','41-50','51-60','61-70','71-80','81-90','91-100')
+data_categorical1$group_vn <-rep(group_vector,group_size)
+
+option2 <- rep(group_vector, group_size)
+option2 <- sort(option2, decreasing=FALSE)
+data_categorical2 <- cbind(option2, data_catigocal)
+
+option3 <- rep(group_vector, group_size)
+option3a <- sample(option3, size1, replace=FALSE)
+data_categorical3 <- cbind(option3a, data_catigocal)
+
+
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of anteneh asmare
+Sent: Tuesday, June 14, 2022 7:29 AM
+To: r-help at r-project.org
+Subject: [R] Create a categorical variable using the deciles of data
+
+[External Email]
+
+I want Create a categorical variable using the deciles of the following data frame to divide the individuals into 10 groups equally.
+I try the following codes
+data_catigocal<-data.frame(c(1:50000))
+# create categorical vector using deciles group_vector <-
+c('0-10','11-20','21-30','31-40','41-50','51-60','61-70','71-80','81-90','91-100')
+# Add categorical variable to the data_catigocal data_catigocal$decile <- factor(group_vector) # print data frame data_catigocal
+
+can any one help me with the r code
+Kind regards,
+Hana
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=iJ1M9ZDgTrZDuxyw_CUg03Mb6JmtrOaSF0JqAl-1pdmgbKG3AWiI6hMbv9LVOjKN&s=eUb_8T4KZRbFW_poDuhkWwPvNKQdkI6fm0MMTsOyh-A&e=
+PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=iJ1M9ZDgTrZDuxyw_CUg03Mb6JmtrOaSF0JqAl-1pdmgbKG3AWiI6hMbv9LVOjKN&s=tnk4qRX6T6SZuapvkrNEZOtHmOVlKGS-02yHEzajqS8&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Tue Jun 14 15:00:14 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 14 Jun 2022 14:00:14 +0100
+Subject: [R] Create a categorical variable using the deciles of data
+In-Reply-To: <CAEuJ0VD66249iN6mAMJcYf=xf_2aktmB-31kx16-su4AT+P6kA@mail.gmail.com>
+References: <CAEuJ0VD66249iN6mAMJcYf=xf_2aktmB-31kx16-su4AT+P6kA@mail.gmail.com>
+Message-ID: <a4fb15d7-ca3c-5706-fc3c-533b1e81aeda@sapo.pt>
+
+Hello,
+
+I have recreated the data.frame giving the column a name.
+Here are two ways, both based on ?pretty:
+
+
+data_catigocal <- data.frame(X = 1:50000)
+pretty(data_catigocal$X, n = 10)
+#>  [1]     0  5000 10000 15000 20000 25000 30000 35000 40000 45000 50000
+
+
+1. Use ?cut to create a factor with 10 levels then assign the labels.
+
+
+group_vector <-
+c('0-10','11-20','21-30','31-40','41-50','51-60','61-70','71-80','81-90','91-100')
+
+data_catigocal$decile <- with(data_catigocal, cut(X, breaks = pretty(X, 
+n = 10), include.lowest = TRUE))
+data_catigocal$decile <- factor(data_catigocal$decile, labels = 
+group_vector)
+
+head(data_catigocal)
+#>   X decile
+#> 1 1   0-10
+#> 2 2   0-10
+#> 3 3   0-10
+#> 4 4   0-10
+#> 5 5   0-10
+#> 6 6   0-10
+tail(data_catigocal)
+#>           X decile
+#> 49995 49995 91-100
+#> 49996 49996 91-100
+#> 49997 49997 91-100
+#> 49998 49998 91-100
+#> 49999 49999 91-100
+#> 50000 50000 91-100
+
+
+2. Use ?findInterval to bin the data and coerce to factor with the 
+appropriate levels.
+
+
+
+data_catigocal$decile <- findInterval(data_catigocal$X, 
+pretty(data_catigocal$X, n = 10), rightmost.closed = TRUE)
+data_catigocal$decile <- factor(data_catigocal$decile, labels = 
+group_vector)
+
+
+The results are the same.
+
+Hope this helps,
+
+Rui Barradas
+
+
+
+?s 12:28 de 14/06/2022, anteneh asmare escreveu:
+> I want Create a categorical variable using the deciles of the
+> following data frame to divide the individuals into 10 groups equally.
+> I try the following codes
+> data_catigocal<-data.frame(c(1:50000))
+> # create categorical vector using deciles
+> group_vector <-
+> c('0-10','11-20','21-30','31-40','41-50','51-60','61-70','71-80','81-90','91-100')
+> # Add categorical variable to the data_catigocal
+> data_catigocal$decile <- factor(group_vector)
+> # print data frame
+> data_catigocal
+> 
+> can any one help me with the r code
+> Kind regards,
+> Hana
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From r@oknz @end|ng |rom gm@||@com  Tue Jun 14 15:07:47 2022
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Wed, 15 Jun 2022 01:07:47 +1200
+Subject: [R] Create a categorical variable using the deciles of data
+In-Reply-To: <CAEuJ0VD66249iN6mAMJcYf=xf_2aktmB-31kx16-su4AT+P6kA@mail.gmail.com>
+References: <CAEuJ0VD66249iN6mAMJcYf=xf_2aktmB-31kx16-su4AT+P6kA@mail.gmail.com>
+Message-ID: <CABcYAdJO5nJ_cOXC6aGKKdQCQo4zCNSUMZQJoZ0v2Mq-bXJQdA@mail.gmail.com>
+
+Can you explain why you are not using
+?quantile
+to find the deciles then
+?cut
+to construct the factor?
+What have I misunderstood?
+
+On Tue, 14 Jun 2022 at 23:29, anteneh asmare <hanatezera at gmail.com> wrote:
+
+> I want Create a categorical variable using the deciles of the
+> following data frame to divide the individuals into 10 groups equally.
+> I try the following codes
+> data_catigocal<-data.frame(c(1:50000))
+> # create categorical vector using deciles
+> group_vector <-
+>
+> c('0-10','11-20','21-30','31-40','41-50','51-60','61-70','71-80','81-90','91-100')
+> # Add categorical variable to the data_catigocal
+> data_catigocal$decile <- factor(group_vector)
+> # print data frame
+> data_catigocal
+>
+> can any one help me with the r code
+> Kind regards,
+> Hana
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From h@n@tezer@ @end|ng |rom gm@||@com  Tue Jun 14 15:12:00 2022
+From: h@n@tezer@ @end|ng |rom gm@||@com (anteneh asmare)
+Date: Tue, 14 Jun 2022 16:12:00 +0300
+Subject: [R] Create a categorical variable using the deciles of data
+In-Reply-To: <BN6PR2201MB15534461FC01AAE729FE92D7CFAA9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <CAEuJ0VD66249iN6mAMJcYf=xf_2aktmB-31kx16-su4AT+P6kA@mail.gmail.com>
+ <BN6PR2201MB15534461FC01AAE729FE92D7CFAA9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <CAEuJ0VDRB_njDcChWBeSYagtQcmcSf2pyVFimHyky0mp00q6iw@mail.gmail.com>
+
+Dear, Tim, Thanks a lot. It works perfectly.
+Best,
+Hana
+On 6/14/22, Ebert,Timothy Aaron <tebert at ufl.edu> wrote:
+> Hana, the "right" answer depends on exactly what you need. Here are three
+> correct solutions. They use the same basic strategy to give different
+> results. There are also other approaches in R to get the same outcome. You
+> could use data_catigocal[i,j] and some for loops.
+>
+> size1 <-50000
+> ngroup <- 10 # note that size1 must be evenly divisible by ngroup
+> group_size <- size1/ngroup
+> data_catigocal <-data.frame(c(1:size1))
+> data_categorical1<-data_catigocal
+> # create categorical vector using deciles
+> group_vector <-
+> c('0-10','11-20','21-30','31-40','41-50','51-60','61-70','71-80','81-90','91-100')
+> data_categorical1$group_vn <-rep(group_vector,group_size)
+>
+> option2 <- rep(group_vector, group_size)
+> option2 <- sort(option2, decreasing=FALSE)
+> data_categorical2 <- cbind(option2, data_catigocal)
+>
+> option3 <- rep(group_vector, group_size)
+> option3a <- sample(option3, size1, replace=FALSE)
+> data_categorical3 <- cbind(option3a, data_catigocal)
+>
+>
+>
+> Tim
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of anteneh asmare
+> Sent: Tuesday, June 14, 2022 7:29 AM
+> To: r-help at r-project.org
+> Subject: [R] Create a categorical variable using the deciles of data
+>
+> [External Email]
+>
+> I want Create a categorical variable using the deciles of the following data
+> frame to divide the individuals into 10 groups equally.
+> I try the following codes
+> data_catigocal<-data.frame(c(1:50000))
+> # create categorical vector using deciles group_vector <-
+> c('0-10','11-20','21-30','31-40','41-50','51-60','61-70','71-80','81-90','91-100')
+> # Add categorical variable to the data_catigocal data_catigocal$decile <-
+> factor(group_vector) # print data frame data_catigocal
+>
+> can any one help me with the r code
+> Kind regards,
+> Hana
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=iJ1M9ZDgTrZDuxyw_CUg03Mb6JmtrOaSF0JqAl-1pdmgbKG3AWiI6hMbv9LVOjKN&s=eUb_8T4KZRbFW_poDuhkWwPvNKQdkI6fm0MMTsOyh-A&e=
+> PLEASE do read the posting guide
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=iJ1M9ZDgTrZDuxyw_CUg03Mb6JmtrOaSF0JqAl-1pdmgbKG3AWiI6hMbv9LVOjKN&s=tnk4qRX6T6SZuapvkrNEZOtHmOVlKGS-02yHEzajqS8&e=
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From tebert @end|ng |rom u||@edu  Tue Jun 14 15:49:03 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Tue, 14 Jun 2022 13:49:03 +0000
+Subject: [R] Create a categorical variable using the deciles of data
+In-Reply-To: <CABcYAdJO5nJ_cOXC6aGKKdQCQo4zCNSUMZQJoZ0v2Mq-bXJQdA@mail.gmail.com>
+References: <CAEuJ0VD66249iN6mAMJcYf=xf_2aktmB-31kx16-su4AT+P6kA@mail.gmail.com>
+ <CABcYAdJO5nJ_cOXC6aGKKdQCQo4zCNSUMZQJoZ0v2Mq-bXJQdA@mail.gmail.com>
+Message-ID: <BN6PR2201MB1553901C2C47BFA5B3523BCDCFAA9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+A problem in R is that there are several dozen ways to do any of these basic activities. I used the approach that I could get to work the fastest and tried to make it somewhat general. I do not know functions like ?pretty that Rui used, nor ?quantile or ?cut. It is a difficulty in learning R where the internet or sites like this one are the "teacher." There are plenty of books, but they too take one approach to solve a problem rather than "here is a problem" and "these are all possible solutions." I appreciate seeing alternative solutions.
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Richard O'Keefe
+Sent: Tuesday, June 14, 2022 9:08 AM
+To: anteneh asmare <hanatezera at gmail.com>
+Cc: R Project Help <r-help at r-project.org>
+Subject: Re: [R] Create a categorical variable using the deciles of data
+
+[External Email]
+
+Can you explain why you are not using
+?quantile
+to find the deciles then
+?cut
+to construct the factor?
+What have I misunderstood?
+
+On Tue, 14 Jun 2022 at 23:29, anteneh asmare <hanatezera at gmail.com> wrote:
+
+> I want Create a categorical variable using the deciles of the 
+> following data frame to divide the individuals into 10 groups equally.
+> I try the following codes
+> data_catigocal<-data.frame(c(1:50000))
+> # create categorical vector using deciles group_vector <-
+>
+> c('0-10','11-20','21-30','31-40','41-50','51-60','61-70','71-80','81-9
+> 0','91-100') # Add categorical variable to the data_catigocal 
+> data_catigocal$decile <- factor(group_vector) # print data frame 
+> data_catigocal
+>
+> can any one help me with the r code
+> Kind regards,
+> Hana
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mail
+> man_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAs
+> Rzsn7AkP-g&m=JNEsCwSpVwVmoMiEXA8K7ZWqg1GZK3Cx87LshtZ5gy5Y8SyDZrUSTuotO
+> cQ44yzy&s=2x4gMg5K_GJPK-XUk3UfSB3hhFCziCOgqvxl7yJXTvA&e=
+> PLEASE do read the posting guide
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.or
+> g_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeA
+> sRzsn7AkP-g&m=JNEsCwSpVwVmoMiEXA8K7ZWqg1GZK3Cx87LshtZ5gy5Y8SyDZrUSTuot
+> OcQ44yzy&s=50k59quZy2KmFsVBRxK4P-M7RyxDsPGieX6TiiY5or0&e=
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=JNEsCwSpVwVmoMiEXA8K7ZWqg1GZK3Cx87LshtZ5gy5Y8SyDZrUSTuotOcQ44yzy&s=2x4gMg5K_GJPK-XUk3UfSB3hhFCziCOgqvxl7yJXTvA&e=
+PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=JNEsCwSpVwVmoMiEXA8K7ZWqg1GZK3Cx87LshtZ5gy5Y8SyDZrUSTuotOcQ44yzy&s=50k59quZy2KmFsVBRxK4P-M7RyxDsPGieX6TiiY5or0&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Jun 14 15:59:57 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 14 Jun 2022 16:59:57 +0300
+Subject: [R] Install OpenCL
+In-Reply-To: <3702aa6c-5d0e-c76a-c06f-6a870265d03c@gmx.de>
+References: <1e3ff528-1d77-6a66-3184-0f94ce826f62@gmx.de>
+ <20220602184655.1c840903@arachnoid>
+ <5e9ca34f-9569-0b7d-e070-d7036f7801b2@gmx.de>
+ <20220614134309.0b390d14@arachnoid>
+ <3702aa6c-5d0e-c76a-c06f-6a870265d03c@gmx.de>
+Message-ID: <20220614165957.73ff239f@arachnoid>
+
+? Tue, 14 Jun 2022 15:37:35 +0200
+Quirin Stier <Quirin_Stier at gmx.de> ?????:
+
+> OCL=C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.7
+> PKG_CPPFLAGS=-IC:/Program Files/NVIDIA GPU Computing
+> Toolkit/CUDA/v11.7/include
+> PKG_LIBS=C:/Program Files/NVIDIA GPU Computing
+> Toolkit/CUDA/v11.7/lib/x64/OpenCL.lib
+
+> Makevars.win:2: *** missing separator.? Stop.
+
+Are there any newlines in the value you're setting for the OCL
+environment variable? If you copied it from my e-mail, there might be
+some because of line-wrapping, but it should fit on one line. If you
+set it correctly, file.exists(Sys.getenv('OCL')) should return TRUE.
+
+-- 
+Best regards,
+Ivan
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Jun 14 16:08:13 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 14 Jun 2022 17:08:13 +0300
+Subject: [R] Install OpenCL
+In-Reply-To: <20220614165957.73ff239f@arachnoid>
+References: <1e3ff528-1d77-6a66-3184-0f94ce826f62@gmx.de>
+ <20220602184655.1c840903@arachnoid>
+ <5e9ca34f-9569-0b7d-e070-d7036f7801b2@gmx.de>
+ <20220614134309.0b390d14@arachnoid>
+ <3702aa6c-5d0e-c76a-c06f-6a870265d03c@gmx.de>
+ <20220614165957.73ff239f@arachnoid>
+Message-ID: <20220614170813.68f188d9@arachnoid>
+
+? Tue, 14 Jun 2022 16:59:57 +0300
+Ivan Krylov <krylov.r00t at gmail.com> ?????:
+
+> If you set it correctly, file.exists(Sys.getenv('OCL')) should return
+> TRUE.
+
+Actually, I'm wrong about this. Your path contains spaces, which means
+that it needs to be quoted. Otherwise the compiler will see five
+separate arguments "-IC:/Program" "Files/NVIDIA" "GPU" "Computing"
+"Toolkit/CUDA/v11.7/include" instead of one and won't understand what's
+needed from it.
+
+Does it work if you use the following call to set the environment
+variable in quotes? The file.exists() test will fail, but other parts
+of the package build system should work with it.
+
+Sys.setenv(OCL = '"C:/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v11.7"')
+
+-- 
+Best regards,
+Ivan
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Jun 14 16:37:01 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 14 Jun 2022 17:37:01 +0300
+Subject: [R] Install OpenCL
+In-Reply-To: <fec5dfaa-1529-2107-1d60-87d9be153ed2@gmx.de>
+References: <1e3ff528-1d77-6a66-3184-0f94ce826f62@gmx.de>
+ <20220602184655.1c840903@arachnoid>
+ <5e9ca34f-9569-0b7d-e070-d7036f7801b2@gmx.de>
+ <20220614134309.0b390d14@arachnoid>
+ <3702aa6c-5d0e-c76a-c06f-6a870265d03c@gmx.de>
+ <20220614165957.73ff239f@arachnoid>
+ <20220614170813.68f188d9@arachnoid>
+ <fec5dfaa-1529-2107-1d60-87d9be153ed2@gmx.de>
+Message-ID: <20220614173701.4ed0e300@arachnoid>
+
+On Tue, 14 Jun 2022 16:14:09 +0200
+Quirin Stier <Quirin_Stier at gmx.de> wrote:
+
+> Sys.setenv(OCL="C:/Program Files/NVIDIA GPU Computing
+> Toolkit/CUDA/v11.7")
+> 
+> is working
+
+Okay, sorry for the misleading follow-up message. I see now that the
+configure.win script performs appropriate quoting by itself, with no
+need to add extra quotes manually.
+
+> ** testing if installed package can be loaded from temporary location
+> Error: Laden von Paket oder Namensraum f?r 'OpenCL' in inDL(x,
+> as.logical(local), as.logical(now), ...): fehlgeschlagen
+>  ?kann shared object
+> 'C:/Users/quiri/AppData/Local/R/win-library/4.2/00LOCK-OpenCL/00new/OpenCL/libs/x64/OpenCL.dll'
+> nicht laden:
+>  ? LoadLibrary failure:? Die angegebene Prozedur wurde nicht gefunden.
+
+This might need the help of someone else from the R-help list who has
+more experience solving Windows-related problems than me. It's probably
+a good idea to keep the Cc: r-help at R-project.org header in our messages.
+
+If you pass the INSTALL_opts = '--no-test-load' argument to
+install.packages(), installation will "succeed", but it will be
+impossible to use the package. Can you use Dependency Walker
+<https://dependencywalker.com/> to see which function is
+C:/Users/quiri/AppData/Local/R/win-library/4.2/OpenCL/libs/x64/OpenCL.dll
+trying to load from C:/Windows/system32/OpenCL.dll and failing? Could
+it be that C:/Windows/system32/OpenCL.dll is the wrong dll file? If you
+know that the right dll file is somewhere under C:/Program Files/NVIDIA
+GPU Computing Toolkit/CUDA/v11.7, it should be possible to copy it to
+C:/Users/quiri/AppData/Local/R/win-library/4.2/OpenCL/libs/x64 to make
+the installed package work correctly.
+
+-- 
+Best regards,
+Ivan
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Tue Jun 14 17:09:33 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 14 Jun 2022 16:09:33 +0100
+Subject: [R] Create a categorical variable using the deciles of data
+In-Reply-To: <BN6PR2201MB1553901C2C47BFA5B3523BCDCFAA9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <CAEuJ0VD66249iN6mAMJcYf=xf_2aktmB-31kx16-su4AT+P6kA@mail.gmail.com>
+ <CABcYAdJO5nJ_cOXC6aGKKdQCQo4zCNSUMZQJoZ0v2Mq-bXJQdA@mail.gmail.com>
+ <BN6PR2201MB1553901C2C47BFA5B3523BCDCFAA9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <b9af9ae4-d010-7c6a-664d-364955fd806a@sapo.pt>
+
+Hello,
+
+Inline.
+
+?s 14:49 de 14/06/2022, Ebert,Timothy Aaron escreveu:
+> A problem in R is that there are several dozen ways to do any of these basic activities. I used the approach that I could get to work the fastest and tried to make it somewhat general. I do not know functions like ?pretty that Rui used, nor ?quantile or ?cut. It is a difficulty in learning R where the internet or sites like this one are the "teacher." 
+
+Yes, that's unfortunately true.
+
+In this particular case I've learned about pretty() because I used to 
+use hist(., plot=FALSE) to get pretty breakpoints. And hist's 
+documentation says it uses pretty().
+
+
+There are plenty of books, but they too take one approach to solve a 
+problem rather than "here is a problem" and "these are all possible 
+solutions." I appreciate seeing alternative solutions.
+
+This thread is a good example of a "teacher" with several solutions, 
+there are many more threads like this.
+
+Rui Barradas
+
+> 
+> Tim
+> 
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Richard O'Keefe
+> Sent: Tuesday, June 14, 2022 9:08 AM
+> To: anteneh asmare <hanatezera at gmail.com>
+> Cc: R Project Help <r-help at r-project.org>
+> Subject: Re: [R] Create a categorical variable using the deciles of data
+> 
+> [External Email]
+> 
+> Can you explain why you are not using
+> ?quantile
+> to find the deciles then
+> ?cut
+> to construct the factor?
+> What have I misunderstood?
+> 
+> On Tue, 14 Jun 2022 at 23:29, anteneh asmare <hanatezera at gmail.com> wrote:
+> 
+>> I want Create a categorical variable using the deciles of the
+>> following data frame to divide the individuals into 10 groups equally.
+>> I try the following codes
+>> data_catigocal<-data.frame(c(1:50000))
+>> # create categorical vector using deciles group_vector <-
+>>
+>> c('0-10','11-20','21-30','31-40','41-50','51-60','61-70','71-80','81-9
+>> 0','91-100') # Add categorical variable to the data_catigocal
+>> data_catigocal$decile <- factor(group_vector) # print data frame
+>> data_catigocal
+>>
+>> can any one help me with the r code
+>> Kind regards,
+>> Hana
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mail
+>> man_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAs
+>> Rzsn7AkP-g&m=JNEsCwSpVwVmoMiEXA8K7ZWqg1GZK3Cx87LshtZ5gy5Y8SyDZrUSTuotO
+>> cQ44yzy&s=2x4gMg5K_GJPK-XUk3UfSB3hhFCziCOgqvxl7yJXTvA&e=
+>> PLEASE do read the posting guide
+>> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.or
+>> g_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeA
+>> sRzsn7AkP-g&m=JNEsCwSpVwVmoMiEXA8K7ZWqg1GZK3Cx87LshtZ5gy5Y8SyDZrUSTuot
+>> OcQ44yzy&s=50k59quZy2KmFsVBRxK4P-M7RyxDsPGieX6TiiY5or0&e=
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+> 
+>          [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=JNEsCwSpVwVmoMiEXA8K7ZWqg1GZK3Cx87LshtZ5gy5Y8SyDZrUSTuotOcQ44yzy&s=2x4gMg5K_GJPK-XUk3UfSB3hhFCziCOgqvxl7yJXTvA&e=
+> PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=JNEsCwSpVwVmoMiEXA8K7ZWqg1GZK3Cx87LshtZ5gy5Y8SyDZrUSTuotOcQ44yzy&s=50k59quZy2KmFsVBRxK4P-M7RyxDsPGieX6TiiY5or0&e=
+> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Tue Jun 14 17:49:47 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Tue, 14 Jun 2022 17:49:47 +0200
+Subject: [R] Why does qt() return Inf with certain negative ncp values?
+In-Reply-To: <CAGxFJbTXj_+pisvdmMXyTMiqokPAVx5GKwiA+j_tTrECzoR7dw@mail.gmail.com>
+References: <874k0oxmku.fsf@rub.de>
+ <CAGxFJbTXj_+pisvdmMXyTMiqokPAVx5GKwiA+j_tTrECzoR7dw@mail.gmail.com>
+Message-ID: <25256.44571.781883.394844@stat.math.ethz.ch>
+
+>>>>>     on Mon, 13 Jun 2022 19:28:43 -0700 writes:
+
+    > Well, this will likely require close numerical analysis of
+    > the algorithm used for the calculation, which I can't help
+    > with, but I do note for the first case (I didn't bother
+    > checking the second) it may be useful to note that besides
+    > returning Inf, I also got with -7 as ncp:
+
+    > "There were 50 or more warnings" all of which were: "In
+    > qt(1 - 1 * (10^(-11)), 35, -7) : full precision may not
+    > have been achieved in 'pnt{final}' "
+
+    > I got this warning for all the other values of ncp also.
+
+    > So it looks like: Congratulations, you seem to have
+    > defeated the algorithm.
+
+    > Bert Gunter
+
+Thank you, Bert, for the extra information and Stephen  for
+reporting.
+
+[@Stephen:  no reason to use sapply(); qt() etc are all vectorized!]
+
+Part of this is "known in principle" 
+as the help page mentions in several places that the non-central t
+algorithm for pt() has deficiencies and
+that in the non-central case, qt() is defined by  inversion,
+i.e., a (primitive !) version of uniroot(), using pt(*, ncp=.) :
+
+
+> Note :
+>      The code for non-zero ?ncp? is principally intended to be used for
+>      moderate values of ?ncp?: it will not be highly accurate,
+>      especially in the tails, for large values.
+
+and indeed, you use values very much "in the tails".
+and that *does* give a warning, as Bert mentioned.
+[ You really should heed such warnings.
+  {{careless people using  suppressWarnings() all the time is
+    really very irresponsible programming/scientific practice!
+  }}]
+    
+>>>>>     on Mon, 13 Jun 2022 19:28:43 -0700 writes:
+
+    > Well, this will likely require close numerical analysis of
+    > the algorithm used for the calculation, which I can't help
+    > with, but I do note for the first case (I didn't bother
+    > checking the second) it may be useful to note that besides
+    > returning Inf, I also got with -7 as ncp:
+
+    > "There were 50 or more warnings" all of which were: "In
+    > qt(1 - 1 * (10^(-11)), 35, -7) : full precision may not
+    > have been achieved in 'pnt{final}' "
+
+    > I got this warning for all the other values of ncp also.
+
+    > So it looks like: Congratulations, you seem to have
+    > defeated the algorithm.
+
+    > Bert Gunter
+
+Thank you, Bert, for the extra information and Stephen  for
+reporting.
+
+[@Stephen:  no reason to use sapply(); qt() etc are all vectorized!]
+
+Part of this is "known in principle" 
+as the help page mentions in several places that the non-central t
+algorithm for pt() has deficiencies and
+that in the non-central case, qt() is defined by  inversion,
+i.e., a (primitive !) version of uniroot(), using pt(*, ncp=.) :
+
+    Note :
+         The code for non-zero ?ncp? is principally intended to be used for
+         moderate values of ?ncp?: it will not be highly accurate,
+         especially in the tails, for large values.
+
+and indeed, you use values very much "in the tails".
+and the use *does* give warning, as Bert mentioned.
+You really should heed such warnings.
+{{careless people using  suppressWarnings() all the time is
+  really very irresponsible programming/scientific practice!   }}
+    
+There's much more to be said here, but as I see  Stephen has in
+the mean time diverted the topic to the  R-devel mailing list --
+quite appropriately -- 
+  --> https://stat.ethz.ch/pipermail/r-devel/2022-June/081785.html
+
+I will answer there.
+
+Best,
+Martin
+
+--
+Martin Maechler
+ETH Zurich  and  R Core team
+
+
+From h@n@tezer@ @end|ng |rom gm@||@com  Tue Jun 14 19:47:26 2022
+From: h@n@tezer@ @end|ng |rom gm@||@com (anteneh asmare)
+Date: Tue, 14 Jun 2022 20:47:26 +0300
+Subject: [R] Create a categorical variable using the deciles of data
+In-Reply-To: <b9af9ae4-d010-7c6a-664d-364955fd806a@sapo.pt>
+References: <CAEuJ0VD66249iN6mAMJcYf=xf_2aktmB-31kx16-su4AT+P6kA@mail.gmail.com>
+ <CABcYAdJO5nJ_cOXC6aGKKdQCQo4zCNSUMZQJoZ0v2Mq-bXJQdA@mail.gmail.com>
+ <BN6PR2201MB1553901C2C47BFA5B3523BCDCFAA9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <b9af9ae4-d010-7c6a-664d-364955fd806a@sapo.pt>
+Message-ID: <CAEuJ0VDPf4A+T+NPkL-pkkgckgYWT8GnFeJRPUsjufbHPNbKng@mail.gmail.com>
+
+Hello Tim, Rui
+Thank you very much for your time and unreserved support.
+Best,
+Hana
+
+On 6/14/22, Rui Barradas <ruipbarradas at sapo.pt> wrote:
+> Hello,
+>
+> Inline.
+>
+> ?s 14:49 de 14/06/2022, Ebert,Timothy Aaron escreveu:
+>> A problem in R is that there are several dozen ways to do any of these
+>> basic activities. I used the approach that I could get to work the fastest
+>> and tried to make it somewhat general. I do not know functions like
+>> ?pretty that Rui used, nor ?quantile or ?cut. It is a difficulty in
+>> learning R where the internet or sites like this one are the "teacher."
+>
+> Yes, that's unfortunately true.
+>
+> In this particular case I've learned about pretty() because I used to
+> use hist(., plot=FALSE) to get pretty breakpoints. And hist's
+> documentation says it uses pretty().
+>
+>
+> There are plenty of books, but they too take one approach to solve a
+> problem rather than "here is a problem" and "these are all possible
+> solutions." I appreciate seeing alternative solutions.
+>
+> This thread is a good example of a "teacher" with several solutions,
+> there are many more threads like this.
+>
+> Rui Barradas
+>
+>>
+>> Tim
+>>
+>> -----Original Message-----
+>> From: R-help <r-help-bounces at r-project.org> On Behalf Of Richard O'Keefe
+>> Sent: Tuesday, June 14, 2022 9:08 AM
+>> To: anteneh asmare <hanatezera at gmail.com>
+>> Cc: R Project Help <r-help at r-project.org>
+>> Subject: Re: [R] Create a categorical variable using the deciles of data
+>>
+>> [External Email]
+>>
+>> Can you explain why you are not using
+>> ?quantile
+>> to find the deciles then
+>> ?cut
+>> to construct the factor?
+>> What have I misunderstood?
+>>
+>> On Tue, 14 Jun 2022 at 23:29, anteneh asmare <hanatezera at gmail.com>
+>> wrote:
+>>
+>>> I want Create a categorical variable using the deciles of the
+>>> following data frame to divide the individuals into 10 groups equally.
+>>> I try the following codes
+>>> data_catigocal<-data.frame(c(1:50000))
+>>> # create categorical vector using deciles group_vector <-
+>>>
+>>> c('0-10','11-20','21-30','31-40','41-50','51-60','61-70','71-80','81-9
+>>> 0','91-100') # Add categorical variable to the data_catigocal
+>>> data_catigocal$decile <- factor(group_vector) # print data frame
+>>> data_catigocal
+>>>
+>>> can any one help me with the r code
+>>> Kind regards,
+>>> Hana
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mail
+>>> man_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAs
+>>> Rzsn7AkP-g&m=JNEsCwSpVwVmoMiEXA8K7ZWqg1GZK3Cx87LshtZ5gy5Y8SyDZrUSTuotO
+>>> cQ44yzy&s=2x4gMg5K_GJPK-XUk3UfSB3hhFCziCOgqvxl7yJXTvA&e=
+>>> PLEASE do read the posting guide
+>>> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.or
+>>> g_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeA
+>>> sRzsn7AkP-g&m=JNEsCwSpVwVmoMiEXA8K7ZWqg1GZK3Cx87LshtZ5gy5Y8SyDZrUSTuot
+>>> OcQ44yzy&s=50k59quZy2KmFsVBRxK4P-M7RyxDsPGieX6TiiY5or0&e=
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+>>          [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=JNEsCwSpVwVmoMiEXA8K7ZWqg1GZK3Cx87LshtZ5gy5Y8SyDZrUSTuotOcQ44yzy&s=2x4gMg5K_GJPK-XUk3UfSB3hhFCziCOgqvxl7yJXTvA&e=
+>> PLEASE do read the posting guide
+>> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=JNEsCwSpVwVmoMiEXA8K7ZWqg1GZK3Cx87LshtZ5gy5Y8SyDZrUSTuotOcQ44yzy&s=50k59quZy2KmFsVBRxK4P-M7RyxDsPGieX6TiiY5or0&e=
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From gregco@t@ @end|ng |rom me@com  Wed Jun 15 03:08:17 2022
+From: gregco@t@ @end|ng |rom me@com (Gregory Coats)
+Date: Tue, 14 Jun 2022 21:08:17 -0400
+Subject: [R] How do I "teach" R that columns 1, 2,
+ and 3 are the Year-Month-Day
+In-Reply-To: <c2251d5b-ae25-0292-8fe4-61e4768becc8@ign.fr>
+References: <47096049.765872.1653053240121.ref@mail.yahoo.com>
+ <47096049.765872.1653053240121@mail.yahoo.com>
+ <c2251d5b-ae25-0292-8fe4-61e4768becc8@ign.fr>
+Message-ID: <55CD3E40-FDAE-4A6E-B352-B60D1D98A236@me.com>
+
+# Column 1 is the Year
+# Column 2 is the Month
+# Column 3 is the Day
+# Column 4 is the Fuel
+Fuel <- c(50.45, 61.48, 59.07, 55.40, 30.63, 41.35, 32.81, 49.86, 62.99, 89.37)
+plot (Fuel)
+
+2021  7 25   50.45  
+2021  8 27   61.48  
+2021  9 26   59.07 
+2021 11  4   55.40  
+2021 11 22   30.63 
+2021 11 26   41.35  
+2021 12  6   32.81  
+2022  1 14   49.86  
+2022  4 29   62.99  
+2022  6 11   89.37  
+
+How do I "teach" R that columns 1, 2, and 3 are the Year-Month-Day?
+Greg Coats
+	[[alternative HTML version deleted]]
+
+
