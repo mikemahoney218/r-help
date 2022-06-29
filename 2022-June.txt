@@ -30452,3 +30452,314 @@ R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://url
 PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=0fZNMT-DeF0LZ9aHAla6puo_a73X7hSRErtTnnWMGQKV1cr9q2APnbBGnebI1HtO&s=Y2P4_7OR1SpkP4Zus_eHnAXXWUpJT-QC5eNr5izpa94&e=
 and provide commented, minimal, self-contained, reproducible code.
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Jun 28 08:12:03 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 28 Jun 2022 09:12:03 +0300
+Subject: [R] sqldf returns Error: database or disk is full
+In-Reply-To: <802146326.9168805.1656316881537@mail.yahoo.com>
+References: <802146326.9168805.1656316881537.ref@mail.yahoo.com>
+ <802146326.9168805.1656316881537@mail.yahoo.com>
+Message-ID: <20220628091203.3c426817@Tarkus>
+
+On Mon, 27 Jun 2022 08:01:21 +0000 (UTC)
+Ian Worthington via R-help <r-help at r-project.org> wrote:
+
+> m <- dbDriver("SQLite")
+
+> Error: database or disk is full
+
+This is an SQLite error message. SQLite can use temp files for its
+purposes [*]. Maybe there's a limit in place on the size of this temp
+file? Try looking for a PRAGMA that may affect this or asking at
+https://sqlite.org/forum.
+
+-- 
+Best regards,
+Ivan
+
+[*] https://sqlite.org/tempfiles.html
+
+
+From ho@@@|nmm @end|ng |rom jun|v@edu  Tue Jun 28 16:07:38 2022
+From: ho@@@|nmm @end|ng |rom jun|v@edu (Md. Moyazzem Hossain)
+Date: Tue, 28 Jun 2022 15:07:38 +0100
+Subject: [R] Need help in ggplot
+Message-ID: <CAO29qn7XgnmcdDRq+Tvh83xCg-LXZDp6PoabYi4sGVTaqAmKgg@mail.gmail.com>
+
+Dear R- Experts,
+
+I hope that you are doing well.
+
+I am facing a problem with adding color to a barplot. My target is to add a
+bar color conditioning on the following
+
+Values close to 1 represent "White" and values tend to 0 represent "Black".
+
+However, I failed. The code is given below. I will be happy and thankful if
+anyone helps me in this regard.
+
+Thanks in advance.
+
+library(ggplot2)
+predictors=c("x1", "x2", "x3", "x4", "x5")
+values=c(1.0, 0.67, 0.26, 0.18, 0.17)
+prob=c(1.0, 0.001, 0.957, 0.924, 0.253)
+
+df <- data.frame(predictors, values, prob)
+ggplot(df, aes(x=predictors, y=values) ) +
+  geom_bar(stat="identity") +
+  coord_flip()+
+  scale_fill_manual(values=c("gray(prob)"))
+
+Best Regards,
+
+*Hossain*
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Tue Jun 28 18:44:50 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 28 Jun 2022 17:44:50 +0100
+Subject: [R] Need help in ggplot
+In-Reply-To: <CAO29qn7XgnmcdDRq+Tvh83xCg-LXZDp6PoabYi4sGVTaqAmKgg@mail.gmail.com>
+References: <CAO29qn7XgnmcdDRq+Tvh83xCg-LXZDp6PoabYi4sGVTaqAmKgg@mail.gmail.com>
+Message-ID: <29ed9793-180f-aea1-301b-3b8668fbb286@sapo.pt>
+
+Hello,
+
+scale_*_manual expects a discrete vector as values, you are passing it a 
+continuous one. The natural way of having a continuous variable set the 
+color and fill values is with a gradient scale.
+
+I have changed geom_bar to geom_col.
+Map prob to the fill aesthetic. Then, in scale_fill_continuous set low 
+and high values to
+
+  - the highest possible (all zeros is black).
+  - and to the lowest in the scale of probabilities (all binary ones or 
+hexa FF's is bright white)
+
+Note that this reverses the real line order relation, you want to map 
+low probabilities to high binary/hexa values and vice-versa.
+
+Don't mind the theme() setting a yellow panel background fill, it's just 
+meant to see better that the bars are in shades of gray.
+
+
+
+library(ggplot2)
+
+predictors <- c("x1", "x2", "x3", "x4", "x5")
+values <- c(1.0, 0.67, 0.26, 0.18, 0.17)
+prob <- c(1.0, 0.001, 0.957, 0.924, 0.253)
+
+df <- data.frame(predictors, values, prob)
+
+ggplot(df, aes(x = predictors, y = values) ) +
+   geom_col(aes(fill = prob)) +
+   coord_flip() +
+   scale_fill_gradient(low = "#FFFFFF", high = "#000000") +
+   theme(panel.background = element_rect(fill = "yellow"))
+
+
+
+If you want to use scale_fill_manual, create a vector of values first, then
+
+  - Map variable predictors to the fill aesthetic since each precitor 
+value has an associated probability prob;
+  - make values equal to gray_vals.
+
+
+gray_vals <- setNames(gray(df$prob), df$predictors)
+
+ggplot(df, aes(x = predictors, y = values) ) +
+   geom_col(aes(fill = predictors)) +
+   coord_flip() +
+   scale_fill_manual(values = gray_vals) +
+   theme(panel.background = element_rect(fill = "yellow"))
+
+
+Hope this helps,
+
+Rui Barradas
+
+?s 15:07 de 28/06/2022, Md. Moyazzem Hossain escreveu:
+> Dear R- Experts,
+> 
+> I hope that you are doing well.
+> 
+> I am facing a problem with adding color to a barplot. My target is to add a
+> bar color conditioning on the following
+> 
+> Values close to 1 represent "White" and values tend to 0 represent "Black".
+> 
+> However, I failed. The code is given below. I will be happy and thankful if
+> anyone helps me in this regard.
+> 
+> Thanks in advance.
+> 
+> library(ggplot2)
+> predictors=c("x1", "x2", "x3", "x4", "x5")
+> values=c(1.0, 0.67, 0.26, 0.18, 0.17)
+> prob=c(1.0, 0.001, 0.957, 0.924, 0.253)
+> 
+> df <- data.frame(predictors, values, prob)
+> ggplot(df, aes(x=predictors, y=values) ) +
+>    geom_bar(stat="identity") +
+>    coord_flip()+
+>    scale_fill_manual(values=c("gray(prob)"))
+> 
+> Best Regards,
+> 
+> *Hossain*
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ho@@@|nmm @end|ng |rom jun|v@edu  Wed Jun 29 00:58:36 2022
+From: ho@@@|nmm @end|ng |rom jun|v@edu (Md. Moyazzem Hossain)
+Date: Tue, 28 Jun 2022 23:58:36 +0100
+Subject: [R] Need help in ggplot
+In-Reply-To: <29ed9793-180f-aea1-301b-3b8668fbb286@sapo.pt>
+References: <CAO29qn7XgnmcdDRq+Tvh83xCg-LXZDp6PoabYi4sGVTaqAmKgg@mail.gmail.com>
+ <29ed9793-180f-aea1-301b-3b8668fbb286@sapo.pt>
+Message-ID: <CAO29qn6v6m8Kj=qdamRbtYsdh4BWQNGS1M6ANRtVDSvo9Tb1WA@mail.gmail.com>
+
+Dear Rui Barradas
+
+Thank you very much for your prompt reply.
+
+It works. I am grateful for your help.
+
+Take care and best wishes.
+
+Hossain
+
+
+On Tue, Jun 28, 2022 at 5:45 PM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+
+> Hello,
+>
+> scale_*_manual expects a discrete vector as values, you are passing it a
+> continuous one. The natural way of having a continuous variable set the
+> color and fill values is with a gradient scale.
+>
+> I have changed geom_bar to geom_col.
+> Map prob to the fill aesthetic. Then, in scale_fill_continuous set low
+> and high values to
+>
+>   - the highest possible (all zeros is black).
+>   - and to the lowest in the scale of probabilities (all binary ones or
+> hexa FF's is bright white)
+>
+> Note that this reverses the real line order relation, you want to map
+> low probabilities to high binary/hexa values and vice-versa.
+>
+> Don't mind the theme() setting a yellow panel background fill, it's just
+> meant to see better that the bars are in shades of gray.
+>
+>
+>
+> library(ggplot2)
+>
+> predictors <- c("x1", "x2", "x3", "x4", "x5")
+> values <- c(1.0, 0.67, 0.26, 0.18, 0.17)
+> prob <- c(1.0, 0.001, 0.957, 0.924, 0.253)
+>
+> df <- data.frame(predictors, values, prob)
+>
+> ggplot(df, aes(x = predictors, y = values) ) +
+>    geom_col(aes(fill = prob)) +
+>    coord_flip() +
+>    scale_fill_gradient(low = "#FFFFFF", high = "#000000") +
+>    theme(panel.background = element_rect(fill = "yellow"))
+>
+>
+>
+> If you want to use scale_fill_manual, create a vector of values first, then
+>
+>   - Map variable predictors to the fill aesthetic since each precitor
+> value has an associated probability prob;
+>   - make values equal to gray_vals.
+>
+>
+> gray_vals <- setNames(gray(df$prob), df$predictors)
+>
+> ggplot(df, aes(x = predictors, y = values) ) +
+>    geom_col(aes(fill = predictors)) +
+>    coord_flip() +
+>    scale_fill_manual(values = gray_vals) +
+>    theme(panel.background = element_rect(fill = "yellow"))
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+> ?s 15:07 de 28/06/2022, Md. Moyazzem Hossain escreveu:
+> > Dear R- Experts,
+> >
+> > I hope that you are doing well.
+> >
+> > I am facing a problem with adding color to a barplot. My target is to
+> add a
+> > bar color conditioning on the following
+> >
+> > Values close to 1 represent "White" and values tend to 0 represent
+> "Black".
+> >
+> > However, I failed. The code is given below. I will be happy and thankful
+> if
+> > anyone helps me in this regard.
+> >
+> > Thanks in advance.
+> >
+> > library(ggplot2)
+> > predictors=c("x1", "x2", "x3", "x4", "x5")
+> > values=c(1.0, 0.67, 0.26, 0.18, 0.17)
+> > prob=c(1.0, 0.001, 0.957, 0.924, 0.253)
+> >
+> > df <- data.frame(predictors, values, prob)
+> > ggplot(df, aes(x=predictors, y=values) ) +
+> >    geom_bar(stat="identity") +
+> >    coord_flip()+
+> >    scale_fill_manual(values=c("gray(prob)"))
+> >
+> > Best Regards,
+> >
+> > *Hossain*
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+-- 
+Best Regards,
+Md. Moyazzem Hossain
+Associate Professor
+Department of Statistics
+Jahangirnagar University
+Savar, Dhaka-1342, Bangladesh
+Website: http://www.juniv.edu/teachers/hossainmm
+Research: *[image: Google Scholar]
+<https://scholar.google.com/citations?hl=en&user=-U03XCgAAAAJ>* | *ResearchGate
+<https://www.researchgate.net/profile/Md_Hossain107>* | *ORCID iD
+<https://orcid.org/0000-0003-3593-6936>*
+
+	[[alternative HTML version deleted]]
+
+
