@@ -1196,3 +1196,2141 @@ On Fri, Jul 1, 2022 at 8:26 PM Rui Barradas <ruipbarradas at sapo.pt> wrote:
 	[[alternative HTML version deleted]]
 
 
+From peter@|@ng|e|der @end|ng |rom gm@||@com  Sat Jul  2 05:30:47 2022
+From: peter@|@ng|e|der @end|ng |rom gm@||@com (Peter Langfelder)
+Date: Fri, 1 Jul 2022 20:30:47 -0700
+Subject: [R] Subsetting a vector using an index with all missing values
+Message-ID: <CA+hbrhUmU4Bsu7HV-rjepBkcvLzyqe3rB7nrtHBKyiZiNkLg8g@mail.gmail.com>
+
+Hi all,
+
+I stumbled on subsetting behavior that seems counterintuitive and
+perhaps is a bug. Here's a simple example:
+
+> x = 1:10
+> x[ rep(NA, 3)]
+ [1] NA NA NA NA NA NA NA NA NA NA
+
+I would have expected 3 NAs (the length of the index), not 10 (all
+values in x). Looked at the documentation for the subsetting operator
+`[` but found nothing indicating that if the index contains all
+missing data, the result is the entire vector.
+
+I can work around the issue for a general 'index' using a somewhat
+clunky but straightforward construct along the lines of
+
+> index = rep(NA, 3)
+> x[c(1, index)][-1]
+[1] NA NA NA
+
+but I'm wondering if the behaviour above is intended.
+
+Thanks,
+
+Peter
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Sat Jul  2 07:01:44 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Fri, 1 Jul 2022 22:01:44 -0700
+Subject: [R] Subsetting a vector using an index with all missing values
+In-Reply-To: <CA+hbrhUmU4Bsu7HV-rjepBkcvLzyqe3rB7nrtHBKyiZiNkLg8g@mail.gmail.com>
+References: <CA+hbrhUmU4Bsu7HV-rjepBkcvLzyqe3rB7nrtHBKyiZiNkLg8g@mail.gmail.com>
+Message-ID: <CAHqSRuQUBBsDFxNUHBYmBkoDmUG1FOY_aoX9oVS9=afuX35J+Q@mail.gmail.com>
+
+This has to do with the mode of the subscript - logical subscripts are
+repeated to the length of x and integer/numeric ones are not.  NA is
+logical, NA_integer_ is integer, so we get
+
+> x <- 1:10
+> x[ rep(NA_integer_, 3) ]
+[1] NA NA NA
+> x[ rep(NA, 3) ]
+ [1] NA NA NA NA NA NA NA NA NA NA
+
+-Bill
+
+
+On Fri, Jul 1, 2022 at 8:31 PM Peter Langfelder <peter.langfelder at gmail.com>
+wrote:
+
+> Hi all,
+>
+> I stumbled on subsetting behavior that seems counterintuitive and
+> perhaps is a bug. Here's a simple example:
+>
+> > x = 1:10
+> > x[ rep(NA, 3)]
+>  [1] NA NA NA NA NA NA NA NA NA NA
+>
+> I would have expected 3 NAs (the length of the index), not 10 (all
+> values in x). Looked at the documentation for the subsetting operator
+> `[` but found nothing indicating that if the index contains all
+> missing data, the result is the entire vector.
+>
+> I can work around the issue for a general 'index' using a somewhat
+> clunky but straightforward construct along the lines of
+>
+> > index = rep(NA, 3)
+> > x[c(1, index)][-1]
+> [1] NA NA NA
+>
+> but I'm wondering if the behaviour above is intended.
+>
+> Thanks,
+>
+> Peter
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From peter@|@ng|e|der @end|ng |rom gm@||@com  Sat Jul  2 08:18:56 2022
+From: peter@|@ng|e|der @end|ng |rom gm@||@com (Peter Langfelder)
+Date: Fri, 1 Jul 2022 23:18:56 -0700
+Subject: [R] Subsetting a vector using an index with all missing values
+In-Reply-To: <CAHqSRuQUBBsDFxNUHBYmBkoDmUG1FOY_aoX9oVS9=afuX35J+Q@mail.gmail.com>
+References: <CA+hbrhUmU4Bsu7HV-rjepBkcvLzyqe3rB7nrtHBKyiZiNkLg8g@mail.gmail.com>
+ <CAHqSRuQUBBsDFxNUHBYmBkoDmUG1FOY_aoX9oVS9=afuX35J+Q@mail.gmail.com>
+Message-ID: <CA+hbrhX6tH-1R3k_rLZF+KMz--hJN8tRhJm7s5unbJd9Uob9gw@mail.gmail.com>
+
+Ah, thanks, that makes sense.
+
+Peter
+
+On Fri, Jul 1, 2022 at 10:01 PM Bill Dunlap <williamwdunlap at gmail.com> wrote:
+>
+> This has to do with the mode of the subscript - logical subscripts are repeated to the length of x and integer/numeric ones are not.  NA is logical, NA_integer_ is integer, so we get
+>
+> > x <- 1:10
+> > x[ rep(NA_integer_, 3) ]
+> [1] NA NA NA
+> > x[ rep(NA, 3) ]
+>  [1] NA NA NA NA NA NA NA NA NA NA
+>
+> -Bill
+>
+>
+> On Fri, Jul 1, 2022 at 8:31 PM Peter Langfelder <peter.langfelder at gmail.com> wrote:
+>>
+>> Hi all,
+>>
+>> I stumbled on subsetting behavior that seems counterintuitive and
+>> perhaps is a bug. Here's a simple example:
+>>
+>> > x = 1:10
+>> > x[ rep(NA, 3)]
+>>  [1] NA NA NA NA NA NA NA NA NA NA
+>>
+>> I would have expected 3 NAs (the length of the index), not 10 (all
+>> values in x). Looked at the documentation for the subsetting operator
+>> `[` but found nothing indicating that if the index contains all
+>> missing data, the result is the entire vector.
+>>
+>> I can work around the issue for a general 'index' using a somewhat
+>> clunky but straightforward construct along the lines of
+>>
+>> > index = rep(NA, 3)
+>> > x[c(1, index)][-1]
+>> [1] NA NA NA
+>>
+>> but I'm wondering if the behaviour above is intended.
+>>
+>> Thanks,
+>>
+>> Peter
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From tebert @end|ng |rom u||@edu  Sat Jul  2 16:47:22 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Sat, 2 Jul 2022 14:47:22 +0000
+Subject: [R] Subsetting a vector using an index with all missing values
+In-Reply-To: <CA+hbrhX6tH-1R3k_rLZF+KMz--hJN8tRhJm7s5unbJd9Uob9gw@mail.gmail.com>
+References: <CA+hbrhUmU4Bsu7HV-rjepBkcvLzyqe3rB7nrtHBKyiZiNkLg8g@mail.gmail.com>
+ <CAHqSRuQUBBsDFxNUHBYmBkoDmUG1FOY_aoX9oVS9=afuX35J+Q@mail.gmail.com>
+ <CA+hbrhX6tH-1R3k_rLZF+KMz--hJN8tRhJm7s5unbJd9Uob9gw@mail.gmail.com>
+Message-ID: <BN6PR2201MB155374BFB4ECF44564E8AFB6CFBC9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+That nicely explains the difference in outcome between 
+x[rep(TRUE,3)]
+x[rep("TRUE",3)]
+
+
+I do not quite get it.
+x<-1:10
+x[rep(x<2,3)]
+[1] 1 NA NA
+The length is three
+
+but
+x[rep(x>2,3)]
+[1] 3  4  5  6  7  8  9  10  NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+The length is 24
+
+Tim
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Peter Langfelder
+Sent: Saturday, July 2, 2022 2:19 AM
+To: Bill Dunlap <williamwdunlap at gmail.com>
+Cc: r-help <r-help at r-project.org>
+Subject: Re: [R] Subsetting a vector using an index with all missing values
+
+[External Email]
+
+Ah, thanks, that makes sense.
+
+Peter
+
+On Fri, Jul 1, 2022 at 10:01 PM Bill Dunlap <williamwdunlap at gmail.com> wrote:
+>
+> This has to do with the mode of the subscript - logical subscripts are 
+> repeated to the length of x and integer/numeric ones are not.  NA is 
+> logical, NA_integer_ is integer, so we get
+>
+> > x <- 1:10
+> > x[ rep(NA_integer_, 3) ]
+> [1] NA NA NA
+> > x[ rep(NA, 3) ]
+>  [1] NA NA NA NA NA NA NA NA NA NA
+>
+> -Bill
+>
+>
+> On Fri, Jul 1, 2022 at 8:31 PM Peter Langfelder <peter.langfelder at gmail.com> wrote:
+>>
+>> Hi all,
+>>
+>> I stumbled on subsetting behavior that seems counterintuitive and 
+>> perhaps is a bug. Here's a simple example:
+>>
+>> > x = 1:10
+>> > x[ rep(NA, 3)]
+>>  [1] NA NA NA NA NA NA NA NA NA NA
+>>
+>> I would have expected 3 NAs (the length of the index), not 10 (all 
+>> values in x). Looked at the documentation for the subsetting operator 
+>> `[` but found nothing indicating that if the index contains all 
+>> missing data, the result is the entire vector.
+>>
+>> I can work around the issue for a general 'index' using a somewhat 
+>> clunky but straightforward construct along the lines of
+>>
+>> > index = rep(NA, 3)
+>> > x[c(1, index)][-1]
+>> [1] NA NA NA
+>>
+>> but I'm wondering if the behaviour above is intended.
+>>
+>> Thanks,
+>>
+>> Peter
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+>> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mai
+>> lman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVe
+>> AsRzsn7AkP-g&m=5kixibKMuZiVbTFd2D5fSZBYO3aFODtFyW96wUN-oC5gJtbOYJ9G0j
+>> 6zoo-P6z4W&s=WGGoTTZ6ENtmckv7K_B0OepH04TDjbiNp0D6IbdqpAg&e=
+>> PLEASE do read the posting guide 
+>> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.o
+>> rg_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kV
+>> eAsRzsn7AkP-g&m=5kixibKMuZiVbTFd2D5fSZBYO3aFODtFyW96wUN-oC5gJtbOYJ9G0
+>> j6zoo-P6z4W&s=JErkxZzuGa2y8pjLddJY5u_vDIbjw4tX1vzkb8LAe98&e=
+>> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=5kixibKMuZiVbTFd2D5fSZBYO3aFODtFyW96wUN-oC5gJtbOYJ9G0j6zoo-P6z4W&s=WGGoTTZ6ENtmckv7K_B0OepH04TDjbiNp0D6IbdqpAg&e=
+PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=5kixibKMuZiVbTFd2D5fSZBYO3aFODtFyW96wUN-oC5gJtbOYJ9G0j6zoo-P6z4W&s=JErkxZzuGa2y8pjLddJY5u_vDIbjw4tX1vzkb8LAe98&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Sat Jul  2 17:24:46 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Sat, 2 Jul 2022 08:24:46 -0700
+Subject: [R] Subsetting a vector using an index with all missing values
+In-Reply-To: <BN6PR2201MB155374BFB4ECF44564E8AFB6CFBC9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <CA+hbrhUmU4Bsu7HV-rjepBkcvLzyqe3rB7nrtHBKyiZiNkLg8g@mail.gmail.com>
+ <CAHqSRuQUBBsDFxNUHBYmBkoDmUG1FOY_aoX9oVS9=afuX35J+Q@mail.gmail.com>
+ <CA+hbrhX6tH-1R3k_rLZF+KMz--hJN8tRhJm7s5unbJd9Uob9gw@mail.gmail.com>
+ <BN6PR2201MB155374BFB4ECF44564E8AFB6CFBC9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <CAHqSRuTLzAmB6tBJJVkGF94uudBD1Nq-f5pnFRC5eBKM4kNW3w@mail.gmail.com>
+
+Perhaps it should be an error if the length of a logical subscript is
+bigger than the dimension it is subscripting.  Currently in that case, x is
+extended (with NA or NULL) to the length of the logical subscript.  I doubt
+this is desired very often.
+
+> dput((1:3)[c(FALSE,FALSE,FALSE,TRUE,TRUE)])
+c(NA_integer_, NA_integer_)
+> dput((1:3)[c(FALSE,FALSE,TRUE,FALSE,TRUE)])
+c(3L, NA)
+
+-Bill
+
+On Sat, Jul 2, 2022 at 7:49 AM Ebert,Timothy Aaron <tebert at ufl.edu> wrote:
+
+> That nicely explains the difference in outcome between
+> x[rep(TRUE,3)]
+> x[rep("TRUE",3)]
+>
+>
+> I do not quite get it.
+> x<-1:10
+> x[rep(x<2,3)]
+> [1] 1 NA NA
+> The length is three
+>
+> but
+> x[rep(x>2,3)]
+> [1] 3  4  5  6  7  8  9  10  NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+> NA
+> The length is 24
+>
+> Tim
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Peter Langfelder
+> Sent: Saturday, July 2, 2022 2:19 AM
+> To: Bill Dunlap <williamwdunlap at gmail.com>
+> Cc: r-help <r-help at r-project.org>
+> Subject: Re: [R] Subsetting a vector using an index with all missing values
+>
+> [External Email]
+>
+> Ah, thanks, that makes sense.
+>
+> Peter
+>
+> On Fri, Jul 1, 2022 at 10:01 PM Bill Dunlap <williamwdunlap at gmail.com>
+> wrote:
+> >
+> > This has to do with the mode of the subscript - logical subscripts are
+> > repeated to the length of x and integer/numeric ones are not.  NA is
+> > logical, NA_integer_ is integer, so we get
+> >
+> > > x <- 1:10
+> > > x[ rep(NA_integer_, 3) ]
+> > [1] NA NA NA
+> > > x[ rep(NA, 3) ]
+> >  [1] NA NA NA NA NA NA NA NA NA NA
+> >
+> > -Bill
+> >
+> >
+> > On Fri, Jul 1, 2022 at 8:31 PM Peter Langfelder <
+> peter.langfelder at gmail.com> wrote:
+> >>
+> >> Hi all,
+> >>
+> >> I stumbled on subsetting behavior that seems counterintuitive and
+> >> perhaps is a bug. Here's a simple example:
+> >>
+> >> > x = 1:10
+> >> > x[ rep(NA, 3)]
+> >>  [1] NA NA NA NA NA NA NA NA NA NA
+> >>
+> >> I would have expected 3 NAs (the length of the index), not 10 (all
+> >> values in x). Looked at the documentation for the subsetting operator
+> >> `[` but found nothing indicating that if the index contains all
+> >> missing data, the result is the entire vector.
+> >>
+> >> I can work around the issue for a general 'index' using a somewhat
+> >> clunky but straightforward construct along the lines of
+> >>
+> >> > index = rep(NA, 3)
+> >> > x[c(1, index)][-1]
+> >> [1] NA NA NA
+> >>
+> >> but I'm wondering if the behaviour above is intended.
+> >>
+> >> Thanks,
+> >>
+> >> Peter
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mai
+> >> lman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVe
+> >> AsRzsn7AkP-g&m=5kixibKMuZiVbTFd2D5fSZBYO3aFODtFyW96wUN-oC5gJtbOYJ9G0j
+> >> 6zoo-P6z4W&s=WGGoTTZ6ENtmckv7K_B0OepH04TDjbiNp0D6IbdqpAg&e=
+> >> PLEASE do read the posting guide
+> >> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.o
+> >> rg_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kV
+> >> eAsRzsn7AkP-g&m=5kixibKMuZiVbTFd2D5fSZBYO3aFODtFyW96wUN-oC5gJtbOYJ9G0
+> >> j6zoo-P6z4W&s=JErkxZzuGa2y8pjLddJY5u_vDIbjw4tX1vzkb8LAe98&e=
+> >> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=5kixibKMuZiVbTFd2D5fSZBYO3aFODtFyW96wUN-oC5gJtbOYJ9G0j6zoo-P6z4W&s=WGGoTTZ6ENtmckv7K_B0OepH04TDjbiNp0D6IbdqpAg&e=
+> PLEASE do read the posting guide
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=5kixibKMuZiVbTFd2D5fSZBYO3aFODtFyW96wUN-oC5gJtbOYJ9G0j6zoo-P6z4W&s=JErkxZzuGa2y8pjLddJY5u_vDIbjw4tX1vzkb8LAe98&e=
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From mzch|@ht| @end|ng |rom eco@q@u@edu@pk  Sat Jul  2 18:11:52 2022
+From: mzch|@ht| @end|ng |rom eco@q@u@edu@pk (Muhammad Zubair Chishti)
+Date: Sat, 2 Jul 2022 21:11:52 +0500
+Subject: [R] A humble request
+Message-ID: <CAMfKi3+=X6pGJp+5Mt=zZYL870xs0+w5gTsNsKi9o4=_jPt6kA@mail.gmail.com>
+
+Dear Experts,
+I cannot find a package "wmtsa" for my R version "R 4.2.0". Kindly help me
+to find it or share the link with me.
+Although I tried the old version of "wmtsa" but failed.
+Thank you for your precious time.
+
+Regards
+Muhammad Zubair Chishti
+
+	[[alternative HTML version deleted]]
+
+
+From rhur||n @end|ng |rom gwdg@de  Sat Jul  2 18:24:05 2022
+From: rhur||n @end|ng |rom gwdg@de (Rainer Hurling)
+Date: Sat, 2 Jul 2022 18:24:05 +0200
+Subject: [R] A humble request
+In-Reply-To: <CAMfKi3+=X6pGJp+5Mt=zZYL870xs0+w5gTsNsKi9o4=_jPt6kA@mail.gmail.com>
+References: <CAMfKi3+=X6pGJp+5Mt=zZYL870xs0+w5gTsNsKi9o4=_jPt6kA@mail.gmail.com>
+Message-ID: <351d54b9-c39c-34f2-a0d3-31def36c01e9@gwdg.de>
+
+Hi Muhammad,
+
+Am 02.07.22 um 18:11 schrieb Muhammad Zubair Chishti:
+> Dear Experts,
+> I cannot find a package "wmtsa" for my R version "R 4.2.0". Kindly help me
+> to find it or share the link with me.
+> Although I tried the old version of "wmtsa" but failed.
+> Thank you for your precious time.
+> 
+> Regards
+> Muhammad Zubair Chishti
+> 
+> 	[[alternative HTML version deleted]]
+
+AFAIK there is no package wmtsa anymore. It has been archived on 
+2020-06-09 [1], the latest version was wmtsa_2.0-3.tar.gz from 2017-12-06.
+
+[1] https://cran.r-project.org/src/contrib/Archive/wmtsa/
+
+HTH,
+Rainer
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Sat Jul  2 18:31:50 2022
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Sat, 2 Jul 2022 11:31:50 -0500
+Subject: [R] A humble request
+In-Reply-To: <351d54b9-c39c-34f2-a0d3-31def36c01e9@gwdg.de>
+References: <CAMfKi3+=X6pGJp+5Mt=zZYL870xs0+w5gTsNsKi9o4=_jPt6kA@mail.gmail.com>
+ <351d54b9-c39c-34f2-a0d3-31def36c01e9@gwdg.de>
+Message-ID: <93b1b40a-544d-bff5-24e0-1bc0ce29f5b7@effectivedefense.org>
+
+If I understand correctly the rules for "archived" packages, anyone is 
+free to download them, compile them locally -- AND resubmit any such 
+package with themselves as the maintainer:  They were archived, because 
+they would no longer pass CRAN checks, and the designated maintainer 
+failed to respond to the notice of problems with newer versions of R. 
+If anything I've said here is wrong or poorly nuanced, I trust someone 
+knowledgeable will correct me.  Spencer Graves
+
+
+On 7/2/22 11:24 AM, Rainer Hurling wrote:
+> Hi Muhammad,
+> 
+> Am 02.07.22 um 18:11 schrieb Muhammad Zubair Chishti:
+>> Dear Experts,
+>> I cannot find a package "wmtsa" for my R version "R 4.2.0". Kindly 
+>> help me
+>> to find it or share the link with me.
+>> Although I tried the old version of "wmtsa" but failed.
+>> Thank you for your precious time.
+>>
+>> Regards
+>> Muhammad Zubair Chishti
+>>
+>> ????[[alternative HTML version deleted]]
+> 
+> AFAIK there is no package wmtsa anymore. It has been archived on 
+> 2020-06-09 [1], the latest version was wmtsa_2.0-3.tar.gz from 2017-12-06.
+> 
+> [1] https://cran.r-project.org/src/contrib/Archive/wmtsa/
+> 
+> HTH,
+> Rainer
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From mzch|@ht| @end|ng |rom eco@q@u@edu@pk  Sat Jul  2 18:32:00 2022
+From: mzch|@ht| @end|ng |rom eco@q@u@edu@pk (Muhammad Zubair Chishti)
+Date: Sat, 2 Jul 2022 21:32:00 +0500
+Subject: [R] A humble request
+In-Reply-To: <CAMfKi3JH-pSwKAsrQ51koEBN5Jx8Sfk2NKv4n0KgLiaMxHsYDw@mail.gmail.com>
+References: <CAMfKi3+=X6pGJp+5Mt=zZYL870xs0+w5gTsNsKi9o4=_jPt6kA@mail.gmail.com>
+ <351d54b9-c39c-34f2-a0d3-31def36c01e9@gwdg.de>
+ <CAMfKi3JH-pSwKAsrQ51koEBN5Jx8Sfk2NKv4n0KgLiaMxHsYDw@mail.gmail.com>
+Message-ID: <CAMfKi3Kao4U61nAfXWxjifTr_8K6110Ue3AbYKcOub05=NSLRw@mail.gmail.com>
+
+Dear Respected Sir,
+Thank you for the quick response. However, the link your shared provides
+the old version of wmtsa that is not working in R 4.2.0.
+Can you please tell me any other solution for this issue?
+
+Regards
+Muhammad Zubair Chishti
+
+On Sat, 2 Jul 2022, 21:30 Muhammad Zubair Chishti, <mzchishti at eco.qau.edu.pk>
+wrote:
+
+> Dear Respected Sir,
+> Thank you for the quick response. However, the link your shared provides
+> the old version of wmtsa that is not working in R 4.2.0.
+> Can you please tell me any other solution for this issue?
+>
+> Regards
+> Muhammad Zubair Chishti
+>
+> On Sat, 2 Jul 2022, 21:24 Rainer Hurling, <rhurlin at gwdg.de> wrote:
+>
+>> Hi Muhammad,
+>>
+>> Am 02.07.22 um 18:11 schrieb Muhammad Zubair Chishti:
+>> > Dear Experts,
+>> > I cannot find a package "wmtsa" for my R version "R 4.2.0". Kindly help
+>> me
+>> > to find it or share the link with me.
+>> > Although I tried the old version of "wmtsa" but failed.
+>> > Thank you for your precious time.
+>> >
+>> > Regards
+>> > Muhammad Zubair Chishti
+>> >
+>> >       [[alternative HTML version deleted]]
+>>
+>> AFAIK there is no package wmtsa anymore. It has been archived on
+>> 2020-06-09 [1], the latest version was wmtsa_2.0-3.tar.gz from 2017-12-06.
+>>
+>> [1] https://cran.r-project.org/src/contrib/Archive/wmtsa/
+>>
+>> HTH,
+>> Rainer
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From mzch|@ht| @end|ng |rom eco@q@u@edu@pk  Sat Jul  2 18:39:20 2022
+From: mzch|@ht| @end|ng |rom eco@q@u@edu@pk (Muhammad Zubair Chishti)
+Date: Sat, 2 Jul 2022 21:39:20 +0500
+Subject: [R] A humble request
+In-Reply-To: <93b1b40a-544d-bff5-24e0-1bc0ce29f5b7@effectivedefense.org>
+References: <CAMfKi3+=X6pGJp+5Mt=zZYL870xs0+w5gTsNsKi9o4=_jPt6kA@mail.gmail.com>
+ <351d54b9-c39c-34f2-a0d3-31def36c01e9@gwdg.de>
+ <93b1b40a-544d-bff5-24e0-1bc0ce29f5b7@effectivedefense.org>
+Message-ID: <CAMfKi3+a+9yQfnOpZidot-6OHhRdguU-UGGVo4aV-72mDM57RQ@mail.gmail.com>
+
+Dear Respected Professor,
+You are right. However, a student like me who doesn't know much R requires
+specific helping packages to install. Therefore, I requested here to
+experts to give the solution for my issue.
+
+I hope that I will get the solution from this platform.
+
+Regards
+Muhammad Zubair Chishti
+
+On Sat, 2 Jul 2022, 21:34 Spencer Graves, <
+spencer.graves at effectivedefense.org> wrote:
+
+> If I understand correctly the rules for "archived" packages, anyone is
+> free to download them, compile them locally -- AND resubmit any such
+> package with themselves as the maintainer:  They were archived, because
+> they would no longer pass CRAN checks, and the designated maintainer
+> failed to respond to the notice of problems with newer versions of R.
+> If anything I've said here is wrong or poorly nuanced, I trust someone
+> knowledgeable will correct me.  Spencer Graves
+>
+>
+> On 7/2/22 11:24 AM, Rainer Hurling wrote:
+> > Hi Muhammad,
+> >
+> > Am 02.07.22 um 18:11 schrieb Muhammad Zubair Chishti:
+> >> Dear Experts,
+> >> I cannot find a package "wmtsa" for my R version "R 4.2.0". Kindly
+> >> help me
+> >> to find it or share the link with me.
+> >> Although I tried the old version of "wmtsa" but failed.
+> >> Thank you for your precious time.
+> >>
+> >> Regards
+> >> Muhammad Zubair Chishti
+> >>
+> >>     [[alternative HTML version deleted]]
+> >
+> > AFAIK there is no package wmtsa anymore. It has been archived on
+> > 2020-06-09 [1], the latest version was wmtsa_2.0-3.tar.gz from
+> 2017-12-06.
+> >
+> > [1] https://cran.r-project.org/src/contrib/Archive/wmtsa/
+> >
+> > HTH,
+> > Rainer
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> > http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Sat Jul  2 18:49:00 2022
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Sat, 2 Jul 2022 11:49:00 -0500
+Subject: [R] A humble request
+In-Reply-To: <CAMfKi3+a+9yQfnOpZidot-6OHhRdguU-UGGVo4aV-72mDM57RQ@mail.gmail.com>
+References: <CAMfKi3+=X6pGJp+5Mt=zZYL870xs0+w5gTsNsKi9o4=_jPt6kA@mail.gmail.com>
+ <351d54b9-c39c-34f2-a0d3-31def36c01e9@gwdg.de>
+ <93b1b40a-544d-bff5-24e0-1bc0ce29f5b7@effectivedefense.org>
+ <CAMfKi3+a+9yQfnOpZidot-6OHhRdguU-UGGVo4aV-72mDM57RQ@mail.gmail.com>
+Message-ID: <02586896-14cc-f5c1-de7a-e7a98ffe80dd@effectivedefense.org>
+
+	  Are you familiar with the "debug" function?
+
+
+	  You can download the package, source the function you want to use. 
+If it doesn't run or doesn't seem to give a sensible answer, debug(fun) 
+followed by fun(arg1, arg2, arg3) will start the function then stop and 
+invite you to walk through the function line by line.  You can look at 
+what it does, and change it as you like.  Doing so should help you learn 
+R while also making it easier for you to figure out how to make the 
+function do what you want.
+
+
+	  Hope this helps.
+	  Spencer Graves
+
+
+On 7/2/22 11:39 AM, Muhammad Zubair Chishti wrote:
+> Dear Respected Professor,
+> You are right. However, a student like me who doesn't know much R 
+> requires specific helping packages to install. Therefore, I requested 
+> here to experts to give the solution for my issue.
+> 
+> I hope that I will get the solution from this platform.
+> 
+> Regards
+> Muhammad Zubair Chishti
+> 
+> On Sat, 2 Jul 2022, 21:34 Spencer Graves, 
+> <spencer.graves at effectivedefense.org 
+> <mailto:spencer.graves at effectivedefense.org>> wrote:
+> 
+>     If I understand correctly the rules for "archived" packages, anyone is
+>     free to download them, compile them locally -- AND resubmit any such
+>     package with themselves as the maintainer:? They were archived, because
+>     they would no longer pass CRAN checks, and the designated maintainer
+>     failed to respond to the notice of problems with newer versions of R.
+>     If anything I've said here is wrong or poorly nuanced, I trust someone
+>     knowledgeable will correct me.? Spencer Graves
+> 
+> 
+>     On 7/2/22 11:24 AM, Rainer Hurling wrote:
+>      > Hi Muhammad,
+>      >
+>      > Am 02.07.22 um 18:11 schrieb Muhammad Zubair Chishti:
+>      >> Dear Experts,
+>      >> I cannot find a package "wmtsa" for my R version "R 4.2.0". Kindly
+>      >> help me
+>      >> to find it or share the link with me.
+>      >> Although I tried the old version of "wmtsa" but failed.
+>      >> Thank you for your precious time.
+>      >>
+>      >> Regards
+>      >> Muhammad Zubair Chishti
+>      >>
+>      >> ????[[alternative HTML version deleted]]
+>      >
+>      > AFAIK there is no package wmtsa anymore. It has been archived on
+>      > 2020-06-09 [1], the latest version was wmtsa_2.0-3.tar.gz from
+>     2017-12-06.
+>      >
+>      > [1] https://cran.r-project.org/src/contrib/Archive/wmtsa/
+>     <https://cran.r-project.org/src/contrib/Archive/wmtsa/>
+>      >
+>      > HTH,
+>      > Rainer
+>      >
+>      > ______________________________________________
+>      > R-help at r-project.org <mailto:R-help at r-project.org> mailing list
+>     -- To UNSUBSCRIBE and more, see
+>      > https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>
+>      > PLEASE do read the posting guide
+>      > http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>      > and provide commented, minimal, self-contained, reproducible code.
+> 
+>     ______________________________________________
+>     R-help at r-project.org <mailto:R-help at r-project.org> mailing list --
+>     To UNSUBSCRIBE and more, see
+>     https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>
+>     PLEASE do read the posting guide
+>     http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>     and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From tebert @end|ng |rom u||@edu  Sat Jul  2 19:23:10 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Sat, 2 Jul 2022 17:23:10 +0000
+Subject: [R] A humble request
+In-Reply-To: <CAMfKi3+a+9yQfnOpZidot-6OHhRdguU-UGGVo4aV-72mDM57RQ@mail.gmail.com>
+References: <CAMfKi3+=X6pGJp+5Mt=zZYL870xs0+w5gTsNsKi9o4=_jPt6kA@mail.gmail.com>
+ <351d54b9-c39c-34f2-a0d3-31def36c01e9@gwdg.de>
+ <93b1b40a-544d-bff5-24e0-1bc0ce29f5b7@effectivedefense.org>
+ <CAMfKi3+a+9yQfnOpZidot-6OHhRdguU-UGGVo4aV-72mDM57RQ@mail.gmail.com>
+Message-ID: <BN6PR2201MB1553A058DE80C56C92E5B20FCFBC9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+Would package versions help? It would allow you to install a specific version of wmtsa into R 4.2.
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Muhammad Zubair Chishti
+Sent: Saturday, July 2, 2022 12:39 PM
+To: Spencer Graves <spencer.graves at effectivedefense.org>; r-help at r-project.org
+Subject: Re: [R] A humble request
+
+[External Email]
+
+Dear Respected Professor,
+You are right. However, a student like me who doesn't know much R requires specific helping packages to install. Therefore, I requested here to experts to give the solution for my issue.
+
+I hope that I will get the solution from this platform.
+
+Regards
+Muhammad Zubair Chishti
+
+On Sat, 2 Jul 2022, 21:34 Spencer Graves, < spencer.graves at effectivedefense.org> wrote:
+
+> If I understand correctly the rules for "archived" packages, anyone is 
+> free to download them, compile them locally -- AND resubmit any such 
+> package with themselves as the maintainer:  They were archived, 
+> because they would no longer pass CRAN checks, and the designated 
+> maintainer failed to respond to the notice of problems with newer versions of R.
+> If anything I've said here is wrong or poorly nuanced, I trust someone 
+> knowledgeable will correct me.  Spencer Graves
+>
+>
+> On 7/2/22 11:24 AM, Rainer Hurling wrote:
+> > Hi Muhammad,
+> >
+> > Am 02.07.22 um 18:11 schrieb Muhammad Zubair Chishti:
+> >> Dear Experts,
+> >> I cannot find a package "wmtsa" for my R version "R 4.2.0". Kindly 
+> >> help me to find it or share the link with me.
+> >> Although I tried the old version of "wmtsa" but failed.
+> >> Thank you for your precious time.
+> >>
+> >> Regards
+> >> Muhammad Zubair Chishti
+> >>
+> >>     [[alternative HTML version deleted]]
+> >
+> > AFAIK there is no package wmtsa anymore. It has been archived on
+> > 2020-06-09 [1], the latest version was wmtsa_2.0-3.tar.gz from
+> 2017-12-06.
+> >
+> > [1] 
+> > https://urldefense.proofpoint.com/v2/url?u=https-3A__cran.r-2Dprojec
+> > t.org_src_contrib_Archive_wmtsa_&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r
+> > =9PEhQh2kVeAsRzsn7AkP-g&m=dWy_4gLGVAfQXtlFKz60hApURH4b1S-aO2lzWIDMTy
+> > ABcOJ1gS2DXUhqww0npRxq&s=dgdXo5a7Pf0lxEB5T1DNMCBEJICza3NUIVXlGNYnwA4
+> > &e=
+> >
+> > HTH,
+> > Rainer
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> > https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_ma
+> > ilman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2k
+> > VeAsRzsn7AkP-g&m=dWy_4gLGVAfQXtlFKz60hApURH4b1S-aO2lzWIDMTyABcOJ1gS2
+> > DXUhqww0npRxq&s=CuJJJWS5D5eyTOWy9Wfp3klxqALm4jzyFByUpvlj178&e=
+> > PLEASE do read the posting guide
+> > https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.
+> > org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2
+> > kVeAsRzsn7AkP-g&m=dWy_4gLGVAfQXtlFKz60hApURH4b1S-aO2lzWIDMTyABcOJ1gS
+> > 2DXUhqww0npRxq&s=Q6r9x0BVDfQ_WvryQqz7NpwFr5qSH1VrW792A0VAfgY&e=
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mail
+> man_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAs
+> Rzsn7AkP-g&m=dWy_4gLGVAfQXtlFKz60hApURH4b1S-aO2lzWIDMTyABcOJ1gS2DXUhqw
+> w0npRxq&s=CuJJJWS5D5eyTOWy9Wfp3klxqALm4jzyFByUpvlj178&e=
+> PLEASE do read the posting guide
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.or
+> g_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeA
+> sRzsn7AkP-g&m=dWy_4gLGVAfQXtlFKz60hApURH4b1S-aO2lzWIDMTyABcOJ1gS2DXUhq
+> ww0npRxq&s=Q6r9x0BVDfQ_WvryQqz7NpwFr5qSH1VrW792A0VAfgY&e=
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=dWy_4gLGVAfQXtlFKz60hApURH4b1S-aO2lzWIDMTyABcOJ1gS2DXUhqww0npRxq&s=CuJJJWS5D5eyTOWy9Wfp3klxqALm4jzyFByUpvlj178&e=
+PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=dWy_4gLGVAfQXtlFKz60hApURH4b1S-aO2lzWIDMTyABcOJ1gS2DXUhqww0npRxq&s=Q6r9x0BVDfQ_WvryQqz7NpwFr5qSH1VrW792A0VAfgY&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From dw|n@em|u@ @end|ng |rom comc@@t@net  Sat Jul  2 19:30:42 2022
+From: dw|n@em|u@ @end|ng |rom comc@@t@net (David Winsemius)
+Date: Sat, 2 Jul 2022 10:30:42 -0700
+Subject: [R] A humble request
+In-Reply-To: <CAMfKi3Kao4U61nAfXWxjifTr_8K6110Ue3AbYKcOub05=NSLRw@mail.gmail.com>
+References: <CAMfKi3+=X6pGJp+5Mt=zZYL870xs0+w5gTsNsKi9o4=_jPt6kA@mail.gmail.com>
+ <351d54b9-c39c-34f2-a0d3-31def36c01e9@gwdg.de>
+ <CAMfKi3JH-pSwKAsrQ51koEBN5Jx8Sfk2NKv4n0KgLiaMxHsYDw@mail.gmail.com>
+ <CAMfKi3Kao4U61nAfXWxjifTr_8K6110Ue3AbYKcOub05=NSLRw@mail.gmail.com>
+Message-ID: <5E592054-A142-4947-AB68-DE13626CF98C@comcast.net>
+
+
+
+> On Jul 2, 2022, at 9:32 AM, Muhammad Zubair Chishti <mzchishti at eco.qau.edu.pk> wrote:
+> 
+> Dear Respected Sir,
+> Thank you for the quick response. However, the link your shared provides
+> the old version of wmtsa that is not working in R 4.2.0.
+> Can you please tell me any other solution for this issue?
+
+Your response suggests that you do not understand how one installs a source package for R. You probably need to educate yourself about how to compile packages from source. Since the process is different for Linux, MacOS, and Windows, you would need to pay attention to the specific requirements of your unnamed OS.
+
+You might find as I did that the wmtsa package has some dependencies that are also archived, namely pkg:splus2R (provided generously by Insightful for many years but apparently no longer) and pkg:ifultools. They both have incompatibilities that prevent compilation from source with my Mac setup. I did find a mirror that has a binary version of splus2R that did install and load.
+
+install.packages("splus2R", repo="https://mirrors.vcea.wsu.edu/r-cran/", type="binary", dependencies=TRUE)
+
+So maybe part of your PhD training should be learning how to compile packages and address changes in the compilers being used as R evolves. That is beyond my capabilities for offering assistance. Alternately you might find a forum or a consultant with similar interests to yours. Again, I can offer no assistance because I have never used pkg:wmtsa and don't know what it provided when it was compatible with the CRAN universe.
+
+-- 
+David
+> 
+> Regards
+> Muhammad Zubair Chishti
+> 
+> On Sat, 2 Jul 2022, 21:30 Muhammad Zubair Chishti, <mzchishti at eco.qau.edu.pk>
+> wrote:
+> 
+>> Dear Respected Sir,
+>> Thank you for the quick response. However, the link your shared provides
+>> the old version of wmtsa that is not working in R 4.2.0.
+>> Can you please tell me any other solution for this issue?
+>> 
+>> Regards
+>> Muhammad Zubair Chishti
+>> 
+>> On Sat, 2 Jul 2022, 21:24 Rainer Hurling, <rhurlin at gwdg.de> wrote:
+>> 
+>>> Hi Muhammad,
+>>> 
+>>> Am 02.07.22 um 18:11 schrieb Muhammad Zubair Chishti:
+>>>> Dear Experts,
+>>>> I cannot find a package "wmtsa" for my R version "R 4.2.0". Kindly help
+>>> me
+>>>> to find it or share the link with me.
+>>>> Although I tried the old version of "wmtsa" but failed.
+>>>> Thank you for your precious time.
+>>>> 
+>>>> Regards
+>>>> Muhammad Zubair Chishti
+>>>> 
+>>>> [[alternative HTML version deleted]]
+>>> 
+>>> AFAIK there is no package wmtsa anymore. It has been archived on
+>>> 2020-06-09 [1], the latest version was wmtsa_2.0-3.tar.gz from 2017-12-06.
+>>> 
+>>> [1] https://cran.r-project.org/src/contrib/Archive/wmtsa/
+>>> 
+>>> HTH,
+>>> Rainer
+>>> 
+>> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Sat Jul  2 19:42:26 2022
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Sat, 2 Jul 2022 12:42:26 -0500
+Subject: [R] A humble request
+In-Reply-To: <5E592054-A142-4947-AB68-DE13626CF98C@comcast.net>
+References: <CAMfKi3+=X6pGJp+5Mt=zZYL870xs0+w5gTsNsKi9o4=_jPt6kA@mail.gmail.com>
+ <351d54b9-c39c-34f2-a0d3-31def36c01e9@gwdg.de>
+ <CAMfKi3JH-pSwKAsrQ51koEBN5Jx8Sfk2NKv4n0KgLiaMxHsYDw@mail.gmail.com>
+ <CAMfKi3Kao4U61nAfXWxjifTr_8K6110Ue3AbYKcOub05=NSLRw@mail.gmail.com>
+ <5E592054-A142-4947-AB68-DE13626CF98C@comcast.net>
+Message-ID: <f027b508-f1e6-b90a-7d18-d8668b2b7049@effectivedefense.org>
+
+
+
+On 7/2/22 12:30 PM, David Winsemius wrote:
+> 
+> 
+>> On Jul 2, 2022, at 9:32 AM, Muhammad Zubair Chishti <mzchishti at eco.qau.edu.pk> wrote:
+>>
+>> Dear Respected Sir,
+>> Thank you for the quick response. However, the link your shared provides
+>> the old version of wmtsa that is not working in R 4.2.0.
+>> Can you please tell me any other solution for this issue?
+> 
+> Your response suggests that you do not understand how one installs a source package for R. You probably need to educate yourself about how to compile packages from source. Since the process is different for Linux, MacOS, and Windows, you would need to pay attention to the specific requirements of your unnamed OS.
+
+
+BUT you do not need to compile the entire package to use a function in 
+it:  You only need to source that particular function ... and any others 
+it calls that you don't already have ;-)  That simplifies the task 
+greatly.  With luck, Muhammad Zubair Chishti can source only the desired 
+functions, and they will run and do what is desired with no further 
+effort.  If not, Muhammad can be guided by the error message(s):  If 
+they complain that a certain function is not available, Muhammad can 
+find it and source it.  If the problem is more subtle, Muhammad can use 
+"debug", as I earlier suggested.  Spencer Graves
+
+> 
+> You might find as I did that the wmtsa package has some dependencies that are also archived, namely pkg:splus2R (provided generously by Insightful for many years but apparently no longer) and pkg:ifultools. They both have incompatibilities that prevent compilation from source with my Mac setup. I did find a mirror that has a binary version of splus2R that did install and load.
+> 
+> install.packages("splus2R", repo="https://mirrors.vcea.wsu.edu/r-cran/", type="binary", dependencies=TRUE)
+> 
+> So maybe part of your PhD training should be learning how to compile packages and address changes in the compilers being used as R evolves. That is beyond my capabilities for offering assistance. Alternately you might find a forum or a consultant with similar interests to yours. Again, I can offer no assistance because I have never used pkg:wmtsa and don't know what it provided when it was compatible with the CRAN universe.
+>
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sat Jul  2 20:03:43 2022
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sat, 2 Jul 2022 18:03:43 +0000
+Subject: [R] is.na with lists....
+Message-ID: <PU4P216MB15680637B861C03D24236F5BC8BC9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear memebers,
+                            I have list of stock data OHLCData for 500 stocks, 15 of whom are NA's. The following is the code:
+
+require(quantmod)
+getOHLCData <- function(NSESym) {
+  OHLCData1 <- list()
+  for(i in 1:500){
+    OHLCData1[[i]] <- tryCatch(getSymbols(NSESym[i], auto.assign=FALSE),
+                          error = function (e) {print(i); return(NA)})
+
+  }
+  return(OHLCData1)
+}
+
+ OHLCData <- getOHLCData(NSESym)
+
+however, when I check for is.na, I get the following:
+
+length(OHLCData)
+[1] 500
+> length(is.na(OHLCData))
+[1] 500
+
+length(is.na(OHLCData)) should return 15. Whats going wrong? I assume is.na returns TRUE if there is an NA.
+
+Yours sincerely,
+AKSHAY M KULKARNI
+
+	[[alternative HTML version deleted]]
+
+
+From @kw@|mmo @end|ng |rom gm@||@com  Sat Jul  2 20:06:05 2022
+From: @kw@|mmo @end|ng |rom gm@||@com (Andrew Simmons)
+Date: Sat, 2 Jul 2022 14:06:05 -0400
+Subject: [R] is.na with lists....
+In-Reply-To: <PU4P216MB15680637B861C03D24236F5BC8BC9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB15680637B861C03D24236F5BC8BC9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <CAPcHnpTOc8UXjRys5y_yJs5spX8vWvStGgJy0Pw11ph_Zb6T_Q@mail.gmail.com>
+
+It's supposed to match the length. Perhaps you meant to use which(is.na())?
+
+On Sat, Jul 2, 2022, 14:04 akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+
+> Dear memebers,
+>                             I have list of stock data OHLCData for 500
+> stocks, 15 of whom are NA's. The following is the code:
+>
+> require(quantmod)
+> getOHLCData <- function(NSESym) {
+>   OHLCData1 <- list()
+>   for(i in 1:500){
+>     OHLCData1[[i]] <- tryCatch(getSymbols(NSESym[i], auto.assign=FALSE),
+>                           error = function (e) {print(i); return(NA)})
+>
+>   }
+>   return(OHLCData1)
+> }
+>
+>  OHLCData <- getOHLCData(NSESym)
+>
+> however, when I check for is.na, I get the following:
+>
+> length(OHLCData)
+> [1] 500
+> > length(is.na(OHLCData))
+> [1] 500
+>
+> length(is.na(OHLCData)) should return 15. Whats going wrong? I assume
+> is.na returns TRUE if there is an NA.
+>
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @v|gro@@ @end|ng |rom ver|zon@net  Sat Jul  2 20:17:44 2022
+From: @v|gro@@ @end|ng |rom ver|zon@net (Avi Gross)
+Date: Sat, 2 Jul 2022 18:17:44 +0000 (UTC)
+Subject: [R] is.na with lists....
+In-Reply-To: <CAPcHnpTOc8UXjRys5y_yJs5spX8vWvStGgJy0Pw11ph_Zb6T_Q@mail.gmail.com>
+References: <PU4P216MB15680637B861C03D24236F5BC8BC9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAPcHnpTOc8UXjRys5y_yJs5spX8vWvStGgJy0Pw11ph_Zb6T_Q@mail.gmail.com>
+Message-ID: <1075482367.53300.1656785864970@mail.yahoo.com>
+
+People often use sum() to count how many boolean values are true, not length).
+
+Sent from the all new AOL app for Android 
+ 
+  On Sat, Jul 2, 2022 at 2:14 PM, Andrew Simmons<akwsimmo at gmail.com> wrote:   It's supposed to match the length. Perhaps you meant to use which(is.na())?
+
+On Sat, Jul 2, 2022, 14:04 akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+
+> Dear memebers,
+>? ? ? ? ? ? ? ? ? ? ? ? ? ? I have list of stock data OHLCData for 500
+> stocks, 15 of whom are NA's. The following is the code:
+>
+> require(quantmod)
+> getOHLCData <- function(NSESym) {
+>? OHLCData1 <- list()
+>? for(i in 1:500){
+>? ? OHLCData1[[i]] <- tryCatch(getSymbols(NSESym[i], auto.assign=FALSE),
+>? ? ? ? ? ? ? ? ? ? ? ? ? error = function (e) {print(i); return(NA)})
+>
+>? }
+>? return(OHLCData1)
+> }
+>
+>? OHLCData <- getOHLCData(NSESym)
+>
+> however, when I check for is.na, I get the following:
+>
+> length(OHLCData)
+> [1] 500
+> > length(is.na(OHLCData))
+> [1] 500
+>
+> length(is.na(OHLCData)) should return 15. Whats going wrong? I assume
+> is.na returns TRUE if there is an NA.
+>
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>? ? ? ? [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+??? [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+  
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sat Jul  2 20:18:08 2022
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sat, 2 Jul 2022 18:18:08 +0000
+Subject: [R] is.na with lists....
+In-Reply-To: <CAPcHnpTOc8UXjRys5y_yJs5spX8vWvStGgJy0Pw11ph_Zb6T_Q@mail.gmail.com>
+References: <PU4P216MB15680637B861C03D24236F5BC8BC9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAPcHnpTOc8UXjRys5y_yJs5spX8vWvStGgJy0Pw11ph_Zb6T_Q@mail.gmail.com>
+Message-ID: <PU4P216MB15689E9C400B6095B9A47830C8BC9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Andrew,
+                      It's working! Thanks... I thought the following
+
+> length(is.na(c(1,2,3,NA)))
+
+would return
+
+[1] 1
+
+But got to know the difference ... thanks.
+
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Andrew Simmons <akwsimmo at gmail.com>
+Sent: Saturday, July 2, 2022 11:36 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] is.na with lists....
+
+It's supposed to match the length. Perhaps you meant to use which(is.na<http://is.na>())?
+
+On Sat, Jul 2, 2022, 14:04 akshay kulkarni <akshay_e4 at hotmail.com<mailto:akshay_e4 at hotmail.com>> wrote:
+Dear memebers,
+                            I have list of stock data OHLCData for 500 stocks, 15 of whom are NA's. The following is the code:
+
+require(quantmod)
+getOHLCData <- function(NSESym) {
+  OHLCData1 <- list()
+  for(i in 1:500){
+    OHLCData1[[i]] <- tryCatch(getSymbols(NSESym[i], auto.assign=FALSE),
+                          error = function (e) {print(i); return(NA)})
+
+  }
+  return(OHLCData1)
+}
+
+ OHLCData <- getOHLCData(NSESym)
+
+however, when I check for is.na<http://is.na>, I get the following:
+
+length(OHLCData)
+[1] 500
+> length(is.na<http://is.na>(OHLCData))
+[1] 500
+
+length(is.na<http://is.na>(OHLCData)) should return 15. Whats going wrong? I assume is.na<http://is.na> returns TRUE if there is an NA.
+
+Yours sincerely,
+AKSHAY M KULKARNI
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From j@de@shod@@ m@iii@g oii googiem@ii@com  Sat Jul  2 20:20:49 2022
+From: j@de@shod@@ m@iii@g oii googiem@ii@com (j@de@shod@@ m@iii@g oii googiem@ii@com)
+Date: Sat, 2 Jul 2022 19:20:49 +0100
+Subject: [R] mgcv: estimate concurvity vs worst concurvity in GAMs
+Message-ID: <CANg3_k9XPzN2JJxOC0oBHiqaohnkOrsOCUbNFfkiNVr_H_egxg@mail.gmail.com>
+
+Dear list members,
+
+I was wondering if someone could explain (in conceptual terms) how to
+interpret *estimate* concurvity in a GAM implemented with mgcv and how
+it differs from *worst* concurvity (as obtained through mgcv's
+concurvity function). I understand that concurvity is the
+non-parametric analogue of collinearity in GAMs and that it represents
+the extent to which a smooth term can be approximated by one or more
+of the other smooth terms in the model.
+
+It seems to be common practice to base one's course of action on the
+worst concurvity estimate (as e.g. advised in Noam Ross' course on
+GAMs). However, the mgcv help page for concurvity states that worst
+concurvity is a "fairly pessimistic measure, as it looks at the worst
+case irrespective of data", whereas estimate concurvity "does not
+suffer from the pessimism or potential for over-optimism of the
+previous two measures, but is less easy to understand".
+
+Worst concurvity is extremely high in my GAMs, whereas estimate
+concurvity is much lower (see below), so I am unsure as to whether I
+should deal with the concurvity. I should stress that the aim of my
+model is to gain an understanding of the relationship between
+variables, rather than pure prediction performance.
+
+For those interested, concurvity values are for a GAM with number of
+daily deaths as response variable, and a smooth of time, a smooth of a
+heat variable (wbgt_mean) and a smooth of precipitation as predictors,
+the latter one being a potential confounder and wbgt_mean being the
+variable of interest.  Heat and precipitation are modelled as having
+distributed lag (6 days), set up as 7 column matrices as per Simon
+Wood's book on GAMs (2017, p. 352). The model is as follows:
+
+c1b <- gam(deaths_ip~s(time, k=200) + te(wbgt_mean, lag, k=c(12, 4)) +
+te(precip_daily_total, lag, k=c(12, 4)), data = dat, family = nb,
+method = 'REML', select = TRUE)
+
+Let's ignore the issue of time decomposition for the moment, since
+none of the many ways I've tried reduced concurvity much.
+
+Depending on whether I have to deal with concurvity or not, my models
+and their interpretation will look very different. As a potential
+solution for high concurvity, I developed alternative models using a
+detrended measure of heat as a predictor (by using residuals from a
+GAM with heat as response and time as a predictor). Same for
+precipitation. This does reduce concurvity substantially, but it
+severely reduces the practical application/ interpretation of the
+results, so I'd rather not take this route if I can avoid it.
+(Modelling with an autoregressive term, as helpfully suggested in
+response to a previous post, did not help to reduce concurvity
+either).
+
+Below is the output from the concurvity function with argument
+full=TRUE. Explanations of estimate vs worst concurvity will be very
+gratefully received!
+
+                      para          s(time)       te(wbgt_mean,lag)
+   te(precip_daily_total,lag)
+worst         0.957257     0.96533049         0.9811214
+  0.9749704
+observed   0.957257     0.03825656         0.7652984                  0.8568042
+estimate    0.957257     0.04334243         0.4197013                  0.5975567
+
+And with argument full= FALSE:
+
+$worst
+                                        para
+s(time)          te(wbgt_mean,lag)        te(precip_daily_total,lag)
+para                                 1.000000e+00    6.033833e-17
+  0.04891485                  0.6677235
+s(time)                             6.033871e-17    1.000000e+00
+ 0.96109743                  0.7784443
+te(wbgt_mean,lag)          4.006085e-02    9.521445e-01
+1.00000000                  0.6941748
+te(precip_daily_total,lag) 6.677235e-01    7.784443e-01
+0.70026895                  1.0000000
+
+$observed
+                                        para
+s(time)             te(wbgt_mean,lag)       te(precip_daily_total,lag)
+para                                 1.000000e+00    2.203611e-27
+5.898608e-33                  0.5790756
+s(time)                             6.033871e-17    1.000000e+00
+7.485690e-01                  0.2652631
+te(wbgt_mean,lag)          4.006085e-02    1.928856e-02
+1.000000e+00                  0.1902533
+te(precip_daily_total,lag) 6.677235e-01    1.914191e-02
+3.076595e-01                  1.0000000
+
+$estimate
+                                            para
+s(time)              te(wbgt_mean,lag)
+te(precip_daily_total,lag)
+para                                 1.000000e+00   4.023819e-23
+6.199709e-33                  0.2582767
+s(time)                             6.033871e-17    1.000000e+00
+4.031365e-01                  0.3198069
+te(wbgt_mean,lag)          4.006085e-02    2.519282e-02
+1.000000e+00                  0.2498455
+te(precip_daily_total,lag) 6.677235e-01    1.644668e-02
+1.119781e-01                  1.0000000
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sat Jul  2 20:19:44 2022
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sat, 2 Jul 2022 18:19:44 +0000
+Subject: [R] is.na with lists....
+In-Reply-To: <1075482367.53300.1656785864970@mail.yahoo.com>
+References: <PU4P216MB15680637B861C03D24236F5BC8BC9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAPcHnpTOc8UXjRys5y_yJs5spX8vWvStGgJy0Pw11ph_Zb6T_Q@mail.gmail.com>
+ <1075482367.53300.1656785864970@mail.yahoo.com>
+Message-ID: <PU4P216MB156814C6CFCB44F2E4DDBF6FC8BC9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear AVi,
+                 Thanks ....got to know the difference...should have used sum() instead of length()...
+
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Avi Gross <avigross at verizon.net>
+Sent: Saturday, July 2, 2022 11:47 PM
+To: akwsimmo at gmail.com <akwsimmo at gmail.com>; akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] is.na with lists....
+
+People often use sum() to count how many boolean values are true, not length).
+
+Sent from the all new AOL app for Android<https://play.google.com/store/apps/details?id=com.aol.mobile.aolapp>
+
+On Sat, Jul 2, 2022 at 2:14 PM, Andrew Simmons
+<akwsimmo at gmail.com> wrote:
+It's supposed to match the length. Perhaps you meant to use which(is.na())?
+
+On Sat, Jul 2, 2022, 14:04 akshay kulkarni <akshay_e4 at hotmail.com<mailto:akshay_e4 at hotmail.com>> wrote:
+
+> Dear memebers,
+>                            I have list of stock data OHLCData for 500
+> stocks, 15 of whom are NA's. The following is the code:
+>
+> require(quantmod)
+> getOHLCData <- function(NSESym) {
+>  OHLCData1 <- list()
+>  for(i in 1:500){
+>    OHLCData1[[i]] <- tryCatch(getSymbols(NSESym[i], auto.assign=FALSE),
+>                          error = function (e) {print(i); return(NA)})
+>
+>  }
+>  return(OHLCData1)
+> }
+>
+>  OHLCData <- getOHLCData(NSESym)
+>
+> however, when I check for is.na, I get the following:
+>
+> length(OHLCData)
+> [1] 500
+> > length(is.na(OHLCData))
+> [1] 500
+>
+> length(is.na(OHLCData)) should return 15. Whats going wrong? I assume
+> is.na returns TRUE if there is an NA.
+>
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>        [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+>
+
+    [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From @v|gro@@ @end|ng |rom ver|zon@net  Sat Jul  2 23:40:34 2022
+From: @v|gro@@ @end|ng |rom ver|zon@net (Avi Gross)
+Date: Sat, 2 Jul 2022 21:40:34 +0000 (UTC)
+Subject: [R] Subsetting a vector using an index with all missing values
+In-Reply-To: <CAHqSRuTLzAmB6tBJJVkGF94uudBD1Nq-f5pnFRC5eBKM4kNW3w@mail.gmail.com>
+References: <CA+hbrhUmU4Bsu7HV-rjepBkcvLzyqe3rB7nrtHBKyiZiNkLg8g@mail.gmail.com>
+ <CAHqSRuQUBBsDFxNUHBYmBkoDmUG1FOY_aoX9oVS9=afuX35J+Q@mail.gmail.com>
+ <CA+hbrhX6tH-1R3k_rLZF+KMz--hJN8tRhJm7s5unbJd9Uob9gw@mail.gmail.com>
+ <BN6PR2201MB155374BFB4ECF44564E8AFB6CFBC9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <CAHqSRuTLzAmB6tBJJVkGF94uudBD1Nq-f5pnFRC5eBKM4kNW3w@mail.gmail.com>
+Message-ID: <18568172.601714.1656798034855@mail.yahoo.com>
+
+Actually, Bill, I suspect there is a not uncommon use when you want a briefer logical vector to be broadcast or re-used as often as needed.?
+
+The example below, if it can be read, uses an abbreviated set of boolean vectors to get the odd elements of another vector, then the even ones, and then the ones not divisible by three because it gets recycled. I suggest there are many variants like this in use, albeit a better design for some things might have been to add a flag to allow such expansion and otherwise consider it an error.
+
+> test <- 11:20
+
+> test[c(TRUE, FALSE)]
+
+[1] 11 13 15 17 19
+
+> test[c(FALSE, TRUE)]
+
+[1] 12 14 16 18 20
+
+> test[c(FALSE, TRUE, TRUE)]
+
+[1] 12 13 15 16 18 19
+
+
+
+-----Original Message-----
+From: Bill Dunlap <williamwdunlap at gmail.com>
+To: Ebert,Timothy Aaron <tebert at ufl.edu>
+Cc: r-help <r-help at r-project.org>
+Sent: Sat, Jul 2, 2022 11:24 am
+Subject: Re: [R] Subsetting a vector using an index with all missing values
+
+Perhaps it should be an error if the length of a logical subscript is
+bigger than the dimension it is subscripting.? Currently in that case, x is
+extended (with NA or NULL) to the length of the logical subscript.? I doubt
+this is desired very often.
+
+> dput((1:3)[c(FALSE,FALSE,FALSE,TRUE,TRUE)])
+c(NA_integer_, NA_integer_)
+> dput((1:3)[c(FALSE,FALSE,TRUE,FALSE,TRUE)])
+c(3L, NA)
+
+-Bill
+
+On Sat, Jul 2, 2022 at 7:49 AM Ebert,Timothy Aaron <tebert at ufl.edu> wrote:
+
+> That nicely explains the difference in outcome between
+> x[rep(TRUE,3)]
+> x[rep("TRUE",3)]
+>
+>
+> I do not quite get it.
+> x<-1:10
+> x[rep(x<2,3)]
+> [1] 1 NA NA
+> The length is three
+>
+> but
+> x[rep(x>2,3)]
+> [1] 3? 4? 5? 6? 7? 8? 9? 10? NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+> NA
+> The length is 24
+>
+> Tim
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Peter Langfelder
+> Sent: Saturday, July 2, 2022 2:19 AM
+> To: Bill Dunlap <williamwdunlap at gmail.com>
+> Cc: r-help <r-help at r-project.org>
+> Subject: Re: [R] Subsetting a vector using an index with all missing values
+>
+> [External Email]
+>
+> Ah, thanks, that makes sense.
+>
+> Peter
+>
+> On Fri, Jul 1, 2022 at 10:01 PM Bill Dunlap <williamwdunlap at gmail.com>
+> wrote:
+> >
+> > This has to do with the mode of the subscript - logical subscripts are
+> > repeated to the length of x and integer/numeric ones are not.? NA is
+> > logical, NA_integer_ is integer, so we get
+> >
+> > > x <- 1:10
+> > > x[ rep(NA_integer_, 3) ]
+> > [1] NA NA NA
+> > > x[ rep(NA, 3) ]
+> >? [1] NA NA NA NA NA NA NA NA NA NA
+> >
+> > -Bill
+> >
+> >
+> > On Fri, Jul 1, 2022 at 8:31 PM Peter Langfelder <
+> peter.langfelder at gmail.com> wrote:
+> >>
+> >> Hi all,
+> >>
+> >> I stumbled on subsetting behavior that seems counterintuitive and
+> >> perhaps is a bug. Here's a simple example:
+> >>
+> >> > x = 1:10
+> >> > x[ rep(NA, 3)]
+> >>? [1] NA NA NA NA NA NA NA NA NA NA
+> >>
+> >> I would have expected 3 NAs (the length of the index), not 10 (all
+> >> values in x). Looked at the documentation for the subsetting operator
+> >> `[` but found nothing indicating that if the index contains all
+> >> missing data, the result is the entire vector.
+> >>
+> >> I can work around the issue for a general 'index' using a somewhat
+> >> clunky but straightforward construct along the lines of
+> >>
+> >> > index = rep(NA, 3)
+> >> > x[c(1, index)][-1]
+> >> [1] NA NA NA
+> >>
+> >> but I'm wondering if the behaviour above is intended.
+> >>
+> >> Thanks,
+> >>
+> >> Peter
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mai
+> >> lman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVe
+> >> AsRzsn7AkP-g&m=5kixibKMuZiVbTFd2D5fSZBYO3aFODtFyW96wUN-oC5gJtbOYJ9G0j
+> >> 6zoo-P6z4W&s=WGGoTTZ6ENtmckv7K_B0OepH04TDjbiNp0D6IbdqpAg&e=
+> >> PLEASE do read the posting guide
+> >> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.o
+> >> rg_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kV
+> >> eAsRzsn7AkP-g&m=5kixibKMuZiVbTFd2D5fSZBYO3aFODtFyW96wUN-oC5gJtbOYJ9G0
+> >> j6zoo-P6z4W&s=JErkxZzuGa2y8pjLddJY5u_vDIbjw4tX1vzkb8LAe98&e=
+> >> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=5kixibKMuZiVbTFd2D5fSZBYO3aFODtFyW96wUN-oC5gJtbOYJ9G0j6zoo-P6z4W&s=WGGoTTZ6ENtmckv7K_B0OepH04TDjbiNp0D6IbdqpAg&e=
+> PLEASE do read the posting guide
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=5kixibKMuZiVbTFd2D5fSZBYO3aFODtFyW96wUN-oC5gJtbOYJ9G0j6zoo-P6z4W&s=JErkxZzuGa2y8pjLddJY5u_vDIbjw4tX1vzkb8LAe98&e=
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+??? [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From neh@@bo|ogn@90 @end|ng |rom gm@||@com  Sat Jul  2 23:58:35 2022
+From: neh@@bo|ogn@90 @end|ng |rom gm@||@com (Neha gupta)
+Date: Sat, 2 Jul 2022 23:58:35 +0200
+Subject: [R] Ranger could not work with caret
+In-Reply-To: <CA+nrPns0Cjk8F=yW6eCAuPr4Y+-K+dSP4P=QipbbCpxFY=PSHw@mail.gmail.com>
+References: <CA+nrPnuc9+-R65CgJq_qNbuRTj491Jfv7YdbRgqd1Tom6ww=9Q@mail.gmail.com>
+ <CA+nrPnvG5a26MFJJWQtuE9ZkCjHxqSb5gR7igr2kiBVGkQjUXw@mail.gmail.com>
+ <0777f610-e580-c6e0-bb55-645bdbf32a0b@sapo.pt>
+ <CA+nrPnu+awO6q=2eVpYom9yi7JT9FgAh0k0mcT=-9eLj1H7qAg@mail.gmail.com>
+ <85d6347a-21f6-36ff-a92b-f0aae2c45749@sapo.pt>
+ <CA+nrPnuzNEhv88j4LR0SXXRMqcSCWQGmef_-BsWJO8ubN1Oe9Q@mail.gmail.com>
+ <b47d6a9c-7072-a819-3ba6-ab9c00c226e7@sapo.pt>
+ <CA+nrPns0Cjk8F=yW6eCAuPr4Y+-K+dSP4P=QipbbCpxFY=PSHw@mail.gmail.com>
+Message-ID: <CA+nrPnuuzCnSAkrd35aQRkLGkA_2zEMEQtv=BeU58uA1Dg4ypA@mail.gmail.com>
+
+@Rui Barradas <ruipbarradas at sapo.pt>
+
+I tried the code according to your comments and it works. However, when I
+try it for another dataset with a different number of input features, it
+again shows the same error message. I tried it with different types of
+datasets and the same error appeared.
+
+Best regards
+
+On Fri, Jul 1, 2022 at 9:18 PM Neha gupta <neha.bologna90 at gmail.com> wrote:
+
+> @Rui Barradas <ruipbarradas at sapo.pt>
+>
+> Thank you again for the useful explanation.
+>
+> Best regards
+>
+> On Fri, Jul 1, 2022 at 8:26 PM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>
+>> Hello,
+>>
+>> The error doesn't arise in randomForest because rf has a function tuneRF
+>> that looks for the best mtry (best relative to OOB error estimate). And
+>> it's this value that it uses.
+>>
+>> The question's code gives Ranger errors but it also gives R warnings:
+>>
+>> Warning messages:
+>> 1: model fit failed for Fold01: mtry=48, min.node.size=5,
+>> splitrule=variance Error in ranger::ranger(dependent.variable.name =
+>> ".outcome", data = x,  :
+>>    User interrupt or internal error.
+>>
+>>
+>> As you can see, mtry=48 is the double of ncol(tr) when should *never* be
+>> greater than the number of variables in the data set. Why it is using
+>> this value, I don't know. Function bug? Ask the package maintainer?
+>>
+>> And, by the way, package caret does or can do a grid search for optimal
+>> parameter values. If that is giving errors and you are calling rf
+>> directly why bother whith caret's error? Use the original function. Here
+>> is an example with tuneRF. Setting argument doBest to TRUE you'll have
+>> both the optimal value for mtry and the fitted random forest. 2 in 1.
+>>
+>>
+>> library(randomForest)
+>> #  randomForest 4.7-1.1
+>> #  Type rfNews() to see new features/changes/bug fixes.
+>>
+>> c2 <- tuneRF(
+>>    x = tr[-ncol(tr)],
+>>    y = tr$act_effort,
+>>    mtryStart = ncol(tr)/2,
+>>    doBest = TRUE
+>> )
+>> #  mtry = 12  OOB error = 139920.7
+>> #  Searching left ...
+>> #  mtry = 6     OOB error = 170909.3
+>> #  -0.2214729 0.05
+>> #  Searching right ...
+>> #  mtry = 23    OOB error = 128566.7
+>> #  0.08114586 0.05
+>>
+>> c2
+>> #
+>> #  Call:
+>> #   randomForest(x = x, y = y, mtry = res[which.min(res[, 2]), 1])
+>> #                 Type of random forest: regression
+>> #                       Number of trees: 500
+>> #  No. of variables tried at each split: 23
+>> #
+>> #            Mean of squared residuals: 129734.8
+>> #                      % Var explained: 39.98
+>>
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>>
+>>
+>> ?s 17:18 de 01/07/2022, Neha gupta escreveu:
+>> > Thank you so much for your help. I hope it will work.
+>> >
+>> > However, why the same error doesn't arise when I am using rf. They both
+>> > have the same parameters and it's default values.
+>> >
+>> > Best regards
+>> >
+>> > On Friday, July 1, 2022, Rui Barradas <ruipbarradas at sapo.pt
+>> > <mailto:ruipbarradas at sapo.pt>> wrote:
+>> >
+>> >     Hello,
+>> >
+>> >     The error is in Ranger parameter mtry becoming greater than the
+>> >     number of variables (columns).
+>> >     mtry can be set manually in caret::train argument tuneGrid. But for
+>> >     random forests you must also set the split rule and the minimum
+>> node.
+>> >
+>> >
+>> >     library(caret)
+>> >     library(farff)
+>> >
+>> >     boot <- trainControl(method = "cv", number = 10)
+>> >
+>> >     # set the maximum mtry manually to ncol(tr)
+>> >     # this creates a sequence of mtry values
+>> >     mtry <- var_seq(ncol(tr), len = 3)  # 3 is the default value
+>> >     mtry
+>> >     #  [1]  2 13 24
+>> >     #[1]  2 13 24
+>> >
+>> >     splitrule <- c("variance", "extratrees")
+>> >     min.node.size <- 1:10
+>> >     mtrygrid <- expand.grid(mtry, splitrule, min.node.size)
+>> >     names(mtrygrid) <- c("mtry", "splitrule", "min.node.size")
+>> >
+>> >     c1 <- train(act_effort ~ ., data = tr,
+>> >                 method = "ranger",
+>> >                 tuneLength = 5,
+>> >                 metric = "MAE",
+>> >                 preProc = c("center", "scale", "nzv"),
+>> >                 tuneGrid = mtrygrid,
+>> >                 trControl = boot)
+>> >     c1
+>> >     #  Random Forest
+>> >     #
+>> >     #  30 samples
+>> >     #  23 predictors
+>> >     #
+>> >     #  Pre-processing: centered (48), scaled (48), remove (58)
+>> >     #  Resampling: Cross-Validated (10 fold)
+>> >     #  Summary of sample sizes: 28, 27, 27, 28, 27, 27, ...
+>> >     #  Resampling results across tuning parameters:
+>> >     #
+>> >     #    mtry  splitrule   min.node.size  RMSE      Rsquared   MAE
+>> >     #     2    variance     1             256.6391  0.8103759  186.3609
+>> >     #     2    variance     2             249.7120  0.8628109  183.6696
+>> >     #     2    variance     3             258.8240  0.8284449  189.0712
+>> >     #
+>> >     # [...omit...]
+>> >     #
+>> >     #    13    extratrees  10             254.9569  0.8918014  191.2524
+>> >     #    24    variance     1             177.7188  0.9458652  112.2800
+>> >     #    24    variance     2             172.6826  0.9204287  108.5943
+>> >     #    24    variance     3             172.9954  0.9271006  109.2554
+>> >     #    24    variance     4             172.2467  0.9523067  110.0776
+>> >     #    24    variance     5             175.2485  0.9283317  112.8798
+>> >     #    24    variance     6             177.9285  0.9369881  115.8970
+>> >     #    24    variance     7             180.5959  0.9485035  117.5816
+>> >     #    24    variance     8             178.8037  0.9358033  117.8725
+>> >     #    24    variance     9             176.5849  0.9210959  117.0055
+>> >     #    24    variance    10             178.6439  0.9257969  119.8035
+>> >     #    24    extratrees   1             219.1368  0.8801770  141.0720
+>> >     #    24    extratrees   2             216.1900  0.8550002  140.9263
+>> >     #    24    extratrees   3             212.4138  0.8979379  141.4282
+>> >     #    24    extratrees   4             218.2631  0.9121471  146.2908
+>> >     #    24    extratrees   5             212.5679  0.9279598  144.2715
+>> >     #    24    extratrees   6             218.9856  0.9141754  152.2099
+>> >     #    24    extratrees   7             222.8540  0.9412682  152.4614
+>> >     #    24    extratrees   8             228.1156  0.9423414  161.8456
+>> >     #    24    extratrees   9             226.6182  0.9408306  160.5264
+>> >     #    24    extratrees  10             226.9280  0.9429413  165.6878
+>> >     #
+>> >     #  MAE was used to select the optimal model using the smallest
+>> value.
+>> >     #  The final values used for the model were mtry = 24, splitrule =
+>> >     variance
+>> >     #   and min.node.size = 2.
+>> >     plot(c1)
+>> >
+>> >
+>> >
+>> >     Hope this helps,
+>> >
+>> >     Rui Barradas
+>> >
+>> >
+>> >     ?s 23:03 de 30/06/2022, Neha gupta escreveu:
+>> >
+>> >         Ok, the data is pasted below
+>> >
+>> >         But on the same data (everything the same) and with other models
+>> >         like RF, SVM etc, it works fine.
+>> >
+>> >           > dput(head(tr, 30))
+>> >         structure(list(recordnumber = c(0, 0.02, 0.04, 0.06, 0.07, 0.08,
+>> >         0.09, 0.1, 0.11, 0.12, 0.13, 0.14, 0.16, 0.17, 0.18, 0.23, 0.24,
+>> >         0.25, 0.28, 0.29, 0.3, 0.31, 0.32, 0.33, 0.35, 0.36, 0.37, 0.38,
+>> >         0.4, 0.41), projectname = structure(c(1L, 1L, 1L, 1L, 2L, 3L,
+>> >         3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 4L, 4L, 4L, 4L, 4L, 4L, 4L,
+>> >         4L, 4L, 4L, 4L, 4L, 4L, 5L, 6L), levels = c("de", "erb", "gal",
+>> >         "X", "hst", "slp", "spl", "Y"), class = "factor"), cat2 =
+>> >         structure(c(3L,
+>> >         3L, 3L, 3L, 3L, 8L, 8L, 8L, 8L, 8L, 8L, 8L, 8L, 8L, 8L, 9L, 9L,
+>> >         9L, 11L, 5L, 4L, 6L, 8L, 3L, 9L, 9L, 9L, 9L, 6L, 7L), levels =
+>> >         c("Avionics",
+>> >         "application_ground", "avionicsmonitoring",
+>> "batchdataprocessing",
+>> >         "communications", "datacapture", "launchprocessing",
+>> >         "missionplanning",
+>> >         "monitor_control", "operatingsystem", "realdataprocessing",
+>> >         "science",
+>> >         "simulation", "utility"), class = "factor"), forg =
+>> structure(c(2L,
+>> >         2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+>> >         2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L), levels =
+>> c("f",
+>> >         "g"), class = "factor"), center = structure(c(2L, 2L, 2L, 2L,
+>> >         2L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 2L, 2L, 2L, 2L, 2L,
+>> >         2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 6L), levels = c("1", "2",
+>> >         "3", "4", "5", "6"), class = "factor"), year = c(0.5, 0.5, 0.5,
+>> >         0.5, 0.6875, 0.5625, 0.5625, 0.8125, 0.5625, 0.875, 0.5625,
+>> 0.75,
+>> >         0.5625, 0.8125, 0.75, 0.9375, 0.9375, 0.9375, 0.6875, 0.6875,
+>> >         0.6875, 0.6875, 0.875, 1, 0.9375, 0.9375, 0.9375, 0.9375,
+>> 0.5625,
+>> >         0.25), mode = structure(c(3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L,
+>> >         3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L,
+>> >         3L, 3L, 3L, 3L, 3L), levels = c("embedded", "organic",
+>> >         "semidetached"
+>> >         ), class = "factor"), rely = structure(c(4L, 4L, 4L, 4L, 4L,
+>> >         4L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 4L, 4L, 3L, 3L, 3L, 3L,
+>> >         3L, 4L, 4L, 4L, 3L, 3L, 3L, 3L, 4L), levels = c("vl", "l", "n",
+>> >         "h", "vh", "xh"), class = "factor"), data = structure(c(2L, 2L,
+>> >         2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 3L, 3L, 3L,
+>> >         5L, 5L, 5L, 5L, 2L, 2L, 3L, 3L, 3L, 3L, 4L, 2L), levels =
+>> c("vl",
+>> >         "l", "n", "h", "vh", "xh"), class = "factor"), cplx =
+>> >         structure(c(4L,
+>> >         4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 3L, 4L,
+>> >         3L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L), levels =
+>> >         c("vl",
+>> >         "l", "n", "h", "vh", "xh"), class = "factor"), time =
+>> >         structure(c(3L,
+>> >         3L, 3L, 3L, 3L, 6L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 4L, 3L,
+>> >         3L, 5L, 5L, 5L, 5L, 3L, 3L, 3L, 3L, 3L, 3L, 5L, 3L), levels =
+>> >         c("vl",
+>> >         "l", "n", "h", "vh", "xh"), class = "factor"), stor =
+>> >         structure(c(3L,
+>> >         3L, 3L, 3L, 3L, 6L, 3L, 3L, 3L, 3L, 3L, 3L, 6L, 3L, 3L, 3L, 3L,
+>> >         3L, 5L, 5L, 5L, 5L, 3L, 3L, 3L, 3L, 3L, 3L, 4L, 3L), levels =
+>> >         c("vl",
+>> >         "l", "n", "h", "vh", "xh"), class = "factor"), virt =
+>> >         structure(c(2L,
+>> >         2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 4L, 2L, 2L, 2L, 2L, 3L, 3L,
+>> >         3L, 2L, 2L, 2L, 2L, 2L, 2L, 3L, 3L, 3L, 3L, 2L, 2L), levels =
+>> >         c("vl",
+>> >         "l", "n", "h", "vh", "xh"), class = "factor"), turn =
+>> >         structure(c(2L,
+>> >         2L, 2L, 2L, 2L, 4L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 3L, 3L,
+>> >         3L, 4L, 4L, 4L, 4L, 2L, 2L, 3L, 3L, 3L, 3L, 4L, 2L), levels =
+>> >         c("vl",
+>> >         "l", "n", "h", "vh", "xh"), class = "factor"), acap =
+>> >         structure(c(3L,
+>> >         3L, 3L, 3L, 3L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 3L, 3L,
+>> >         3L, 5L, 5L, 5L, 5L, 3L, 3L, 3L, 3L, 3L, 3L, 4L, 3L), levels =
+>> >         c("vl",
+>> >         "l", "n", "h", "vh", "xh"), class = "factor"), aexp =
+>> >         structure(c(3L,
+>> >         3L, 3L, 3L, 3L, 4L, 5L, 5L, 5L, 5L, 4L, 5L, 5L, 4L, 5L, 4L, 4L,
+>> >         4L, 4L, 4L, 4L, 4L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L), levels =
+>> >         c("vl",
+>> >         "l", "n", "h", "vh", "xh"), class = "factor"), pcap =
+>> >         structure(c(3L,
+>> >         3L, 3L, 3L, 3L, 4L, 5L, 4L, 5L, 3L, 4L, 4L, 5L, 4L, 4L, 4L, 4L,
+>> >         4L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 4L, 3L, 4L, 4L), levels =
+>> >         c("vl",
+>> >         "l", "n", "h", "vh", "xh"), class = "factor"), vexp =
+>> >         structure(c(3L,
+>> >         3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 2L, 3L, 3L, 3L, 3L, 3L, 3L,
+>> >         3L, 2L, 2L, 2L, 2L, 3L, 3L, 3L, 3L, 3L, 3L, 2L, 3L), levels =
+>> >         c("vl",
+>> >         "l", "n", "h", "vh", "xh"), class = "factor"), lexp =
+>> >         structure(c(4L,
+>> >         4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 2L, 1L, 4L, 4L, 4L, 4L, 3L, 3L,
+>> >         3L, 4L, 4L, 4L, 4L, 4L, 4L, 3L, 3L, 4L, 3L, 4L, 3L), levels =
+>> >         c("vl",
+>> >         "l", "n", "h", "vh", "xh"), class = "factor"), modp =
+>> >         structure(c(4L,
+>> >         4L, 4L, 4L, 4L, 4L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L,
+>> >         3L, 5L, 5L, 5L, 5L, 4L, 4L, 3L, 3L, 4L, 3L, 4L, 4L), levels =
+>> >         c("vl",
+>> >         "l", "n", "h", "vh", "xh"), class = "factor"), tool =
+>> >         structure(c(3L,
+>> >         3L, 3L, 3L, 3L, 4L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L,
+>> >         3L, 5L, 5L, 5L, 5L, 3L, 3L, 3L, 3L, 4L, 3L, 3L, 1L), levels =
+>> >         c("vl",
+>> >         "l", "n", "h", "vh", "xh"), class = "factor"), sced =
+>> >         structure(c(2L,
+>> >         2L, 2L, 2L, 2L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L,
+>> >         3L, 2L, 2L, 2L, 2L, 2L, 2L, 3L, 3L, 3L, 3L, 2L, 3L), levels =
+>> >         c("vl",
+>> >         "l", "n", "h", "vh", "xh"), class = "factor"), equivphyskloc =
+>> >         c(0.025534,
+>> >         0.006945, 0.008988, 0.002655, 0.067102, 0.006741, 0.019508,
+>> >         0.005209,
+>> >         0.101215, 0.010622, 0.101215, 0.019508, 0.152283, 0.031253,
+>> >         0.014401,
+>> >         0.014401, 0.037892, 0.009294, 0.015729, 0.012154, 0.032377,
+>> >         0.035339,
+>> >         0.004698, 0.009703, 0.00572, 0.012358, 0.091002, 0.007252,
+>> 0.180778,
+>> >         0.307527), act_effort = c(117.6, 31.2, 25.2, 10.8, 352.8, 72,
+>> >         72, 24, 360, 36, 215, 48, 324, 60, 48, 90, 210, 48, 82, 62, 170,
+>> >         192, 18, 50, 42, 60, 444, 42, 1248, 2400)), row.names = c(1L,
+>> >         3L, 5L, 7L, 8L, 9L, 10L, 11L, 12L, 13L, 14L, 15L, 17L, 18L, 19L,
+>> >         24L, 25L, 26L, 29L, 30L, 31L, 32L, 33L, 34L, 36L, 37L, 38L, 39L,
+>> >         41L, 42L), class = "data.frame")
+>> >
+>> >
+>> >
+>> >         On Thu, Jun 30, 2022 at 11:28 PM Rui Barradas
+>> >         <ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>
+>> >         <mailto:ruipbarradas at sapo.pt <mailto:ruipbarradas at sapo.pt>>>
+>> wrote:
+>> >
+>> >              Hello,
+>> >
+>> >              Please post data in dput format, without it it's difficult
+>> >         to tell.
+>> >              If I substitute
+>> >
+>> >              mpg for act_effort
+>> >              mtcars for tr
+>> >
+>> >              keeping everything else, I don't get any errors.
+>> >              And the error message says clearly that the error is in tr
+>> >         (data).
+>> >
+>> >              Can you post the output of dput(head(tr, 30))?
+>> >
+>> >              Rui Barradas
+>> >
+>> >
+>> >              ?s 19:32 de 30/06/2022, Neha gupta escreveu:
+>> >               > I posted it for the second time as I didn't get any
+>> >         response from
+>> >              group
+>> >               > members. I am not sure if some problem is with the
+>> question.
+>> >               >
+>> >               >
+>> >               >
+>> >               > I cannot run the "ranger" model with caret. I am only
+>> >         using the
+>> >              farff and
+>> >               > caret libraries and the following code:
+>> >               >
+>> >               > boot <- trainControl(method = "cv", number=10)
+>> >               >
+>> >               > c1 <-train(act_effort ~ ., data = tr,
+>> >               >                method = "ranger",
+>> >               >                 tuneLength = 5,
+>> >               >                metric = "MAE",
+>> >               >                preProc = c("center", "scale", "nzv"),
+>> >               >                trControl = boot)
+>> >               >
+>> >               > The error I get is the repeating of the following
+>> >         message until I
+>> >              interrupt
+>> >               > it.
+>> >               >
+>> >               > Error: mtry can not be larger than number of variables
+>> >         in data.
+>> >              Ranger will
+>> >               > EXIT now.
+>> >               >
+>> >               >       [[alternative HTML version deleted]]
+>> >               >
+>> >               > ______________________________________________
+>> >               > R-help at r-project.org <mailto:R-help at r-project.org>
+>> >         <mailto:R-help at r-project.org <mailto:R-help at r-project.org>>
+>> >         mailing list
+>> >              -- To UNSUBSCRIBE and more, see
+>> >               > https://stat.ethz.ch/mailman/listinfo/r-help
+>> >         <https://stat.ethz.ch/mailman/listinfo/r-help>
+>> >              <https://stat.ethz.ch/mailman/listinfo/r-help
+>> >         <https://stat.ethz.ch/mailman/listinfo/r-help>>
+>> >               > PLEASE do read the posting guide
+>> >         http://www.R-project.org/posting-guide.html
+>> >         <http://www.R-project.org/posting-guide.html>
+>> >              <http://www.R-project.org/posting-guide.html
+>> >         <http://www.R-project.org/posting-guide.html>>
+>> >               > and provide commented, minimal, self-contained,
+>> >         reproducible code.
+>> >
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Jul  3 01:22:27 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 3 Jul 2022 02:22:27 +0300
+Subject: [R] Subsetting a vector using an index with all missing values
+In-Reply-To: <18568172.601714.1656798034855@mail.yahoo.com>
+References: <CA+hbrhUmU4Bsu7HV-rjepBkcvLzyqe3rB7nrtHBKyiZiNkLg8g@mail.gmail.com>
+ <CAHqSRuQUBBsDFxNUHBYmBkoDmUG1FOY_aoX9oVS9=afuX35J+Q@mail.gmail.com>
+ <CA+hbrhX6tH-1R3k_rLZF+KMz--hJN8tRhJm7s5unbJd9Uob9gw@mail.gmail.com>
+ <BN6PR2201MB155374BFB4ECF44564E8AFB6CFBC9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <CAHqSRuTLzAmB6tBJJVkGF94uudBD1Nq-f5pnFRC5eBKM4kNW3w@mail.gmail.com>
+ <18568172.601714.1656798034855@mail.yahoo.com>
+Message-ID: <CAGxFJbR0pVx1TQ-T9aHfOMONq_WnVogOCDD3sOz=BwY+chdwdQ@mail.gmail.com>
+
+Reread Bill's comment. It referred to logical indices being **longer** than
+the vectors they subscript. You have it the other way round.
+
+Bert
+
+On Sun, Jul 3, 2022, 12:40 AM Avi Gross via R-help <r-help at r-project.org>
+wrote:
+
+> Actually, Bill, I suspect there is a not uncommon use when you want a
+> briefer logical vector to be broadcast or re-used as often as needed.
+>
+> The example below, if it can be read, uses an abbreviated set of boolean
+> vectors to get the odd elements of another vector, then the even ones, and
+> then the ones not divisible by three because it gets recycled. I suggest
+> there are many variants like this in use, albeit a better design for some
+> things might have been to add a flag to allow such expansion and otherwise
+> consider it an error.
+>
+> > test <- 11:20
+>
+> > test[c(TRUE, FALSE)]
+>
+> [1] 11 13 15 17 19
+>
+> > test[c(FALSE, TRUE)]
+>
+> [1] 12 14 16 18 20
+>
+> > test[c(FALSE, TRUE, TRUE)]
+>
+> [1] 12 13 15 16 18 19
+>
+>
+>
+> -----Original Message-----
+> From: Bill Dunlap <williamwdunlap at gmail.com>
+> To: Ebert,Timothy Aaron <tebert at ufl.edu>
+> Cc: r-help <r-help at r-project.org>
+> Sent: Sat, Jul 2, 2022 11:24 am
+> Subject: Re: [R] Subsetting a vector using an index with all missing values
+>
+> Perhaps it should be an error if the length of a logical subscript is
+> bigger than the dimension it is subscripting.  Currently in that case, x is
+> extended (with NA or NULL) to the length of the logical subscript.  I doubt
+> this is desired very often.
+>
+> > dput((1:3)[c(FALSE,FALSE,FALSE,TRUE,TRUE)])
+> c(NA_integer_, NA_integer_)
+> > dput((1:3)[c(FALSE,FALSE,TRUE,FALSE,TRUE)])
+> c(3L, NA)
+>
+> -Bill
+>
+> On Sat, Jul 2, 2022 at 7:49 AM Ebert,Timothy Aaron <tebert at ufl.edu> wrote:
+>
+> > That nicely explains the difference in outcome between
+> > x[rep(TRUE,3)]
+> > x[rep("TRUE",3)]
+> >
+> >
+> > I do not quite get it.
+> > x<-1:10
+> > x[rep(x<2,3)]
+> > [1] 1 NA NA
+> > The length is three
+> >
+> > but
+> > x[rep(x>2,3)]
+> > [1] 3  4  5  6  7  8  9  10  NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+> > NA
+> > The length is 24
+> >
+> > Tim
+> > -----Original Message-----
+> > From: R-help <r-help-bounces at r-project.org> On Behalf Of Peter
+> Langfelder
+> > Sent: Saturday, July 2, 2022 2:19 AM
+> > To: Bill Dunlap <williamwdunlap at gmail.com>
+> > Cc: r-help <r-help at r-project.org>
+> > Subject: Re: [R] Subsetting a vector using an index with all missing
+> values
+> >
+> > [External Email]
+> >
+> > Ah, thanks, that makes sense.
+> >
+> > Peter
+> >
+> > On Fri, Jul 1, 2022 at 10:01 PM Bill Dunlap <williamwdunlap at gmail.com>
+> > wrote:
+> > >
+> > > This has to do with the mode of the subscript - logical subscripts are
+> > > repeated to the length of x and integer/numeric ones are not.  NA is
+> > > logical, NA_integer_ is integer, so we get
+> > >
+> > > > x <- 1:10
+> > > > x[ rep(NA_integer_, 3) ]
+> > > [1] NA NA NA
+> > > > x[ rep(NA, 3) ]
+> > >  [1] NA NA NA NA NA NA NA NA NA NA
+> > >
+> > > -Bill
+> > >
+> > >
+> > > On Fri, Jul 1, 2022 at 8:31 PM Peter Langfelder <
+> > peter.langfelder at gmail.com> wrote:
+> > >>
+> > >> Hi all,
+> > >>
+> > >> I stumbled on subsetting behavior that seems counterintuitive and
+> > >> perhaps is a bug. Here's a simple example:
+> > >>
+> > >> > x = 1:10
+> > >> > x[ rep(NA, 3)]
+> > >>  [1] NA NA NA NA NA NA NA NA NA NA
+> > >>
+> > >> I would have expected 3 NAs (the length of the index), not 10 (all
+> > >> values in x). Looked at the documentation for the subsetting operator
+> > >> `[` but found nothing indicating that if the index contains all
+> > >> missing data, the result is the entire vector.
+> > >>
+> > >> I can work around the issue for a general 'index' using a somewhat
+> > >> clunky but straightforward construct along the lines of
+> > >>
+> > >> > index = rep(NA, 3)
+> > >> > x[c(1, index)][-1]
+> > >> [1] NA NA NA
+> > >>
+> > >> but I'm wondering if the behaviour above is intended.
+> > >>
+> > >> Thanks,
+> > >>
+> > >> Peter
+> > >>
+> > >> ______________________________________________
+> > >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > >> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mai
+> > >> lman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVe
+> > >> AsRzsn7AkP-g&m=5kixibKMuZiVbTFd2D5fSZBYO3aFODtFyW96wUN-oC5gJtbOYJ9G0j
+> > >> 6zoo-P6z4W&s=WGGoTTZ6ENtmckv7K_B0OepH04TDjbiNp0D6IbdqpAg&e=
+> > >> PLEASE do read the posting guide
+> > >> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.o
+> > >> rg_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kV
+> > >> eAsRzsn7AkP-g&m=5kixibKMuZiVbTFd2D5fSZBYO3aFODtFyW96wUN-oC5gJtbOYJ9G0
+> > >> j6zoo-P6z4W&s=JErkxZzuGa2y8pjLddJY5u_vDIbjw4tX1vzkb8LAe98&e=
+> > >> and provide commented, minimal, self-contained, reproducible code.
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=5kixibKMuZiVbTFd2D5fSZBYO3aFODtFyW96wUN-oC5gJtbOYJ9G0j6zoo-P6z4W&s=WGGoTTZ6ENtmckv7K_B0OepH04TDjbiNp0D6IbdqpAg&e=
+> > PLEASE do read the posting guide
+> >
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=5kixibKMuZiVbTFd2D5fSZBYO3aFODtFyW96wUN-oC5gJtbOYJ9G0j6zoo-P6z4W&s=JErkxZzuGa2y8pjLddJY5u_vDIbjw4tX1vzkb8LAe98&e=
+> > and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+>     [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
