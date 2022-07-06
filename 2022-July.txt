@@ -5099,3 +5099,191 @@ On 7/3/22 8:15 AM, Richard O'Keefe wrote:
 >
 
 
+From |u||@dmtru @end|ng |rom gm@||@com  Tue Jul  5 11:00:03 2022
+From: |u||@dmtru @end|ng |rom gm@||@com (Iulia Dumitru)
+Date: Tue, 5 Jul 2022 12:00:03 +0300
+Subject: [R] Where to find the source code for survey::SE
+Message-ID: <F27D7C26-CABD-497C-890F-9AF07B8A1ED0@gmail.com>
+
+Hello! I want to port some functionality from the Survey package to Julia and I am stuck on standard error calculation. How is the standard error calculated in the Survey package?
+
+I searched in the can/survey repo on GitHub and I couldn?t find the source code of the SE function. I also looked through Thomas Lumley?s book Complex Surveys A Guide to Analysis Using R and from there I understood that the standard error is calculated by first calculating the Horvitz-Thompson variance estimator and then taking the square root of that, but I get completely different results.
+
+This is the R code I used:
+
+> library(survey)
+> data(api)
+> dclus1 <- svydesign(id = ~dnum, weights = ~pw, data = apiclus1, fpc = ~fpc)
+> svyby(~api00, by = ~cname, design = dclus1, svymean)
+
+And this is what I obtain:
+
+                  cname    api00           se
+Alameda         Alameda 669.0000 1.264044e-15
+Fresno           Fresno 472.0000 0.000000e+00
+Kern               Kern 452.5000 0.000000e+00
+Los Angeles Los Angeles 647.2667 1.724959e+01
+Mendocino     Mendocino 623.2500 0.000000e+00
+Merced           Merced 519.2500 0.000000e+00
+Orange           Orange 710.5625 0.000000e+00
+Plumas           Plumas 709.5556 1.248655e-13
+San Diego     San Diego 659.4364 2.296800e+00
+San Joaquin San Joaquin 551.1892 1.354175e-13
+Santa Clara Santa Clara 732.0769 1.577292e+01
+
+
+With Julia this is the result I get:
+
+11?3 DataFrame
+ Row ? cname        mean     se       
+     ? String15     Float64  Float64  
+??????????????????????????????????????
+   1 ? Alameda      669.0     6469.11
+   2 ? Fresno       472.0     7832.61
+   3 ? Kern         452.5    10703.1
+   4 ? Los Angeles  647.267   5232.24
+   5 ? Mendocino    623.25   10364.8
+   6 ? Merced       519.25    8616.22
+   7 ? Orange       710.563   5534.39
+   8 ? Plumas       709.556   7673.15
+   9 ? San Diego    659.436   1882.06
+  10 ? San Joaquin  551.189   2254.24
+  11 ? Santa Clara  732.077   4000.03
+
+And just to have the full picture, this is my code for the Horvitz-Thompson variance estimator:
+
+function hte(y, pw, n)
+	p = 1 .- (1 .- 1 ./ pw) .^ n
+
+	first_sum = sum((1 .- p) ./ (p .^ 2) .* y .^ 2)
+	second_sum = 0
+
+	for i in 1:length(p)
+		for j in 1:length(p)
+			if i == j
+				continue
+			end
+
+
+			p_ij = p[i] + p[j] - (1 - (1 - 1 / pw[i] - 1 / pw[j]) ^ n)
+			second_sum += (p_ij - p[i] * p[j]) / (p[i] * p[j]) * y[i] * y[j]
+		end
+	end
+
+	return first_sum + second_sum
+end
+
+The standard error in the resulted data frame above is just the square root of the hte result.
+	[[alternative HTML version deleted]]
+
+
+From @jd@m|co @end|ng |rom gm@||@com  Tue Jul  5 14:36:22 2022
+From: @jd@m|co @end|ng |rom gm@||@com (Anthony Damico)
+Date: Tue, 5 Jul 2022 08:36:22 -0400
+Subject: [R] Where to find the source code for survey::SE
+In-Reply-To: <F27D7C26-CABD-497C-890F-9AF07B8A1ED0@gmail.com>
+References: <F27D7C26-CABD-497C-890F-9AF07B8A1ED0@gmail.com>
+Message-ID: <CAOwvMDxkXYiJrfMFtrC5je3zTVu9eyJ2vXGAh++gQOt0AWb7Wg@mail.gmail.com>
+
+hi, are you looking for the code in survey:::svymean.survey.design2   ?
+running `debug(svymean)` and `debug(svyrecvar)` might help you step through
+the calculations..
+
+
+
+On Tue, Jul 5, 2022 at 8:29 AM Iulia Dumitru <iuliadmtru at gmail.com> wrote:
+
+> Hello! I want to port some functionality from the Survey package to Julia
+> and I am stuck on standard error calculation. How is the standard error
+> calculated in the Survey package?
+>
+> I searched in the can/survey repo on GitHub and I couldn?t find the source
+> code of the SE function. I also looked through Thomas Lumley?s book Complex
+> Surveys A Guide to Analysis Using R and from there I understood that the
+> standard error is calculated by first calculating the Horvitz-Thompson
+> variance estimator and then taking the square root of that, but I get
+> completely different results.
+>
+> This is the R code I used:
+>
+> > library(survey)
+> > data(api)
+> > dclus1 <- svydesign(id = ~dnum, weights = ~pw, data = apiclus1, fpc =
+> ~fpc)
+> > svyby(~api00, by = ~cname, design = dclus1, svymean)
+>
+> And this is what I obtain:
+>
+>                   cname    api00           se
+> Alameda         Alameda 669.0000 1.264044e-15
+> Fresno           Fresno 472.0000 0.000000e+00
+> Kern               Kern 452.5000 0.000000e+00
+> Los Angeles Los Angeles 647.2667 1.724959e+01
+> Mendocino     Mendocino 623.2500 0.000000e+00
+> Merced           Merced 519.2500 0.000000e+00
+> Orange           Orange 710.5625 0.000000e+00
+> Plumas           Plumas 709.5556 1.248655e-13
+> San Diego     San Diego 659.4364 2.296800e+00
+> San Joaquin San Joaquin 551.1892 1.354175e-13
+> Santa Clara Santa Clara 732.0769 1.577292e+01
+>
+>
+> With Julia this is the result I get:
+>
+> 11?3 DataFrame
+>  Row ? cname        mean     se
+>      ? String15     Float64  Float64
+> ??????????????????????????????????????
+>    1 ? Alameda      669.0     6469.11
+>    2 ? Fresno       472.0     7832.61
+>    3 ? Kern         452.5    10703.1
+>    4 ? Los Angeles  647.267   5232.24
+>    5 ? Mendocino    623.25   10364.8
+>    6 ? Merced       519.25    8616.22
+>    7 ? Orange       710.563   5534.39
+>    8 ? Plumas       709.556   7673.15
+>    9 ? San Diego    659.436   1882.06
+>   10 ? San Joaquin  551.189   2254.24
+>   11 ? Santa Clara  732.077   4000.03
+>
+> And just to have the full picture, this is my code for the
+> Horvitz-Thompson variance estimator:
+>
+> function hte(y, pw, n)
+>         p = 1 .- (1 .- 1 ./ pw) .^ n
+>
+>         first_sum = sum((1 .- p) ./ (p .^ 2) .* y .^ 2)
+>         second_sum = 0
+>
+>         for i in 1:length(p)
+>                 for j in 1:length(p)
+>                         if i == j
+>                                 continue
+>                         end
+>
+>
+>                         p_ij = p[i] + p[j] - (1 - (1 - 1 / pw[i] - 1 /
+> pw[j]) ^ n)
+>                         second_sum += (p_ij - p[i] * p[j]) / (p[i] * p[j])
+> * y[i] * y[j]
+>                 end
+>         end
+>
+>         return first_sum + second_sum
+> end
+>
+> The standard error in the resulted data frame above is just the square
+> root of the hte result.
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
