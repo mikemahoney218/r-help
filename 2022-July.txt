@@ -17499,3 +17499,628 @@ PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From @vi@e@gross m@iii@g oii gm@ii@com  Fri Jul 15 03:38:08 2022
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Thu, 14 Jul 2022 21:38:08 -0400
+Subject: [R] mice: selecting small subset of variables to impute from
+ dataset with many variables (> 2500)
+In-Reply-To: <BN6PR2201MB15534DD9DF008530A1704467CF889@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <CAHF845G-5UkXJCQ3kNCO5hVwmpF3v6MKTx2PeE_JCcdzMjGF=w@mail.gmail.com>
+ <CAGxFJbTc2ukmo4JFw_wF1zgj3qRYrgfAjABU8o0ste8rYedNYw@mail.gmail.com>
+ <BN6PR2201MB15534DD9DF008530A1704467CF889@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <011301d897eb$89b85f60$9d291e20$@gmail.com>
+
+Tim,
+
+Your reply is reasonable if you want to read in EVERYTHING and use various
+nice features of the select() function in the dplyr package of the tidyverse
+that let you exclude a bunch of columns based on names starting or ending or
+containing various characters or not being of type integer and so on. 
+
+But another category wants to skip creating some columns in the first place.
+Many reader functions that take in data from something like a .CSV file will
+allow you to effectively ignore some of the columns of data and thus
+hopefully cut down on some overhead.
+
+I assume most of us have no real experience with the package called "mice"
+and who is willing to read to page 72 or so in this document: 
+https://cran.r-project.org/web/packages/mice/mice.pdf
+
+Anywho, the mice() function this person wants to use has arguments meant to
+control what is brought in and stored in whatever internal format as in not
+taking some rows. A cursory glance suggests no way to suppress columns other
+than not including them before calling the function as it does not read the
+data from a file and expects either a data.frame or a matrix.
+
+So your answer is valid. The questioner can use any method they wish to
+adjust the initial data.frame and create a partial copy to use. If they want
+a small subset of 2500+ columns (and who wouldn't) then it may be easiest to
+simply name them in base R or select as in:
+
+ New.df <- Old.df(, c("col36", "col89", "hike"))
+
+On the other hand, if they merely want to exclude lots of columns that have
+something in common, yes, select() allows things like:
+
+New.df <- Select(Old.df, -ends_with(c("extra", "comment"))
+
+The tidyverse keeps being rewritten so some new ways may be replacing old,
+but there are variants like select_if() that allow arbitrary functions to
+decide what columns to include/exclude  such as based on what type they
+contain
+
+So the key is to trick before calling the function but leave in everything
+needed.
+
+Only the one asking the question knows what all the columns mean and what
+rhyme or reasons decides which to keep or exclude. A more specific question
+may get a more specific answer.
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Ebert,Timothy Aaron
+Sent: Thursday, July 14, 2022 2:12 PM
+To: Bert Gunter <bgunter.4567 at gmail.com>; Ian McPhail <ivmcphail at gmail.com>
+Cc: R-help <r-help at r-project.org>
+Subject: Re: [R] mice: selecting small subset of variables to impute from
+dataset with many variables (> 2500)
+
+Maybe this is too simple but could you use the select() function from dplyr?
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Bert Gunter
+Sent: Thursday, July 14, 2022 2:10 PM
+To: Ian McPhail <ivmcphail at gmail.com>
+Cc: R-help <r-help at r-project.org>
+Subject: Re: [R] mice: selecting small subset of variables to impute from
+dataset with many variables (> 2500)
+
+[External Email]
+
+If I understand your query correctly, you can use negative indexing to omit
+variables. See ?'[' for details.
+
+> dat <- data.frame (a = 1:3, b = letters[1:3], c = 4:6, d =
+> letters[5:7]) dat
+  a b c d
+1 1 a 4 e
+2 2 b 5 f
+3 3 c 6 g
+> dat[,-c(2,4)]
+  a c
+1 1 4
+2 2 5
+3 3 6
+
+Of course you have to know the numerical index of the columns you wish to
+omit, but somethingh of the sort seems unavoidable in any case.
+
+Cheers,
+Bert
+
+On Thu, Jul 14, 2022 at 11:00 AM Ian McPhail <ivmcphail at gmail.com> wrote:
+>
+> Hello,
+>
+> I am looking for some advice on how to select subsets of variables for 
+> imputing when using the mice package.
+>
+> From Van Buuren's original mice paper, I see that selecting variables 
+> to be 'skipped' in an imputation can be written as:
+>
+> ini <- mice(nhanes2, maxit = 0, print = FALSE) pred <- ini$pred pred[, 
+> "bmi"] <- 0 meth <- ini$meth meth["bmi"] <- ""
+>
+> With the last two lines specifying the the "bmi" variable gets skipped 
+> over and not imputed.
+>
+> And I have come across other examples, but all that I have seen lay 
+> out a method of skipping variables where EVERY variable is named (as 
+> "bmi" is named above). I am wondering if there is a reasonably easy 
+> way to select out approximately 30 variables for imputation from a 
+> larger dataset with around 2500 variables, without having to name all
+2450+ other variables.
+>
+> Thank you,
+>
+> Ian
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mail
+> man_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAs
+> Rzsn7AkP-g&m=UxEz20f8LSF-iyVuq17UnoNVkEe6HoC3E6vHWssLjSBKtqLSrm7qs8v2e
+> wcXchwc&s=ABj_L_b515lhH7RIgTmmjylyWxJCbRWvzZDkxUkGw90&e=
+> PLEASE do read the posting guide
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.or
+> g_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeA
+> sRzsn7AkP-g&m=UxEz20f8LSF-iyVuq17UnoNVkEe6HoC3E6vHWssLjSBKtqLSrm7qs8v2
+> ewcXchwc&s=LiocKPLYgq5olAT6tqGjr2xOLwDWw55DRzhuq7gcF5A&e=
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_li
+stinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m
+=UxEz20f8LSF-iyVuq17UnoNVkEe6HoC3E6vHWssLjSBKtqLSrm7qs8v2ewcXchwc&s=ABj_L_b5
+15lhH7RIgTmmjylyWxJCbRWvzZDkxUkGw90&e=
+PLEASE do read the posting guide
+https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_post
+ing-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&
+m=UxEz20f8LSF-iyVuq17UnoNVkEe6HoC3E6vHWssLjSBKtqLSrm7qs8v2ewcXchwc&s=LiocKPL
+Ygq5olAT6tqGjr2xOLwDWw55DRzhuq7gcF5A&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Jul 15 08:20:42 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 15 Jul 2022 09:20:42 +0300
+Subject: [R] the quantile function and problems.
+In-Reply-To: <87wncf6ec6.fsf@mat.ucm.es>
+References: <87wncf6ec6.fsf@mat.ucm.es>
+Message-ID: <20220715092042.4e8189b7@Tarkus>
+
+? Thu, 14 Jul 2022 14:58:17 +0200
+Uwe Brauer <oub at mat.ucm.es> ?????:
+
+> What turns me crazy is that the way R, matlab and the JCR calculate
+> the quartiles gives different results.
+
+R by itself can give up to 9 slightly different results:
+
+sapply(1:9, function(type) quantile(1:267, 1:3/4, type = type))
+#     [,1] [,2] [,3]   [,4]   [,5] [,6]  [,7]      [,8]     [,9]
+# 25%   67   67   67  66.75  67.25   67  67.5  67.16667  67.1875
+# 50%  134  134  134 133.50 134.00  134 134.0 134.00000 134.0000
+# 75%  201  201  200 200.25 200.75  201 200.5 200.83333 200.8125
+
+Choose the ones that fit your ideas of quantile best. See ?quantile for
+more info.
+
+-- 
+Best regards,
+Ivan
+
+
+From tebert @end|ng |rom u||@edu  Fri Jul 15 14:44:22 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Fri, 15 Jul 2022 12:44:22 +0000
+Subject: [R] mice: selecting small subset of variables to impute from
+ dataset with many variables (> 2500)
+In-Reply-To: <011301d897eb$89b85f60$9d291e20$@gmail.com>
+References: <CAHF845G-5UkXJCQ3kNCO5hVwmpF3v6MKTx2PeE_JCcdzMjGF=w@mail.gmail.com>
+ <CAGxFJbTc2ukmo4JFw_wF1zgj3qRYrgfAjABU8o0ste8rYedNYw@mail.gmail.com>
+ <BN6PR2201MB15534DD9DF008530A1704467CF889@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <011301d897eb$89b85f60$9d291e20$@gmail.com>
+Message-ID: <BN6PR2201MB155318FC0162828DCFE64CDACF8B9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+Hi Avi,
+   Thank you for your reply. I had not considered this possibility.
+Tim 
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of avi.e.gross at gmail.com
+Sent: Thursday, July 14, 2022 9:38 PM
+Cc: 'R-help' <r-help at r-project.org>
+Subject: Re: [R] mice: selecting small subset of variables to impute from dataset with many variables (> 2500)
+
+[External Email]
+
+Tim,
+
+Your reply is reasonable if you want to read in EVERYTHING and use various nice features of the select() function in the dplyr package of the tidyverse that let you exclude a bunch of columns based on names starting or ending or containing various characters or not being of type integer and so on.
+
+But another category wants to skip creating some columns in the first place.
+Many reader functions that take in data from something like a .CSV file will allow you to effectively ignore some of the columns of data and thus hopefully cut down on some overhead.
+
+I assume most of us have no real experience with the package called "mice"
+and who is willing to read to page 72 or so in this document:
+https://urldefense.proofpoint.com/v2/url?u=https-3A__cran.r-2Dproject.org_web_packages_mice_mice.pdf&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=psSXddrLcHW_8Z0VJKPJxvJuaZU8I4WKwySj5LtvA0BlD-G_JUdDzhIpZARfoTfp&s=msOsrEeTuS5_sLcvCR2FvF3kC7_1rYCebqZiKOji5iY&e=
+
+Anywho, the mice() function this person wants to use has arguments meant to control what is brought in and stored in whatever internal format as in not taking some rows. A cursory glance suggests no way to suppress columns other than not including them before calling the function as it does not read the data from a file and expects either a data.frame or a matrix.
+
+So your answer is valid. The questioner can use any method they wish to adjust the initial data.frame and create a partial copy to use. If they want a small subset of 2500+ columns (and who wouldn't) then it may be easiest to simply name them in base R or select as in:
+
+ New.df <- Old.df(, c("col36", "col89", "hike"))
+
+On the other hand, if they merely want to exclude lots of columns that have something in common, yes, select() allows things like:
+
+New.df <- Select(Old.df, -ends_with(c("extra", "comment"))
+
+The tidyverse keeps being rewritten so some new ways may be replacing old, but there are variants like select_if() that allow arbitrary functions to decide what columns to include/exclude  such as based on what type they contain
+
+So the key is to trick before calling the function but leave in everything needed.
+
+Only the one asking the question knows what all the columns mean and what rhyme or reasons decides which to keep or exclude. A more specific question may get a more specific answer.
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Ebert,Timothy Aaron
+Sent: Thursday, July 14, 2022 2:12 PM
+To: Bert Gunter <bgunter.4567 at gmail.com>; Ian McPhail <ivmcphail at gmail.com>
+Cc: R-help <r-help at r-project.org>
+Subject: Re: [R] mice: selecting small subset of variables to impute from dataset with many variables (> 2500)
+
+Maybe this is too simple but could you use the select() function from dplyr?
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Bert Gunter
+Sent: Thursday, July 14, 2022 2:10 PM
+To: Ian McPhail <ivmcphail at gmail.com>
+Cc: R-help <r-help at r-project.org>
+Subject: Re: [R] mice: selecting small subset of variables to impute from dataset with many variables (> 2500)
+
+[External Email]
+
+If I understand your query correctly, you can use negative indexing to omit variables. See ?'[' for details.
+
+> dat <- data.frame (a = 1:3, b = letters[1:3], c = 4:6, d =
+> letters[5:7]) dat
+  a b c d
+1 1 a 4 e
+2 2 b 5 f
+3 3 c 6 g
+> dat[,-c(2,4)]
+  a c
+1 1 4
+2 2 5
+3 3 6
+
+Of course you have to know the numerical index of the columns you wish to omit, but somethingh of the sort seems unavoidable in any case.
+
+Cheers,
+Bert
+
+On Thu, Jul 14, 2022 at 11:00 AM Ian McPhail <ivmcphail at gmail.com> wrote:
+>
+> Hello,
+>
+> I am looking for some advice on how to select subsets of variables for 
+> imputing when using the mice package.
+>
+> From Van Buuren's original mice paper, I see that selecting variables 
+> to be 'skipped' in an imputation can be written as:
+>
+> ini <- mice(nhanes2, maxit = 0, print = FALSE) pred <- ini$pred pred[, 
+> "bmi"] <- 0 meth <- ini$meth meth["bmi"] <- ""
+>
+> With the last two lines specifying the the "bmi" variable gets skipped 
+> over and not imputed.
+>
+> And I have come across other examples, but all that I have seen lay 
+> out a method of skipping variables where EVERY variable is named (as 
+> "bmi" is named above). I am wondering if there is a reasonably easy 
+> way to select out approximately 30 variables for imputation from a 
+> larger dataset with around 2500 variables, without having to name all
+2450+ other variables.
+>
+> Thank you,
+>
+> Ian
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mail
+> man_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAs
+> Rzsn7AkP-g&m=UxEz20f8LSF-iyVuq17UnoNVkEe6HoC3E6vHWssLjSBKtqLSrm7qs8v2e
+> wcXchwc&s=ABj_L_b515lhH7RIgTmmjylyWxJCbRWvzZDkxUkGw90&e=
+> PLEASE do read the posting guide
+> https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.or
+> g_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeA
+> sRzsn7AkP-g&m=UxEz20f8LSF-iyVuq17UnoNVkEe6HoC3E6vHWssLjSBKtqLSrm7qs8v2
+> ewcXchwc&s=LiocKPLYgq5olAT6tqGjr2xOLwDWw55DRzhuq7gcF5A&e=
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_li
+stinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m
+=UxEz20f8LSF-iyVuq17UnoNVkEe6HoC3E6vHWssLjSBKtqLSrm7qs8v2ewcXchwc&s=ABj_L_b5
+15lhH7RIgTmmjylyWxJCbRWvzZDkxUkGw90&e=
+PLEASE do read the posting guide
+https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_post
+ing-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&
+m=UxEz20f8LSF-iyVuq17UnoNVkEe6HoC3E6vHWssLjSBKtqLSrm7qs8v2ewcXchwc&s=LiocKPL
+Ygq5olAT6tqGjr2xOLwDWw55DRzhuq7gcF5A&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=psSXddrLcHW_8Z0VJKPJxvJuaZU8I4WKwySj5LtvA0BlD-G_JUdDzhIpZARfoTfp&s=jVxQsq0xD_WRFP8rsnPCCM2wXEiyQfz2-boRuanxLu0&e=
+PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=psSXddrLcHW_8Z0VJKPJxvJuaZU8I4WKwySj5LtvA0BlD-G_JUdDzhIpZARfoTfp&s=ZQkPsKDNoHIsIA8nLAK3MaKRcdB08PHd9ECPnrw23Rk&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=psSXddrLcHW_8Z0VJKPJxvJuaZU8I4WKwySj5LtvA0BlD-G_JUdDzhIpZARfoTfp&s=jVxQsq0xD_WRFP8rsnPCCM2wXEiyQfz2-boRuanxLu0&e=
+PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=psSXddrLcHW_8Z0VJKPJxvJuaZU8I4WKwySj5LtvA0BlD-G_JUdDzhIpZARfoTfp&s=ZQkPsKDNoHIsIA8nLAK3MaKRcdB08PHd9ECPnrw23Rk&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From rb@er @end|ng |rom @t@u@edu  Fri Jul 15 15:34:36 2022
+From: rb@er @end|ng |rom @t@u@edu (Robert Baer)
+Date: Fri, 15 Jul 2022 08:34:36 -0500
+Subject: [R] Thanks to this list ....
+In-Reply-To: <20220714222010.17fa67a1@rolf-Latitude-E7470>
+References: <20220714222010.17fa67a1@rolf-Latitude-E7470>
+Message-ID: <7f0dbe00-0983-0d04-9235-9ae869588244@atsu.edu>
+
+And once again you have shown? that this list has an important side 
+effect of helping us to help ourselves ...? :-)
+
+
+On 7/14/2022 5:20 AM, Rolf Turner wrote:
+> I set out to appeal to this list for help with disentangling
+> a bewildering anomaly that was produced by some dynamically loaded
+> Fortran code.
+>
+> In composing an email to explain the nature of the anomaly, I *FINALLY*
+> spotted the loony!  I had an expression in a nested do loop:
+>
+>      j = npro + (r-1)*nvym1 + s
+>
+> where r and s were the indices of two of the nested loops (explicitly
+> declared to be integer at the start of the subroutine in question).
+>
+> When I copied the foregoing expression into the email I at last noticed
+> that the variable "nvym1" *should* have been "nyvm1".  See the subtle
+> difference?  :-)
+>
+> The variable nvym1 was never initialised, so it took on strange values
+> plucked out of RAM, I guess.  Whence the anomaly.  Once I corrected that
+> trivial typo, things were OK.
+>
+> Thanks everybody!!! :-)
+>
+> cheers,
+>
+> Rolf Turner
+>
+> P.S. What I can't figure out (and won't waste any time trying) is
+> why the first four values of j were as they should have been, and things
+> did not go to hell in a handcart until the code got to the 5th value
+> of j.  I guess the computer gods were just amusing themselves at my
+> expense.
+>
+> R. T.
+>
+-- 
+__________________________________________________
+Robert W. Baer, Ph.D.
+Professor of Physiolgy
+Kirksville College of Osteopathic Medicine
+A.T. Still University of Heallth Sciences
+800 W. Jefferson St.
+Kirksville, MO 63501
+P: 660-626-2322
+
+
+  
+
+              
+
+The ATSU Mission
+A.T. Still University of Health Sciences serves as a learning-centered university dedicated to preparing highly competent professionals through innovative academic programs with a commitment to continue its osteopathic heritage and focus on whole person healthcare, scholarship, community health, interprofessional education, diversity, and underserved populations.
+
+Proud recipient of INSIGHT Into Diversity?s 2017-19 Higher Education Excellence in Diversity Awards.
+
+
+From tebert @end|ng |rom u||@edu  Fri Jul 15 17:54:31 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Fri, 15 Jul 2022 15:54:31 +0000
+Subject: [R] the quantile function and problems.
+In-Reply-To: <20220715092042.4e8189b7@Tarkus>
+References: <87wncf6ec6.fsf@mat.ucm.es> <20220715092042.4e8189b7@Tarkus>
+Message-ID: <BN6PR2201MB1553CCCB355489E7721B2BF4CF8B9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+Does the choice in how the quantile is calculated influence the validity of a statistical test for differences in the median?
+Regards,
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Ivan Krylov
+Sent: Friday, July 15, 2022 2:21 AM
+To: Uwe Brauer <oub at mat.ucm.es>
+Cc: r-help at r-project.org
+Subject: Re: [R] the quantile function and problems.
+
+[External Email]
+
+? Thu, 14 Jul 2022 14:58:17 +0200
+Uwe Brauer <oub at mat.ucm.es> ?????:
+
+> What turns me crazy is that the way R, matlab and the JCR calculate 
+> the quartiles gives different results.
+
+R by itself can give up to 9 slightly different results:
+
+sapply(1:9, function(type) quantile(1:267, 1:3/4, type = type))
+#     [,1] [,2] [,3]   [,4]   [,5] [,6]  [,7]      [,8]     [,9]
+# 25%   67   67   67  66.75  67.25   67  67.5  67.16667  67.1875
+# 50%  134  134  134 133.50 134.00  134 134.0 134.00000 134.0000 # 75%  201  201  200 200.25 200.75  201 200.5 200.83333 200.8125
+
+Choose the ones that fit your ideas of quantile best. See ?quantile for more info.
+
+--
+Best regards,
+Ivan
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=27y7tm3H4Dbasv87iGgaE8-1NMw7x-Skvgftsip0_qqJw5CpboxBiPDg8Hggx-xs&s=dYjPPV9FhTSt-KjJZLi6AXh_PNykZSwIhfrk2E4saXw&e=
+PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=27y7tm3H4Dbasv87iGgaE8-1NMw7x-Skvgftsip0_qqJw5CpboxBiPDg8Hggx-xs&s=QJ2jSyuRERB_vwvrBw6zUnAUgY6Bals14F_ODjiqPcA&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+From bgunter@4567 @end|ng |rom gm@||@com  Fri Jul 15 18:02:59 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Fri, 15 Jul 2022 09:02:59 -0700
+Subject: [R] the quantile function and problems.
+In-Reply-To: <BN6PR2201MB1553CCCB355489E7721B2BF4CF8B9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <87wncf6ec6.fsf@mat.ucm.es> <20220715092042.4e8189b7@Tarkus>
+ <BN6PR2201MB1553CCCB355489E7721B2BF4CF8B9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <CAGxFJbS_F59sg2AHuym-050QYS1Hw=tETiCP7Ofo6d2KSBG2yw@mail.gmail.com>
+
+This is now wandering from R-Help to statistical issues, which are
+slightly off topic.
+
+But the answer should be no, as the tests are calculated from the
+underlying data, not quantile estimates.
+
+
+Cheers,
+Bert
+
+On Fri, Jul 15, 2022 at 8:55 AM Ebert,Timothy Aaron <tebert at ufl.edu> wrote:
+>
+> Does the choice in how the quantile is calculated influence the validity of a statistical test for differences in the median?
+> Regards,
+> Tim
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Ivan Krylov
+> Sent: Friday, July 15, 2022 2:21 AM
+> To: Uwe Brauer <oub at mat.ucm.es>
+> Cc: r-help at r-project.org
+> Subject: Re: [R] the quantile function and problems.
+>
+> [External Email]
+>
+> ? Thu, 14 Jul 2022 14:58:17 +0200
+> Uwe Brauer <oub at mat.ucm.es> ?????:
+>
+> > What turns me crazy is that the way R, matlab and the JCR calculate
+> > the quartiles gives different results.
+>
+> R by itself can give up to 9 slightly different results:
+>
+> sapply(1:9, function(type) quantile(1:267, 1:3/4, type = type))
+> #     [,1] [,2] [,3]   [,4]   [,5] [,6]  [,7]      [,8]     [,9]
+> # 25%   67   67   67  66.75  67.25   67  67.5  67.16667  67.1875
+> # 50%  134  134  134 133.50 134.00  134 134.0 134.00000 134.0000 # 75%  201  201  200 200.25 200.75  201 200.5 200.83333 200.8125
+>
+> Choose the ones that fit your ideas of quantile best. See ?quantile for more info.
+>
+> --
+> Best regards,
+> Ivan
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=27y7tm3H4Dbasv87iGgaE8-1NMw7x-Skvgftsip0_qqJw5CpboxBiPDg8Hggx-xs&s=dYjPPV9FhTSt-KjJZLi6AXh_PNykZSwIhfrk2E4saXw&e=
+> PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=27y7tm3H4Dbasv87iGgaE8-1NMw7x-Skvgftsip0_qqJw5CpboxBiPDg8Hggx-xs&s=QJ2jSyuRERB_vwvrBw6zUnAUgY6Bals14F_ODjiqPcA&e=
+> and provide commented, minimal, self-contained, reproducible code.
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From jrkr|de@u @end|ng |rom gm@||@com  Fri Jul 15 18:48:36 2022
+From: jrkr|de@u @end|ng |rom gm@||@com (John Kane)
+Date: Fri, 15 Jul 2022 12:48:36 -0400
+Subject: [R] Kindly Guide
+In-Reply-To: <CAMfKi3L=eJzXK0Vkbj-iK-YRs76uTLr3MX4w8xm9mw1uR4Di5A@mail.gmail.com>
+References: <CAMfKi3L=eJzXK0Vkbj-iK-YRs76uTLr3MX4w8xm9mw1uR4Di5A@mail.gmail.com>
+Message-ID: <CAKZQJMAQTE8u_EOFwxHL=SzMX6a7ZWVmqXWDJ3YYxYZCptY7uA@mail.gmail.com>
+
+Typo? Try
+write.xlsx(x, "table name.xlsx")
+
+Example
+install.packages('openxlsx')
+library(openxlsx)
+
+write.xlsx(df, "stations.xlsx")
+
+On Thu, 14 Jul 2022 at 15:40, Muhammad Zubair Chishti
+<mzchishti at eco.qau.edu.pk> wrote:
+>
+> Dear Experts,
+> I have obtained the results through applying Time Varying VAR model in R.
+> Now I want to save my results in a excel sheet. Kindly guide me how to
+> create a excel or excel table. Although I have tried the following code but
+> I face error.
+> Write.xlsx(x, "table name.xlsx")
+>
+> Kindly guide.
+>
+> Regards
+> Chishti
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+John Kane
+Kingston ON Canada
+
+
+From oub @end|ng |rom m@t@ucm@e@  Fri Jul 15 07:49:48 2022
+From: oub @end|ng |rom m@t@ucm@e@ (Uwe Brauer)
+Date: Fri, 15 Jul 2022 07:49:48 +0200
+Subject: [R] the quantile function and problems.
+References: <87wncf6ec6.fsf@mat.ucm.es>
+ <CAGxFJbTaG0PD_itn_C1zZEL9hF1nToG9f61KxZfKYMjih_OCqA@mail.gmail.com>
+Message-ID: <875yjzvsar.fsf@mat.ucm.es>
+
+>>> "BG" == Bert Gunter <bgunter.4567 at gmail.com> writes:
+
+> Read ?quantile carefully, please (and any references therein that you
+> may wish to consult).
+
+> You are estimating a continuous function by a discrete finite step
+> function, and as the Help page (and further references) explains,
+> there are many ways to do this.
+
+Ok, thanks
+
+From oub @end|ng |rom m@t@ucm@e@  Fri Jul 15 21:29:19 2022
+From: oub @end|ng |rom m@t@ucm@e@ (Uwe Brauer)
+Date: Fri, 15 Jul 2022 21:29:19 +0200
+Subject: [R] the quantile function and problems.
+References: <87wncf6ec6.fsf@mat.ucm.es> <20220715092042.4e8189b7@Tarkus>
+Message-ID: <87bktqfa40.fsf@mat.ucm.es>
+
+>>> "IK" == Ivan Krylov <krylov.r00t at gmail.com> writes:
+
+> ? Thu, 14 Jul 2022 14:58:17 +0200
+> Uwe Brauer <oub at mat.ucm.es> ?????:
+
+>> What turns me crazy is that the way R, matlab and the JCR calculate
+>> the quartiles gives different results.
+
+> R by itself can give up to 9 slightly different results:
+
+> sapply(1:9, function(type) quantile(1:267, 1:3/4, type = type))
+> #     [,1] [,2] [,3]   [,4]   [,5] [,6]  [,7]      [,8]     [,9]
+> # 25%   67   67   67  66.75  67.25   67  67.5  67.16667  67.1875
+> # 50%  134  134  134 133.50 134.00  134 134.0 134.00000 134.0000
+> # 75%  201  201  200 200.25 200.75  201 200.5 200.83333 200.8125
+
+Thanks, number 3 is the best for my purpose. 
+
+Very useful
+
+
+
+-- 
+I strongly condemn Putin's war of aggression against the Ukraine.
+I support to deliver weapons to Ukraine's military. 
+I support the ban of Russia from SWIFT.
+I support the EU membership of the Ukraine. 
+
