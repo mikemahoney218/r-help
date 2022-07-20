@@ -19485,3 +19485,1637 @@ R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://url
 PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwIFaQ&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=cc9Eq3DGpCl6kcfJbKVLDsJ9i6TKk7SF79PHaRy8-GoQctAlVTXhQIVEHHwO08Q8&s=EZBJpqiZa4ZdtRdgor6WYiCsrheRBMsp1O31mCpoHPU&e=
 and provide commented, minimal, self-contained, reproducible code.
 
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Tue Jul 19 03:26:59 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Mon, 18 Jul 2022 18:26:59 -0700
+Subject: [R] Using R lines() to show sunrise and sunset
+In-Reply-To: <E76BC257-2E0C-4D96-A6F9-580B1C9D9C16@me.com>
+References: <8A6505C0-10DA-4BD8-81C7-25E18B86498F@me.com>
+ <9037AD40-0F1B-4A58-9BA3-93DE62948634@comcast.net>
+ <E76BC257-2E0C-4D96-A6F9-580B1C9D9C16@me.com>
+Message-ID: <84C8717D-2B11-4470-94E1-1BF669A9A5CB@dcn.davis.ca.us>
+
+a) Wouldn't distinguishing between sunrise and sunset just amount to referring to the relevant column in your data frame? Why is this a problem you need help with?
+
+b) There is no problem with plotting datetimes in R. But you might want to consider plotting hour-of-day instead on the y axis to avoid the monotonocally increasing appearance you would end up with. R does not have a concept of time-of-day separate from date, due to different days having different numbers of hours in them. To compute hour-of-day subtract the beginning of day (use trunc.POSIXt, units = "days") from the actual time and convert the resulting difftime to numeric. 
+
+3) General challenges with formulating a response: I can't tell what to do with your command lines, and your use of formatted email is mushing stuff together. You have been vague about what inputs you have (have you imported the data?) or what kind of plot you expect to get using the lines function. (Also I avoid base R plotting functions most of the time, so I tend to sit out on threads that are looking for help with it.)
+
+On July 18, 2022 5:17:51 PM PDT, Gregory Coats via R-help <r-help at r-project.org> wrote:
+>Thanks. Yes, I can follow
+>https://www.stat.berkeley.edu/~s133/dates.html
+>Dates and Times in R
+>But my problem is, How to direct R to accept the first computed value as a sunrise, and the second computed values as a sunset?
+>Greg Coats
+>571-423-9847
+>
+>> On Jul 18, 2022, at 7:58 PM, David Winsemius <dwinsemius at comcast.net> wrote:
+>> 
+>> The first thought it to do is make sure you have the data in POSIXct format for the date times. 
+>> 
+>> Sent from my iPhone
+>> 
+>>> On Jul 18, 2022, at 6:51 PM, Gregory Coats via R-help <r-help at r-project.org> wrote:
+>>> 
+>>> ?I compiled a program on my Apple MacBook that takes as inputs
+>>>   Year and Month and Day
+>>>   Latitude and Longitude
+>>> And then computes these two outputs
+>>> Sunrise Year-Month-Day Hour:Minute:Second
+>>> Sunset  Year-Month-Day Hour:Minute:Second
+>>> It automatically handles Daylight Savings Time.
+>>> A typical input, followed by the automatically computed outputs looks likes this.
+>>> 
+>>> ./sunrise_05 2022 01 1 38.8586314239524 77.0512533684194
+>>> 2022-01-01 07:26:45 2022-01-01 16:57:07
+>>> ./sunrise_05 2022 01 2 38.8586314239524 77.0512533684194
+>>> 2022-01-02 07:26:52 2022-01-02 16:57:56
+>>> 
+>>> I want to use R?s lines() command to show the sunrise and sunset times for the year 2012. How do I tell R that the first computed output is sunrise, and the second computer output is sunset?
+>>> Greg Coats
+>>>   [[alternative HTML version deleted]]
+>>> 
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue Jul 19 03:43:21 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Mon, 18 Jul 2022 18:43:21 -0700
+Subject: [R] Using R lines() to show sunrise and sunset
+In-Reply-To: <8A6505C0-10DA-4BD8-81C7-25E18B86498F@me.com>
+References: <8A6505C0-10DA-4BD8-81C7-25E18B86498F@me.com>
+Message-ID: <CAGxFJbSoHMB_By3bSxgas_x7OPHNnTBgdDUopBFamhA=4sSUWw@mail.gmail.com>
+
+Your description is insufficiently precise for us to do more than guess at
+what you have. I shall assume your data consists of text strings as shown.
+Presumably, you can remove the inputs and collect the outputs into a data
+frame, e.g.
+
+dat <- read.table( text = "
+2022-01-01 07:26:45 2022-01-01 16:57:07
+2022-01-02 07:26:52 2022-01-02 16:57:56"
+)[,-3]
+## there are 4 text columns. The [,-3] removes the replicated date.
+
+Then, as Jeff suggested,
+
+names(dat) <- c('Date','Sunrise', 'Sunset')
+dat
+## gives:
+          Date  Sunrise   Sunset
+1 2022-01-01 07:26:45 16:57:07
+2 2022-01-02 07:26:52 16:57:56
+
+But, again, as you have not described your data structure in sufficient
+detail (at least for me), this is just a guess.
+
+Once you have the data in this format, you can extract what you need and
+maybe use strptime() to convert to appropriate numeric formats. Or maybe
+simply use strplit():
+
+> strsplit(dat$Sunrise, split = ":")
+[[1]]
+[1] "07" "26" "45"
+
+[[2]]
+[1] "07" "26" "52"
+
+Note: as.numeric() converts number strings to numbers:
+> as.numeric("45")
+[1] 45
+
+Again, just a guess, and therefore perhaps useless.
+
+-- Bert
+
+
+On Mon, Jul 18, 2022 at 4:51 PM Gregory Coats via R-help <
+r-help at r-project.org> wrote:
+
+> I compiled a program on my Apple MacBook that takes as inputs
+>         Year and Month and Day
+>         Latitude and Longitude
+> And then computes these two outputs
+> Sunrise Year-Month-Day Hour:Minute:Second
+> Sunset  Year-Month-Day Hour:Minute:Second
+> It automatically handles Daylight Savings Time.
+> A typical input, followed by the automatically computed outputs looks
+> likes this.
+>
+> ./sunrise_05 2022 01 1 38.8586314239524 77.0512533684194
+> 2022-01-01 07:26:45 2022-01-01 16:57:07
+> ./sunrise_05 2022 01 2 38.8586314239524 77.0512533684194
+> 2022-01-02 07:26:52 2022-01-02 16:57:56
+>
+> I want to use R?s lines() command to show the sunrise and sunset times for
+> the year 2012. How do I tell R that the first computed output is sunrise,
+> and the second computer output is sunset?
+> Greg Coats
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Tue Jul 19 04:09:36 2022
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Mon, 18 Jul 2022 22:09:36 -0400
+Subject: [R] Using R lines() to show sunrise and sunset
+In-Reply-To: <E76BC257-2E0C-4D96-A6F9-580B1C9D9C16@me.com>
+References: <8A6505C0-10DA-4BD8-81C7-25E18B86498F@me.com>
+ <9037AD40-0F1B-4A58-9BA3-93DE62948634@comcast.net>
+ <E76BC257-2E0C-4D96-A6F9-580B1C9D9C16@me.com>
+Message-ID: <008701d89b14$988dca30$c9a95e90$@gmail.com>
+
+Questions like this keep popping up.
+
+Your example shows a single string containing 4 parts: 2022-01-01 07:26:45 2022-01-01 16:57:07
+
+So forget how to ask lines() to do anything. Ask how YOU can make what lines wants.
+
+You need to preprocess what sounds like a vector of such strings into four parts and conveniently you have spaces between them.
+2022-01-01
+07:26:45
+2022-01-01
+16:57:07
+
+As it happens, your data is measuring sunrise and sunset on the same day so I suspect you can toss the third part as redundant.
+
+How you extract them is one of many ways. Pick any you like. But use the parts to make three vectors with names like theDate, sunUp and sundown that are character strings.
+
+Use one of many ways to convert the above into a pure Date format and a pure Time Format of your choice as long as your choice of the plot() function can handle them. Using the same names above, you would call plot once with the appropriate arguments to set up your graph and hand it theDate and sunup to place on the axes you want. Then, before the plot is closed, add a call to lines() using theDate and sundown.
+
+The answer as to how to tell R or lines() (neither of which are sentient or will pay any attention) is to ask a different question. What arguments do you provide to lines. The answer is you provide two different vectors with each being of a type that plot() and lines() and other such functions can handle. They do not handle text for plotting. They handle integers, floating point, or things that can in some way be converted to them such as the number of seconds since midnight or the number of seconds since Jan 1, 1970. 
+
+Some would also suggest using ggplot() instead as it allows you to specify multiple sets of lines in a somewhat different way and supplies much more. 
+
+The first step is asking the right question. You may have intended it but I repeat, NOTHING will get plot() or line() to handle your text version directly. What you want is to feed it what it wants.
+
+Some have suggested specifics and there should be enough info for you to do some reading and put the pieces together.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Gregory Coats via R-help
+Sent: Monday, July 18, 2022 8:18 PM
+To: David Winsemius <dwinsemius at comcast.net>
+Cc: Gregory Coats via R-help <r-help at r-project.org>
+Subject: Re: [R] Using R lines() to show sunrise and sunset
+
+Thanks. Yes, I can follow
+https://www.stat.berkeley.edu/~s133/dates.html
+Dates and Times in R
+But my problem is, How to direct R to accept the first computed value as a sunrise, and the second computed values as a sunset?
+Greg Coats
+571-423-9847
+
+> On Jul 18, 2022, at 7:58 PM, David Winsemius <dwinsemius at comcast.net> wrote:
+> 
+> The first thought it to do is make sure you have the data in POSIXct format for the date times. 
+> 
+> Sent from my iPhone
+> 
+>> On Jul 18, 2022, at 6:51 PM, Gregory Coats via R-help <r-help at r-project.org> wrote:
+>> 
+>> ?I compiled a program on my Apple MacBook that takes as inputs
+>>   Year and Month and Day
+>>   Latitude and Longitude
+>> And then computes these two outputs
+>> Sunrise Year-Month-Day Hour:Minute:Second Sunset  Year-Month-Day 
+>> Hour:Minute:Second It automatically handles Daylight Savings Time.
+>> A typical input, followed by the automatically computed outputs looks likes this.
+>> 
+>> ./sunrise_05 2022 01 1 38.8586314239524 77.0512533684194
+>> 2022-01-01 07:26:45 2022-01-01 16:57:07
+>> ./sunrise_05 2022 01 2 38.8586314239524 77.0512533684194
+>> 2022-01-02 07:26:52 2022-01-02 16:57:56
+>> 
+>> I want to use R?s lines() command to show the sunrise and sunset times for the year 2012. How do I tell R that the first computed output is sunrise, and the second computer output is sunset?
+>> Greg Coats
+>>   [[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+	[[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From ro@||n@ump @end|ng |rom gm@||@com  Tue Jul 19 04:46:40 2022
+From: ro@||n@ump @end|ng |rom gm@||@com (roslinazairimah zakaria)
+Date: Tue, 19 Jul 2022 10:46:40 +0800
+Subject: [R] Extract time and state of charge (Start and End) and Count
+In-Reply-To: <CANTvJZKmoRdCq18BuzrXD7n4Y1MadfSehJb6rJPMyO5TjjtTpg@mail.gmail.com>
+References: <CANTvJZKmoRdCq18BuzrXD7n4Y1MadfSehJb6rJPMyO5TjjtTpg@mail.gmail.com>
+Message-ID: <CANTvJZJETzjMOMzAF5ZMs4dw90WXTr0OvsNqJE=BWHOEyvzsuA@mail.gmail.com>
+
+Thank you so much Avi, Rui and Jim...really appreciate your help.
+I am so sorry for not able to make it clearly.
+
+This is the expected output:
+  Hour  Starting_SoC_of_12     Ending_SoC_of_12 frequency
+   0      0                                    12
+    603
+   1      1                                    12
+    136
+
+dt <- dt3[which(dt3$Year==2014),]
+head(dt); tail(dt)
+dput(dt[1:5000,])
+
+cols <- c("BatteryChargeStartDate", "BatteryChargeStopDate")
+dt[cols] <- lapply(dt[cols], \(x) sub("\n", " ", x))
+
+# use package lubridate to coerce to a datetime class
+dt[cols] <- lapply(dt[cols], lubridate::dmy_hm)
+
+h <- lubridate::hour(dt[["BatteryChargeStartDate"]])
+aggregate(Starting_SoC_of_12 ~ h, dt, length)
+
+Expected output:
+  Hour  Starting_SoC_of_12 Ending_SoC_of_12 frequency
+   0      0                     12             603
+   1      1                     12             136
+
+
+
+
+On Mon, Jul 18, 2022 at 12:04 PM roslinazairimah zakaria <
+roslinaump at gmail.com> wrote:
+
+> Dear all,
+>
+> I have data of Battery Electric vehicle (BEV). I would like to extract
+> data from every hour starting from 0.00 to 0.59, 1:00-1:59 for SOC(state of
+> charge) start to end.
+>
+> Some examples:
+> I can extract data from SOC=0 and SOC=12
+> dt_2014[which(dt_2014$Starting_SoC_of_12==0 &
+> dt_2014$Ending_SoC_of_12==12),]
+>
+> I can extract data from SOC=1 and SOC=12
+> dt_2014[which(dt_2014$Starting_SoC_of_12==1 &
+> dt_2014$Ending_SoC_of_12==12),]
+>
+> and I would like to further categorise the data by hour and count how many
+> cars from 0 state charge to 12 state charge at in that particular hour.
+>
+> Thank you so much for any help given.
+>
+> Some data
+> > dput(dt_2014[1:10,])
+> structure(list(?..CarID = c("GC10", "GC10", "GC10", "GC10", "GC10",
+> "GC10", "GC10", "GC10", "GC10", "GC10"), BatteryChargeStartDate =
+> c("16/2/2014 16:05",
+> "16/2/2014 18:20", "17/2/2014 8:10", "18/2/2014 7:41", "18/2/2014 15:36",
+> "18/2/2014 16:36", "18/2/2014 21:26", "19/2/2014 8:57", "19/2/2014 21:08",
+> "20/2/2014 18:11"), BCStartTime = c("16:05", "18:20", "8:10",
+> "7:41", "15:36", "16:36", "21:26", "8:57", "21:08", "18:11"),
+>     Year = c(2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L,
+>     2014L, 2014L, 2014L), Month = c(2L, 2L, 2L, 2L, 2L, 2L, 2L,
+>     2L, 2L, 2L), Day = c(16L, 16L, 17L, 18L, 18L, 18L, 18L, 19L,
+>     19L, 20L), BatteryChargeStopDate = c("16/2/2014 17:05", "16/2/2014
+> 19:00",
+>     "17/2/2014 15:57", "18/2/2014 9:52", "18/2/2014 15:39", "18/2/2014
+> 17:36",
+>     "19/2/2014 1:55", "19/2/2014 14:25", "20/2/2014 5:17", "20/2/2014
+> 23:20"
+>     ), BCStopTime = c("17:05", "19:00", "15:57", "9:52", "15:39",
+>     "17:36", "1:55", "14:25", "5:17", "23:20"), Year2 = c(2014L,
+>     2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L
+>     ), Month2 = c(2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L), Day2 = c(16L,
+>     16L, 17L, 18L, 18L, 18L, 19L, 19L, 20L, 20L), Starting_SoC_of_12 =
+> c(1L,
+>     2L, 4L, 5L, 4L, 2L, 8L, 8L, 4L, 8L), Ending_SoC_of_12 = c(11L,
+>     11L, 12L, 8L, 4L, 10L, 12L, 12L, 12L, 12L)), row.names = c(NA,
+> 10L), class = "data.frame")
+>
+>
+> --
+> *Roslinazairimah Zakaria*
+> *Tel: +609-5492370; Fax. No.+609-5492766*
+>
+> *Email: roslinaump at gmail.com <roslinaump at gmail.com>*
+> University Malaysia Pahang
+> Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+>
+
+
+-- 
+*Roslinazairimah Zakaria*
+*Tel: +609-5492370; Fax. No.+609-5492766*
+
+*Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+roslinaump at gmail.com <roslinaump at gmail.com>*
+Faculty of Industrial Sciences & Technology
+University Malaysia Pahang
+Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+
+	[[alternative HTML version deleted]]
+
+
+From ro@||n@ump @end|ng |rom gm@||@com  Tue Jul 19 05:01:29 2022
+From: ro@||n@ump @end|ng |rom gm@||@com (roslinazairimah zakaria)
+Date: Tue, 19 Jul 2022 11:01:29 +0800
+Subject: [R] Extract time and state of charge (Start and End) and Count
+In-Reply-To: <CANTvJZJETzjMOMzAF5ZMs4dw90WXTr0OvsNqJE=BWHOEyvzsuA@mail.gmail.com>
+References: <CANTvJZKmoRdCq18BuzrXD7n4Y1MadfSehJb6rJPMyO5TjjtTpg@mail.gmail.com>
+ <CANTvJZJETzjMOMzAF5ZMs4dw90WXTr0OvsNqJE=BWHOEyvzsuA@mail.gmail.com>
+Message-ID: <CANTvJZLTq+cDMviguCX_bcDdSE_Qc4Bsz9CMxyJ1kYDrY3yp6g@mail.gmail.com>
+
+Dear all,
+
+This is the desired expected output:
+State of Charge (start_end SOC)
+Hour 0-12 1-12 2-12 3-12 4-12 5-12 6-12 7-12 8-12 9-12 10-12 11-12 12-12
+0
+1
+2
+?
+20
+21
+22
+23
+
+On Tue, Jul 19, 2022 at 10:46 AM roslinazairimah zakaria <
+roslinaump at gmail.com> wrote:
+
+> Thank you so much Avi, Rui and Jim...really appreciate your help.
+> I am so sorry for not able to make it clearly.
+>
+> This is the expected output:
+>   Hour  Starting_SoC_of_12     Ending_SoC_of_12 frequency
+>    0      0                                    12
+>     603
+>    1      1                                    12
+>     136
+>
+> dt <- dt3[which(dt3$Year==2014),]
+> head(dt); tail(dt)
+> dput(dt[1:5000,])
+>
+> cols <- c("BatteryChargeStartDate", "BatteryChargeStopDate")
+> dt[cols] <- lapply(dt[cols], \(x) sub("\n", " ", x))
+>
+> # use package lubridate to coerce to a datetime class
+> dt[cols] <- lapply(dt[cols], lubridate::dmy_hm)
+>
+> h <- lubridate::hour(dt[["BatteryChargeStartDate"]])
+> aggregate(Starting_SoC_of_12 ~ h, dt, length)
+>
+> Expected output:
+>   Hour  Starting_SoC_of_12 Ending_SoC_of_12 frequency
+>    0      0                     12             603
+>    1      1                     12             136
+>
+>
+>
+>
+> On Mon, Jul 18, 2022 at 12:04 PM roslinazairimah zakaria <
+> roslinaump at gmail.com> wrote:
+>
+>> Dear all,
+>>
+>> I have data of Battery Electric vehicle (BEV). I would like to extract
+>> data from every hour starting from 0.00 to 0.59, 1:00-1:59 for SOC(state of
+>> charge) start to end.
+>>
+>> Some examples:
+>> I can extract data from SOC=0 and SOC=12
+>> dt_2014[which(dt_2014$Starting_SoC_of_12==0 &
+>> dt_2014$Ending_SoC_of_12==12),]
+>>
+>> I can extract data from SOC=1 and SOC=12
+>> dt_2014[which(dt_2014$Starting_SoC_of_12==1 &
+>> dt_2014$Ending_SoC_of_12==12),]
+>>
+>> and I would like to further categorise the data by hour and count how
+>> many cars from 0 state charge to 12 state charge at in that particular hour.
+>>
+>> Thank you so much for any help given.
+>>
+>> Some data
+>> > dput(dt_2014[1:10,])
+>> structure(list(?..CarID = c("GC10", "GC10", "GC10", "GC10", "GC10",
+>> "GC10", "GC10", "GC10", "GC10", "GC10"), BatteryChargeStartDate =
+>> c("16/2/2014 16:05",
+>> "16/2/2014 18:20", "17/2/2014 8:10", "18/2/2014 7:41", "18/2/2014 15:36",
+>> "18/2/2014 16:36", "18/2/2014 21:26", "19/2/2014 8:57", "19/2/2014
+>> 21:08",
+>> "20/2/2014 18:11"), BCStartTime = c("16:05", "18:20", "8:10",
+>> "7:41", "15:36", "16:36", "21:26", "8:57", "21:08", "18:11"),
+>>     Year = c(2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L,
+>>     2014L, 2014L, 2014L), Month = c(2L, 2L, 2L, 2L, 2L, 2L, 2L,
+>>     2L, 2L, 2L), Day = c(16L, 16L, 17L, 18L, 18L, 18L, 18L, 19L,
+>>     19L, 20L), BatteryChargeStopDate = c("16/2/2014 17:05", "16/2/2014
+>> 19:00",
+>>     "17/2/2014 15:57", "18/2/2014 9:52", "18/2/2014 15:39", "18/2/2014
+>> 17:36",
+>>     "19/2/2014 1:55", "19/2/2014 14:25", "20/2/2014 5:17", "20/2/2014
+>> 23:20"
+>>     ), BCStopTime = c("17:05", "19:00", "15:57", "9:52", "15:39",
+>>     "17:36", "1:55", "14:25", "5:17", "23:20"), Year2 = c(2014L,
+>>     2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L
+>>     ), Month2 = c(2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L), Day2 = c(16L,
+>>     16L, 17L, 18L, 18L, 18L, 19L, 19L, 20L, 20L), Starting_SoC_of_12 =
+>> c(1L,
+>>     2L, 4L, 5L, 4L, 2L, 8L, 8L, 4L, 8L), Ending_SoC_of_12 = c(11L,
+>>     11L, 12L, 8L, 4L, 10L, 12L, 12L, 12L, 12L)), row.names = c(NA,
+>> 10L), class = "data.frame")
+>>
+>>
+>> --
+>> *Roslinazairimah Zakaria*
+>> *Tel: +609-5492370; Fax. No.+609-5492766*
+>>
+>> *Email: roslinaump at gmail.com <roslinaump at gmail.com>*
+>> University Malaysia Pahang
+>> Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+>>
+>
+>
+> --
+> *Roslinazairimah Zakaria*
+> *Tel: +609-5492370; Fax. No.+609-5492766*
+>
+> *Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+> roslinaump at gmail.com <roslinaump at gmail.com>*
+> Faculty of Industrial Sciences & Technology
+> University Malaysia Pahang
+> Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+>
+
+
+-- 
+*Roslinazairimah Zakaria*
+*Tel: +609-5492370; Fax. No.+609-5492766*
+
+*Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+roslinaump at gmail.com <roslinaump at gmail.com>*
+Faculty of Industrial Sciences & Technology
+University Malaysia Pahang
+Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+
+	[[alternative HTML version deleted]]
+
+
+From drj|m|emon @end|ng |rom gm@||@com  Tue Jul 19 09:05:45 2022
+From: drj|m|emon @end|ng |rom gm@||@com (Jim Lemon)
+Date: Tue, 19 Jul 2022 17:05:45 +1000
+Subject: [R] Extract time and state of charge (Start and End) and Count
+In-Reply-To: <CANTvJZKmoRdCq18BuzrXD7n4Y1MadfSehJb6rJPMyO5TjjtTpg@mail.gmail.com>
+References: <CANTvJZKmoRdCq18BuzrXD7n4Y1MadfSehJb6rJPMyO5TjjtTpg@mail.gmail.com>
+Message-ID: <CA+8X3fVKvf220aOQp-mm1cKtkz+gmyL5Qd6O5WV7ABv3QrP3Rw@mail.gmail.com>
+
+Hi Roslina,
+The following gives you the state of charge for the vehicle in your
+example data for each hour. This is approximate as your times are not
+on even hours.
+
+# get the temporal order of observations
+obs_order<-order(c(as.numeric(dt_2014$bc_start),as.numeric(dt_2014$bc_stop)))
+numeric_time<-c(as.numeric(dt_2014$bc_start),as.numeric(dt_2014$bc_stop))[obs_order]
+nobs<-diff(range(numeric_time))/3600
+# find the linear approximation of charge state by hours
+hourly_SoC<-approx(numeric_time,
+ c(dt_2014$Starting_SoC_of_12,dt_2014$Ending_SoC_of_12)[obs_order],n=nobs)
+
+To get the POSIX times:
+
+hourly_POSIX<-seq(dt_2014$bc_start[1],dt_2014$bc_stop,length.out=nobs)
+
+That will fill part of your table. If you want the state of charge by
+hour regardless of day, you'll have to create a new "hour" variable
+from, hourly_POSIX, then:
+
+mean_charge_by_hour<-by(hourly_SoC$hour,hourly_SoC$y,mean) #untested
+since I don't know whether you want this
+
+Jim
+
+On Mon, Jul 18, 2022 at 2:04 PM roslinazairimah zakaria
+<roslinaump at gmail.com> wrote:
+>
+> Dear all,
+>
+> I have data of Battery Electric vehicle (BEV). I would like to extract data
+> from every hour starting from 0.00 to 0.59, 1:00-1:59 for SOC(state of
+> charge) start to end.
+>
+> Some examples:
+> I can extract data from SOC=0 and SOC=12
+> dt_2014[which(dt_2014$Starting_SoC_of_12==0 &
+> dt_2014$Ending_SoC_of_12==12),]
+>
+> I can extract data from SOC=1 and SOC=12
+> dt_2014[which(dt_2014$Starting_SoC_of_12==1 &
+> dt_2014$Ending_SoC_of_12==12),]
+>
+> and I would like to further categorise the data by hour and count how many
+> cars from 0 state charge to 12 state charge at in that particular hour.
+>
+> Thank you so much for any help given.
+>
+> Some data
+> > dput(dt_2014[1:10,])
+> structure(list(?..CarID = c("GC10", "GC10", "GC10", "GC10", "GC10",
+> "GC10", "GC10", "GC10", "GC10", "GC10"), BatteryChargeStartDate =
+> c("16/2/2014 16:05",
+> "16/2/2014 18:20", "17/2/2014 8:10", "18/2/2014 7:41", "18/2/2014 15:36",
+> "18/2/2014 16:36", "18/2/2014 21:26", "19/2/2014 8:57", "19/2/2014 21:08",
+> "20/2/2014 18:11"), BCStartTime = c("16:05", "18:20", "8:10",
+> "7:41", "15:36", "16:36", "21:26", "8:57", "21:08", "18:11"),
+>     Year = c(2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L,
+>     2014L, 2014L, 2014L), Month = c(2L, 2L, 2L, 2L, 2L, 2L, 2L,
+>     2L, 2L, 2L), Day = c(16L, 16L, 17L, 18L, 18L, 18L, 18L, 19L,
+>     19L, 20L), BatteryChargeStopDate = c("16/2/2014 17:05", "16/2/2014
+> 19:00",
+>     "17/2/2014 15:57", "18/2/2014 9:52", "18/2/2014 15:39", "18/2/2014
+> 17:36",
+>     "19/2/2014 1:55", "19/2/2014 14:25", "20/2/2014 5:17", "20/2/2014 23:20"
+>     ), BCStopTime = c("17:05", "19:00", "15:57", "9:52", "15:39",
+>     "17:36", "1:55", "14:25", "5:17", "23:20"), Year2 = c(2014L,
+>     2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L
+>     ), Month2 = c(2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L), Day2 = c(16L,
+>     16L, 17L, 18L, 18L, 18L, 19L, 19L, 20L, 20L), Starting_SoC_of_12 =
+> c(1L,
+>     2L, 4L, 5L, 4L, 2L, 8L, 8L, 4L, 8L), Ending_SoC_of_12 = c(11L,
+>     11L, 12L, 8L, 4L, 10L, 12L, 12L, 12L, 12L)), row.names = c(NA,
+> 10L), class = "data.frame")
+>
+>
+> --
+> *Roslinazairimah Zakaria*
+> *Tel: +609-5492370; Fax. No.+609-5492766*
+>
+> *Email: roslinaump at gmail.com <roslinaump at gmail.com>*
+> University Malaysia Pahang
+> Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ro@||n@ump @end|ng |rom gm@||@com  Tue Jul 19 09:22:06 2022
+From: ro@||n@ump @end|ng |rom gm@||@com (roslinazairimah zakaria)
+Date: Tue, 19 Jul 2022 15:22:06 +0800
+Subject: [R] Extract time and state of charge (Start and End) and Count
+In-Reply-To: <CA+8X3fVKvf220aOQp-mm1cKtkz+gmyL5Qd6O5WV7ABv3QrP3Rw@mail.gmail.com>
+References: <CANTvJZKmoRdCq18BuzrXD7n4Y1MadfSehJb6rJPMyO5TjjtTpg@mail.gmail.com>
+ <CA+8X3fVKvf220aOQp-mm1cKtkz+gmyL5Qd6O5WV7ABv3QrP3Rw@mail.gmail.com>
+Message-ID: <CANTvJZKhpMkN4Bhfy0d4p07HncWtt_C-PyLKQ+LS62E5yfbjNw@mail.gmail.com>
+
+Jim,
+
+Thank you so much!
+
+On Tue, Jul 19, 2022 at 3:05 PM Jim Lemon <drjimlemon at gmail.com> wrote:
+
+> Hi Roslina,
+> The following gives you the state of charge for the vehicle in your
+> example data for each hour. This is approximate as your times are not
+> on even hours.
+>
+> # get the temporal order of observations
+>
+> obs_order<-order(c(as.numeric(dt_2014$bc_start),as.numeric(dt_2014$bc_stop)))
+>
+> numeric_time<-c(as.numeric(dt_2014$bc_start),as.numeric(dt_2014$bc_stop))[obs_order]
+> nobs<-diff(range(numeric_time))/3600
+> # find the linear approximation of charge state by hours
+> hourly_SoC<-approx(numeric_time,
+>  c(dt_2014$Starting_SoC_of_12,dt_2014$Ending_SoC_of_12)[obs_order],n=nobs)
+>
+> To get the POSIX times:
+>
+> hourly_POSIX<-seq(dt_2014$bc_start[1],dt_2014$bc_stop,length.out=nobs)
+>
+> That will fill part of your table. If you want the state of charge by
+> hour regardless of day, you'll have to create a new "hour" variable
+> from, hourly_POSIX, then:
+>
+> mean_charge_by_hour<-by(hourly_SoC$hour,hourly_SoC$y,mean) #untested
+> since I don't know whether you want this
+>
+> Jim
+>
+> On Mon, Jul 18, 2022 at 2:04 PM roslinazairimah zakaria
+> <roslinaump at gmail.com> wrote:
+> >
+> > Dear all,
+> >
+> > I have data of Battery Electric vehicle (BEV). I would like to extract
+> data
+> > from every hour starting from 0.00 to 0.59, 1:00-1:59 for SOC(state of
+> > charge) start to end.
+> >
+> > Some examples:
+> > I can extract data from SOC=0 and SOC=12
+> > dt_2014[which(dt_2014$Starting_SoC_of_12==0 &
+> > dt_2014$Ending_SoC_of_12==12),]
+> >
+> > I can extract data from SOC=1 and SOC=12
+> > dt_2014[which(dt_2014$Starting_SoC_of_12==1 &
+> > dt_2014$Ending_SoC_of_12==12),]
+> >
+> > and I would like to further categorise the data by hour and count how
+> many
+> > cars from 0 state charge to 12 state charge at in that particular hour.
+> >
+> > Thank you so much for any help given.
+> >
+> > Some data
+> > > dput(dt_2014[1:10,])
+> > structure(list(?..CarID = c("GC10", "GC10", "GC10", "GC10", "GC10",
+> > "GC10", "GC10", "GC10", "GC10", "GC10"), BatteryChargeStartDate =
+> > c("16/2/2014 16:05",
+> > "16/2/2014 18:20", "17/2/2014 8:10", "18/2/2014 7:41", "18/2/2014 15:36",
+> > "18/2/2014 16:36", "18/2/2014 21:26", "19/2/2014 8:57", "19/2/2014
+> 21:08",
+> > "20/2/2014 18:11"), BCStartTime = c("16:05", "18:20", "8:10",
+> > "7:41", "15:36", "16:36", "21:26", "8:57", "21:08", "18:11"),
+> >     Year = c(2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L,
+> >     2014L, 2014L, 2014L), Month = c(2L, 2L, 2L, 2L, 2L, 2L, 2L,
+> >     2L, 2L, 2L), Day = c(16L, 16L, 17L, 18L, 18L, 18L, 18L, 19L,
+> >     19L, 20L), BatteryChargeStopDate = c("16/2/2014 17:05", "16/2/2014
+> > 19:00",
+> >     "17/2/2014 15:57", "18/2/2014 9:52", "18/2/2014 15:39", "18/2/2014
+> > 17:36",
+> >     "19/2/2014 1:55", "19/2/2014 14:25", "20/2/2014 5:17", "20/2/2014
+> 23:20"
+> >     ), BCStopTime = c("17:05", "19:00", "15:57", "9:52", "15:39",
+> >     "17:36", "1:55", "14:25", "5:17", "23:20"), Year2 = c(2014L,
+> >     2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L
+> >     ), Month2 = c(2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L), Day2 = c(16L,
+> >     16L, 17L, 18L, 18L, 18L, 19L, 19L, 20L, 20L), Starting_SoC_of_12 =
+> > c(1L,
+> >     2L, 4L, 5L, 4L, 2L, 8L, 8L, 4L, 8L), Ending_SoC_of_12 = c(11L,
+> >     11L, 12L, 8L, 4L, 10L, 12L, 12L, 12L, 12L)), row.names = c(NA,
+> > 10L), class = "data.frame")
+> >
+> >
+> > --
+> > *Roslinazairimah Zakaria*
+> > *Tel: +609-5492370; Fax. No.+609-5492766*
+> >
+> > *Email: roslinaump at gmail.com <roslinaump at gmail.com>*
+> > University Malaysia Pahang
+> > Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+-- 
+*Roslinazairimah Zakaria*
+*Tel: +609-5492370; Fax. No.+609-5492766*
+
+*Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+roslinaump at gmail.com <roslinaump at gmail.com>*
+Faculty of Industrial Sciences & Technology
+University Malaysia Pahang
+Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+
+	[[alternative HTML version deleted]]
+
+
+From ro@||n@ump @end|ng |rom gm@||@com  Tue Jul 19 10:53:10 2022
+From: ro@||n@ump @end|ng |rom gm@||@com (roslinazairimah zakaria)
+Date: Tue, 19 Jul 2022 16:53:10 +0800
+Subject: [R] Extract time and state of charge (Start and End) and Count
+In-Reply-To: <a4a57470-481e-ad36-a577-eb54497a50da@sapo.pt>
+References: <CANTvJZKmoRdCq18BuzrXD7n4Y1MadfSehJb6rJPMyO5TjjtTpg@mail.gmail.com>
+ <a4a57470-481e-ad36-a577-eb54497a50da@sapo.pt>
+Message-ID: <CANTvJZL40HD9ZGpr1SJwVQzd4yd3p8jZxUH6SittGqXuBgDrhA@mail.gmail.com>
+
+Hi Rui,
+
+Yes, I would like to count for each hour, how many in the state of charge
+start 0 and SOC 12, then SOC 1 and SOC 12 and so on.
+
+Thank you for your help.
+
+On Tue, Jul 19, 2022 at 1:11 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+
+> Hello,
+>
+> I'm not sure I understand the problem. Do you want counts of how many
+> rows are there per hour?
+>
+>
+> # these columns need to be fixed
+> cols <- c("BatteryChargeStartDate", "BatteryChargeStopDate")
+> dt_2014[cols] <- lapply(dt_2014[cols], \(x) sub("\n", " ", x))
+> # use package lubridate to coerce to a datetime class
+> dt_2014[cols] <- lapply(dt_2014[cols], lubridate::dmy_hm)
+>
+> h <- lubridate::hour(dt_2014[["BatteryChargeStartDate"]])
+> aggregate(Starting_SoC_of_12 ~ h, dt_2014, length)
+>
+>
+>
+> It would be better if you post the expected output corresponding to the
+> posted data set.
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+> ?s 05:04 de 18/07/2022, roslinazairimah zakaria escreveu:
+> > Dear all,
+> >
+> > I have data of Battery Electric vehicle (BEV). I would like to extract
+> data
+> > from every hour starting from 0.00 to 0.59, 1:00-1:59 for SOC(state of
+> > charge) start to end.
+> >
+> > Some examples:
+> > I can extract data from SOC=0 and SOC=12
+> > dt_2014[which(dt_2014$Starting_SoC_of_12==0 &
+> > dt_2014$Ending_SoC_of_12==12),]
+> >
+> > I can extract data from SOC=1 and SOC=12
+> > dt_2014[which(dt_2014$Starting_SoC_of_12==1 &
+> > dt_2014$Ending_SoC_of_12==12),]
+> >
+> > and I would like to further categorise the data by hour and count how
+> many
+> > cars from 0 state charge to 12 state charge at in that particular hour.
+> >
+> > Thank you so much for any help given.
+> >
+> > Some data
+> >> dput(dt_2014[1:10,])
+> > structure(list(?..CarID = c("GC10", "GC10", "GC10", "GC10", "GC10",
+> > "GC10", "GC10", "GC10", "GC10", "GC10"), BatteryChargeStartDate =
+> > c("16/2/2014 16:05",
+> > "16/2/2014 18:20", "17/2/2014 8:10", "18/2/2014 7:41", "18/2/2014 15:36",
+> > "18/2/2014 16:36", "18/2/2014 21:26", "19/2/2014 8:57", "19/2/2014
+> 21:08",
+> > "20/2/2014 18:11"), BCStartTime = c("16:05", "18:20", "8:10",
+> > "7:41", "15:36", "16:36", "21:26", "8:57", "21:08", "18:11"),
+> >      Year = c(2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L,
+> >      2014L, 2014L, 2014L), Month = c(2L, 2L, 2L, 2L, 2L, 2L, 2L,
+> >      2L, 2L, 2L), Day = c(16L, 16L, 17L, 18L, 18L, 18L, 18L, 19L,
+> >      19L, 20L), BatteryChargeStopDate = c("16/2/2014 17:05", "16/2/2014
+> > 19:00",
+> >      "17/2/2014 15:57", "18/2/2014 9:52", "18/2/2014 15:39", "18/2/2014
+> > 17:36",
+> >      "19/2/2014 1:55", "19/2/2014 14:25", "20/2/2014 5:17", "20/2/2014
+> 23:20"
+> >      ), BCStopTime = c("17:05", "19:00", "15:57", "9:52", "15:39",
+> >      "17:36", "1:55", "14:25", "5:17", "23:20"), Year2 = c(2014L,
+> >      2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L
+> >      ), Month2 = c(2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L), Day2 = c(16L,
+> >      16L, 17L, 18L, 18L, 18L, 19L, 19L, 20L, 20L), Starting_SoC_of_12 =
+> > c(1L,
+> >      2L, 4L, 5L, 4L, 2L, 8L, 8L, 4L, 8L), Ending_SoC_of_12 = c(11L,
+> >      11L, 12L, 8L, 4L, 10L, 12L, 12L, 12L, 12L)), row.names = c(NA,
+> > 10L), class = "data.frame")
+> >
+> >
+>
+
+
+-- 
+*Roslinazairimah Zakaria*
+*Tel: +609-5492370; Fax. No.+609-5492766*
+
+*Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+roslinaump at gmail.com <roslinaump at gmail.com>*
+Faculty of Industrial Sciences & Technology
+University Malaysia Pahang
+Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+
+	[[alternative HTML version deleted]]
+
+
+From j@de@shod@@ m@iii@g oii googiem@ii@com  Tue Jul 19 17:07:42 2022
+From: j@de@shod@@ m@iii@g oii googiem@ii@com (j@de@shod@@ m@iii@g oii googiem@ii@com)
+Date: Tue, 19 Jul 2022 16:07:42 +0100
+Subject: [R] mgcv: relative risk from GAM with distributed lag
+Message-ID: <CANg3_k-18ND8DrwfYJmGAN5hq18QweZFPp4GhCuHwB=XFGAFiA@mail.gmail.com>
+
+Dear list members,
+
+Does anyone know how to obtain a relative risk/ risk ratio from a GAM
+with a distributed lag model implemented in mgcv? I have a GAM
+predicting daily deaths from time series data consisting of daily
+temperature, humidity and rainfall. The GAM includes a distributed lag
+model because deaths may occur over several days following a high heat
+day.
+
+What I'd like to do is compute (and plot) the relative risk
+(accumulated across all lags) for a given temperature vs the
+temperature at which the risk is lowest, with corresponding confidence
+intervals. I am aware of the predict.gam function but am not sure if
+and how it should be used in this case. (Additionally, I'd also like
+to plot the relative risk for different lags separately).
+
+I apologise if this seems trivial to some. (Actually, I hope it is,
+because that might mean I get a solution!) I've been looking for
+examples on how to do this, but found nothing so far. Suggestions
+would be very much appreciated!
+
+Below is a reproducible example with the GAM:
+
+library(mgcv)
+set.seed(3) # make reproducible example
+simdat <- gamSim(1,400) # simulate data
+g <- exp(simdat$f/5)
+simdat$y <- rnbinom(g,size=3,mu=g)  # negative binomial response var
+simdat$time <- 1:400  # create time series
+names(simdat) <- c("deaths", "temp", "humidity", "rain", "x3", "f",
+"f0", "f1", "f2", "f3", "time")
+
+# lag function based on Simon Wood (book 2017, p.349 and gamair
+package documentation p.54
+# https://cran.rstudio.com/web/packages/gamair/gamair.pdf)
+lagard <- function(x,n.lag=7) {
+n <- length(x); X <- matrix(NA,n,n.lag)
+for (i in 1:n.lag) X[i:n,i] <- x[i:n-i+1]
+X
+}
+
+# set up lag, temp, rain and humidity as 7-column matrices
+# to create lagged variables - based on Simon Wood's example
+dat <- list(lag=matrix(0:6,nrow(simdat),7,byrow=TRUE),
+deaths=simdat$deaths, time = simdat$time)
+dat$temp <- lagard(simdat$temp)
+dat$rain <- lagard(simdat$rain)
+dat$humidity <- lagard(simdat$humidity)
+
+mod <- gam(deaths~s(time, k=70) + te(temp, lag, k=c(12, 4)) +
+te(humidity, lag, k=c(12, 4)) + te(rain, lag, k=c(12, 4)), data = dat,
+family = nb, method = 'REML', select = TRUE)
+
+summary(mod)
+plot(mod, scheme = 1)
+plot(mod, scheme = 2)
+
+Thanks for any suggestions you may have,
+
+Jade
+
+
+From ro@||n@ump @end|ng |rom gm@||@com  Tue Jul 19 17:10:36 2022
+From: ro@||n@ump @end|ng |rom gm@||@com (roslinazairimah zakaria)
+Date: Tue, 19 Jul 2022 23:10:36 +0800
+Subject: [R] Extract time and state of charge (Start and End) and Count
+In-Reply-To: <CANTvJZL40HD9ZGpr1SJwVQzd4yd3p8jZxUH6SittGqXuBgDrhA@mail.gmail.com>
+References: <CANTvJZKmoRdCq18BuzrXD7n4Y1MadfSehJb6rJPMyO5TjjtTpg@mail.gmail.com>
+ <a4a57470-481e-ad36-a577-eb54497a50da@sapo.pt>
+ <CANTvJZL40HD9ZGpr1SJwVQzd4yd3p8jZxUH6SittGqXuBgDrhA@mail.gmail.com>
+Message-ID: <CANTvJZKR+Q-oBzp2NT+Hdu2Ze9haK-mgyt9h8EKPsKtFfzOYLA@mail.gmail.com>
+
+Hi Rui,
+I try to run your code, but all data became NA. Not sure why...
+# these columns need to be fixed
+cols <- c("BatteryChargeStartDate", "BatteryChargeStopDate")
+dt[cols] <- lapply(dt[cols], \(x) sub("\n", " ", x))
+
+# use package lubridate to coerce to a datetime class
+library(lubridate)
+
+dt <- lapply(dt, lubridate::dmy_hm)
+dt
+dt[cols] <- lapply(dt[cols], lubridate::dmy_hm)
+
+h <- lubridate::hour(dt[["BatteryChargeStartDate"]])
+aggregate(Starting_SoC_of_12 ~ h, dt, length)
+
+
+$BCStartTime
+   [1] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+NA NA NA NA NA NA NA NA NA
+  [33] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+NA NA NA NA NA NA NA NA NA
+  [65] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+NA NA NA NA NA NA NA NA NA
+  [97] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+NA NA NA NA NA NA NA NA NA
+ [129] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+NA NA NA NA NA NA NA NA NA
+ [161] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+NA NA NA NA NA NA NA NA NA
+ [193] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+NA NA NA NA NA NA NA NA NA
+ [225] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+NA NA NA NA NA NA NA NA NA
+ [257] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+NA NA NA NA NA NA NA NA NA
+ [289] NA NA NA NA NA NA NA NA
+
+ [929] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+NA NA NA NA NA NA NA NA NA
+ [961] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+NA NA NA NA NA NA NA NA NA
+ [993] NA NA NA NA NA NA NA NA
+ [ reached 'max' / getOption("max.print") -- omitted 34418 entries ]
+
+> dt[cols] <- lapply(dt[cols], lubridate::dmy_hm)
+Warning messages:
+1: All formats failed to parse. No formats found.
+2: All formats failed to parse. No formats found.
+>
+> h <- lubridate::hour(dt[["BatteryChargeStartDate"]])
+> aggregate(Starting_SoC_of_12 ~ h, dt, length)
+Error in aggregate.data.frame(lhs, mf[-1L], FUN = FUN, ...) :
+  no rows to aggregate
+
+On Tue, Jul 19, 2022 at 4:53 PM roslinazairimah zakaria <
+roslinaump at gmail.com> wrote:
+
+> Hi Rui,
+>
+> Yes, I would like to count for each hour, how many in the state of charge
+> start 0 and SOC 12, then SOC 1 and SOC 12 and so on.
+>
+> Thank you for your help.
+>
+> On Tue, Jul 19, 2022 at 1:11 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>
+>> Hello,
+>>
+>> I'm not sure I understand the problem. Do you want counts of how many
+>> rows are there per hour?
+>>
+>>
+>> # these columns need to be fixed
+>> cols <- c("BatteryChargeStartDate", "BatteryChargeStopDate")
+>> dt_2014[cols] <- lapply(dt_2014[cols], \(x) sub("\n", " ", x))
+>> # use package lubridate to coerce to a datetime class
+>> dt_2014[cols] <- lapply(dt_2014[cols], lubridate::dmy_hm)
+>>
+>> h <- lubridate::hour(dt_2014[["BatteryChargeStartDate"]])
+>> aggregate(Starting_SoC_of_12 ~ h, dt_2014, length)
+>>
+>>
+>>
+>> It would be better if you post the expected output corresponding to the
+>> posted data set.
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>> ?s 05:04 de 18/07/2022, roslinazairimah zakaria escreveu:
+>> > Dear all,
+>> >
+>> > I have data of Battery Electric vehicle (BEV). I would like to extract
+>> data
+>> > from every hour starting from 0.00 to 0.59, 1:00-1:59 for SOC(state of
+>> > charge) start to end.
+>> >
+>> > Some examples:
+>> > I can extract data from SOC=0 and SOC=12
+>> > dt_2014[which(dt_2014$Starting_SoC_of_12==0 &
+>> > dt_2014$Ending_SoC_of_12==12),]
+>> >
+>> > I can extract data from SOC=1 and SOC=12
+>> > dt_2014[which(dt_2014$Starting_SoC_of_12==1 &
+>> > dt_2014$Ending_SoC_of_12==12),]
+>> >
+>> > and I would like to further categorise the data by hour and count how
+>> many
+>> > cars from 0 state charge to 12 state charge at in that particular hour.
+>> >
+>> > Thank you so much for any help given.
+>> >
+>> > Some data
+>> >> dput(dt_2014[1:10,])
+>> > structure(list(?..CarID = c("GC10", "GC10", "GC10", "GC10", "GC10",
+>> > "GC10", "GC10", "GC10", "GC10", "GC10"), BatteryChargeStartDate =
+>> > c("16/2/2014 16:05",
+>> > "16/2/2014 18:20", "17/2/2014 8:10", "18/2/2014 7:41", "18/2/2014
+>> 15:36",
+>> > "18/2/2014 16:36", "18/2/2014 21:26", "19/2/2014 8:57", "19/2/2014
+>> 21:08",
+>> > "20/2/2014 18:11"), BCStartTime = c("16:05", "18:20", "8:10",
+>> > "7:41", "15:36", "16:36", "21:26", "8:57", "21:08", "18:11"),
+>> >      Year = c(2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L,
+>> >      2014L, 2014L, 2014L), Month = c(2L, 2L, 2L, 2L, 2L, 2L, 2L,
+>> >      2L, 2L, 2L), Day = c(16L, 16L, 17L, 18L, 18L, 18L, 18L, 19L,
+>> >      19L, 20L), BatteryChargeStopDate = c("16/2/2014 17:05", "16/2/2014
+>> > 19:00",
+>> >      "17/2/2014 15:57", "18/2/2014 9:52", "18/2/2014 15:39", "18/2/2014
+>> > 17:36",
+>> >      "19/2/2014 1:55", "19/2/2014 14:25", "20/2/2014 5:17", "20/2/2014
+>> 23:20"
+>> >      ), BCStopTime = c("17:05", "19:00", "15:57", "9:52", "15:39",
+>> >      "17:36", "1:55", "14:25", "5:17", "23:20"), Year2 = c(2014L,
+>> >      2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L
+>> >      ), Month2 = c(2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L), Day2 =
+>> c(16L,
+>> >      16L, 17L, 18L, 18L, 18L, 19L, 19L, 20L, 20L), Starting_SoC_of_12 =
+>> > c(1L,
+>> >      2L, 4L, 5L, 4L, 2L, 8L, 8L, 4L, 8L), Ending_SoC_of_12 = c(11L,
+>> >      11L, 12L, 8L, 4L, 10L, 12L, 12L, 12L, 12L)), row.names = c(NA,
+>> > 10L), class = "data.frame")
+>> >
+>> >
+>>
+>
+>
+> --
+> *Roslinazairimah Zakaria*
+> *Tel: +609-5492370; Fax. No.+609-5492766*
+>
+> *Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+> roslinaump at gmail.com <roslinaump at gmail.com>*
+> Faculty of Industrial Sciences & Technology
+> University Malaysia Pahang
+> Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+>
+
+
+-- 
+*Roslinazairimah Zakaria*
+*Tel: +609-5492370; Fax. No.+609-5492766*
+
+*Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+roslinaump at gmail.com <roslinaump at gmail.com>*
+Faculty of Industrial Sciences & Technology
+University Malaysia Pahang
+Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+
+	[[alternative HTML version deleted]]
+
+
+From ro@||n@ump @end|ng |rom gm@||@com  Tue Jul 19 17:18:04 2022
+From: ro@||n@ump @end|ng |rom gm@||@com (roslinazairimah zakaria)
+Date: Tue, 19 Jul 2022 23:18:04 +0800
+Subject: [R] Extract time and state of charge (Start and End) and Count
+In-Reply-To: <CANTvJZKhpMkN4Bhfy0d4p07HncWtt_C-PyLKQ+LS62E5yfbjNw@mail.gmail.com>
+References: <CANTvJZKmoRdCq18BuzrXD7n4Y1MadfSehJb6rJPMyO5TjjtTpg@mail.gmail.com>
+ <CA+8X3fVKvf220aOQp-mm1cKtkz+gmyL5Qd6O5WV7ABv3QrP3Rw@mail.gmail.com>
+ <CANTvJZKhpMkN4Bhfy0d4p07HncWtt_C-PyLKQ+LS62E5yfbjNw@mail.gmail.com>
+Message-ID: <CANTvJZ++YKuq+JsbiujeaRSfkPgkY33g_GuhhHHUUpST3CieLQ@mail.gmail.com>
+
+Hi Jim,
+
+I tried to run your code and got this error.
+
+> # get the temporal order of observations
+> obs_order <-
+order(c(as.numeric(dt$BCStartTime),as.numeric(dt$BCStopTime)))
+Warning messages:
+1: In order(c(as.numeric(dt$BCStartTime), as.numeric(dt$BCStopTime))) :
+  NAs introduced by coercion
+2: In order(c(as.numeric(dt$BCStartTime), as.numeric(dt$BCStopTime))) :
+  NAs introduced by coercion
+>
+numeric_time<-c(as.numeric(dt$BCStartTime),as.numeric(dt$BCStopTime))[obs_order]
+Warning messages:
+1: NAs introduced by coercion
+2: NAs introduced by coercion
+> nobs<-diff(range(numeric_time))/3600
+> # find the linear approximation of charge state by hours
+> hourly_SoC <- approx(numeric_time,
++
+ c(dt$Starting_SoC_of_12,dt$Ending_SoC_of_12)[obs_order],n=nobs)
+Error in approx(numeric_time, c(dt$Starting_SoC_of_12,
+dt$Ending_SoC_of_12)[obs_order],  :
+  need at least two non-NA values to interpolate
+
+On Tue, Jul 19, 2022 at 3:22 PM roslinazairimah zakaria <
+roslinaump at gmail.com> wrote:
+
+> Jim,
+>
+> Thank you so much!
+>
+> On Tue, Jul 19, 2022 at 3:05 PM Jim Lemon <drjimlemon at gmail.com> wrote:
+>
+>> Hi Roslina,
+>> The following gives you the state of charge for the vehicle in your
+>> example data for each hour. This is approximate as your times are not
+>> on even hours.
+>>
+>> # get the temporal order of observations
+>>
+>> obs_order<-order(c(as.numeric(dt_2014$bc_start),as.numeric(dt_2014$bc_stop)))
+>>
+>> numeric_time<-c(as.numeric(dt_2014$bc_start),as.numeric(dt_2014$bc_stop))[obs_order]
+>> nobs<-diff(range(numeric_time))/3600
+>> # find the linear approximation of charge state by hours
+>> hourly_SoC<-approx(numeric_time,
+>>  c(dt_2014$Starting_SoC_of_12,dt_2014$Ending_SoC_of_12)[obs_order],n=nobs)
+>>
+>> To get the POSIX times:
+>>
+>> hourly_POSIX<-seq(dt_2014$bc_start[1],dt_2014$bc_stop,length.out=nobs)
+>>
+>> That will fill part of your table. If you want the state of charge by
+>> hour regardless of day, you'll have to create a new "hour" variable
+>> from, hourly_POSIX, then:
+>>
+>> mean_charge_by_hour<-by(hourly_SoC$hour,hourly_SoC$y,mean) #untested
+>> since I don't know whether you want this
+>>
+>> Jim
+>>
+>> On Mon, Jul 18, 2022 at 2:04 PM roslinazairimah zakaria
+>> <roslinaump at gmail.com> wrote:
+>> >
+>> > Dear all,
+>> >
+>> > I have data of Battery Electric vehicle (BEV). I would like to extract
+>> data
+>> > from every hour starting from 0.00 to 0.59, 1:00-1:59 for SOC(state of
+>> > charge) start to end.
+>> >
+>> > Some examples:
+>> > I can extract data from SOC=0 and SOC=12
+>> > dt_2014[which(dt_2014$Starting_SoC_of_12==0 &
+>> > dt_2014$Ending_SoC_of_12==12),]
+>> >
+>> > I can extract data from SOC=1 and SOC=12
+>> > dt_2014[which(dt_2014$Starting_SoC_of_12==1 &
+>> > dt_2014$Ending_SoC_of_12==12),]
+>> >
+>> > and I would like to further categorise the data by hour and count how
+>> many
+>> > cars from 0 state charge to 12 state charge at in that particular hour.
+>> >
+>> > Thank you so much for any help given.
+>> >
+>> > Some data
+>> > > dput(dt_2014[1:10,])
+>> > structure(list(?..CarID = c("GC10", "GC10", "GC10", "GC10", "GC10",
+>> > "GC10", "GC10", "GC10", "GC10", "GC10"), BatteryChargeStartDate =
+>> > c("16/2/2014 16:05",
+>> > "16/2/2014 18:20", "17/2/2014 8:10", "18/2/2014 7:41", "18/2/2014
+>> 15:36",
+>> > "18/2/2014 16:36", "18/2/2014 21:26", "19/2/2014 8:57", "19/2/2014
+>> 21:08",
+>> > "20/2/2014 18:11"), BCStartTime = c("16:05", "18:20", "8:10",
+>> > "7:41", "15:36", "16:36", "21:26", "8:57", "21:08", "18:11"),
+>> >     Year = c(2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L,
+>> >     2014L, 2014L, 2014L), Month = c(2L, 2L, 2L, 2L, 2L, 2L, 2L,
+>> >     2L, 2L, 2L), Day = c(16L, 16L, 17L, 18L, 18L, 18L, 18L, 19L,
+>> >     19L, 20L), BatteryChargeStopDate = c("16/2/2014 17:05", "16/2/2014
+>> > 19:00",
+>> >     "17/2/2014 15:57", "18/2/2014 9:52", "18/2/2014 15:39", "18/2/2014
+>> > 17:36",
+>> >     "19/2/2014 1:55", "19/2/2014 14:25", "20/2/2014 5:17", "20/2/2014
+>> 23:20"
+>> >     ), BCStopTime = c("17:05", "19:00", "15:57", "9:52", "15:39",
+>> >     "17:36", "1:55", "14:25", "5:17", "23:20"), Year2 = c(2014L,
+>> >     2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L
+>> >     ), Month2 = c(2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L), Day2 = c(16L,
+>> >     16L, 17L, 18L, 18L, 18L, 19L, 19L, 20L, 20L), Starting_SoC_of_12 =
+>> > c(1L,
+>> >     2L, 4L, 5L, 4L, 2L, 8L, 8L, 4L, 8L), Ending_SoC_of_12 = c(11L,
+>> >     11L, 12L, 8L, 4L, 10L, 12L, 12L, 12L, 12L)), row.names = c(NA,
+>> > 10L), class = "data.frame")
+>> >
+>> >
+>> > --
+>> > *Roslinazairimah Zakaria*
+>> > *Tel: +609-5492370; Fax. No.+609-5492766*
+>> >
+>> > *Email: roslinaump at gmail.com <roslinaump at gmail.com>*
+>> > University Malaysia Pahang
+>> > Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+>> >
+>> >         [[alternative HTML version deleted]]
+>> >
+>> > ______________________________________________
+>> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > https://stat.ethz.ch/mailman/listinfo/r-help
+>> > PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> > and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+>
+> --
+> *Roslinazairimah Zakaria*
+> *Tel: +609-5492370; Fax. No.+609-5492766*
+>
+> *Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+> roslinaump at gmail.com <roslinaump at gmail.com>*
+> Faculty of Industrial Sciences & Technology
+> University Malaysia Pahang
+> Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+>
+
+
+-- 
+*Roslinazairimah Zakaria*
+*Tel: +609-5492370; Fax. No.+609-5492766*
+
+*Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+roslinaump at gmail.com <roslinaump at gmail.com>*
+Faculty of Industrial Sciences & Technology
+University Malaysia Pahang
+Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Tue Jul 19 19:03:10 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 19 Jul 2022 18:03:10 +0100
+Subject: [R] Extract time and state of charge (Start and End) and Count
+In-Reply-To: <CANTvJZKR+Q-oBzp2NT+Hdu2Ze9haK-mgyt9h8EKPsKtFfzOYLA@mail.gmail.com>
+References: <CANTvJZKmoRdCq18BuzrXD7n4Y1MadfSehJb6rJPMyO5TjjtTpg@mail.gmail.com>
+ <a4a57470-481e-ad36-a577-eb54497a50da@sapo.pt>
+ <CANTvJZL40HD9ZGpr1SJwVQzd4yd3p8jZxUH6SittGqXuBgDrhA@mail.gmail.com>
+ <CANTvJZKR+Q-oBzp2NT+Hdu2Ze9haK-mgyt9h8EKPsKtFfzOYLA@mail.gmail.com>
+Message-ID: <cec03bcc-c407-185a-e626-8e7e05e913df@sapo.pt>
+
+Hello,
+
+There was a bug in the way I copied&pasted your data to my R session, 
+hence the NA's.
+
+Here is a tidyverse way of doing what you want. Its output matches the 
+expected output in your last post. The column names don't start at zero 
+because there was no Starting_SoC_of_12 equal to 0.
+
+
+library(tidyverse)
+
+result <- dt_2014 %>%
+   mutate(Hour = lubridate::hour(BatteryChargeStartDate)) %>%
+   group_by(Hour, Starting_SoC_of_12, Ending_SoC_of_12) %>%
+   mutate(Count = n()) %>%
+   ungroup() %>%
+   arrange(Hour, Starting_SoC_of_12, Ending_SoC_of_12) %>%
+   pivot_wider(
+     id_cols = Hour,
+     names_from = c(Starting_SoC_of_12, Ending_SoC_of_12),
+     names_sep = "-",
+     values_from = Count,
+     values_fill = 0L
+   )
+
+i <- str_order(names(result)[-1], numeric = TRUE)
+result <- cbind(result[1], result[-1][i])
+result
+#  Hour 1-11 2-10 2-11 4-4 4-12 5-8 8-12
+#1    7    0    0    0   0    0   1    0
+#2    8    0    0    0   0    1   0    1
+#3   15    0    0    0   1    0   0    0
+#4   16    1    1    0   0    0   0    0
+#5   18    0    0    1   0    0   0    1
+#6   21    0    0    0   0    1   0    1
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+?s 16:10 de 19/07/2022, roslinazairimah zakaria escreveu:
+> Hi Rui,
+> I try to run your code, but all data became NA. Not sure why...
+> # these columns need to be fixed
+> cols <- c("BatteryChargeStartDate", "BatteryChargeStopDate")
+> dt[cols] <- lapply(dt[cols], \(x) sub("\n", " ", x))
+> 
+> # use package lubridate to coerce to a datetime class
+> library(lubridate)
+> 
+> dt <- lapply(dt, lubridate::dmy_hm)
+> dt
+> dt[cols] <- lapply(dt[cols], lubridate::dmy_hm)
+> 
+> h <- lubridate::hour(dt[["BatteryChargeStartDate"]])
+> aggregate(Starting_SoC_of_12 ~ h, dt, length)
+> 
+> 
+> $BCStartTime
+>     [1] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+> NA NA NA NA NA NA NA NA NA
+>    [33] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+> NA NA NA NA NA NA NA NA NA
+>    [65] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+> NA NA NA NA NA NA NA NA NA
+>    [97] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+> NA NA NA NA NA NA NA NA NA
+>   [129] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+> NA NA NA NA NA NA NA NA NA
+>   [161] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+> NA NA NA NA NA NA NA NA NA
+>   [193] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+> NA NA NA NA NA NA NA NA NA
+>   [225] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+> NA NA NA NA NA NA NA NA NA
+>   [257] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+> NA NA NA NA NA NA NA NA NA
+>   [289] NA NA NA NA NA NA NA NA
+> 
+>   [929] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+> NA NA NA NA NA NA NA NA NA
+>   [961] NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA NA
+> NA NA NA NA NA NA NA NA NA
+>   [993] NA NA NA NA NA NA NA NA
+>   [ reached 'max' / getOption("max.print") -- omitted 34418 entries ]
+> 
+>> dt[cols] <- lapply(dt[cols], lubridate::dmy_hm)
+> Warning messages:
+> 1: All formats failed to parse. No formats found.
+> 2: All formats failed to parse. No formats found.
+>>
+>> h <- lubridate::hour(dt[["BatteryChargeStartDate"]])
+>> aggregate(Starting_SoC_of_12 ~ h, dt, length)
+> Error in aggregate.data.frame(lhs, mf[-1L], FUN = FUN, ...) :
+>    no rows to aggregate
+> 
+> On Tue, Jul 19, 2022 at 4:53 PM roslinazairimah zakaria <
+> roslinaump at gmail.com> wrote:
+> 
+>> Hi Rui,
+>>
+>> Yes, I would like to count for each hour, how many in the state of charge
+>> start 0 and SOC 12, then SOC 1 and SOC 12 and so on.
+>>
+>> Thank you for your help.
+>>
+>> On Tue, Jul 19, 2022 at 1:11 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>>
+>>> Hello,
+>>>
+>>> I'm not sure I understand the problem. Do you want counts of how many
+>>> rows are there per hour?
+>>>
+>>>
+>>> # these columns need to be fixed
+>>> cols <- c("BatteryChargeStartDate", "BatteryChargeStopDate")
+>>> dt_2014[cols] <- lapply(dt_2014[cols], \(x) sub("\n", " ", x))
+>>> # use package lubridate to coerce to a datetime class
+>>> dt_2014[cols] <- lapply(dt_2014[cols], lubridate::dmy_hm)
+>>>
+>>> h <- lubridate::hour(dt_2014[["BatteryChargeStartDate"]])
+>>> aggregate(Starting_SoC_of_12 ~ h, dt_2014, length)
+>>>
+>>>
+>>>
+>>> It would be better if you post the expected output corresponding to the
+>>> posted data set.
+>>>
+>>> Hope this helps,
+>>>
+>>> Rui Barradas
+>>>
+>>> ?s 05:04 de 18/07/2022, roslinazairimah zakaria escreveu:
+>>>> Dear all,
+>>>>
+>>>> I have data of Battery Electric vehicle (BEV). I would like to extract
+>>> data
+>>>> from every hour starting from 0.00 to 0.59, 1:00-1:59 for SOC(state of
+>>>> charge) start to end.
+>>>>
+>>>> Some examples:
+>>>> I can extract data from SOC=0 and SOC=12
+>>>> dt_2014[which(dt_2014$Starting_SoC_of_12==0 &
+>>>> dt_2014$Ending_SoC_of_12==12),]
+>>>>
+>>>> I can extract data from SOC=1 and SOC=12
+>>>> dt_2014[which(dt_2014$Starting_SoC_of_12==1 &
+>>>> dt_2014$Ending_SoC_of_12==12),]
+>>>>
+>>>> and I would like to further categorise the data by hour and count how
+>>> many
+>>>> cars from 0 state charge to 12 state charge at in that particular hour.
+>>>>
+>>>> Thank you so much for any help given.
+>>>>
+>>>> Some data
+>>>>> dput(dt_2014[1:10,])
+>>>> structure(list(?..CarID = c("GC10", "GC10", "GC10", "GC10", "GC10",
+>>>> "GC10", "GC10", "GC10", "GC10", "GC10"), BatteryChargeStartDate =
+>>>> c("16/2/2014 16:05",
+>>>> "16/2/2014 18:20", "17/2/2014 8:10", "18/2/2014 7:41", "18/2/2014
+>>> 15:36",
+>>>> "18/2/2014 16:36", "18/2/2014 21:26", "19/2/2014 8:57", "19/2/2014
+>>> 21:08",
+>>>> "20/2/2014 18:11"), BCStartTime = c("16:05", "18:20", "8:10",
+>>>> "7:41", "15:36", "16:36", "21:26", "8:57", "21:08", "18:11"),
+>>>>       Year = c(2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L,
+>>>>       2014L, 2014L, 2014L), Month = c(2L, 2L, 2L, 2L, 2L, 2L, 2L,
+>>>>       2L, 2L, 2L), Day = c(16L, 16L, 17L, 18L, 18L, 18L, 18L, 19L,
+>>>>       19L, 20L), BatteryChargeStopDate = c("16/2/2014 17:05", "16/2/2014
+>>>> 19:00",
+>>>>       "17/2/2014 15:57", "18/2/2014 9:52", "18/2/2014 15:39", "18/2/2014
+>>>> 17:36",
+>>>>       "19/2/2014 1:55", "19/2/2014 14:25", "20/2/2014 5:17", "20/2/2014
+>>> 23:20"
+>>>>       ), BCStopTime = c("17:05", "19:00", "15:57", "9:52", "15:39",
+>>>>       "17:36", "1:55", "14:25", "5:17", "23:20"), Year2 = c(2014L,
+>>>>       2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L, 2014L
+>>>>       ), Month2 = c(2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L), Day2 =
+>>> c(16L,
+>>>>       16L, 17L, 18L, 18L, 18L, 19L, 19L, 20L, 20L), Starting_SoC_of_12 =
+>>>> c(1L,
+>>>>       2L, 4L, 5L, 4L, 2L, 8L, 8L, 4L, 8L), Ending_SoC_of_12 = c(11L,
+>>>>       11L, 12L, 8L, 4L, 10L, 12L, 12L, 12L, 12L)), row.names = c(NA,
+>>>> 10L), class = "data.frame")
+>>>>
+>>>>
+>>>
+>>
+>>
+>> --
+>> *Roslinazairimah Zakaria*
+>> *Tel: +609-5492370; Fax. No.+609-5492766*
+>>
+>> *Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+>> roslinaump at gmail.com <roslinaump at gmail.com>*
+>> Faculty of Industrial Sciences & Technology
+>> University Malaysia Pahang
+>> Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+>>
+> 
+>
+
+
+From r@njeetjh@||tkgp @end|ng |rom gm@||@com  Tue Jul 19 15:07:02 2022
+From: r@njeetjh@||tkgp @end|ng |rom gm@||@com (Ranjeet Kumar Jha)
+Date: Tue, 19 Jul 2022 18:37:02 +0530
+Subject: [R] Need panel plots by each state, comprising three columns in R
+Message-ID: <CAJfMH3rWJ76dh=z8OWzH1TuoDxyQFS9dDk+pqPYoREW_XXHtZw@mail.gmail.com>
+
+Hello,
+
+I need to draw a panel plot by each importing the attached csv data (sample
+panel plot attached as well). Each state should contain three columns-  wt,
+avg, and observed, may be represented as legend or x-axis, and y-axis
+should show values.
+I tried doing it in ggplot in R but couldn't succeed.
+Please help plotting this panel plot.
+
+Thanks,
+Ranjeet
+
+From tebert @end|ng |rom u||@edu  Tue Jul 19 21:07:56 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Tue, 19 Jul 2022 19:07:56 +0000
+Subject: [R] 
+ Need panel plots by each state, comprising three columns in R
+In-Reply-To: <CAJfMH3rWJ76dh=z8OWzH1TuoDxyQFS9dDk+pqPYoREW_XXHtZw@mail.gmail.com>
+References: <CAJfMH3rWJ76dh=z8OWzH1TuoDxyQFS9dDk+pqPYoREW_XXHtZw@mail.gmail.com>
+Message-ID: <BN6PR2201MB15533A21C64BC02FE7193893CF8F9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+1) Please provide data that is enough similar to your real data that our answer is relevant to you.
+2) Please provide any code that you have written that shows an attempt to solve the problem.
+3) It sounds like you have a very specific output in mind. Possibly something that you saw and want to get something similar with your data. Please provide that.
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Ranjeet Kumar Jha
+Sent: Tuesday, July 19, 2022 9:07 AM
+To: R-help <r-help at r-project.org>; R-sig-geo Mailing List <r-sig-geo at r-project.org>
+Subject: [R] Need panel plots by each state, comprising three columns in R
+
+[External Email]
+
+Hello,
+
+I need to draw a panel plot by each importing the attached csv data (sample panel plot attached as well). Each state should contain three columns-  wt, avg, and observed, may be represented as legend or x-axis, and y-axis should show values.
+I tried doing it in ggplot in R but couldn't succeed.
+Please help plotting this panel plot.
+
+Thanks,
+Ranjeet
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://urldefense.proofpoint.com/v2/url?u=https-3A__stat.ethz.ch_mailman_listinfo_r-2Dhelp&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=w8CWnBvjECi18ouLm7eoGpvGdE7QY5Z64EzBv2mmRj5mak8eDuHQHV6rfNOMqh4f&s=XwTpHoCasKF0UCY0Bv18mWRGjKEqq8TY_X72bey725w&e=
+PLEASE do read the posting guide https://urldefense.proofpoint.com/v2/url?u=http-3A__www.R-2Dproject.org_posting-2Dguide.html&d=DwICAg&c=sJ6xIWYx-zLMB3EPkvcnVg&r=9PEhQh2kVeAsRzsn7AkP-g&m=w8CWnBvjECi18ouLm7eoGpvGdE7QY5Z64EzBv2mmRj5mak8eDuHQHV6rfNOMqh4f&s=TNtv-h4GV-fuOlbw4zbSr8qI90dDExP3uHxc-Heb6Pc&e=
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From jrkr|de@u @end|ng |rom gm@||@com  Tue Jul 19 22:03:08 2022
+From: jrkr|de@u @end|ng |rom gm@||@com (John Kane)
+Date: Tue, 19 Jul 2022 16:03:08 -0400
+Subject: [R] 
+ Need panel plots by each state, comprising three columns in R
+In-Reply-To: <CAJfMH3rWJ76dh=z8OWzH1TuoDxyQFS9dDk+pqPYoREW_XXHtZw@mail.gmail.com>
+References: <CAJfMH3rWJ76dh=z8OWzH1TuoDxyQFS9dDk+pqPYoREW_XXHtZw@mail.gmail.com>
+Message-ID: <CAKZQJMD72HukveL1nzpO4taEyAA_SUQVdfEQj_8mpNnP3uNQVw@mail.gmail.com>
+
+Neither data or plot made it through the spam filtres.  A handy way to
+supply some sample data is the dput() function.  In the case of a
+large dataset something like dput(head(mydata, 100)) should supply the
+data we need. Just copy and paste the output in your e-mail.  For the
+plot, .pdf seems most likely to work.
+
+On Tue, 19 Jul 2022 at 14:00, Ranjeet Kumar Jha
+<ranjeetjhaiitkgp at gmail.com> wrote:
+>
+> Hello,
+>
+> I need to draw a panel plot by each importing the attached csv data (sample
+> panel plot attached as well). Each state should contain three columns-  wt,
+> avg, and observed, may be represented as legend or x-axis, and y-axis
+> should show values.
+> I tried doing it in ggplot in R but couldn't succeed.
+> Please help plotting this panel plot.
+>
+> Thanks,
+> Ranjeet
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+John Kane
+Kingston ON Canada
+
+
+From drj|m|emon @end|ng |rom gm@||@com  Wed Jul 20 02:49:00 2022
+From: drj|m|emon @end|ng |rom gm@||@com (Jim Lemon)
+Date: Wed, 20 Jul 2022 10:49:00 +1000
+Subject: [R] Extract time and state of charge (Start and End) and Count
+In-Reply-To: <CANTvJZ++YKuq+JsbiujeaRSfkPgkY33g_GuhhHHUUpST3CieLQ@mail.gmail.com>
+References: <CANTvJZKmoRdCq18BuzrXD7n4Y1MadfSehJb6rJPMyO5TjjtTpg@mail.gmail.com>
+ <CA+8X3fVKvf220aOQp-mm1cKtkz+gmyL5Qd6O5WV7ABv3QrP3Rw@mail.gmail.com>
+ <CANTvJZKhpMkN4Bhfy0d4p07HncWtt_C-PyLKQ+LS62E5yfbjNw@mail.gmail.com>
+ <CANTvJZ++YKuq+JsbiujeaRSfkPgkY33g_GuhhHHUUpST3CieLQ@mail.gmail.com>
+Message-ID: <CA+8X3fWsD0ECXabR-kQYs+=UvxR5ax7UJQzcwGzvm55AMFhyYA@mail.gmail.com>
+
+Hi Roslina,
+I think you have changed the code as "bc_start" in my code is
+"BCStartTime" in yours. When I run the attached code, I get a data
+frame "hourly_SoC" that looks right, and a matrix "result" (hour by
+SoC) that checks against the data frame. I have tried to comment the
+code so that you an see what I am doing.
+
+Jim
+
+On Wed, Jul 20, 2022 at 1:18 AM roslinazairimah zakaria
+<roslinaump at gmail.com> wrote:
+>
+> Hi Jim,
+>
+> I tried to run your code and got this error.
+>
+> > # get the temporal order of observations
+> > obs_order <- order(c(as.numeric(dt$BCStartTime),as.numeric(dt$BCStopTime)))
+> Warning messages:
+> 1: In order(c(as.numeric(dt$BCStartTime), as.numeric(dt$BCStopTime))) :
+>   NAs introduced by coercion
+> 2: In order(c(as.numeric(dt$BCStartTime), as.numeric(dt$BCStopTime))) :
+>   NAs introduced by coercion
+> > numeric_time<-c(as.numeric(dt$BCStartTime),as.numeric(dt$BCStopTime))[obs_order]
+> Warning messages:
+> 1: NAs introduced by coercion
+> 2: NAs introduced by coercion
+> > nobs<-diff(range(numeric_time))/3600
+> > # find the linear approximation of charge state by hours
+> > hourly_SoC <- approx(numeric_time,
+> +                    c(dt$Starting_SoC_of_12,dt$Ending_SoC_of_12)[obs_order],n=nobs)
+> Error in approx(numeric_time, c(dt$Starting_SoC_of_12, dt$Ending_SoC_of_12)[obs_order],  :
+>   need at least two non-NA values to interpolate
+>
+
