@@ -21757,3 +21757,774 @@ On Tue, 19 Jul 2022 at 16:07, jade.shodan at googlemail.com
 > Jade
 
 
+From @|mon@wood @end|ng |rom b@th@edu  Fri Jul 22 10:54:00 2022
+From: @|mon@wood @end|ng |rom b@th@edu (Simon Wood)
+Date: Fri, 22 Jul 2022 09:54:00 +0100
+Subject: [R] mgcv: relative risk from GAM with distributed lag
+In-Reply-To: <CANg3_k9=GhwRjPyuLQBYmxD8Q-ksPrM52tS7DW0Cv3cpKn00Zw@mail.gmail.com>
+References: <CANg3_k-18ND8DrwfYJmGAN5hq18QweZFPp4GhCuHwB=XFGAFiA@mail.gmail.com>
+ <CANg3_k9=GhwRjPyuLQBYmxD8Q-ksPrM52tS7DW0Cv3cpKn00Zw@mail.gmail.com>
+Message-ID: <e0f4395b-e1cf-abfa-e4d4-ee3dd519887e@bath.edu>
+
+
+On 21/07/2022 15:19, jade.shodan--- via R-help wrote:
+> Hello everyone (incl. Simon Wood?),
+>
+> I'm not sure that my original question (see below, including
+> reproducible example) was as clear as it could have been. To clarify,
+> what I would to like to get is:
+>
+> 1) a perspective plot of temperature x lag x relative risk.  I know
+> how to use plot.gam and vis.gam but don't know how to get plots on the
+> relative risk scale as opposed to  "response" or "link".
+
+- You are on the log scale so I think that all you need to do is to use 
+'predict.gam', with 'type = "terms"' to? get the predictions for the 
+te(temp, lag) term over the required grid of lags and temperatures. 
+Suppose the dataframe of prediction data is 'pd'. Now produce pd0, which 
+is identical to pd, except that the temperatures are all set to the 
+reference temperature. Use predict.gam to predict te(temp,lag) from pd0. 
+Now the exponential of the difference between the first and second 
+predictions is the required RR, which you can plot using 'persp', 
+'contour', 'image' or whatever. If you need credible intervals see pages 
+341-343 of my 'GAMs: An intro with R' book (2nd ed).
+
+> 2) a plot of relative risk (accumulated across all lags) vs
+> temperature, given a reference temperature. An example of such a plot
+> can be found in figure 2 (bottom) of this paper by Gasparrini et al:
+> https://onlinelibrary.wiley.com/doi/abs/10.1002/sim.3940
+
+- I guess this only makes sense if you have the same temperature at all 
+lags. So this time produce a data.frame with each desired temperature 
+repeated for each lag: 'pd1'. Again use predict.gam(...,type="terms"). 
+Then sum the predictions over lags for each temperature, subtract the 
+minimum, and take the exponential. Same as above for CIs.
+
+best,
+
+Simon
+
+> I've seen Simon Wood's response to a related issue here:
+> https://stat.ethz.ch/pipermail/r-help/2012-May/314387.html
+> However, I'm not sure how to apply this to time series data with
+> distributed lag, to get the above mentioned figures.
+>
+> Would be really grateful for suggestions!
+>
+> Jade
+>
+> On Tue, 19 Jul 2022 at 16:07, jade.shodan at googlemail.com
+> <jade.shodan at googlemail.com> wrote:
+>> Dear list members,
+>>
+>> Does anyone know how to obtain a relative risk/ risk ratio from a GAM
+>> with a distributed lag model implemented in mgcv? I have a GAM
+>> predicting daily deaths from time series data consisting of daily
+>> temperature, humidity and rainfall. The GAM includes a distributed lag
+>> model because deaths may occur over several days following a high heat
+>> day.
+>>
+>> What I'd like to do is compute (and plot) the relative risk
+>> (accumulated across all lags) for a given temperature vs the
+>> temperature at which the risk is lowest, with corresponding confidence
+>> intervals. I am aware of the predict.gam function but am not sure if
+>> and how it should be used in this case. (Additionally, I'd also like
+>> to plot the relative risk for different lags separately).
+>>
+>> I apologise if this seems trivial to some. (Actually, I hope it is,
+>> because that might mean I get a solution!) I've been looking for
+>> examples on how to do this, but found nothing so far. Suggestions
+>> would be very much appreciated!
+>>
+>> Below is a reproducible example with the GAM:
+>>
+>> library(mgcv)
+>> set.seed(3) # make reproducible example
+>> simdat <- gamSim(1,400) # simulate data
+>> g <- exp(simdat$f/5)
+>> simdat$y <- rnbinom(g,size=3,mu=g)  # negative binomial response var
+>> simdat$time <- 1:400  # create time series
+>> names(simdat) <- c("deaths", "temp", "humidity", "rain", "x3", "f",
+>> "f0", "f1", "f2", "f3", "time")
+>>
+>> # lag function based on Simon Wood (book 2017, p.349 and gamair
+>> package documentation p.54
+>> # https://cran.rstudio.com/web/packages/gamair/gamair.pdf)
+>> lagard <- function(x,n.lag=7) {
+>> n <- length(x); X <- matrix(NA,n,n.lag)
+>> for (i in 1:n.lag) X[i:n,i] <- x[i:n-i+1]
+>> X
+>> }
+>>
+>> # set up lag, temp, rain and humidity as 7-column matrices
+>> # to create lagged variables - based on Simon Wood's example
+>> dat <- list(lag=matrix(0:6,nrow(simdat),7,byrow=TRUE),
+>> deaths=simdat$deaths, time = simdat$time)
+>> dat$temp <- lagard(simdat$temp)
+>> dat$rain <- lagard(simdat$rain)
+>> dat$humidity <- lagard(simdat$humidity)
+>>
+>> mod <- gam(deaths~s(time, k=70) + te(temp, lag, k=c(12, 4)) +
+>> te(humidity, lag, k=c(12, 4)) + te(rain, lag, k=c(12, 4)), data = dat,
+>> family = nb, method = 'REML', select = TRUE)
+>>
+>> summary(mod)
+>> plot(mod, scheme = 1)
+>> plot(mod, scheme = 2)
+>>
+>> Thanks for any suggestions you may have,
+>>
+>> Jade
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Simon Wood, School of Mathematics, University of Edinburgh,
+https://www.maths.ed.ac.uk/~swood34/
+
+
+From j@de@shod@@ m@iii@g oii googiem@ii@com  Fri Jul 22 13:47:05 2022
+From: j@de@shod@@ m@iii@g oii googiem@ii@com (j@de@shod@@ m@iii@g oii googiem@ii@com)
+Date: Fri, 22 Jul 2022 12:47:05 +0100
+Subject: [R] mgcv: relative risk from GAM with distributed lag
+In-Reply-To: <e0f4395b-e1cf-abfa-e4d4-ee3dd519887e@bath.edu>
+References: <CANg3_k-18ND8DrwfYJmGAN5hq18QweZFPp4GhCuHwB=XFGAFiA@mail.gmail.com>
+ <CANg3_k9=GhwRjPyuLQBYmxD8Q-ksPrM52tS7DW0Cv3cpKn00Zw@mail.gmail.com>
+ <e0f4395b-e1cf-abfa-e4d4-ee3dd519887e@bath.edu>
+Message-ID: <CANg3_k9-OKAK1VSirWSVGXQVMWoDeKoG7gN7mUfGfZdX4CnpgQ@mail.gmail.com>
+
+Hi Simon,
+
+Thanks for the pointers! But I'm not sure what to do with the 'time'
+variable. (I don't want to make predictions for specific points in
+time). I coded as follows (full reproducible example at bottom of
+email), but get a warning and error:
+
+
+N <- 1000     # number of points for smooth to be predicted
+# new temperatures and lags for prediction
+pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T), length = N)
+pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)      ## IS IT CORRECT TO SET
+UP LAG LIKE THIS?
+
+# not sure if these covariates are required with type = "terms"
+pred_humidity <- rep(median(dat$humidity), N)
+pred_rain <- rep(median(dat$rain), N)
+pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+pred_humidity, rain = pred_rain)
+
+predictions <- predict(mod, pd, type = "terms")
+
+
+The predict line creates the following warning and error:
+
+Warning in predict.gam(mod, pd, type = "terms") :
+  not all required variables have been supplied in  newdata!
+
+Error in model.frame.default(ff, data = newdata, na.action = na.act) :
+  object is not a matrix
+
+
+For ease of reference, I've (re)included the full reproducible example:
+
+library(mgcv)
+set.seed(3) # make reproducible example
+simdat <- gamSim(1,400)
+g <- exp(simdat$f/5)
+
+simdat$y <- rnbinom(g,size=3,mu=g)  # negative binomial response var
+simdat$time <- 1:400  # create time series
+
+names(simdat) <- c("deaths", "temp", "humidity", "rain", "x3", "f",
+"f0", "f1", "f2", "f3", "time")
+
+# lag function based on Wood (book 2017, p.349 and gamair package
+documentation p.54
+# https://cran.rstudio.com/web/packages/gamair/gamair.pdf)
+lagard <- function(x,n.lag=7) {
+n <- length(x); X <- matrix(NA,n,n.lag)
+for (i in 1:n.lag) X[i:n,i] <- x[i:n-i+1]
+X
+}
+
+# set up lag, temp, rain and humidity as 7-column matrices
+# to create lagged variables
+dat <- list(lag=matrix(0:6,nrow(simdat),7,byrow=TRUE),
+deaths=simdat$deaths, time = simdat$time)
+dat$temp <- lagard(simdat$temp)
+dat$rain <- lagard(simdat$rain)
+dat$humidity <- lagard(simdat$humidity)
+
+mod <- gam(deaths~s(time, k=70) + te(temp, lag, k=c(12, 4)) +
+te(humidity, lag, k=c(12, 4)) + te(rain, lag, k=c(12, 4)), data = dat,
+family = nb, method = 'REML', select = TRUE)
+
+# create prediction data
+N <- 1000 # number of points for which to predict the smooths
+pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T), length = N)
+pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)
+pred_humidity <- rep(median(dat$humidity), N)
+pred_rain <- rep(median(dat$rain), N)
+pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+pred_humidity, rain = pred_rain)
+
+# make predictions
+predictions <- predict(mod, pd, type = "terms")
+
+
+On Fri, 22 Jul 2022 at 09:54, Simon Wood <simon.wood at bath.edu> wrote:
+>
+>
+> On 21/07/2022 15:19, jade.shodan--- via R-help wrote:
+> > Hello everyone (incl. Simon Wood?),
+> >
+> > I'm not sure that my original question (see below, including
+> > reproducible example) was as clear as it could have been. To clarify,
+> > what I would to like to get is:
+> >
+> > 1) a perspective plot of temperature x lag x relative risk.  I know
+> > how to use plot.gam and vis.gam but don't know how to get plots on the
+> > relative risk scale as opposed to  "response" or "link".
+>
+> - You are on the log scale so I think that all you need to do is to use
+> 'predict.gam', with 'type = "terms"' to  get the predictions for the
+> te(temp, lag) term over the required grid of lags and temperatures.
+> Suppose the dataframe of prediction data is 'pd'. Now produce pd0, which
+> is identical to pd, except that the temperatures are all set to the
+> reference temperature. Use predict.gam to predict te(temp,lag) from pd0.
+> Now the exponential of the difference between the first and second
+> predictions is the required RR, which you can plot using 'persp',
+> 'contour', 'image' or whatever. If you need credible intervals see pages
+> 341-343 of my 'GAMs: An intro with R' book (2nd ed).
+>
+> > 2) a plot of relative risk (accumulated across all lags) vs
+> > temperature, given a reference temperature. An example of such a plot
+> > can be found in figure 2 (bottom) of this paper by Gasparrini et al:
+> > https://onlinelibrary.wiley.com/doi/abs/10.1002/sim.3940
+>
+> - I guess this only makes sense if you have the same temperature at all
+> lags. So this time produce a data.frame with each desired temperature
+> repeated for each lag: 'pd1'. Again use predict.gam(...,type="terms").
+> Then sum the predictions over lags for each temperature, subtract the
+> minimum, and take the exponential. Same as above for CIs.
+>
+> best,
+>
+> Simon
+>
+> > I've seen Simon Wood's response to a related issue here:
+> > https://stat.ethz.ch/pipermail/r-help/2012-May/314387.html
+> > However, I'm not sure how to apply this to time series data with
+> > distributed lag, to get the above mentioned figures.
+> >
+> > Would be really grateful for suggestions!
+> >
+> > Jade
+> >
+> > On Tue, 19 Jul 2022 at 16:07, jade.shodan at googlemail.com
+> > <jade.shodan at googlemail.com> wrote:
+> >> Dear list members,
+> >>
+> >> Does anyone know how to obtain a relative risk/ risk ratio from a GAM
+> >> with a distributed lag model implemented in mgcv? I have a GAM
+> >> predicting daily deaths from time series data consisting of daily
+> >> temperature, humidity and rainfall. The GAM includes a distributed lag
+> >> model because deaths may occur over several days following a high heat
+> >> day.
+> >>
+> >> What I'd like to do is compute (and plot) the relative risk
+> >> (accumulated across all lags) for a given temperature vs the
+> >> temperature at which the risk is lowest, with corresponding confidence
+> >> intervals. I am aware of the predict.gam function but am not sure if
+> >> and how it should be used in this case. (Additionally, I'd also like
+> >> to plot the relative risk for different lags separately).
+> >>
+> >> I apologise if this seems trivial to some. (Actually, I hope it is,
+> >> because that might mean I get a solution!) I've been looking for
+> >> examples on how to do this, but found nothing so far. Suggestions
+> >> would be very much appreciated!
+> >>
+> >> Below is a reproducible example with the GAM:
+> >>
+> >> library(mgcv)
+> >> set.seed(3) # make reproducible example
+> >> simdat <- gamSim(1,400) # simulate data
+> >> g <- exp(simdat$f/5)
+> >> simdat$y <- rnbinom(g,size=3,mu=g)  # negative binomial response var
+> >> simdat$time <- 1:400  # create time series
+> >> names(simdat) <- c("deaths", "temp", "humidity", "rain", "x3", "f",
+> >> "f0", "f1", "f2", "f3", "time")
+> >>
+> >> # lag function based on Simon Wood (book 2017, p.349 and gamair
+> >> package documentation p.54
+> >> # https://cran.rstudio.com/web/packages/gamair/gamair.pdf)
+> >> lagard <- function(x,n.lag=7) {
+> >> n <- length(x); X <- matrix(NA,n,n.lag)
+> >> for (i in 1:n.lag) X[i:n,i] <- x[i:n-i+1]
+> >> X
+> >> }
+> >>
+> >> # set up lag, temp, rain and humidity as 7-column matrices
+> >> # to create lagged variables - based on Simon Wood's example
+> >> dat <- list(lag=matrix(0:6,nrow(simdat),7,byrow=TRUE),
+> >> deaths=simdat$deaths, time = simdat$time)
+> >> dat$temp <- lagard(simdat$temp)
+> >> dat$rain <- lagard(simdat$rain)
+> >> dat$humidity <- lagard(simdat$humidity)
+> >>
+> >> mod <- gam(deaths~s(time, k=70) + te(temp, lag, k=c(12, 4)) +
+> >> te(humidity, lag, k=c(12, 4)) + te(rain, lag, k=c(12, 4)), data = dat,
+> >> family = nb, method = 'REML', select = TRUE)
+> >>
+> >> summary(mod)
+> >> plot(mod, scheme = 1)
+> >> plot(mod, scheme = 2)
+> >>
+> >> Thanks for any suggestions you may have,
+> >>
+> >> Jade
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> --
+> Simon Wood, School of Mathematics, University of Edinburgh,
+> https://www.maths.ed.ac.uk/~swood34/
+>
+
+
+From j@de@shod@@ m@iii@g oii googiem@ii@com  Fri Jul 22 14:29:36 2022
+From: j@de@shod@@ m@iii@g oii googiem@ii@com (j@de@shod@@ m@iii@g oii googiem@ii@com)
+Date: Fri, 22 Jul 2022 13:29:36 +0100
+Subject: [R] mgcv: relative risk from GAM with distributed lag
+In-Reply-To: <CANg3_k9-OKAK1VSirWSVGXQVMWoDeKoG7gN7mUfGfZdX4CnpgQ@mail.gmail.com>
+References: <CANg3_k-18ND8DrwfYJmGAN5hq18QweZFPp4GhCuHwB=XFGAFiA@mail.gmail.com>
+ <CANg3_k9=GhwRjPyuLQBYmxD8Q-ksPrM52tS7DW0Cv3cpKn00Zw@mail.gmail.com>
+ <e0f4395b-e1cf-abfa-e4d4-ee3dd519887e@bath.edu>
+ <CANg3_k9-OKAK1VSirWSVGXQVMWoDeKoG7gN7mUfGfZdX4CnpgQ@mail.gmail.com>
+Message-ID: <CANg3_k9Nkok-Mr4DFOZ3=d1XtA-Pq1seW+E+KtWLttQUe_+XcQ@mail.gmail.com>
+
+I made a small error in the code below (not checking for NAs which are
+introduced by the lag function). However, this doesn't solve the issue
+I raised).
+
+So here's the problem (with corrected code) again:
+
+I'm not sure what to do with the 'time' variable. (I don't want to
+make predictions for specific points in time). I coded as follows
+(full reproducible example at bottom of email), but get a warning and
+error:
+
+
+N <- 1000     # number of points for smooth to be predicted
+# new temperatures and lags for prediction
+pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T), length = N)
+pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)      ## IS IT CORRECT TO SET
+UP LAG LIKE THIS?
+
+# not sure if these covariates are required with type = "terms"
+pred_humidity <- rep(median(dat$humidity, na.rm = T), N)
+pred_rain <- rep(median(dat$rain, na.rm = T), N)
+pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+pred_humidity, rain = pred_rain)
+
+predictions <- predict(mod, pd, type = "terms")
+
+
+The predict line creates the following warning and error:
+
+Warning in predict.gam(mod, pd, type = "terms") :
+  not all required variables have been supplied in  newdata!
+
+Error in model.frame.default(ff, data = newdata, na.action = na.act) :
+  object is not a matrix
+
+
+For ease of reference, I've (re)included the full reproducible example:
+
+library(mgcv)
+set.seed(3) # make reproducible example
+simdat <- gamSim(1,400)
+g <- exp(simdat$f/5)
+
+simdat$y <- rnbinom(g,size=3,mu=g)  # negative binomial response var
+simdat$time <- 1:400  # create time series
+
+names(simdat) <- c("deaths", "temp", "humidity", "rain", "x3", "f",
+"f0", "f1", "f2", "f3", "time")
+
+# lag function based on Wood (book 2017, p.349 and gamair package
+documentation p.54
+# https://cran.rstudio.com/web/packages/gamair/gamair.pdf)
+lagard <- function(x,n.lag=7) {
+n <- length(x); X <- matrix(NA,n,n.lag)
+for (i in 1:n.lag) X[i:n,i] <- x[i:n-i+1]
+X
+}
+
+# set up lag, temp, rain and humidity as 7-column matrices
+# to create lagged variables
+dat <- list(lag=matrix(0:6,nrow(simda
+t),7,byrow=TRUE),
+deaths=simdat$deaths, time = simdat$time)
+dat$temp <- lagard(simdat$temp)
+dat$rain <- lagard(simdat$rain)
+dat$humidity <- lagard(simdat$humidity)
+
+mod <- gam(deaths~s(time, k=70) + te(temp, lag, k=c(12, 4)) +
+te(humidity, lag, k=c(12, 4)) + te(rain, lag, k=c(12, 4)), data = dat,
+family = nb, method = 'REML', select = TRUE)
+
+# create prediction data
+N <- 1000 # number of points for which to predict the smooths
+pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T), length = N)
+pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)
+pred_humidity <- rep(median(dat$humidity), N)
+pred_rain <- rep(median(dat$rain), N)
+pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+pred_humidity, rain = pred_rain)
+
+# make predictions
+predictions <- predict(mod, pd, type = "terms")
+
+On Fri, 22 Jul 2022 at 12:47, jade.shodan at googlemail.com
+<jade.shodan at googlemail.com> wrote:
+>
+> Hi Simon,
+>
+> Thanks for the pointers! But I'm not sure what to do with the 'time'
+> variable. (I don't want to make predictions for specific points in
+> time). I coded as follows (full reproducible example at bottom of
+> email), but get a warning and error:
+>
+>
+> N <- 1000     # number of points for smooth to be predicted
+> # new temperatures and lags for prediction
+> pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T), length = N)
+> pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)      ## IS IT CORRECT TO SET
+> UP LAG LIKE THIS?
+>
+> # not sure if these covariates are required with type = "terms"
+> pred_humidity <- rep(median(dat$humidity), N)
+> pred_rain <- rep(median(dat$rain), N)
+> pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+> pred_humidity, rain = pred_rain)
+>
+> predictions <- predict(mod, pd, type = "terms")
+>
+>
+> The predict line creates the following warning and error:
+>
+> Warning in predict.gam(mod, pd, type = "terms") :
+>   not all required variables have been supplied in  newdata!
+>
+> Error in model.frame.default(ff, data = newdata, na.action = na.act) :
+>   object is not a matrix
+>
+>
+> For ease of reference, I've (re)included the full reproducible example:
+>
+> library(mgcv)
+> set.seed(3) # make reproducible example
+> simdat <- gamSim(1,400)
+> g <- exp(simdat$f/5)
+>
+> simdat$y <- rnbinom(g,size=3,mu=g)  # negative binomial response var
+> simdat$time <- 1:400  # create time series
+>
+> names(simdat) <- c("deaths", "temp", "humidity", "rain", "x3", "f",
+> "f0", "f1", "f2", "f3", "time")
+>
+> # lag function based on Wood (book 2017, p.349 and gamair package
+> documentation p.54
+> # https://cran.rstudio.com/web/packages/gamair/gamair.pdf)
+> lagard <- function(x,n.lag=7) {
+> n <- length(x); X <- matrix(NA,n,n.lag)
+> for (i in 1:n.lag) X[i:n,i] <- x[i:n-i+1]
+> X
+> }
+>
+> # set up lag, temp, rain and humidity as 7-column matrices
+> # to create lagged variables
+> dat <- list(lag=matrix(0:6,nrow(simdat),7,byrow=TRUE),
+> deaths=simdat$deaths, time = simdat$time)
+> dat$temp <- lagard(simdat$temp)
+> dat$rain <- lagard(simdat$rain)
+> dat$humidity <- lagard(simdat$humidity)
+>
+> mod <- gam(deaths~s(time, k=70) + te(temp, lag, k=c(12, 4)) +
+> te(humidity, lag, k=c(12, 4)) + te(rain, lag, k=c(12, 4)), data = dat,
+> family = nb, method = 'REML', select = TRUE)
+>
+> # create prediction data
+> N <- 1000 # number of points for which to predict the smooths
+> pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T), length = N)
+> pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)
+> pred_humidity <- rep(median(dat$humidity), N)
+> pred_rain <- rep(median(dat$rain), N)
+> pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+> pred_humidity, rain = pred_rain)
+>
+> # make predictions
+> predictions <- predict(mod, pd, type = "terms")
+>
+>
+> On Fri, 22 Jul 2022 at 09:54, Simon Wood <simon.wood at bath.edu> wrote:
+> >
+> >
+> > On 21/07/2022 15:19, jade.shodan--- via R-help wrote:
+> > > Hello everyone (incl. Simon Wood?),
+> > >
+> > > I'm not sure that my original question (see below, including
+> > > reproducible example) was as clear as it could have been. To clarify,
+> > > what I would to like to get is:
+> > >
+> > > 1) a perspective plot of temperature x lag x relative risk.  I know
+> > > how to use plot.gam and vis.gam but don't know how to get plots on the
+> > > relative risk scale as opposed to  "response" or "link".
+> >
+> > - You are on the log scale so I think that all you need to do is to use
+> > 'predict.gam', with 'type = "terms"' to  get the predictions for the
+> > te(temp, lag) term over the required grid of lags and temperatures.
+> > Suppose the dataframe of prediction data is 'pd'. Now produce pd0, which
+> > is identical to pd, except that the temperatures are all set to the
+> > reference temperature. Use predict.gam to predict te(temp,lag) from pd0.
+> > Now the exponential of the difference between the first and second
+> > predictions is the required RR, which you can plot using 'persp',
+> > 'contour', 'image' or whatever. If you need credible intervals see pages
+> > 341-343 of my 'GAMs: An intro with R' book (2nd ed).
+> >
+> > > 2) a plot of relative risk (accumulated across all lags) vs
+> > > temperature, given a reference temperature. An example of such a plot
+> > > can be found in figure 2 (bottom) of this paper by Gasparrini et al:
+> > > https://onlinelibrary.wiley.com/doi/abs/10.1002/sim.3940
+> >
+> > - I guess this only makes sense if you have the same temperature at all
+> > lags. So this time produce a data.frame with each desired temperature
+> > repeated for each lag: 'pd1'. Again use predict.gam(...,type="terms").
+> > Then sum the predictions over lags for each temperature, subtract the
+> > minimum, and take the exponential. Same as above for CIs.
+> >
+> > best,
+> >
+> > Simon
+> >
+> > > I've seen Simon Wood's response to a related issue here:
+> > > https://stat.ethz.ch/pipermail/r-help/2012-May/314387.html
+> > > However, I'm not sure how to apply this to time series data with
+> > > distributed lag, to get the above mentioned figures.
+> > >
+> > > Would be really grateful for suggestions!
+> > >
+> > > Jade
+> > >
+> > > On Tue, 19 Jul 2022 at 16:07, jade.shodan at googlemail.com
+> > > <jade.shodan at googlemail.com> wrote:
+> > >> Dear list members,
+> > >>
+> > >> Does anyone know how to obtain a relative risk/ risk ratio from a GAM
+> > >> with a distributed lag model implemented in mgcv? I have a GAM
+> > >> predicting daily deaths from time series data consisting of daily
+> > >> temperature, humidity and rainfall. The GAM includes a distributed lag
+> > >> model because deaths may occur over several days following a high heat
+> > >> day.
+> > >>
+> > >> What I'd like to do is compute (and plot) the relative risk
+> > >> (accumulated across all lags) for a given temperature vs the
+> > >> temperature at which the risk is lowest, with corresponding confidence
+> > >> intervals. I am aware of the predict.gam function but am not sure if
+> > >> and how it should be used in this case. (Additionally, I'd also like
+> > >> to plot the relative risk for different lags separately).
+> > >>
+> > >> I apologise if this seems trivial to some. (Actually, I hope it is,
+> > >> because that might mean I get a solution!) I've been looking for
+> > >> examples on how to do this, but found nothing so far. Suggestions
+> > >> would be very much appreciated!
+> > >>
+> > >> Below is a reproducible example with the GAM:
+> > >>
+> > >> library(mgcv)
+> > >> set.seed(3) # make reproducible example
+> > >> simdat <- gamSim(1,400) # simulate data
+> > >> g <- exp(simdat$f/5)
+> > >> simdat$y <- rnbinom(g,size=3,mu=g)  # negative binomial response var
+> > >> simdat$time <- 1:400  # create time series
+> > >> names(simdat) <- c("deaths", "temp", "humidity", "rain", "x3", "f",
+> > >> "f0", "f1", "f2", "f3", "time")
+> > >>
+> > >> # lag function based on Simon Wood (book 2017, p.349 and gamair
+> > >> package documentation p.54
+> > >> # https://cran.rstudio.com/web/packages/gamair/gamair.pdf)
+> > >> lagard <- function(x,n.lag=7) {
+> > >> n <- length(x); X <- matrix(NA,n,n.lag)
+> > >> for (i in 1:n.lag) X[i:n,i] <- x[i:n-i+1]
+> > >> X
+> > >> }
+> > >>
+> > >> # set up lag, temp, rain and humidity as 7-column matrices
+> > >> # to create lagged variables - based on Simon Wood's example
+> > >> dat <- list(lag=matrix(0:6,nrow(simdat),7,byrow=TRUE),
+> > >> deaths=simdat$deaths, time = simdat$time)
+> > >> dat$temp <- lagard(simdat$temp)
+> > >> dat$rain <- lagard(simdat$rain)
+> > >> dat$humidity <- lagard(simdat$humidity)
+> > >>
+> > >> mod <- gam(deaths~s(time, k=70) + te(temp, lag, k=c(12, 4)) +
+> > >> te(humidity, lag, k=c(12, 4)) + te(rain, lag, k=c(12, 4)), data = dat,
+> > >> family = nb, method = 'REML', select = TRUE)
+> > >>
+> > >> summary(mod)
+> > >> plot(mod, scheme = 1)
+> > >> plot(mod, scheme = 2)
+> > >>
+> > >> Thanks for any suggestions you may have,
+> > >>
+> > >> Jade
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+> >
+> > --
+> > Simon Wood, School of Mathematics, University of Edinburgh,
+> > https://www.maths.ed.ac.uk/~swood34/
+> >
+
+
+From @|dot|@23 @end|ng |rom o@u@edu  Fri Jul 22 15:50:23 2022
+From: @|dot|@23 @end|ng |rom o@u@edu (Sidoti, Salvatore)
+Date: Fri, 22 Jul 2022 13:50:23 +0000
+Subject: [R] Detect QRS Complex & Arrhythmia From Electrocardiogram (ECG)
+Message-ID: <DM6PR01MB4314C59E9C3AF9C1CCEFB88BEA909@DM6PR01MB4314.prod.exchangelabs.com>
+
+While I've seen MATLAB and Python programs for this purpose (see subject), do any current R packages offer QRS or arrhythmia detection? Maybe someone has an R algorithm not yet published? I am familiar with the RHRV package, but it assumes that the data already has the heartbeats as a time series. Plus, the RHRV package does not detect arrhythmias.
+
+Cheers,
+Salvatore A. Sidoti
+Research Associate 2
+
+Wexner Medical Center, College of Medicine
+Davis Heart and Lung Research Institute
+473 W. 12th Avenue, Suite 110, Columbus, OH, 43210
+sidoti.23 at osu.edu
+
+
+From j@de@shod@@ m@iii@g oii googiem@ii@com  Fri Jul 22 16:10:37 2022
+From: j@de@shod@@ m@iii@g oii googiem@ii@com (j@de@shod@@ m@iii@g oii googiem@ii@com)
+Date: Fri, 22 Jul 2022 15:10:37 +0100
+Subject: [R] 
+ Detect QRS Complex & Arrhythmia From Electrocardiogram (ECG)
+In-Reply-To: <DM6PR01MB4314C59E9C3AF9C1CCEFB88BEA909@DM6PR01MB4314.prod.exchangelabs.com>
+References: <DM6PR01MB4314C59E9C3AF9C1CCEFB88BEA909@DM6PR01MB4314.prod.exchangelabs.com>
+Message-ID: <CANg3_k-qzPrd=ttbaXeCGgKk+pjW-cJ=YmRhdwusZT2PuHw0yg@mail.gmail.com>
+
+Hi Salvatore,
+
+This (very recent) paper may be of interest:
+
+Enevoldsen J, Simpson GL, Vistisen ST. Using generalized additive
+models to decompose time series and waveforms, and dissect heart?lung
+interaction physiology. J Clin Monit Comput [Internet]. 2022 Jun 13
+[cited 2022 Jun 13]; Available from:
+https://doi.org/10.1007/s10877-022-00873-7
+
+The authors make use of QRS in their GAM models in R.
+
+Not sure if it provides entirely what you are after, but perhaps
+references in the paper or contacting Enevoldsen may provide useful
+starting points.
+
+Best wishes,
+
+Jade
+
+On Fri, 22 Jul 2022 at 14:50, Sidoti, Salvatore <sidoti.23 at osu.edu> wrote:
+>
+> While I've seen MATLAB and Python programs for this purpose (see subject), do any current R packages offer QRS or arrhythmia detection? Maybe someone has an R algorithm not yet published? I am familiar with the RHRV package, but it assumes that the data already has the heartbeats as a time series. Plus, the RHRV package does not detect arrhythmias.
+>
+> Cheers,
+> Salvatore A. Sidoti
+> Research Associate 2
+>
+> Wexner Medical Center, College of Medicine
+> Davis Heart and Lung Research Institute
+> 473 W. 12th Avenue, Suite 110, Columbus, OH, 43210
+> sidoti.23 at osu.edu
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From dw|n@em|u@ @end|ng |rom comc@@t@net  Fri Jul 22 16:22:52 2022
+From: dw|n@em|u@ @end|ng |rom comc@@t@net (David Winsemius)
+Date: Fri, 22 Jul 2022 09:22:52 -0500
+Subject: [R] 
+ Detect QRS Complex & Arrhythmia From Electrocardiogram (ECG)
+In-Reply-To: <CANg3_k-qzPrd=ttbaXeCGgKk+pjW-cJ=YmRhdwusZT2PuHw0yg@mail.gmail.com>
+References: <CANg3_k-qzPrd=ttbaXeCGgKk+pjW-cJ=YmRhdwusZT2PuHw0yg@mail.gmail.com>
+Message-ID: <6F05D68C-8DD5-407E-A5E0-7889C9E293EC@comcast.net>
+
+The package is documented as accepting data created by the wearables package. It seems to have peak detection so might supply part of your goal. 
+
+? 
+David
+
+Sent from my iPhone
+
+> On Jul 22, 2022, at 9:11 AM, jade.shodan--- via R-help <r-help at r-project.org> wrote:
+> 
+> ?Hi Salvatore,
+> 
+> This (very recent) paper may be of interest:
+> 
+> Enevoldsen J, Simpson GL, Vistisen ST. Using generalized additive
+> models to decompose time series and waveforms, and dissect heart?lung
+> interaction physiology. J Clin Monit Comput [Internet]. 2022 Jun 13
+> [cited 2022 Jun 13]; Available from:
+> https://doi.org/10.1007/s10877-022-00873-7
+> 
+> The authors make use of QRS in their GAM models in R.
+> 
+> Not sure if it provides entirely what you are after, but perhaps
+> references in the paper or contacting Enevoldsen may provide useful
+> starting points.
+> 
+> Best wishes,
+> 
+> Jade
+> 
+>> On Fri, 22 Jul 2022 at 14:50, Sidoti, Salvatore <sidoti.23 at osu.edu> wrote:
+>> 
+>> While I've seen MATLAB and Python programs for this purpose (see subject), do any current R packages offer QRS or arrhythmia detection? Maybe someone has an R algorithm not yet published? I am familiar with the RHRV package, but it assumes that the data already has the heartbeats as a time series. Plus, the RHRV package does not detect arrhythmias.
+>> 
+>> Cheers,
+>> Salvatore A. Sidoti
+>> Research Associate 2
+>> 
+>> Wexner Medical Center, College of Medicine
+>> Davis Heart and Lung Research Institute
+>> 473 W. 12th Avenue, Suite 110, Columbus, OH, 43210
+>> sidoti.23 at osu.edu
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
