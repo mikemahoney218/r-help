@@ -22528,3 +22528,1073 @@ Sent from my iPhone
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From j@de@shod@@ m@iii@g oii googiem@ii@com  Sat Jul 23 15:54:16 2022
+From: j@de@shod@@ m@iii@g oii googiem@ii@com (j@de@shod@@ m@iii@g oii googiem@ii@com)
+Date: Sat, 23 Jul 2022 14:54:16 +0100
+Subject: [R] mgcv: relative risk from GAM with distributed lag
+In-Reply-To: <CANg3_k9Nkok-Mr4DFOZ3=d1XtA-Pq1seW+E+KtWLttQUe_+XcQ@mail.gmail.com>
+References: <CANg3_k-18ND8DrwfYJmGAN5hq18QweZFPp4GhCuHwB=XFGAFiA@mail.gmail.com>
+ <CANg3_k9=GhwRjPyuLQBYmxD8Q-ksPrM52tS7DW0Cv3cpKn00Zw@mail.gmail.com>
+ <e0f4395b-e1cf-abfa-e4d4-ee3dd519887e@bath.edu>
+ <CANg3_k9-OKAK1VSirWSVGXQVMWoDeKoG7gN7mUfGfZdX4CnpgQ@mail.gmail.com>
+ <CANg3_k9Nkok-Mr4DFOZ3=d1XtA-Pq1seW+E+KtWLttQUe_+XcQ@mail.gmail.com>
+Message-ID: <CANg3_k8C5W1RKL-gsGbr3556hSHq7+-oCSRCZR-ODEsN_7_MAA@mail.gmail.com>
+
+Hi Simon and all,
+
+I've corrected some mistakes in setting up the prediction data frame
+(sorry, very stressed and sleep deprived due to closing in deadlines),
+but am having problems getting the perspective plot using persp().
+
+I've calculated relative risk (RR) but am having trouble getting the
+perspective (or contour) plot. persp() takes x and y vectors in
+ascending order, and z as a matrix.  I've seen the outer() function
+being used to facilitate perspective plots, but every example I've
+seen treats z as a function, to be evaluated at combinations for x and
+y. In my case, I already have observations for z. Not sure if I need
+to use outer(), and if so, how?
+
+My code for making predictions, getting RR and trying to get the plot
+is as follows (full reproducible example including model at the
+bottom). Can someone tell me what I'm doing wrong?
+
+########### CODE ########################
+
+# create prediction data
+N <- 1000 # number of points for which to predict the smooths
+pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T),
+length = N)  # prediction data for temperature
+pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)
+pred_rain <- seq(min(dat$rain, na.rm = T), max(dat$rain, na.rm = T), length = N)
+pred_humidity <- seq(min(dat$humidity, na.rm = T), max(dat$humidity,
+na.rm = T), length = N)
+pred_time <- seq(min(dat$time, na.rm = T), max(dat$time, na.rm = T), length = N)
+
+pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+pred_humidity, rain = pred_rain, time = pred_time)
+
+# create prediction data with reference temperature set to median temperature
+# identical to pd but now with all temperatures set to median value of
+temperature
+pred_temp0 <- rep(median(dat$temp, na.rm=T), N)
+pd0 <- data.frame(temp = pred_temp0, lag = pred_lag, humidity =
+pred_humidity, rain = pred_rain, time = pred_time)
+
+# make predictions
+predictions <- predict.gam(mod, pd, type = "terms")
+predictions0 <- predict.gam(mod, pd0, type = "terms")
+
+# calculate RR
+diff <- predictions[,2] - predictions0[,2]
+rr <- as.vector(exp(diff))
+
+# convert rr to matrix required for z argument for persp()
+rr_mat <- matrix(rr, nrow = N)
+persp(pred_temp, pred_lag, rr_mat)
+
+######### ERROR MESSAGE ##################################
+
+The persp call results in the follow error:
+
+Error in persp.default(pred_temp, pred_lag, rr_mat) :
+  increasing 'x' and 'y' values expected
+
+I don't understand this because pred_temp and pred_lag ARE in ascending order.
+
+############################################################
+FULL REPRODUCIBLE EXAMPLE
+############################################################
+
+library(mgcv)
+set.seed(3) # make reproducible example
+simdat <- gamSim(1,400)
+g <- exp(simdat$f/5)
+
+simdat$y <- rnbinom(g,size=3,mu=g)  # negative binomial response var
+simdat$time <- 1:400  # create time series
+
+names(simdat) <- c("deaths", "temp", "humidity", "rain", "x3", "f",
+"f0", "f1", "f2", "f3", "time")
+
+# lag function based on Wood (book 2017, p.349 and gamair package
+documentation p.54
+# https://cran.rstudio.com/web/packages/gamair/gamair.pdf)
+lagard <- function(x,n.lag=7) {
+n <- length(x); X <- matrix(NA,n,n.lag)
+for (i in 1:n.lag) X[i:n,i] <- x[i:n-i+1]
+X
+}
+
+# set up lag, temp, rain and humidity as 7-column matrices
+# to create lagged variables
+dat <- list(lag=matrix(0:6,nrow(simdat),7,byrow=TRUE),
+deaths=simdat$deaths, time = simdat$time)
+dat$temp <- lagard(simdat$temp)
+dat$rain <- lagard(simdat$rain)
+dat$humidity <- lagard(simdat$humidity)
+
+mod <- gam(deaths~s(time, k=70) + te(temp, lag, k=c(12, 4)) +
+te(humidity, lag, k=c(12, 4)) + te(rain, lag, k=c(12, 4)), data = dat,
+family = nb, method = 'REML', select = TRUE)
+
+summary(mod)
+plot(mod, scheme = 1)  # perspective
+plot(mod, scheme = 2)  # contour
+
+# create prediction data
+N <- 1000 # number of points for which to predict the smooths
+pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T), length = N)
+pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)
+pred_rain <- seq(min(dat$rain, na.rm = T), max(dat$rain, na.rm = T), length = N)
+pred_humidity <- seq(min(dat$humidity, na.rm = T), max(dat$humidity,
+na.rm = T), length = N)
+pred_time <- seq(min(dat$time, na.rm = T), max(dat$time, na.rm = T), length = N)
+
+pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+pred_humidity, rain = pred_rain, time = pred_time)
+
+# create prediction data with reference temperature set to median temperature
+# identical to pd but now with all temperatures set to median value of
+temperature
+pred_temp0 <- rep(median(dat$temp, na.rm=T), N)
+pd0 <- data.frame(temp = pred_temp0, lag = pred_lag, humidity =
+pred_humidity, rain = pred_rain, time = pred_time)
+
+# make predictions
+predictions <- predict.gam(mod, pd, type = "terms")
+predictions0 <- predict.gam(mod, pd0, type = "terms")
+
+# calculate RR
+diff <- predictions[,2] - predictions0[,2]
+rr <- as.vector(exp(diff))
+
+# convert rr to matrix required for z argument for persp()
+rr_mat <- matrix(rr, nrow = N)
+persp(pred_temp, pred_lag, rr_mat)
+
+
+
+
+On Fri, 22 Jul 2022 at 13:29, jade.shodan at googlemail.com
+<jade.shodan at googlemail.com> wrote:
+>
+> I made a small error in the code below (not checking for NAs which are
+> introduced by the lag function). However, this doesn't solve the issue
+> I raised).
+>
+> So here's the problem (with corrected code) again:
+>
+> I'm not sure what to do with the 'time' variable. (I don't want to
+> make predictions for specific points in time). I coded as follows
+> (full reproducible example at bottom of email), but get a warning and
+> error:
+>
+>
+> N <- 1000     # number of points for smooth to be predicted
+> # new temperatures and lags for prediction
+> pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T), length = N)
+> pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)      ## IS IT CORRECT TO SET
+> UP LAG LIKE THIS?
+>
+> # not sure if these covariates are required with type = "terms"
+> pred_humidity <- rep(median(dat$humidity, na.rm = T), N)
+> pred_rain <- rep(median(dat$rain, na.rm = T), N)
+> pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+> pred_humidity, rain = pred_rain)
+>
+> predictions <- predict(mod, pd, type = "terms")
+>
+>
+> The predict line creates the following warning and error:
+>
+> Warning in predict.gam(mod, pd, type = "terms") :
+>   not all required variables have been supplied in  newdata!
+>
+> Error in model.frame.default(ff, data = newdata, na.action = na.act) :
+>   object is not a matrix
+>
+>
+> For ease of reference, I've (re)included the full reproducible example:
+>
+> library(mgcv)
+> set.seed(3) # make reproducible example
+> simdat <- gamSim(1,400)
+> g <- exp(simdat$f/5)
+>
+> simdat$y <- rnbinom(g,size=3,mu=g)  # negative binomial response var
+> simdat$time <- 1:400  # create time series
+>
+> names(simdat) <- c("deaths", "temp", "humidity", "rain", "x3", "f",
+> "f0", "f1", "f2", "f3", "time")
+>
+> # lag function based on Wood (book 2017, p.349 and gamair package
+> documentation p.54
+> # https://cran.rstudio.com/web/packages/gamair/gamair.pdf)
+> lagard <- function(x,n.lag=7) {
+> n <- length(x); X <- matrix(NA,n,n.lag)
+> for (i in 1:n.lag) X[i:n,i] <- x[i:n-i+1]
+> X
+> }
+>
+> # set up lag, temp, rain and humidity as 7-column matrices
+> # to create lagged variables
+> dat <- list(lag=matrix(0:6,nrow(simda
+> t),7,byrow=TRUE),
+> deaths=simdat$deaths, time = simdat$time)
+> dat$temp <- lagard(simdat$temp)
+> dat$rain <- lagard(simdat$rain)
+> dat$humidity <- lagard(simdat$humidity)
+>
+> mod <- gam(deaths~s(time, k=70) + te(temp, lag, k=c(12, 4)) +
+> te(humidity, lag, k=c(12, 4)) + te(rain, lag, k=c(12, 4)), data = dat,
+> family = nb, method = 'REML', select = TRUE)
+>
+> # create prediction data
+> N <- 1000 # number of points for which to predict the smooths
+> pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T), length = N)
+> pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)
+> pred_humidity <- rep(median(dat$humidity), N)
+> pred_rain <- rep(median(dat$rain), N)
+> pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+> pred_humidity, rain = pred_rain)
+>
+> # make predictions
+> predictions <- predict(mod, pd, type = "terms")
+>
+> On Fri, 22 Jul 2022 at 12:47, jade.shodan at googlemail.com
+> <jade.shodan at googlemail.com> wrote:
+> >
+> > Hi Simon,
+> >
+> > Thanks for the pointers! But I'm not sure what to do with the 'time'
+> > variable. (I don't want to make predictions for specific points in
+> > time). I coded as follows (full reproducible example at bottom of
+> > email), but get a warning and error:
+> >
+> >
+> > N <- 1000     # number of points for smooth to be predicted
+> > # new temperatures and lags for prediction
+> > pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T), length = N)
+> > pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)      ## IS IT CORRECT TO SET
+> > UP LAG LIKE THIS?
+> >
+> > # not sure if these covariates are required with type = "terms"
+> > pred_humidity <- rep(median(dat$humidity), N)
+> > pred_rain <- rep(median(dat$rain), N)
+> > pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+> > pred_humidity, rain = pred_rain)
+> >
+> > predictions <- predict(mod, pd, type = "terms")
+> >
+> >
+> > The predict line creates the following warning and error:
+> >
+> > Warning in predict.gam(mod, pd, type = "terms") :
+> >   not all required variables have been supplied in  newdata!
+> >
+> > Error in model.frame.default(ff, data = newdata, na.action = na.act) :
+> >   object is not a matrix
+> >
+> >
+> > For ease of reference, I've (re)included the full reproducible example:
+> >
+> > library(mgcv)
+> > set.seed(3) # make reproducible example
+> > simdat <- gamSim(1,400)
+> > g <- exp(simdat$f/5)
+> >
+> > simdat$y <- rnbinom(g,size=3,mu=g)  # negative binomial response var
+> > simdat$time <- 1:400  # create time series
+> >
+> > names(simdat) <- c("deaths", "temp", "humidity", "rain", "x3", "f",
+> > "f0", "f1", "f2", "f3", "time")
+> >
+> > # lag function based on Wood (book 2017, p.349 and gamair package
+> > documentation p.54
+> > # https://cran.rstudio.com/web/packages/gamair/gamair.pdf)
+> > lagard <- function(x,n.lag=7) {
+> > n <- length(x); X <- matrix(NA,n,n.lag)
+> > for (i in 1:n.lag) X[i:n,i] <- x[i:n-i+1]
+> > X
+> > }
+> >
+> > # set up lag, temp, rain and humidity as 7-column matrices
+> > # to create lagged variables
+> > dat <- list(lag=matrix(0:6,nrow(simdat),7,byrow=TRUE),
+> > deaths=simdat$deaths, time = simdat$time)
+> > dat$temp <- lagard(simdat$temp)
+> > dat$rain <- lagard(simdat$rain)
+> > dat$humidity <- lagard(simdat$humidity)
+> >
+> > mod <- gam(deaths~s(time, k=70) + te(temp, lag, k=c(12, 4)) +
+> > te(humidity, lag, k=c(12, 4)) + te(rain, lag, k=c(12, 4)), data = dat,
+> > family = nb, method = 'REML', select = TRUE)
+> >
+> > # create prediction data
+> > N <- 1000 # number of points for which to predict the smooths
+> > pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T), length = N)
+> > pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)
+> > pred_humidity <- rep(median(dat$humidity), N)
+> > pred_rain <- rep(median(dat$rain), N)
+> > pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+> > pred_humidity, rain = pred_rain)
+> >
+> > # make predictions
+> > predictions <- predict(mod, pd, type = "terms")
+> >
+> >
+> > On Fri, 22 Jul 2022 at 09:54, Simon Wood <simon.wood at bath.edu> wrote:
+> > >
+> > >
+> > > On 21/07/2022 15:19, jade.shodan--- via R-help wrote:
+> > > > Hello everyone (incl. Simon Wood?),
+> > > >
+> > > > I'm not sure that my original question (see below, including
+> > > > reproducible example) was as clear as it could have been. To clarify,
+> > > > what I would to like to get is:
+> > > >
+> > > > 1) a perspective plot of temperature x lag x relative risk.  I know
+> > > > how to use plot.gam and vis.gam but don't know how to get plots on the
+> > > > relative risk scale as opposed to  "response" or "link".
+> > >
+> > > - You are on the log scale so I think that all you need to do is to use
+> > > 'predict.gam', with 'type = "terms"' to  get the predictions for the
+> > > te(temp, lag) term over the required grid of lags and temperatures.
+> > > Suppose the dataframe of prediction data is 'pd'. Now produce pd0, which
+> > > is identical to pd, except that the temperatures are all set to the
+> > > reference temperature. Use predict.gam to predict te(temp,lag) from pd0.
+> > > Now the exponential of the difference between the first and second
+> > > predictions is the required RR, which you can plot using 'persp',
+> > > 'contour', 'image' or whatever. If you need credible intervals see pages
+> > > 341-343 of my 'GAMs: An intro with R' book (2nd ed).
+> > >
+> > > > 2) a plot of relative risk (accumulated across all lags) vs
+> > > > temperature, given a reference temperature. An example of such a plot
+> > > > can be found in figure 2 (bottom) of this paper by Gasparrini et al:
+> > > > https://onlinelibrary.wiley.com/doi/abs/10.1002/sim.3940
+> > >
+> > > - I guess this only makes sense if you have the same temperature at all
+> > > lags. So this time produce a data.frame with each desired temperature
+> > > repeated for each lag: 'pd1'. Again use predict.gam(...,type="terms").
+> > > Then sum the predictions over lags for each temperature, subtract the
+> > > minimum, and take the exponential. Same as above for CIs.
+> > >
+> > > best,
+> > >
+> > > Simon
+> > >
+> > > > I've seen Simon Wood's response to a related issue here:
+> > > > https://stat.ethz.ch/pipermail/r-help/2012-May/314387.html
+> > > > However, I'm not sure how to apply this to time series data with
+> > > > distributed lag, to get the above mentioned figures.
+> > > >
+> > > > Would be really grateful for suggestions!
+> > > >
+> > > > Jade
+> > > >
+> > > > On Tue, 19 Jul 2022 at 16:07, jade.shodan at googlemail.com
+> > > > <jade.shodan at googlemail.com> wrote:
+> > > >> Dear list members,
+> > > >>
+> > > >> Does anyone know how to obtain a relative risk/ risk ratio from a GAM
+> > > >> with a distributed lag model implemented in mgcv? I have a GAM
+> > > >> predicting daily deaths from time series data consisting of daily
+> > > >> temperature, humidity and rainfall. The GAM includes a distributed lag
+> > > >> model because deaths may occur over several days following a high heat
+> > > >> day.
+> > > >>
+> > > >> What I'd like to do is compute (and plot) the relative risk
+> > > >> (accumulated across all lags) for a given temperature vs the
+> > > >> temperature at which the risk is lowest, with corresponding confidence
+> > > >> intervals. I am aware of the predict.gam function but am not sure if
+> > > >> and how it should be used in this case. (Additionally, I'd also like
+> > > >> to plot the relative risk for different lags separately).
+> > > >>
+> > > >> I apologise if this seems trivial to some. (Actually, I hope it is,
+> > > >> because that might mean I get a solution!) I've been looking for
+> > > >> examples on how to do this, but found nothing so far. Suggestions
+> > > >> would be very much appreciated!
+> > > >>
+> > > >> Below is a reproducible example with the GAM:
+> > > >>
+> > > >> library(mgcv)
+> > > >> set.seed(3) # make reproducible example
+> > > >> simdat <- gamSim(1,400) # simulate data
+> > > >> g <- exp(simdat$f/5)
+> > > >> simdat$y <- rnbinom(g,size=3,mu=g)  # negative binomial response var
+> > > >> simdat$time <- 1:400  # create time series
+> > > >> names(simdat) <- c("deaths", "temp", "humidity", "rain", "x3", "f",
+> > > >> "f0", "f1", "f2", "f3", "time")
+> > > >>
+> > > >> # lag function based on Simon Wood (book 2017, p.349 and gamair
+> > > >> package documentation p.54
+> > > >> # https://cran.rstudio.com/web/packages/gamair/gamair.pdf)
+> > > >> lagard <- function(x,n.lag=7) {
+> > > >> n <- length(x); X <- matrix(NA,n,n.lag)
+> > > >> for (i in 1:n.lag) X[i:n,i] <- x[i:n-i+1]
+> > > >> X
+> > > >> }
+> > > >>
+> > > >> # set up lag, temp, rain and humidity as 7-column matrices
+> > > >> # to create lagged variables - based on Simon Wood's example
+> > > >> dat <- list(lag=matrix(0:6,nrow(simdat),7,byrow=TRUE),
+> > > >> deaths=simdat$deaths, time = simdat$time)
+> > > >> dat$temp <- lagard(simdat$temp)
+> > > >> dat$rain <- lagard(simdat$rain)
+> > > >> dat$humidity <- lagard(simdat$humidity)
+> > > >>
+> > > >> mod <- gam(deaths~s(time, k=70) + te(temp, lag, k=c(12, 4)) +
+> > > >> te(humidity, lag, k=c(12, 4)) + te(rain, lag, k=c(12, 4)), data = dat,
+> > > >> family = nb, method = 'REML', select = TRUE)
+> > > >>
+> > > >> summary(mod)
+> > > >> plot(mod, scheme = 1)
+> > > >> plot(mod, scheme = 2)
+> > > >>
+> > > >> Thanks for any suggestions you may have,
+> > > >>
+> > > >> Jade
+> > > > ______________________________________________
+> > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > > and provide commented, minimal, self-contained, reproducible code.
+> > >
+> > > --
+> > > Simon Wood, School of Mathematics, University of Edinburgh,
+> > > https://www.maths.ed.ac.uk/~swood34/
+> > >
+
+
+From @|mon@wood @end|ng |rom b@th@edu  Sat Jul 23 22:26:20 2022
+From: @|mon@wood @end|ng |rom b@th@edu (Simon Wood)
+Date: Sat, 23 Jul 2022 21:26:20 +0100
+Subject: [R] mgcv: relative risk from GAM with distributed lag
+In-Reply-To: <CANg3_k8C5W1RKL-gsGbr3556hSHq7+-oCSRCZR-ODEsN_7_MAA@mail.gmail.com>
+References: <CANg3_k-18ND8DrwfYJmGAN5hq18QweZFPp4GhCuHwB=XFGAFiA@mail.gmail.com>
+ <CANg3_k9=GhwRjPyuLQBYmxD8Q-ksPrM52tS7DW0Cv3cpKn00Zw@mail.gmail.com>
+ <e0f4395b-e1cf-abfa-e4d4-ee3dd519887e@bath.edu>
+ <CANg3_k9-OKAK1VSirWSVGXQVMWoDeKoG7gN7mUfGfZdX4CnpgQ@mail.gmail.com>
+ <CANg3_k9Nkok-Mr4DFOZ3=d1XtA-Pq1seW+E+KtWLttQUe_+XcQ@mail.gmail.com>
+ <CANg3_k8C5W1RKL-gsGbr3556hSHq7+-oCSRCZR-ODEsN_7_MAA@mail.gmail.com>
+Message-ID: <59ce25f3-7168-2a30-f2fe-8710ed309731@bath.edu>
+
+I doubt you want a 7 by 1000 grid for your persp plot. Here's an example 
+of producing a persp plot using predict.gam and a custom grid. Since 
+only the effects of x1 and x2 are being plotted it doesn't matter what 
+x0 and x3 are set to (the model is additive after all). In your case 
+only one smooth term is involved of course.
+
+library(mgcv)
+n <- 200
+sig <- 2
+dat <- gamSim(1,n=n,scale=sig)
+
+b <- gam(y~s(x0)+s(I(x1^2))+s(x2)+offset(x3),data=dat)
+
+m1 <- 20;m2 <- 30; n <- m1*m2
+x1 <- seq(.2,.8,length=m1);x2 <- seq(.2,.8,length=m2) ## marginal values 
+for evaluation grid
+df <- data.frame(x0=rep(.5,n),x1=rep(x1,m2),x2=rep(x2,each=m1),x3=rep(0,n))
+pf <- predict(b,newdata=df,type="terms")
+
+persp(x1,x2,matrix(pf[,2]+pf[,3],m1,m2),theta=-130,col="blue",zlab="")
+
+On 23/07/2022 14:54, jade.shodan at googlemail.com wrote:
+> Hi Simon and all,
+>
+> I've corrected some mistakes in setting up the prediction data frame
+> (sorry, very stressed and sleep deprived due to closing in deadlines),
+> but am having problems getting the perspective plot using persp().
+>
+> I've calculated relative risk (RR) but am having trouble getting the
+> perspective (or contour) plot. persp() takes x and y vectors in
+> ascending order, and z as a matrix.  I've seen the outer() function
+> being used to facilitate perspective plots, but every example I've
+> seen treats z as a function, to be evaluated at combinations for x and
+> y. In my case, I already have observations for z. Not sure if I need
+> to use outer(), and if so, how?
+>
+> My code for making predictions, getting RR and trying to get the plot
+> is as follows (full reproducible example including model at the
+> bottom). Can someone tell me what I'm doing wrong?
+>
+> ########### CODE ########################
+>
+> # create prediction data
+> N <- 1000 # number of points for which to predict the smooths
+> pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T),
+> length = N)  # prediction data for temperature
+> pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)
+> pred_rain <- seq(min(dat$rain, na.rm = T), max(dat$rain, na.rm = T), length = N)
+> pred_humidity <- seq(min(dat$humidity, na.rm = T), max(dat$humidity,
+> na.rm = T), length = N)
+> pred_time <- seq(min(dat$time, na.rm = T), max(dat$time, na.rm = T), length = N)
+>
+> pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+> pred_humidity, rain = pred_rain, time = pred_time)
+>
+> # create prediction data with reference temperature set to median temperature
+> # identical to pd but now with all temperatures set to median value of
+> temperature
+> pred_temp0 <- rep(median(dat$temp, na.rm=T), N)
+> pd0 <- data.frame(temp = pred_temp0, lag = pred_lag, humidity =
+> pred_humidity, rain = pred_rain, time = pred_time)
+>
+> # make predictions
+> predictions <- predict.gam(mod, pd, type = "terms")
+> predictions0 <- predict.gam(mod, pd0, type = "terms")
+>
+> # calculate RR
+> diff <- predictions[,2] - predictions0[,2]
+> rr <- as.vector(exp(diff))
+>
+> # convert rr to matrix required for z argument for persp()
+> rr_mat <- matrix(rr, nrow = N)
+> persp(pred_temp, pred_lag, rr_mat)
+>
+> ######### ERROR MESSAGE ##################################
+>
+> The persp call results in the follow error:
+>
+> Error in persp.default(pred_temp, pred_lag, rr_mat) :
+>    increasing 'x' and 'y' values expected
+>
+> I don't understand this because pred_temp and pred_lag ARE in ascending order.
+>
+> ############################################################
+> FULL REPRODUCIBLE EXAMPLE
+> ############################################################
+>
+> library(mgcv)
+> set.seed(3) # make reproducible example
+> simdat <- gamSim(1,400)
+> g <- exp(simdat$f/5)
+>
+> simdat$y <- rnbinom(g,size=3,mu=g)  # negative binomial response var
+> simdat$time <- 1:400  # create time series
+>
+> names(simdat) <- c("deaths", "temp", "humidity", "rain", "x3", "f",
+> "f0", "f1", "f2", "f3", "time")
+>
+> # lag function based on Wood (book 2017, p.349 and gamair package
+> documentation p.54
+> # https://cran.rstudio.com/web/packages/gamair/gamair.pdf)
+> lagard <- function(x,n.lag=7) {
+> n <- length(x); X <- matrix(NA,n,n.lag)
+> for (i in 1:n.lag) X[i:n,i] <- x[i:n-i+1]
+> X
+> }
+>
+> # set up lag, temp, rain and humidity as 7-column matrices
+> # to create lagged variables
+> dat <- list(lag=matrix(0:6,nrow(simdat),7,byrow=TRUE),
+> deaths=simdat$deaths, time = simdat$time)
+> dat$temp <- lagard(simdat$temp)
+> dat$rain <- lagard(simdat$rain)
+> dat$humidity <- lagard(simdat$humidity)
+>
+> mod <- gam(deaths~s(time, k=70) + te(temp, lag, k=c(12, 4)) +
+> te(humidity, lag, k=c(12, 4)) + te(rain, lag, k=c(12, 4)), data = dat,
+> family = nb, method = 'REML', select = TRUE)
+>
+> summary(mod)
+> plot(mod, scheme = 1)  # perspective
+> plot(mod, scheme = 2)  # contour
+>
+> # create prediction data
+> N <- 1000 # number of points for which to predict the smooths
+> pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T), length = N)
+> pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)
+> pred_rain <- seq(min(dat$rain, na.rm = T), max(dat$rain, na.rm = T), length = N)
+> pred_humidity <- seq(min(dat$humidity, na.rm = T), max(dat$humidity,
+> na.rm = T), length = N)
+> pred_time <- seq(min(dat$time, na.rm = T), max(dat$time, na.rm = T), length = N)
+>
+> pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+> pred_humidity, rain = pred_rain, time = pred_time)
+>
+> # create prediction data with reference temperature set to median temperature
+> # identical to pd but now with all temperatures set to median value of
+> temperature
+> pred_temp0 <- rep(median(dat$temp, na.rm=T), N)
+> pd0 <- data.frame(temp = pred_temp0, lag = pred_lag, humidity =
+> pred_humidity, rain = pred_rain, time = pred_time)
+>
+> # make predictions
+> predictions <- predict.gam(mod, pd, type = "terms")
+> predictions0 <- predict.gam(mod, pd0, type = "terms")
+>
+> # calculate RR
+> diff <- predictions[,2] - predictions0[,2]
+> rr <- as.vector(exp(diff))
+>
+> # convert rr to matrix required for z argument for persp()
+> rr_mat <- matrix(rr, nrow = N)
+> persp(pred_temp, pred_lag, rr_mat)
+>
+>
+>
+>
+> On Fri, 22 Jul 2022 at 13:29, jade.shodan at googlemail.com
+> <jade.shodan at googlemail.com> wrote:
+>> I made a small error in the code below (not checking for NAs which are
+>> introduced by the lag function). However, this doesn't solve the issue
+>> I raised).
+>>
+>> So here's the problem (with corrected code) again:
+>>
+>> I'm not sure what to do with the 'time' variable. (I don't want to
+>> make predictions for specific points in time). I coded as follows
+>> (full reproducible example at bottom of email), but get a warning and
+>> error:
+>>
+>>
+>> N <- 1000     # number of points for smooth to be predicted
+>> # new temperatures and lags for prediction
+>> pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T), length = N)
+>> pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)      ## IS IT CORRECT TO SET
+>> UP LAG LIKE THIS?
+>>
+>> # not sure if these covariates are required with type = "terms"
+>> pred_humidity <- rep(median(dat$humidity, na.rm = T), N)
+>> pred_rain <- rep(median(dat$rain, na.rm = T), N)
+>> pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+>> pred_humidity, rain = pred_rain)
+>>
+>> predictions <- predict(mod, pd, type = "terms")
+>>
+>>
+>> The predict line creates the following warning and error:
+>>
+>> Warning in predict.gam(mod, pd, type = "terms") :
+>>    not all required variables have been supplied in  newdata!
+>>
+>> Error in model.frame.default(ff, data = newdata, na.action = na.act) :
+>>    object is not a matrix
+>>
+>>
+>> For ease of reference, I've (re)included the full reproducible example:
+>>
+>> library(mgcv)
+>> set.seed(3) # make reproducible example
+>> simdat <- gamSim(1,400)
+>> g <- exp(simdat$f/5)
+>>
+>> simdat$y <- rnbinom(g,size=3,mu=g)  # negative binomial response var
+>> simdat$time <- 1:400  # create time series
+>>
+>> names(simdat) <- c("deaths", "temp", "humidity", "rain", "x3", "f",
+>> "f0", "f1", "f2", "f3", "time")
+>>
+>> # lag function based on Wood (book 2017, p.349 and gamair package
+>> documentation p.54
+>> # https://cran.rstudio.com/web/packages/gamair/gamair.pdf)
+>> lagard <- function(x,n.lag=7) {
+>> n <- length(x); X <- matrix(NA,n,n.lag)
+>> for (i in 1:n.lag) X[i:n,i] <- x[i:n-i+1]
+>> X
+>> }
+>>
+>> # set up lag, temp, rain and humidity as 7-column matrices
+>> # to create lagged variables
+>> dat <- list(lag=matrix(0:6,nrow(simda
+>> t),7,byrow=TRUE),
+>> deaths=simdat$deaths, time = simdat$time)
+>> dat$temp <- lagard(simdat$temp)
+>> dat$rain <- lagard(simdat$rain)
+>> dat$humidity <- lagard(simdat$humidity)
+>>
+>> mod <- gam(deaths~s(time, k=70) + te(temp, lag, k=c(12, 4)) +
+>> te(humidity, lag, k=c(12, 4)) + te(rain, lag, k=c(12, 4)), data = dat,
+>> family = nb, method = 'REML', select = TRUE)
+>>
+>> # create prediction data
+>> N <- 1000 # number of points for which to predict the smooths
+>> pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T), length = N)
+>> pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)
+>> pred_humidity <- rep(median(dat$humidity), N)
+>> pred_rain <- rep(median(dat$rain), N)
+>> pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+>> pred_humidity, rain = pred_rain)
+>>
+>> # make predictions
+>> predictions <- predict(mod, pd, type = "terms")
+>>
+>> On Fri, 22 Jul 2022 at 12:47, jade.shodan at googlemail.com
+>> <jade.shodan at googlemail.com> wrote:
+>>> Hi Simon,
+>>>
+>>> Thanks for the pointers! But I'm not sure what to do with the 'time'
+>>> variable. (I don't want to make predictions for specific points in
+>>> time). I coded as follows (full reproducible example at bottom of
+>>> email), but get a warning and error:
+>>>
+>>>
+>>> N <- 1000     # number of points for smooth to be predicted
+>>> # new temperatures and lags for prediction
+>>> pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T), length = N)
+>>> pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)      ## IS IT CORRECT TO SET
+>>> UP LAG LIKE THIS?
+>>>
+>>> # not sure if these covariates are required with type = "terms"
+>>> pred_humidity <- rep(median(dat$humidity), N)
+>>> pred_rain <- rep(median(dat$rain), N)
+>>> pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+>>> pred_humidity, rain = pred_rain)
+>>>
+>>> predictions <- predict(mod, pd, type = "terms")
+>>>
+>>>
+>>> The predict line creates the following warning and error:
+>>>
+>>> Warning in predict.gam(mod, pd, type = "terms") :
+>>>    not all required variables have been supplied in  newdata!
+>>>
+>>> Error in model.frame.default(ff, data = newdata, na.action = na.act) :
+>>>    object is not a matrix
+>>>
+>>>
+>>> For ease of reference, I've (re)included the full reproducible example:
+>>>
+>>> library(mgcv)
+>>> set.seed(3) # make reproducible example
+>>> simdat <- gamSim(1,400)
+>>> g <- exp(simdat$f/5)
+>>>
+>>> simdat$y <- rnbinom(g,size=3,mu=g)  # negative binomial response var
+>>> simdat$time <- 1:400  # create time series
+>>>
+>>> names(simdat) <- c("deaths", "temp", "humidity", "rain", "x3", "f",
+>>> "f0", "f1", "f2", "f3", "time")
+>>>
+>>> # lag function based on Wood (book 2017, p.349 and gamair package
+>>> documentation p.54
+>>> # https://cran.rstudio.com/web/packages/gamair/gamair.pdf)
+>>> lagard <- function(x,n.lag=7) {
+>>> n <- length(x); X <- matrix(NA,n,n.lag)
+>>> for (i in 1:n.lag) X[i:n,i] <- x[i:n-i+1]
+>>> X
+>>> }
+>>>
+>>> # set up lag, temp, rain and humidity as 7-column matrices
+>>> # to create lagged variables
+>>> dat <- list(lag=matrix(0:6,nrow(simdat),7,byrow=TRUE),
+>>> deaths=simdat$deaths, time = simdat$time)
+>>> dat$temp <- lagard(simdat$temp)
+>>> dat$rain <- lagard(simdat$rain)
+>>> dat$humidity <- lagard(simdat$humidity)
+>>>
+>>> mod <- gam(deaths~s(time, k=70) + te(temp, lag, k=c(12, 4)) +
+>>> te(humidity, lag, k=c(12, 4)) + te(rain, lag, k=c(12, 4)), data = dat,
+>>> family = nb, method = 'REML', select = TRUE)
+>>>
+>>> # create prediction data
+>>> N <- 1000 # number of points for which to predict the smooths
+>>> pred_temp <- seq(min(dat$temp, na.rm = T), max(dat$temp, na.rm = T), length = N)
+>>> pred_lag <- rep(c(0, 1,2,3,4,5,6),each=N)
+>>> pred_humidity <- rep(median(dat$humidity), N)
+>>> pred_rain <- rep(median(dat$rain), N)
+>>> pd <- data.frame(temp = pred_temp, lag = pred_lag, humidity =
+>>> pred_humidity, rain = pred_rain)
+>>>
+>>> # make predictions
+>>> predictions <- predict(mod, pd, type = "terms")
+>>>
+>>>
+>>> On Fri, 22 Jul 2022 at 09:54, Simon Wood <simon.wood at bath.edu> wrote:
+>>>>
+>>>> On 21/07/2022 15:19, jade.shodan--- via R-help wrote:
+>>>>> Hello everyone (incl. Simon Wood?),
+>>>>>
+>>>>> I'm not sure that my original question (see below, including
+>>>>> reproducible example) was as clear as it could have been. To clarify,
+>>>>> what I would to like to get is:
+>>>>>
+>>>>> 1) a perspective plot of temperature x lag x relative risk.  I know
+>>>>> how to use plot.gam and vis.gam but don't know how to get plots on the
+>>>>> relative risk scale as opposed to  "response" or "link".
+>>>> - You are on the log scale so I think that all you need to do is to use
+>>>> 'predict.gam', with 'type = "terms"' to  get the predictions for the
+>>>> te(temp, lag) term over the required grid of lags and temperatures.
+>>>> Suppose the dataframe of prediction data is 'pd'. Now produce pd0, which
+>>>> is identical to pd, except that the temperatures are all set to the
+>>>> reference temperature. Use predict.gam to predict te(temp,lag) from pd0.
+>>>> Now the exponential of the difference between the first and second
+>>>> predictions is the required RR, which you can plot using 'persp',
+>>>> 'contour', 'image' or whatever. If you need credible intervals see pages
+>>>> 341-343 of my 'GAMs: An intro with R' book (2nd ed).
+>>>>
+>>>>> 2) a plot of relative risk (accumulated across all lags) vs
+>>>>> temperature, given a reference temperature. An example of such a plot
+>>>>> can be found in figure 2 (bottom) of this paper by Gasparrini et al:
+>>>>> https://onlinelibrary.wiley.com/doi/abs/10.1002/sim.3940
+>>>> - I guess this only makes sense if you have the same temperature at all
+>>>> lags. So this time produce a data.frame with each desired temperature
+>>>> repeated for each lag: 'pd1'. Again use predict.gam(...,type="terms").
+>>>> Then sum the predictions over lags for each temperature, subtract the
+>>>> minimum, and take the exponential. Same as above for CIs.
+>>>>
+>>>> best,
+>>>>
+>>>> Simon
+>>>>
+>>>>> I've seen Simon Wood's response to a related issue here:
+>>>>> https://stat.ethz.ch/pipermail/r-help/2012-May/314387.html
+>>>>> However, I'm not sure how to apply this to time series data with
+>>>>> distributed lag, to get the above mentioned figures.
+>>>>>
+>>>>> Would be really grateful for suggestions!
+>>>>>
+>>>>> Jade
+>>>>>
+>>>>> On Tue, 19 Jul 2022 at 16:07, jade.shodan at googlemail.com
+>>>>> <jade.shodan at googlemail.com> wrote:
+>>>>>> Dear list members,
+>>>>>>
+>>>>>> Does anyone know how to obtain a relative risk/ risk ratio from a GAM
+>>>>>> with a distributed lag model implemented in mgcv? I have a GAM
+>>>>>> predicting daily deaths from time series data consisting of daily
+>>>>>> temperature, humidity and rainfall. The GAM includes a distributed lag
+>>>>>> model because deaths may occur over several days following a high heat
+>>>>>> day.
+>>>>>>
+>>>>>> What I'd like to do is compute (and plot) the relative risk
+>>>>>> (accumulated across all lags) for a given temperature vs the
+>>>>>> temperature at which the risk is lowest, with corresponding confidence
+>>>>>> intervals. I am aware of the predict.gam function but am not sure if
+>>>>>> and how it should be used in this case. (Additionally, I'd also like
+>>>>>> to plot the relative risk for different lags separately).
+>>>>>>
+>>>>>> I apologise if this seems trivial to some. (Actually, I hope it is,
+>>>>>> because that might mean I get a solution!) I've been looking for
+>>>>>> examples on how to do this, but found nothing so far. Suggestions
+>>>>>> would be very much appreciated!
+>>>>>>
+>>>>>> Below is a reproducible example with the GAM:
+>>>>>>
+>>>>>> library(mgcv)
+>>>>>> set.seed(3) # make reproducible example
+>>>>>> simdat <- gamSim(1,400) # simulate data
+>>>>>> g <- exp(simdat$f/5)
+>>>>>> simdat$y <- rnbinom(g,size=3,mu=g)  # negative binomial response var
+>>>>>> simdat$time <- 1:400  # create time series
+>>>>>> names(simdat) <- c("deaths", "temp", "humidity", "rain", "x3", "f",
+>>>>>> "f0", "f1", "f2", "f3", "time")
+>>>>>>
+>>>>>> # lag function based on Simon Wood (book 2017, p.349 and gamair
+>>>>>> package documentation p.54
+>>>>>> # https://cran.rstudio.com/web/packages/gamair/gamair.pdf)
+>>>>>> lagard <- function(x,n.lag=7) {
+>>>>>> n <- length(x); X <- matrix(NA,n,n.lag)
+>>>>>> for (i in 1:n.lag) X[i:n,i] <- x[i:n-i+1]
+>>>>>> X
+>>>>>> }
+>>>>>>
+>>>>>> # set up lag, temp, rain and humidity as 7-column matrices
+>>>>>> # to create lagged variables - based on Simon Wood's example
+>>>>>> dat <- list(lag=matrix(0:6,nrow(simdat),7,byrow=TRUE),
+>>>>>> deaths=simdat$deaths, time = simdat$time)
+>>>>>> dat$temp <- lagard(simdat$temp)
+>>>>>> dat$rain <- lagard(simdat$rain)
+>>>>>> dat$humidity <- lagard(simdat$humidity)
+>>>>>>
+>>>>>> mod <- gam(deaths~s(time, k=70) + te(temp, lag, k=c(12, 4)) +
+>>>>>> te(humidity, lag, k=c(12, 4)) + te(rain, lag, k=c(12, 4)), data = dat,
+>>>>>> family = nb, method = 'REML', select = TRUE)
+>>>>>>
+>>>>>> summary(mod)
+>>>>>> plot(mod, scheme = 1)
+>>>>>> plot(mod, scheme = 2)
+>>>>>>
+>>>>>> Thanks for any suggestions you may have,
+>>>>>>
+>>>>>> Jade
+>>>>> ______________________________________________
+>>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>> --
+>>>> Simon Wood, School of Mathematics, University of Edinburgh,
+>>>> https://www.maths.ed.ac.uk/~swood34/
+>>>>
+-- 
+Simon Wood, School of Mathematics, University of Edinburgh,
+https://www.maths.ed.ac.uk/~swood34/
+
+
+From @@ron @end|ng |rom gene@|@rg@com  Thu Jul 21 21:25:56 2022
+From: @@ron @end|ng |rom gene@|@rg@com (Aaron Crowley)
+Date: Thu, 21 Jul 2022 15:25:56 -0400
+Subject: [R] Error generated by nlme::gnls
+Message-ID: <CAMs=EiOaUerb4n0nV0H9SKK+ChiyNDf7WkvVZ_oO7Mue1Cx4eQ@mail.gmail.com>
+
+Approximately 6 months ago, I successfully performed a model-based
+network meta-analysis using the gnls function from the nlme package in
+R (nlme::gnls). In this analysis, a binary response is captured as a
+non-linear non-parametric placebo response model combined with drug
+effect as a function of dose and time and is fitted on aggregate data
+from 57 trials and 13 treatments.
+
+I am now trying to rerun the analysis but the code no longer runs. An
+error message is generated when trying to fit the model using
+nlme::gnls. A reproducible example generating the same error message
+is below.
+
+library(nlme)
+
+set.seed(548)
+
+df <- Soybean
+df$x01 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+df$x02 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+df$x03 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+df$x04 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+df$x05 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+df$x06 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+df$x07 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+df$x08 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+df$x09 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+df$x10 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+df$x11 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+df$x12 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+
+gnls(
+  weight ~ x,
+  data = df,
+  params = (x ~ -1 + x01 + x02 + x03 + x04 + x05 + x06 + x07 + x08 +
+x09 + x10 + x11 + x12),
+  start = rep(0, 13)
+)
+# Error in if (deparse(params[[nm]][[3]]) != "1") { :
+#     the condition has length > 1
+
+sessionInfo()
+# R version 4.2.1 (2022-06-23 ucrt)
+# Platform: x86_64-w64-mingw32/x64 (64-bit)
+# Running under: Windows 10 x64 (build 22000)
+#
+# Matrix products: default
+#
+# locale:
+#   [1] LC_COLLATE=English_United States.utf8  LC_CTYPE=English_United
+States.utf8
+# [3] LC_MONETARY=English_United States.utf8 LC_NUMERIC=C
+# [5] LC_TIME=English_United States.utf8
+#
+# attached base packages:
+#   [1] stats     graphics  grDevices utils     datasets  methods   base
+#
+# other attached packages:
+#   [1] nlme_3.1-157
+#
+# loaded via a namespace (and not attached):
+#   [1] compiler_4.2.1  tools_4.2.1     grid_4.2.1      lattice_0.20-45
+
+Aaron Crowley
+Principal Scientist, Biostatistics
+
+e.  aaron at genesisrg.com
+w. genesisrg.com
+
+
+From btupper @end|ng |rom b|ge|ow@org  Sun Jul 24 03:00:25 2022
+From: btupper @end|ng |rom b|ge|ow@org (Ben Tupper)
+Date: Sat, 23 Jul 2022 21:00:25 -0400
+Subject: [R] Error generated by nlme::gnls
+In-Reply-To: <CAMs=EiOaUerb4n0nV0H9SKK+ChiyNDf7WkvVZ_oO7Mue1Cx4eQ@mail.gmail.com>
+References: <CAMs=EiOaUerb4n0nV0H9SKK+ChiyNDf7WkvVZ_oO7Mue1Cx4eQ@mail.gmail.com>
+Message-ID: <CALrbzg1BKLoqr9jRpggtT+cZuL+AYt2j-NN6QpHV2J9SUS+VxA@mail.gmail.com>
+
+Could this be related to a new if() behavior introduced in v4.2.0 ?
+See the "SIGNIFICANT USER-VISIBLE CHANGES" for v4.2.0 in the NEWS
+
+https://cloud.r-project.org/doc/manuals/r-release/NEWS.html
+
+On Sat, Jul 23, 2022 at 6:26 PM Aaron Crowley <aaron at genesisrg.com> wrote:
+>
+> Approximately 6 months ago, I successfully performed a model-based
+> network meta-analysis using the gnls function from the nlme package in
+> R (nlme::gnls). In this analysis, a binary response is captured as a
+> non-linear non-parametric placebo response model combined with drug
+> effect as a function of dose and time and is fitted on aggregate data
+> from 57 trials and 13 treatments.
+>
+> I am now trying to rerun the analysis but the code no longer runs. An
+> error message is generated when trying to fit the model using
+> nlme::gnls. A reproducible example generating the same error message
+> is below.
+>
+> library(nlme)
+>
+> set.seed(548)
+>
+> df <- Soybean
+> df$x01 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+> df$x02 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+> df$x03 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+> df$x04 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+> df$x05 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+> df$x06 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+> df$x07 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+> df$x08 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+> df$x09 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+> df$x10 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+> df$x11 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+> df$x12 <- sample(c(0, 1), size = nrow(df), replace = TRUE)
+>
+> gnls(
+>   weight ~ x,
+>   data = df,
+>   params = (x ~ -1 + x01 + x02 + x03 + x04 + x05 + x06 + x07 + x08 +
+> x09 + x10 + x11 + x12),
+>   start = rep(0, 13)
+> )
+> # Error in if (deparse(params[[nm]][[3]]) != "1") { :
+> #     the condition has length > 1
+>
+> sessionInfo()
+> # R version 4.2.1 (2022-06-23 ucrt)
+> # Platform: x86_64-w64-mingw32/x64 (64-bit)
+> # Running under: Windows 10 x64 (build 22000)
+> #
+> # Matrix products: default
+> #
+> # locale:
+> #   [1] LC_COLLATE=English_United States.utf8  LC_CTYPE=English_United
+> States.utf8
+> # [3] LC_MONETARY=English_United States.utf8 LC_NUMERIC=C
+> # [5] LC_TIME=English_United States.utf8
+> #
+> # attached base packages:
+> #   [1] stats     graphics  grDevices utils     datasets  methods   base
+> #
+> # other attached packages:
+> #   [1] nlme_3.1-157
+> #
+> # loaded via a namespace (and not attached):
+> #   [1] compiler_4.2.1  tools_4.2.1     grid_4.2.1      lattice_0.20-45
+>
+> Aaron Crowley
+> Principal Scientist, Biostatistics
+>
+> e.  aaron at genesisrg.com
+> w. genesisrg.com
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Ben Tupper (he/him)
+Bigelow Laboratory for Ocean Science
+East Boothbay, Maine
+http://www.bigelow.org/
+https://eco.bigelow.org
+
+
