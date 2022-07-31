@@ -39917,3 +39917,332 @@ An embedded and charset-unspecified text was scrubbed...
 Name: p.weird.txt
 URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20220730/23c2c995/attachment.txt>
 
+From j@b@y@t194 @end|ng |rom gm@||@com  Sat Jul 30 08:56:55 2022
+From: j@b@y@t194 @end|ng |rom gm@||@com (javad bayat)
+Date: Sat, 30 Jul 2022 11:26:55 +0430
+Subject: [R] High error made by Neural network in R
+Message-ID: <CANTxAmK7z4fm_1jm-Q8CfMhSwVdX3+C9xxjkOPQCEZgyNWEgMg@mail.gmail.com>
+
+Dear all;
+I have run a neural network to predict a variable according to 3
+independent variables. I used "neuralnet" package and the codes were:
+"
+> met = read.csv("./met.csv",header = TRUE, sep = ",")
+> attach(met)
+> head(met)
+> met2 = met
+> str(met2)
+'data.frame':   211362 obs. of  4 variables:
+ $ t    : num  14.9 13.9 16.3 16 13.4 ...
+ $ rrr24: num  NA NA NA NA NA NA NA NA NA NA ...
+ $ sshn : num  NA NA NA NA NA NA NA NA NA NA ...
+ $ u    : num  56.9 67.5 87.1 88.6 82 ...
+> met2 = na.omit(met2)
+> dim(met2)
+[1] 130765      4
+
+
+> set.seed(7896129)
+> test_met <- read.csv("./test_met.csv",header = TRUE, sep = ",")
+> attach(test_met)
+> head(test_met)
+> test_met = na.omit(test_met)
+> dim(test_met)
+[1] 73778     4
+
+> n2 <- neuralnet(u ~ t + rrr24 + sshn,
+               data = met2,
+               hidden = 4,
+               err.fct = "sse",
+               linear.output = TRUE,
+               lifesign = 'full',
+               rep = 1,
+               algorithm = "rprop+",
+               stepmax = 100000,
+               threshold = 0.01
+               )
+hidden: 4    thresh: 0.01    rep: 1/1    steps:     138 error:
+30691876.99866   time: 6.35 secs
+
+> n2$result.matrix
+                              [,1]
+error                 3.069188e+07
+reached.threshold     8.661171e-03
+steps                 1.380000e+02
+Intercept.to.1layhid1 1.391861e+01
+t.to.1layhid1         2.917817e+00
+rrr24.to.1layhid1     1.272637e+01
+sshn.to.1layhid1      1.302440e+01
+Intercept.to.1layhid2 1.418934e+01
+t.to.1layhid2         3.010978e+00
+rrr24.to.1layhid2     1.453077e+01
+sshn.to.1layhid2      1.373876e+01
+Intercept.to.1layhid3 1.458518e+01
+t.to.1layhid3         3.028105e+00
+rrr24.to.1layhid3     1.315952e+01
+sshn.to.1layhid3      1.390079e+01
+Intercept.to.1layhid4 1.255582e+01
+t.to.1layhid4         2.520585e+00
+rrr24.to.1layhid4     1.223544e+01
+sshn.to.1layhid4      1.146831e+01
+Intercept.to.u        8.018417e+00
+1layhid1.to.u         8.222817e+00
+1layhid2.to.u         8.355812e+00
+1layhid3.to.u         9.095662e+00
+1layhid4.to.u         8.024959e+00
+
+> results_met <- neuralnet::compute(n2, test_met[,1:3])
+"
+I am confused why the error is so high ( 3.069188e+07). Is it a problem
+regarding my codes?
+Is the prediction made by this neural network accurate?
+Sincerely
+
+
+
+-- 
+Best Regards
+Javad Bayat
+M.Sc. Environment Engineering
+Alternative Mail: bayat194 at yahoo.com
+
+	[[alternative HTML version deleted]]
+
+
+From ccberry @end|ng |rom he@|th@uc@d@edu  Sat Jul 30 20:30:29 2022
+From: ccberry @end|ng |rom he@|th@uc@d@edu (Berry, Charles)
+Date: Sat, 30 Jul 2022 18:30:29 +0000
+Subject: [R] Puzzled by the behaviour of rbinom().
+In-Reply-To: <20220730113641.516b75fd@rolf-Latitude-E7470>
+References: <20220730113641.516b75fd@rolf-Latitude-E7470>
+Message-ID: <8F5FD1F1-2972-4B61-8773-B802374CB236@health.ucsd.edu>
+
+Rolf,
+
+> On Jul 29, 2022, at 4:36 PM, Rolf Turner <r.turner at auckland.ac.nz> wrote:
+> 
+> In a certain arcane context I wanted to look at the result of
+> applying rbinom() to two versions of the probability argument,
+> the versions differing in only a small number (three) of entries.
+> 
+> I thought that if I called set.seed() (with the same argument) prior to
+> each call to rbinom(), I would get results that differed only where the
+> probabilities differed. Most of the time this appears to be true:
+> 
+> set.seed(17) # Or any other seed, in my experience.
+> p0 <- runif(147)
+> p1 <- p0
+> p1[c(26,65,131)] <- 0.5
+> set.seed(42)
+> r0 <- rbinom(147,1000,p0)
+> set.seed(42)
+> r1 <- rbinom(147,1000,p1)
+
+[rest deleted]
+
+The fillip is that rbinom may use a variable number of draws from a uniform to generate the binomial.
+
+You can read the  Kachitvichyanukul and Schmeiser article or hunt through the code to see what it does, but brute force exploration will give you a sense:
+
+set.seed(1)
+u1000 <- runif(1000)
+res <-
+  sapply(u1000,
+         function(pr){
+           set.seed(1)
+           rbinom(1,1000,pr)
+           u_next <- runif(1)
+           j <- match(u_next, u1000)
+           c( i, j-1, pr)} )
+
+table(res[2,]) # how many draws
+range(res[3, res[2,] == 2]) # range when 2 draws
+plot(res[2,], res[3,])
+
+Evidently, tails of `pr' only need one draw, but the interior needs two.
+
+So my guess is that the changes you made shifted the RNG stream.
+
+I guess you need to reset the seed for each trial.
+
+---
+
+FWIW, I tried your p.weird example, but did not get the same results as you showed. Only elements 26, 65, and 131 differed.
+
+
+Note that for me:
+
+> RNGkind()
+[1] "Mersenne-Twister" "Inversion"        "Rejection"       
+> 
+> sessionInfo()
+R version 4.2.0 (2022-04-22)
+Platform: aarch64-apple-darwin20 (64-bit)
+Running under: macOS Monterey 12.4
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.2-arm64/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/4.2-arm64/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+loaded via a namespace (and not attached):
+[1] compiler_4.2.0 tools_4.2.0   
+> 
+
+HTH,
+Chuck
+
+From r@turner @end|ng |rom @uck|@nd@@c@nz  Sun Jul 31 01:08:12 2022
+From: r@turner @end|ng |rom @uck|@nd@@c@nz (Rolf Turner)
+Date: Sun, 31 Jul 2022 11:08:12 +1200
+Subject: [R] Puzzled by the behaviour of rbinom().
+In-Reply-To: <8F5FD1F1-2972-4B61-8773-B802374CB236@health.ucsd.edu>
+References: <20220730113641.516b75fd@rolf-Latitude-E7470>
+ <8F5FD1F1-2972-4B61-8773-B802374CB236@health.ucsd.edu>
+Message-ID: <20220731110812.2d9419fe@rolf-Latitude-E7470>
+
+
+On Sat, 30 Jul 2022 18:30:29 +0000
+"Berry, Charles" <ccberry at health.ucsd.edu> wrote:
+
+<SNIP>
+
+> The fillip is that rbinom may use a variable number of draws from a
+> uniform to generate the binomial.
+> 
+> You can read the  Kachitvichyanukul and Schmeiser article or hunt
+> through the code to see what it does, but brute force exploration
+> will give you a sense:
+> 
+> set.seed(1)
+> u1000 <- runif(1000)
+> res <-
+>   sapply(u1000,
+>          function(pr){
+>            set.seed(1)
+>            rbinom(1,1000,pr)
+>            u_next <- runif(1)
+>            j <- match(u_next, u1000)
+>            c( i, j-1, pr)} )
+> 
+> table(res[2,]) # how many draws
+> range(res[3, res[2,] == 2]) # range when 2 draws
+> plot(res[2,], res[3,])
+> 
+> Evidently, tails of `pr' only need one draw, but the interior needs
+> two.
+> 
+> So my guess is that the changes you made shifted the RNG stream.
+> 
+> I guess you need to reset the seed for each trial.
+
+The index "i" in "c(i,j-1,pr)" is undefined.  Should that be
+"c(j,j-1,pr)"?
+
+I am going to have to think a bit in order to understand what your code
+is doing.  Sorry for being such a thicko.
+
+> FWIW, I tried your p.weird example, but did not get the same results
+> as you showed. Only elements 26, 65, and 131 differed.
+
+Deepayan Sarkar reported the same phenomenon, off-list.  Curiouser and
+curiouser.
+
+I get the same result as you from RNGkind().
+
+My sessionInfo is:
+
+R version 4.2.1 (2022-06-23)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Ubuntu 20.04.4 LTS
+
+Matrix products: default
+BLAS:   /usr/lib/x86_64-linux-gnu/atlas/libblas.so.3.10.3
+LAPACK: /usr/lib/x86_64-linux-gnu/atlas/liblapack.so.3.10.3
+
+locale:
+ [1] LC_CTYPE=en_GB.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_NZ.UTF-8        LC_COLLATE=en_GB.UTF-8    
+ [5] LC_MONETARY=en_NZ.UTF-8    LC_MESSAGES=en_GB.UTF-8   
+ [7] LC_PAPER=en_NZ.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=en_NZ.UTF-8 LC_IDENTIFICATION=C       
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] brev_0.0-8
+
+loaded via a namespace (and not attached):
+ [1] magrittr_2.0.3    usethis_2.0.1     devtools_2.4.2    pkgload_1.2.4    
+ [5] colorspace_1.4-1  R6_2.5.1          rlang_1.0.2       fastmap_1.0.1    
+ [9] tools_4.2.1       nnet_7.3-17       pkgbuild_1.2.0    hglmm_0.0-16     
+[13] sessioninfo_1.1.1 cli_3.2.0         withr_2.5.0       ellipsis_0.3.2   
+[17] remotes_2.4.0     rprojroot_2.0.3   lifecycle_1.0.1   crayon_1.5.1     
+[21] brio_1.1.3        processx_3.5.3    purrr_0.3.4       callr_3.7.0      
+[25] fs_1.5.0          ps_1.6.0          dbd_0.0-23        testthat_3.1.3   
+[29] hmmRT_0.0-5       memoise_2.0.0     glue_1.6.2        cachem_1.0.5     
+[33] compiler_4.2.1    desc_1.4.1        prettyunits_1.1.1
+
+There are differences from your sessionInfo.  Perhaps most notably, I'm
+running R 4.2.1 whereas you are running 4.2.0.
+
+But that does not seem to be the problem.  When I use "R --vanilla"
+and do the rbinom() experiment, I get the same result as you and
+Deepayan, i.e. the expected/correct result.
+
+So something about the more complex session environment that I get, when
+I use my usual invocation of R, is messing things up.  I'll try to track
+down where the mess-up comes from, but it's probably a bit beyond me.
+:-(
+
+The problem may well lie in that plethora of packages "loaded via a
+namespace (and not attached)".  Under R --vanilla the corresponding
+list is just "[1] compiler_4.2.1".
+
+Thanks for your advice; it's given me a bit to chew on at least.
+
+cheers,
+
+Rolf
+
+<SNIP>
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Phone: +64-9-373-7599 ext. 88276
+
+
+From ccberry @end|ng |rom he@|th@uc@d@edu  Sun Jul 31 01:53:14 2022
+From: ccberry @end|ng |rom he@|th@uc@d@edu (Berry, Charles)
+Date: Sat, 30 Jul 2022 23:53:14 +0000
+Subject: [R] Puzzled by the behaviour of rbinom().
+In-Reply-To: <20220731110812.2d9419fe@rolf-Latitude-E7470>
+References: <20220730113641.516b75fd@rolf-Latitude-E7470>
+ <8F5FD1F1-2972-4B61-8773-B802374CB236@health.ucsd.edu>
+ <20220731110812.2d9419fe@rolf-Latitude-E7470>
+Message-ID: <3A18FE8C-0518-4453-AA5F-47833C251789@health.ucsd.edu>
+
+Rolf,
+
+> On Jul 30, 2022, at 4:08 PM, Rolf Turner <r.turner at auckland.ac.nz> wrote:
+> 
+> The index "i" in "c(i,j-1,pr)" is undefined. Should that be
+> "c(j,j-1,pr)"?
+
+Sorry, that `i' is cruft from an earlier version that used a for loop indexed by `i` 
+
+You can just do `i <- 1L` before the sapply(...) to make it run.
+
+Or delete it and shift the subscripts of res down by 1L.
+
+Chuck
+
