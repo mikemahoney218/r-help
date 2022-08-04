@@ -1,0 +1,243 @@
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Tue Aug  2 09:10:43 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Tue, 2 Aug 2022 09:10:43 +0200
+Subject: [R] Predicted values from glm() when linear predictor is NA.
+In-Reply-To: <20220728141949.53afcb46@rolf-Latitude-E7470>
+References: <20220728122628.4381daa4@rolf-Latitude-E7470>
+ <5371d080-d666-f059-c6f8-e3051a0faea2@comcast.net>
+ <20220728141949.53afcb46@rolf-Latitude-E7470>
+Message-ID: <25320.52723.249947.577244@stat.math.ethz.ch>
+
+>>>>> Rolf Turner 
+>>>>>     on Thu, 28 Jul 2022 14:19:49 +1200 writes:
+
+    > On Wed, 27 Jul 2022 18:25:23 -0700 David Winsemius
+    > <dwinsemius at comcast.net> wrote:
+
+    > <SNIP>
+
+    >> The NA is most likely caused by aliasing, so some other
+    >> combination of factors a perfect surrogate for every case
+    >> with that level of the interaction.
+
+    > <SNIP>
+
+    > No, I think it's much simpler than that.  Essentially it
+    > boils down to the fact that if y is 1:10 and x is
+    > rep(1,10) then
+
+    >     lm(y ~ x)
+
+    > gives a slope estimate of NA.  As it clearly should.
+
+*and*  predict() should surely *not* be NA, either, right ??
+
+You can easily confirm with
+
+ x <- rep(1,7); y <- 1:7; summary(fm <- lm(y~x))
+ predict(fm)
+
+which gives all '4'  (= mean(y))
+
+Note that this *is* aliasing:  x is aliased with the intercept,
+and it fits entirely your situation:
+
+If a predictor variable is superfluous, i.e., more precisely, a
+column of the X design matrix is an exact linear combination of
+previous columns,
+prediction is no problem at all and gives exactly what you'd get
+if you omit that superfluous column/variable.
+
+Are you sure this is not simply your situation?
+Martin
+
+
+    > cheers,
+    > Rolf
+
+    > -- 
+    > Honorary Research Fellow Department of Statistics
+    > University of Auckland Phone: +64-9-373-7599 ext. 88276
+
+
+From |u||@dmtru @end|ng |rom gm@||@com  Tue Aug  2 11:18:06 2022
+From: |u||@dmtru @end|ng |rom gm@||@com (Iulia Dumitru)
+Date: Tue, 2 Aug 2022 12:18:06 +0300
+Subject: [R] I don't understand the result of `svyboxplot` function from the
+ Survey package
+Message-ID: <06F1D8CB-79C6-4FAF-B116-709508A3E211@gmail.com>
+
+After following the example given here: https://www.rdocumentation.org/packages/survey/versions/4.1-1/topics/svyhist
+for `svyboxplot` I get the result in the attached image. This is a box plot of the `enroll` variable from the stratified dataset `apistrat`, grouped by `stype`: E (elementary school), M (middle school) and H (high school). If I use the `svyby` function to group the data by `stype` and find the mean for each group, I get this result:
+
+> svyby(~enroll, ~stype, dstrat, svymean)
+  stype  enroll       se
+E     E  416.78 16.41740
+H     H 1320.70 91.70781
+M     M  832.48 54.52157
+
+Clearly the means are very different from each other. Then why don?t the box plots show this? I don?t know how to interpret the plot. Could someone please offer some insight on this? Thank you!
+
+
+
+From @jd@m|co @end|ng |rom gm@||@com  Tue Aug  2 13:49:48 2022
+From: @jd@m|co @end|ng |rom gm@||@com (Anthony Damico)
+Date: Tue, 2 Aug 2022 07:49:48 -0400
+Subject: [R] 
+ I don't understand the result of `svyboxplot` function from the
+ Survey package
+In-Reply-To: <06F1D8CB-79C6-4FAF-B116-709508A3E211@gmail.com>
+References: <06F1D8CB-79C6-4FAF-B116-709508A3E211@gmail.com>
+Message-ID: <CAOwvMDy4u-rSxsRogzCzQqLq2gpgt4dKdY+cit6MtWHLNCt1iw@mail.gmail.com>
+
+hi, nice catch!  i'm ccing the author of the survey package because this
+might be a issue.  when i run ?svyboxplot, i also see all three boxes in
+the exact same place..  seems like the svyby() call inside of svyboxplot
+does something unexpected when svyquantile gets passed using keep.var=FALSE
+and ci=FALSE
+
+
+library(survey)
+
+data(api)
+
+dstrat <- svydesign(id = ~1, strata = ~stype, weights = ~pw, data =
+apistrat, fpc = ~fpc)
+
+# looks OK
+svyby(~enroll, ~stype, dstrat, svyquantile, quantiles = c(0, 0.25, 0.5,
+0.75, 1), na.rm = TRUE)
+
+# returns each result three times in an unexpected configuration..
+svyboxplot then grabs the repeated information from the first six columns
+svyby(~enroll, ~stype, dstrat, svyquantile, ci = FALSE, keep.var = FALSE,
+quantiles = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+
+
+
+
+
+On Tue, Aug 2, 2022 at 7:30 AM Iulia Dumitru <iuliadmtru at gmail.com> wrote:
+
+> After following the example given here:
+> https://www.rdocumentation.org/packages/survey/versions/4.1-1/topics/svyhist
+> for `svyboxplot` I get the result in the attached image. This is a box
+> plot of the `enroll` variable from the stratified dataset `apistrat`,
+> grouped by `stype`: E (elementary school), M (middle school) and H (high
+> school). If I use the `svyby` function to group the data by `stype` and
+> find the mean for each group, I get this result:
+>
+> > svyby(~enroll, ~stype, dstrat, svymean)
+>   stype  enroll       se
+> E     E  416.78 16.41740
+> H     H 1320.70 91.70781
+> M     M  832.48 54.52157
+>
+> Clearly the means are very different from each other. Then why don?t the
+> box plots show this? I don?t know how to interpret the plot. Could someone
+> please offer some insight on this? Thank you!
+>
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From t@|um|ey @end|ng |rom @uck|@nd@@c@nz  Tue Aug  2 23:47:02 2022
+From: t@|um|ey @end|ng |rom @uck|@nd@@c@nz (Thomas Lumley)
+Date: Tue, 2 Aug 2022 21:47:02 +0000
+Subject: [R] 
+ I don't understand the result of `svyboxplot` function from the
+ Survey package
+In-Reply-To: <CAOwvMDy4u-rSxsRogzCzQqLq2gpgt4dKdY+cit6MtWHLNCt1iw@mail.gmail.com>
+References: <06F1D8CB-79C6-4FAF-B116-709508A3E211@gmail.com>
+ <CAOwvMDy4u-rSxsRogzCzQqLq2gpgt4dKdY+cit6MtWHLNCt1iw@mail.gmail.com>
+Message-ID: <SY4PR01MB6735DB272BA7F214D28DB29EA99D9@SY4PR01MB6735.ausprd01.prod.outlook.com>
+
+It's a bug resulting from the new svyquantile() implementation.  It's fixed in the development version, which you can get from r-forge here: https://r-forge.r-project.org/R/?group_id=1788
+
+  -thomas
+
+Thomas Lumley
+Professor of Biostatistics
+
+________________________________________
+From: Anthony Damico <ajdamico at gmail.com>
+Sent: Tuesday, August 2, 2022 11:49 PM
+To: Iulia Dumitru
+Cc: r-help at r-project.org; Thomas Lumley
+Subject: Re: [R] I don't understand the result of `svyboxplot` function from the Survey package
+
+hi, nice catch!  i'm ccing the author of the survey package because this might be a issue.  when i run ?svyboxplot, i also see all three boxes in the exact same place..  seems like the svyby() call inside of svyboxplot does something unexpected when svyquantile gets passed using keep.var=FALSE and ci=FALSE
+
+
+library(survey)
+
+data(api)
+
+dstrat <- svydesign(id = ~1, strata = ~stype, weights = ~pw, data = apistrat, fpc = ~fpc)
+
+# looks OK
+svyby(~enroll, ~stype, dstrat, svyquantile, quantiles = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+
+# returns each result three times in an unexpected configuration..  svyboxplot then grabs the repeated information from the first six columns
+svyby(~enroll, ~stype, dstrat, svyquantile, ci = FALSE, keep.var = FALSE, quantiles = c(0, 0.25, 0.5, 0.75, 1), na.rm = TRUE)
+
+
+
+
+
+On Tue, Aug 2, 2022 at 7:30 AM Iulia Dumitru <iuliadmtru at gmail.com<mailto:iuliadmtru at gmail.com>> wrote:
+After following the example given here: https://www.rdocumentation.org/packages/survey/versions/4.1-1/topics/svyhist<https://www.rdocumentation.org/packages/survey/versions/4.1-1/topics/svyhist>
+for `svyboxplot` I get the result in the attached image. This is a box plot of the `enroll` variable from the stratified dataset `apistrat`, grouped by `stype`: E (elementary school), M (middle school) and H (high school). If I use the `svyby` function to group the data by `stype` and find the mean for each group, I get this result:
+
+> svyby(~enroll, ~stype, dstrat, svymean)
+  stype  enroll       se
+E     E  416.78 16.41740
+H     H 1320.70 91.70781
+M     M  832.48 54.52157
+
+Clearly the means are very different from each other. Then why don?t the box plots show this? I don?t know how to interpret the plot. Could someone please offer some insight on this? Thank you!
+
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help<https://stat.ethz.ch/mailman/listinfo/r-help>
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html<http://www.R-project.org/posting-guide.html>
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From s@ski@@grob m@iii@g oii quickii@e@ch  Wed Aug  3 08:37:28 2022
+From: s@ski@@grob m@iii@g oii quickii@e@ch (s@ski@@grob m@iii@g oii quickii@e@ch)
+Date: Wed, 3 Aug 2022 06:37:28 +0000
+Subject: [R] cumulative survival/number of deaths after weighting using
+ survey::svykm()
+Message-ID: <VI1PR06MB563155E467B4410AB9E2F962FC9C9@VI1PR06MB5631.eurprd06.prod.outlook.com>
+
+Hey guys.
+I have a question.
+I drew a weighted Kaplan-Meier survival plot using the survey::svykm() function, like this:
+```
+library(survey)
+data(pbc, package="survival")
+pbc$randomized <- with(pbc, !is.na(trt) & trt>0)
+biasmodel <- glm(randomized~age*edema,data=pbc)
+pbc$randprob <- fitted(biasmodel)
+
+dpbc<-svydesign(id=~1, prob=~randprob, strata=~edema, data=subset(pbc,randomized))
+s2 <-svykm(Surv(time,status==1) ~ sex, design = dpbc)
+```
+
+Now I would like to calculate the survival rates and number of deaths after x months similar to what I would get when using summary(s2, times = 320) on a survfit object. Does anybody know how I can extract these values?
+Many thanks in advance!
+Saskia
+
+	[[alternative HTML version deleted]]
+
+
