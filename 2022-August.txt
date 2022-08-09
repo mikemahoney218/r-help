@@ -3023,3 +3023,766 @@ PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From er|nm@hodge@@ @end|ng |rom gm@||@com  Mon Aug  8 19:22:51 2022
+From: er|nm@hodge@@ @end|ng |rom gm@||@com (Erin Hodgess)
+Date: Mon, 8 Aug 2022 13:22:51 -0400
+Subject: [R] Odd behavior of a function within apply
+Message-ID: <CACxE24m2C3vzwGpYYoWVrLpLcx7jAK1FnnRHorwm-YFwDDzqPg@mail.gmail.com>
+
+Hello!
+
+I have the following data.frame
+ dput(test1.df[1:10,8:10])
+structure(list(X1_1_HZP1 = c(48160L, 48198L, 80027L, 48161L,
+NA, 48911L, NA, 48197L, 48021L, 11355L), X1_1_HBM1_mon = c("December",
+"June", "August", "", "", "August", "April", "February", "",
+"December"), X1_1_HBM1_yr = c(2014L, 2018L, 2016L, NA, NA, 1985L,
+2019L, 1993L, NA, 1990L)), row.names = c(NA, 10L), class = "data.frame")
+
+And the following function:
+> dput(count1a)
+function (x)
+{
+    if (typeof(x) == "integer")
+        y <- sum(is.na(x))
+    if (typeof(x) == "character")
+        y <- sum(x == "")
+    return(y)
+}
+When I use the apply function with count1a, I get the following:
+ apply(test1.df[1:10,8:10],2,count1a)
+    X1_1_HZP1 X1_1_HBM1_mon  X1_1_HBM1_yr
+           NA             3            NA
+However, when I do use columns 8 and 10, I get the correct response:
+ apply(test1.df[1:10,c(8,10)],2,count1a)
+   X1_1_HZP1 X1_1_HBM1_yr
+           2            3
+>
+I am really baffled.  If I use count1a on a single column, it works fine.
+
+Any suggestions much appreciated.
+Thanks,
+Sincerely,
+Erin
+
+
+Erin Hodgess, PhD
+mailto: erinm.hodgess at gmail.com
+
+	[[alternative HTML version deleted]]
+
+
+From @kw@|mmo @end|ng |rom gm@||@com  Mon Aug  8 19:29:19 2022
+From: @kw@|mmo @end|ng |rom gm@||@com (Andrew Simmons)
+Date: Mon, 8 Aug 2022 13:29:19 -0400
+Subject: [R] Odd behavior of a function within apply
+In-Reply-To: <CACxE24m2C3vzwGpYYoWVrLpLcx7jAK1FnnRHorwm-YFwDDzqPg@mail.gmail.com>
+References: <CACxE24m2C3vzwGpYYoWVrLpLcx7jAK1FnnRHorwm-YFwDDzqPg@mail.gmail.com>
+Message-ID: <CAPcHnpTL_s+YyNGcQZ18+SwOPgOSCTsYY+aBzZr7BrG8VbVyVw@mail.gmail.com>
+
+When you use apply, it converts the input to an array, so all of the
+integer columns in your data frame are converted to character class. I
+would use lapply, sapply, or vapply instead to do this, I think you just
+need to remove the "MARGIN" argument.
+
+On Mon, Aug 8, 2022, 13:25 Erin Hodgess <erinm.hodgess at gmail.com> wrote:
+
+> Hello!
+>
+> I have the following data.frame
+>  dput(test1.df[1:10,8:10])
+> structure(list(X1_1_HZP1 = c(48160L, 48198L, 80027L, 48161L,
+> NA, 48911L, NA, 48197L, 48021L, 11355L), X1_1_HBM1_mon = c("December",
+> "June", "August", "", "", "August", "April", "February", "",
+> "December"), X1_1_HBM1_yr = c(2014L, 2018L, 2016L, NA, NA, 1985L,
+> 2019L, 1993L, NA, 1990L)), row.names = c(NA, 10L), class = "data.frame")
+>
+> And the following function:
+> > dput(count1a)
+> function (x)
+> {
+>     if (typeof(x) == "integer")
+>         y <- sum(is.na(x))
+>     if (typeof(x) == "character")
+>         y <- sum(x == "")
+>     return(y)
+> }
+> When I use the apply function with count1a, I get the following:
+>  apply(test1.df[1:10,8:10],2,count1a)
+>     X1_1_HZP1 X1_1_HBM1_mon  X1_1_HBM1_yr
+>            NA             3            NA
+> However, when I do use columns 8 and 10, I get the correct response:
+>  apply(test1.df[1:10,c(8,10)],2,count1a)
+>    X1_1_HZP1 X1_1_HBM1_yr
+>            2            3
+> >
+> I am really baffled.  If I use count1a on a single column, it works fine.
+>
+> Any suggestions much appreciated.
+> Thanks,
+> Sincerely,
+> Erin
+>
+>
+> Erin Hodgess, PhD
+> mailto: erinm.hodgess at gmail.com
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Mon Aug  8 19:37:58 2022
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Mon, 8 Aug 2022 13:37:58 -0400
+Subject: [R] Odd behavior of a function within apply
+In-Reply-To: <9435_1659979524_278HPNvu030617_CACxE24m2C3vzwGpYYoWVrLpLcx7jAK1FnnRHorwm-YFwDDzqPg@mail.gmail.com>
+References: <9435_1659979524_278HPNvu030617_CACxE24m2C3vzwGpYYoWVrLpLcx7jAK1FnnRHorwm-YFwDDzqPg@mail.gmail.com>
+Message-ID: <565e3f72-a449-753f-ebee-b44d0f62eb2b@mcmaster.ca>
+
+Dear Erin,
+
+The problem is that the data frame gets coerced to a character matrix, 
+and the only column with "" entries is the 9th (the second one you 
+supplied):
+
+as.matrix(test1.df)
+    X1_1_HZP1 X1_1_HBM1_mon X1_1_HBM1_yr
+1  "48160"   "December"    "2014"
+2  "48198"   "June"        "2018"
+3  "80027"   "August"      "2016"
+4  "48161"   ""            NA
+5  NA        ""            NA
+6  "48911"   "August"      "1985"
+7  NA        "April"       "2019"
+8  "48197"   "February"    "1993"
+9  "48021"   ""            NA
+10 "11355"   "December"    "1990"
+
+(Here, test1.df only contains the three columns you provided.)
+
+A solution is to use sapply:
+
+ > sapply(test1.df, count1a)
+     X1_1_HZP1 X1_1_HBM1_mon  X1_1_HBM1_yr
+             2             3             3
+
+
+I hope this helps,
+  John
+
+
+On 2022-08-08 1:22 p.m., Erin Hodgess wrote:
+> Hello!
+> 
+> I have the following data.frame
+>   dput(test1.df[1:10,8:10])
+> structure(list(X1_1_HZP1 = c(48160L, 48198L, 80027L, 48161L,
+> NA, 48911L, NA, 48197L, 48021L, 11355L), X1_1_HBM1_mon = c("December",
+> "June", "August", "", "", "August", "April", "February", "",
+> "December"), X1_1_HBM1_yr = c(2014L, 2018L, 2016L, NA, NA, 1985L,
+> 2019L, 1993L, NA, 1990L)), row.names = c(NA, 10L), class = "data.frame")
+> 
+> And the following function:
+>> dput(count1a)
+> function (x)
+> {
+>      if (typeof(x) == "integer")
+>          y <- sum(is.na(x))
+>      if (typeof(x) == "character")
+>          y <- sum(x == "")
+>      return(y)
+> }
+> When I use the apply function with count1a, I get the following:
+>   apply(test1.df[1:10,8:10],2,count1a)
+>      X1_1_HZP1 X1_1_HBM1_mon  X1_1_HBM1_yr
+>             NA             3            NA
+> However, when I do use columns 8 and 10, I get the correct response:
+>   apply(test1.df[1:10,c(8,10)],2,count1a)
+>     X1_1_HZP1 X1_1_HBM1_yr
+>             2            3
+>>
+> I am really baffled.  If I use count1a on a single column, it works fine.
+> 
+> Any suggestions much appreciated.
+> Thanks,
+> Sincerely,
+> Erin
+> 
+> 
+> Erin Hodgess, PhD
+> mailto: erinm.hodgess at gmail.com
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+-- 
+John Fox, Professor Emeritus
+McMaster University
+Hamilton, Ontario, Canada
+web: https://socialsciences.mcmaster.ca/jfox/
+
+
+From er|nm@hodge@@ @end|ng |rom gm@||@com  Mon Aug  8 19:38:44 2022
+From: er|nm@hodge@@ @end|ng |rom gm@||@com (Erin Hodgess)
+Date: Mon, 8 Aug 2022 13:38:44 -0400
+Subject: [R] Odd behavior of a function within apply
+In-Reply-To: <CAPcHnpTL_s+YyNGcQZ18+SwOPgOSCTsYY+aBzZr7BrG8VbVyVw@mail.gmail.com>
+References: <CACxE24m2C3vzwGpYYoWVrLpLcx7jAK1FnnRHorwm-YFwDDzqPg@mail.gmail.com>
+ <CAPcHnpTL_s+YyNGcQZ18+SwOPgOSCTsYY+aBzZr7BrG8VbVyVw@mail.gmail.com>
+Message-ID: <CACxE24kFa=rVDp1txg-XwOvF5hyn7DMmG8TSp8LduP6fiWg8bw@mail.gmail.com>
+
+Great, thank you so much!
+
+
+Erin Hodgess, PhD
+mailto: erinm.hodgess at gmail.com
+
+
+On Mon, Aug 8, 2022 at 1:29 PM Andrew Simmons <akwsimmo at gmail.com> wrote:
+
+> When you use apply, it converts the input to an array, so all of the
+> integer columns in your data frame are converted to character class. I
+> would use lapply, sapply, or vapply instead to do this, I think you just
+> need to remove the "MARGIN" argument.
+>
+> On Mon, Aug 8, 2022, 13:25 Erin Hodgess <erinm.hodgess at gmail.com> wrote:
+>
+>> Hello!
+>>
+>> I have the following data.frame
+>>  dput(test1.df[1:10,8:10])
+>> structure(list(X1_1_HZP1 = c(48160L, 48198L, 80027L, 48161L,
+>> NA, 48911L, NA, 48197L, 48021L, 11355L), X1_1_HBM1_mon = c("December",
+>> "June", "August", "", "", "August", "April", "February", "",
+>> "December"), X1_1_HBM1_yr = c(2014L, 2018L, 2016L, NA, NA, 1985L,
+>> 2019L, 1993L, NA, 1990L)), row.names = c(NA, 10L), class = "data.frame")
+>>
+>> And the following function:
+>> > dput(count1a)
+>> function (x)
+>> {
+>>     if (typeof(x) == "integer")
+>>         y <- sum(is.na(x))
+>>     if (typeof(x) == "character")
+>>         y <- sum(x == "")
+>>     return(y)
+>> }
+>> When I use the apply function with count1a, I get the following:
+>>  apply(test1.df[1:10,8:10],2,count1a)
+>>     X1_1_HZP1 X1_1_HBM1_mon  X1_1_HBM1_yr
+>>            NA             3            NA
+>> However, when I do use columns 8 and 10, I get the correct response:
+>>  apply(test1.df[1:10,c(8,10)],2,count1a)
+>>    X1_1_HZP1 X1_1_HBM1_yr
+>>            2            3
+>> >
+>> I am really baffled.  If I use count1a on a single column, it works fine.
+>>
+>> Any suggestions much appreciated.
+>> Thanks,
+>> Sincerely,
+>> Erin
+>>
+>>
+>> Erin Hodgess, PhD
+>> mailto: erinm.hodgess at gmail.com
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From er|nm@hodge@@ @end|ng |rom gm@||@com  Mon Aug  8 19:41:23 2022
+From: er|nm@hodge@@ @end|ng |rom gm@||@com (Erin Hodgess)
+Date: Mon, 8 Aug 2022 13:41:23 -0400
+Subject: [R] Odd behavior of a function within apply
+In-Reply-To: <CAPcHnpTL_s+YyNGcQZ18+SwOPgOSCTsYY+aBzZr7BrG8VbVyVw@mail.gmail.com>
+References: <CACxE24m2C3vzwGpYYoWVrLpLcx7jAK1FnnRHorwm-YFwDDzqPg@mail.gmail.com>
+ <CAPcHnpTL_s+YyNGcQZ18+SwOPgOSCTsYY+aBzZr7BrG8VbVyVw@mail.gmail.com>
+Message-ID: <CACxE24nNV2oTKN_MLX_+nqJsVD1SGniS5om62seMZ7TkqiYNrg@mail.gmail.com>
+
+lapply worked perfectly!
+
+Erin Hodgess, PhD
+mailto: erinm.hodgess at gmail.com
+
+
+On Mon, Aug 8, 2022 at 1:29 PM Andrew Simmons <akwsimmo at gmail.com> wrote:
+
+> When you use apply, it converts the input to an array, so all of the
+> integer columns in your data frame are converted to character class. I
+> would use lapply, sapply, or vapply instead to do this, I think you just
+> need to remove the "MARGIN" argument.
+>
+> On Mon, Aug 8, 2022, 13:25 Erin Hodgess <erinm.hodgess at gmail.com> wrote:
+>
+>> Hello!
+>>
+>> I have the following data.frame
+>>  dput(test1.df[1:10,8:10])
+>> structure(list(X1_1_HZP1 = c(48160L, 48198L, 80027L, 48161L,
+>> NA, 48911L, NA, 48197L, 48021L, 11355L), X1_1_HBM1_mon = c("December",
+>> "June", "August", "", "", "August", "April", "February", "",
+>> "December"), X1_1_HBM1_yr = c(2014L, 2018L, 2016L, NA, NA, 1985L,
+>> 2019L, 1993L, NA, 1990L)), row.names = c(NA, 10L), class = "data.frame")
+>>
+>> And the following function:
+>> > dput(count1a)
+>> function (x)
+>> {
+>>     if (typeof(x) == "integer")
+>>         y <- sum(is.na(x))
+>>     if (typeof(x) == "character")
+>>         y <- sum(x == "")
+>>     return(y)
+>> }
+>> When I use the apply function with count1a, I get the following:
+>>  apply(test1.df[1:10,8:10],2,count1a)
+>>     X1_1_HZP1 X1_1_HBM1_mon  X1_1_HBM1_yr
+>>            NA             3            NA
+>> However, when I do use columns 8 and 10, I get the correct response:
+>>  apply(test1.df[1:10,c(8,10)],2,count1a)
+>>    X1_1_HZP1 X1_1_HBM1_yr
+>>            2            3
+>> >
+>> I am really baffled.  If I use count1a on a single column, it works fine.
+>>
+>> Any suggestions much appreciated.
+>> Thanks,
+>> Sincerely,
+>> Erin
+>>
+>>
+>> Erin Hodgess, PhD
+>> mailto: erinm.hodgess at gmail.com
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From er|nm@hodge@@ @end|ng |rom gm@||@com  Mon Aug  8 19:41:56 2022
+From: er|nm@hodge@@ @end|ng |rom gm@||@com (Erin Hodgess)
+Date: Mon, 8 Aug 2022 13:41:56 -0400
+Subject: [R] Odd behavior of a function within apply
+In-Reply-To: <565e3f72-a449-753f-ebee-b44d0f62eb2b@mcmaster.ca>
+References: <9435_1659979524_278HPNvu030617_CACxE24m2C3vzwGpYYoWVrLpLcx7jAK1FnnRHorwm-YFwDDzqPg@mail.gmail.com>
+ <565e3f72-a449-753f-ebee-b44d0f62eb2b@mcmaster.ca>
+Message-ID: <CACxE24nUyFMb2sUneC4efnh11BiCvAdxGt50ZVe_GqyP1o20SQ@mail.gmail.com>
+
+Awesome, thanks so much!!
+
+Erin Hodgess, PhD
+mailto: erinm.hodgess at gmail.com
+
+
+On Mon, Aug 8, 2022 at 1:38 PM John Fox <jfox at mcmaster.ca> wrote:
+
+> Dear Erin,
+>
+> The problem is that the data frame gets coerced to a character matrix,
+> and the only column with "" entries is the 9th (the second one you
+> supplied):
+>
+> as.matrix(test1.df)
+>     X1_1_HZP1 X1_1_HBM1_mon X1_1_HBM1_yr
+> 1  "48160"   "December"    "2014"
+> 2  "48198"   "June"        "2018"
+> 3  "80027"   "August"      "2016"
+> 4  "48161"   ""            NA
+> 5  NA        ""            NA
+> 6  "48911"   "August"      "1985"
+> 7  NA        "April"       "2019"
+> 8  "48197"   "February"    "1993"
+> 9  "48021"   ""            NA
+> 10 "11355"   "December"    "1990"
+>
+> (Here, test1.df only contains the three columns you provided.)
+>
+> A solution is to use sapply:
+>
+>  > sapply(test1.df, count1a)
+>      X1_1_HZP1 X1_1_HBM1_mon  X1_1_HBM1_yr
+>              2             3             3
+>
+>
+> I hope this helps,
+>   John
+>
+>
+> On 2022-08-08 1:22 p.m., Erin Hodgess wrote:
+> > Hello!
+> >
+> > I have the following data.frame
+> >   dput(test1.df[1:10,8:10])
+> > structure(list(X1_1_HZP1 = c(48160L, 48198L, 80027L, 48161L,
+> > NA, 48911L, NA, 48197L, 48021L, 11355L), X1_1_HBM1_mon = c("December",
+> > "June", "August", "", "", "August", "April", "February", "",
+> > "December"), X1_1_HBM1_yr = c(2014L, 2018L, 2016L, NA, NA, 1985L,
+> > 2019L, 1993L, NA, 1990L)), row.names = c(NA, 10L), class = "data.frame")
+> >
+> > And the following function:
+> >> dput(count1a)
+> > function (x)
+> > {
+> >      if (typeof(x) == "integer")
+> >          y <- sum(is.na(x))
+> >      if (typeof(x) == "character")
+> >          y <- sum(x == "")
+> >      return(y)
+> > }
+> > When I use the apply function with count1a, I get the following:
+> >   apply(test1.df[1:10,8:10],2,count1a)
+> >      X1_1_HZP1 X1_1_HBM1_mon  X1_1_HBM1_yr
+> >             NA             3            NA
+> > However, when I do use columns 8 and 10, I get the correct response:
+> >   apply(test1.df[1:10,c(8,10)],2,count1a)
+> >     X1_1_HZP1 X1_1_HBM1_yr
+> >             2            3
+> >>
+> > I am really baffled.  If I use count1a on a single column, it works fine.
+> >
+> > Any suggestions much appreciated.
+> > Thanks,
+> > Sincerely,
+> > Erin
+> >
+> >
+> > Erin Hodgess, PhD
+> > mailto: erinm.hodgess at gmail.com
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> --
+> John Fox, Professor Emeritus
+> McMaster University
+> Hamilton, Ontario, Canada
+> web: https://socialsciences.mcmaster.ca/jfox/
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From er|nm@hodge@@ @end|ng |rom gm@||@com  Mon Aug  8 20:05:23 2022
+From: er|nm@hodge@@ @end|ng |rom gm@||@com (Erin Hodgess)
+Date: Mon, 8 Aug 2022 14:05:23 -0400
+Subject: [R] Odd behavior of a function within apply
+In-Reply-To: <CACxE24mLEnwUvWACXEt8+EWNnGbgNWEMwndqTrxY=yCfp1oxfA@mail.gmail.com>
+References: <9435_1659979524_278HPNvu030617_CACxE24m2C3vzwGpYYoWVrLpLcx7jAK1FnnRHorwm-YFwDDzqPg@mail.gmail.com>
+ <565e3f72-a449-753f-ebee-b44d0f62eb2b@mcmaster.ca>
+ <CACxE24nUyFMb2sUneC4efnh11BiCvAdxGt50ZVe_GqyP1o20SQ@mail.gmail.com>
+ <CACxE24mLEnwUvWACXEt8+EWNnGbgNWEMwndqTrxY=yCfp1oxfA@mail.gmail.com>
+Message-ID: <CACxE24kdpGsVX0g6069Y_Lhkx2tN94iBA-Y1WiXTPBy4uDWJAg@mail.gmail.com>
+
+Nailed it!
+
+There were a few "logical" columns in my data.frame.
+
+Thanks for all of the help!
+Sincerely,
+Erin
+
+Erin Hodgess, PhD
+mailto: erinm.hodgess at gmail.com
+
+
+On Mon, Aug 8, 2022 at 1:51 PM Erin Hodgess <erinm.hodgess at gmail.com> wrote:
+
+> OK.  I'm back again.
+>
+> So my test1.df is 236x390
+>
+> If I put in the following:
+>  lapply(test1.df,count1a)
+> Error in FUN(X[[i]], ...) : object 'y' not found
+> > lapply(test1.df,count1a)
+> Error in FUN(X[[i]], ...) : object 'y' not found
+> > sapply(test1.df,count1a)
+> Error in FUN(X[[i]], ...) : object 'y' not found
+> >
+> What am I doing wrong, please?
+> Thanks,
+> Erin
+>
+>
+> Erin Hodgess, PhD
+> mailto: erinm.hodgess at gmail.com
+>
+>
+> On Mon, Aug 8, 2022 at 1:41 PM Erin Hodgess <erinm.hodgess at gmail.com>
+> wrote:
+>
+>> Awesome, thanks so much!!
+>>
+>> Erin Hodgess, PhD
+>> mailto: erinm.hodgess at gmail.com
+>>
+>>
+>> On Mon, Aug 8, 2022 at 1:38 PM John Fox <jfox at mcmaster.ca> wrote:
+>>
+>>> Dear Erin,
+>>>
+>>> The problem is that the data frame gets coerced to a character matrix,
+>>> and the only column with "" entries is the 9th (the second one you
+>>> supplied):
+>>>
+>>> as.matrix(test1.df)
+>>>     X1_1_HZP1 X1_1_HBM1_mon X1_1_HBM1_yr
+>>> 1  "48160"   "December"    "2014"
+>>> 2  "48198"   "June"        "2018"
+>>> 3  "80027"   "August"      "2016"
+>>> 4  "48161"   ""            NA
+>>> 5  NA        ""            NA
+>>> 6  "48911"   "August"      "1985"
+>>> 7  NA        "April"       "2019"
+>>> 8  "48197"   "February"    "1993"
+>>> 9  "48021"   ""            NA
+>>> 10 "11355"   "December"    "1990"
+>>>
+>>> (Here, test1.df only contains the three columns you provided.)
+>>>
+>>> A solution is to use sapply:
+>>>
+>>>  > sapply(test1.df, count1a)
+>>>      X1_1_HZP1 X1_1_HBM1_mon  X1_1_HBM1_yr
+>>>              2             3             3
+>>>
+>>>
+>>> I hope this helps,
+>>>   John
+>>>
+>>>
+>>> On 2022-08-08 1:22 p.m., Erin Hodgess wrote:
+>>> > Hello!
+>>> >
+>>> > I have the following data.frame
+>>> >   dput(test1.df[1:10,8:10])
+>>> > structure(list(X1_1_HZP1 = c(48160L, 48198L, 80027L, 48161L,
+>>> > NA, 48911L, NA, 48197L, 48021L, 11355L), X1_1_HBM1_mon = c("December",
+>>> > "June", "August", "", "", "August", "April", "February", "",
+>>> > "December"), X1_1_HBM1_yr = c(2014L, 2018L, 2016L, NA, NA, 1985L,
+>>> > 2019L, 1993L, NA, 1990L)), row.names = c(NA, 10L), class =
+>>> "data.frame")
+>>> >
+>>> > And the following function:
+>>> >> dput(count1a)
+>>> > function (x)
+>>> > {
+>>> >      if (typeof(x) == "integer")
+>>> >          y <- sum(is.na(x))
+>>> >      if (typeof(x) == "character")
+>>> >          y <- sum(x == "")
+>>> >      return(y)
+>>> > }
+>>> > When I use the apply function with count1a, I get the following:
+>>> >   apply(test1.df[1:10,8:10],2,count1a)
+>>> >      X1_1_HZP1 X1_1_HBM1_mon  X1_1_HBM1_yr
+>>> >             NA             3            NA
+>>> > However, when I do use columns 8 and 10, I get the correct response:
+>>> >   apply(test1.df[1:10,c(8,10)],2,count1a)
+>>> >     X1_1_HZP1 X1_1_HBM1_yr
+>>> >             2            3
+>>> >>
+>>> > I am really baffled.  If I use count1a on a single column, it works
+>>> fine.
+>>> >
+>>> > Any suggestions much appreciated.
+>>> > Thanks,
+>>> > Sincerely,
+>>> > Erin
+>>> >
+>>> >
+>>> > Erin Hodgess, PhD
+>>> > mailto: erinm.hodgess at gmail.com
+>>> >
+>>> >       [[alternative HTML version deleted]]
+>>> >
+>>> > ______________________________________________
+>>> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> > https://stat.ethz.ch/mailman/listinfo/r-help
+>>> > PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> > and provide commented, minimal, self-contained, reproducible code.
+>>> --
+>>> John Fox, Professor Emeritus
+>>> McMaster University
+>>> Hamilton, Ontario, Canada
+>>> web: https://socialsciences.mcmaster.ca/jfox/
+>>>
+>>>
+
+	[[alternative HTML version deleted]]
+
+
+From er|nm@hodge@@ @end|ng |rom gm@||@com  Mon Aug  8 19:51:01 2022
+From: er|nm@hodge@@ @end|ng |rom gm@||@com (Erin Hodgess)
+Date: Mon, 8 Aug 2022 13:51:01 -0400
+Subject: [R] Odd behavior of a function within apply
+In-Reply-To: <CACxE24nUyFMb2sUneC4efnh11BiCvAdxGt50ZVe_GqyP1o20SQ@mail.gmail.com>
+References: <9435_1659979524_278HPNvu030617_CACxE24m2C3vzwGpYYoWVrLpLcx7jAK1FnnRHorwm-YFwDDzqPg@mail.gmail.com>
+ <565e3f72-a449-753f-ebee-b44d0f62eb2b@mcmaster.ca>
+ <CACxE24nUyFMb2sUneC4efnh11BiCvAdxGt50ZVe_GqyP1o20SQ@mail.gmail.com>
+Message-ID: <CACxE24mLEnwUvWACXEt8+EWNnGbgNWEMwndqTrxY=yCfp1oxfA@mail.gmail.com>
+
+OK.  I'm back again.
+
+So my test1.df is 236x390
+
+If I put in the following:
+ lapply(test1.df,count1a)
+Error in FUN(X[[i]], ...) : object 'y' not found
+> lapply(test1.df,count1a)
+Error in FUN(X[[i]], ...) : object 'y' not found
+> sapply(test1.df,count1a)
+Error in FUN(X[[i]], ...) : object 'y' not found
+>
+What am I doing wrong, please?
+Thanks,
+Erin
+
+
+Erin Hodgess, PhD
+mailto: erinm.hodgess at gmail.com
+
+
+On Mon, Aug 8, 2022 at 1:41 PM Erin Hodgess <erinm.hodgess at gmail.com> wrote:
+
+> Awesome, thanks so much!!
+>
+> Erin Hodgess, PhD
+> mailto: erinm.hodgess at gmail.com
+>
+>
+> On Mon, Aug 8, 2022 at 1:38 PM John Fox <jfox at mcmaster.ca> wrote:
+>
+>> Dear Erin,
+>>
+>> The problem is that the data frame gets coerced to a character matrix,
+>> and the only column with "" entries is the 9th (the second one you
+>> supplied):
+>>
+>> as.matrix(test1.df)
+>>     X1_1_HZP1 X1_1_HBM1_mon X1_1_HBM1_yr
+>> 1  "48160"   "December"    "2014"
+>> 2  "48198"   "June"        "2018"
+>> 3  "80027"   "August"      "2016"
+>> 4  "48161"   ""            NA
+>> 5  NA        ""            NA
+>> 6  "48911"   "August"      "1985"
+>> 7  NA        "April"       "2019"
+>> 8  "48197"   "February"    "1993"
+>> 9  "48021"   ""            NA
+>> 10 "11355"   "December"    "1990"
+>>
+>> (Here, test1.df only contains the three columns you provided.)
+>>
+>> A solution is to use sapply:
+>>
+>>  > sapply(test1.df, count1a)
+>>      X1_1_HZP1 X1_1_HBM1_mon  X1_1_HBM1_yr
+>>              2             3             3
+>>
+>>
+>> I hope this helps,
+>>   John
+>>
+>>
+>> On 2022-08-08 1:22 p.m., Erin Hodgess wrote:
+>> > Hello!
+>> >
+>> > I have the following data.frame
+>> >   dput(test1.df[1:10,8:10])
+>> > structure(list(X1_1_HZP1 = c(48160L, 48198L, 80027L, 48161L,
+>> > NA, 48911L, NA, 48197L, 48021L, 11355L), X1_1_HBM1_mon = c("December",
+>> > "June", "August", "", "", "August", "April", "February", "",
+>> > "December"), X1_1_HBM1_yr = c(2014L, 2018L, 2016L, NA, NA, 1985L,
+>> > 2019L, 1993L, NA, 1990L)), row.names = c(NA, 10L), class = "data.frame")
+>> >
+>> > And the following function:
+>> >> dput(count1a)
+>> > function (x)
+>> > {
+>> >      if (typeof(x) == "integer")
+>> >          y <- sum(is.na(x))
+>> >      if (typeof(x) == "character")
+>> >          y <- sum(x == "")
+>> >      return(y)
+>> > }
+>> > When I use the apply function with count1a, I get the following:
+>> >   apply(test1.df[1:10,8:10],2,count1a)
+>> >      X1_1_HZP1 X1_1_HBM1_mon  X1_1_HBM1_yr
+>> >             NA             3            NA
+>> > However, when I do use columns 8 and 10, I get the correct response:
+>> >   apply(test1.df[1:10,c(8,10)],2,count1a)
+>> >     X1_1_HZP1 X1_1_HBM1_yr
+>> >             2            3
+>> >>
+>> > I am really baffled.  If I use count1a on a single column, it works
+>> fine.
+>> >
+>> > Any suggestions much appreciated.
+>> > Thanks,
+>> > Sincerely,
+>> > Erin
+>> >
+>> >
+>> > Erin Hodgess, PhD
+>> > mailto: erinm.hodgess at gmail.com
+>> >
+>> >       [[alternative HTML version deleted]]
+>> >
+>> > ______________________________________________
+>> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > https://stat.ethz.ch/mailman/listinfo/r-help
+>> > PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> > and provide commented, minimal, self-contained, reproducible code.
+>> --
+>> John Fox, Professor Emeritus
+>> McMaster University
+>> Hamilton, Ontario, Canada
+>> web: https://socialsciences.mcmaster.ca/jfox/
+>>
+>>
+
+	[[alternative HTML version deleted]]
+
+
