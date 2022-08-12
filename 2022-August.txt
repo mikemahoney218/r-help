@@ -4937,3 +4937,444 @@ Sent from my iPhone
 >> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
 >> and provide commented, minimal, self-contained, reproducible code.
 
+From bgunter@4567 @end|ng |rom gm@||@com  Thu Aug 11 04:02:16 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Wed, 10 Aug 2022 19:02:16 -0700
+Subject: [R] lattice question
+In-Reply-To: <BL0PR01MB4036724D69DF755E571D1DD7FA659@BL0PR01MB4036.prod.exchangelabs.com>
+References: <BL0PR01MB40360688E655910F3A8FC982FA659@BL0PR01MB4036.prod.exchangelabs.com>
+ <CADfFDC4O+p1FJ5HgmQBqu8mf6kh0fM_Tcmxm_1g64xgVgssfRA@mail.gmail.com>
+ <BL0PR01MB403656FFA1AB68A5A0E6FB65FA659@BL0PR01MB4036.prod.exchangelabs.com>
+ <CAGxFJbRSSVtkZSRY1JBYiePL42HNTWgRW4vcrrfE1h=ZjnDzfg@mail.gmail.com>
+ <BL0PR01MB4036724D69DF755E571D1DD7FA659@BL0PR01MB4036.prod.exchangelabs.com>
+Message-ID: <CAGxFJbSkuspyGR1-f=aED+WnR0bEVfxLV_C-pfkA8Xj4yfM9_w@mail.gmail.com>
+
+It is unclear to me how you wish to define and distinguish groups.
+Assuming you wish to have separate lines for the interaction as
+Deepayan showed, but want the colors (or line types or both) to differ
+only by by the "name" factor, then is this what you want?
+
+trellis.par.set(superpose.line = list(lty = 1:6)) ## or other line
+types you create
+u.names <- unique(mydf.long$name)
+xyplot(X ~ date, groups = interaction(name,G), data = mydf.long,
+       type = c("l","g"),
+       col.line = trellis.par.get("superpose.line")$col[
+          seq_along(u.names)],
+       lty =  trellis.par.get("superpose.line")$lty[
+          seq_along(u.names)]
+)
+
+Notes:
+1. If this is not what you want, I give up. Others may have better insight.
+2. If this is what you want, Deepayan may be able to provide you a
+nicer way to do it.
+3. If you have more different names than 6 or 7, then you may have to
+add more line types or colors to the superpose.line settings. Though I
+would think the plot would be pretty much a mess, if so.
+
+Bert
+
+
+On Wed, Aug 10, 2022 at 4:57 PM Naresh Gurbuxani
+<naresh_gurbuxani at hotmail.com> wrote:
+>
+> Actually I meant types (e.g., lty = 1:2).  But colors would also work.  But I do not want to specify these in call to xyplot().
+>
+> In my actual problem, there are more than two groups.  Moreover, the number of groups changes from case to case.  In my set up, I use trellis.par.set() to set line styles, colors, pch, etc.
+>
+> I would the call to xyplot() to automatically use the set options.
+>
+> Thanks,
+> Naresh
+>
+> Sent from my iPhone
+>
+> > On Aug 10, 2022, at 5:40 PM, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> > ?I assume you mean two line colors, not types.
+> > Like this?
+> >
+> > xyplot(X ~ date, groups = interaction(name,G), data = mydf.long,
+> >       type = c("l", "g"), col.line = c("blue","red"))
+> >
+> >
+> > Cheers,
+> > Bert
+> >
+> >> On Wed, Aug 10, 2022 at 2:12 PM Naresh Gurbuxani
+> >> <naresh_gurbuxani at hotmail.com> wrote:
+> >>
+> >> Deepayan,
+> >>
+> >> Thanks for providing a solution.  While this is close to my goal, I want one more change.  The line type (lty) should be the same for long and short.  The line type should only change according to ?name? group.  So the the graph will have two line types (not four as in your solution).
+> >>
+> >> Is it possible?
+> >>
+> >> Thanks,
+> >> Narrsh
+> >>
+> >> Sent from my iPhone
+> >>
+> >>>> On Aug 10, 2022, at 9:37 AM, Deepayan Sarkar <deepayan.sarkar at gmail.com> wrote:
+> >>>
+> >>> ?On Wed, Aug 10, 2022 at 4:53 PM Naresh Gurbuxani
+> >>> <naresh_gurbuxani at hotmail.com> wrote:
+> >>>>
+> >>>>
+> >>>> I want to merge two panels into one.  Is it possible to do this?
+> >>>>
+> >>>> Thanks,
+> >>>> Naresh
+> >>>>
+> >>>> library(lattice)
+> >>>> mydf <- data.frame(date = rep(seq.Date(as.Date("2022-08-01"), by = 1,
+> >>>> length.out = 10), 2), name = c(rep("Aa", 10), rep("Bb", 10)),
+> >>>> long = runif(20, 2, 10), short = runif(20, -10, 0))
+> >>>>
+> >>>> # This plots data in two panels.  I want all four lines in one panel.
+> >>>> xyplot(long + short ~ date, groups = name, data = mydf, type = c("l",
+> >>>> "g"))
+> >>>
+> >>> The "extended" formula API (with +) is really only meant as an
+> >>> alternative to reshape() for simple cases. In your case, you probably
+> >>> want something like
+> >>>
+> >>> mydf.long = reshape(mydf, direction = "long", varying = list(c("long",
+> >>> "short")), v.names = "X", timevar = "G", times = c("long", "short"))
+> >>>
+> >>> xyplot(X ~ date, groups = interaction(name, G), data = mydf.long, type
+> >>> = c("l", "g"))
+> >>>
+> >>> -Deepayan
+> >>>
+> >>>> # This does not work
+> >>>> # No error in R session
+> >>>> # Graph window says: "Error using packet 1
+> >>>> # argument 'subscripts' is missing, with no default"
+> >>>> xyplot(long ~ date, data = mydf, groups = name, type = c("l", "g"),
+> >>>> panel = function(x, y, ..., subscripts) {
+> >>>> panel.xyplot(x, y, ...)
+> >>>> panel.xyplot(mydf$date[subscripts], mydf$short[subscripts], ...)})
+> >>>>
+> >>>> ______________________________________________
+> >>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> >>>> and provide commented, minimal, self-contained, reproducible code.
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+
+
+From o1b|gtenor @end|ng |rom gm@||@com  Wed Aug 10 18:26:59 2022
+From: o1b|gtenor @end|ng |rom gm@||@com (o1bigtenor)
+Date: Wed, 10 Aug 2022 11:26:59 -0500
+Subject: [R] lattice question
+In-Reply-To: <CADfFDC4O+p1FJ5HgmQBqu8mf6kh0fM_Tcmxm_1g64xgVgssfRA@mail.gmail.com>
+References: <BL0PR01MB40360688E655910F3A8FC982FA659@BL0PR01MB4036.prod.exchangelabs.com>
+ <CADfFDC4O+p1FJ5HgmQBqu8mf6kh0fM_Tcmxm_1g64xgVgssfRA@mail.gmail.com>
+Message-ID: <CAPpdf59NnXcLKsFRT+bi5vE0bfU=ntc62rUJJqmJETWo2n8M9Q@mail.gmail.com>
+
+On Wed, Aug 10, 2022 at 8:38 AM Deepayan Sarkar
+<deepayan.sarkar at gmail.com> wrote:
+>
+> On Wed, Aug 10, 2022 at 4:53 PM Naresh Gurbuxani
+> <naresh_gurbuxani at hotmail.com> wrote:
+> >
+> >
+> > I want to merge two panels into one.  Is it possible to do this?
+> >
+> > Thanks,
+> > Naresh
+> >
+> > library(lattice)
+> > mydf <- data.frame(date = rep(seq.Date(as.Date("2022-08-01"), by = 1,
+> > length.out = 10), 2), name = c(rep("Aa", 10), rep("Bb", 10)),
+> > long = runif(20, 2, 10), short = runif(20, -10, 0))
+> >
+> > # This plots data in two panels.  I want all four lines in one panel.
+> > xyplot(long + short ~ date, groups = name, data = mydf, type = c("l",
+> > "g"))
+>
+> The "extended" formula API (with +) is really only meant as an
+> alternative to reshape() for simple cases. In your case, you probably
+> want something like
+>
+> mydf.long = reshape(mydf, direction = "long", varying = list(c("long",
+> "short")), v.names = "X", timevar = "G", times = c("long", "short"))
+>
+> xyplot(X ~ date, groups = interaction(name, G), data = mydf.long, type
+> = c("l", "g"))
+>
+
+(In the interest of learning- - ) Why?
+
+Regards
+
+
+From n|ckmwr@y @end|ng |rom gm@||@com  Thu Aug 11 13:42:26 2022
+From: n|ckmwr@y @end|ng |rom gm@||@com (Nick Wray)
+Date: Thu, 11 Aug 2022 12:42:26 +0100
+Subject: [R] lfstat package
+Message-ID: <CABxY9BOruMUfw4+5Gc5saNhUOZRFqBEAWZXTY220Dwt6nqASfA@mail.gmail.com>
+
+Hello - does anyone know whether the lfstat package is still running and if
+so, whence it can be downloaded and installed, as it doesn't seem to be
+available from CRAN.  I'm trying to get the function dmcurve() for
+hydrological double mass curves - perhaps that's now elsewhere although i
+can't find it anywhere but in lfstat
+
+thanks Nick Wray
+
+	[[alternative HTML version deleted]]
+
+
+From co|or|e @end|ng |rom gm@||@com  Thu Aug 11 14:03:06 2022
+From: co|or|e @end|ng |rom gm@||@com (Carlos Ortega)
+Date: Thu, 11 Aug 2022 14:03:06 +0200
+Subject: [R] lfstat package
+In-Reply-To: <CABxY9BOruMUfw4+5Gc5saNhUOZRFqBEAWZXTY220Dwt6nqASfA@mail.gmail.com>
+References: <CABxY9BOruMUfw4+5Gc5saNhUOZRFqBEAWZXTY220Dwt6nqASfA@mail.gmail.com>
+Message-ID: <CAFKNbk+zVS3jQ4JejBwzh1L=9Wr02pwsQkq0LQnXH38HiYEC7Q@mail.gmail.com>
+
+Hi,
+
+Yes, it is not available in CRAN.
+You can find packages that have been removed from CRAN here:
+
+   - https://cran.r-project.org/src/contrib/Archive
+
+And in particular "lfstat" is here, with all its historical releases (in
+tar.gz format).
+You can download from there and install, the version you need.
+
+
+   - https://cran.r-project.org/src/contrib/Archive/lfstat/
+
+
+Thanks,
+Carlos Ortega.
+
+
+On Thu, Aug 11, 2022 at 1:42 PM Nick Wray <nickmwray at gmail.com> wrote:
+
+> Hello - does anyone know whether the lfstat package is still running and if
+> so, whence it can be downloaded and installed, as it doesn't seem to be
+> available from CRAN.  I'm trying to get the function dmcurve() for
+> hydrological double mass curves - perhaps that's now elsewhere although i
+> can't find it anywhere but in lfstat
+>
+> thanks Nick Wray
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Thu Aug 11 17:33:38 2022
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Thu, 11 Aug 2022 15:33:38 +0000
+Subject: [R] lattice question
+In-Reply-To: <CAGxFJbSkuspyGR1-f=aED+WnR0bEVfxLV_C-pfkA8Xj4yfM9_w@mail.gmail.com>
+References: <BL0PR01MB40360688E655910F3A8FC982FA659@BL0PR01MB4036.prod.exchangelabs.com>
+ <CADfFDC4O+p1FJ5HgmQBqu8mf6kh0fM_Tcmxm_1g64xgVgssfRA@mail.gmail.com>
+ <BL0PR01MB403656FFA1AB68A5A0E6FB65FA659@BL0PR01MB4036.prod.exchangelabs.com>
+ <CAGxFJbRSSVtkZSRY1JBYiePL42HNTWgRW4vcrrfE1h=ZjnDzfg@mail.gmail.com>
+ <BL0PR01MB4036724D69DF755E571D1DD7FA659@BL0PR01MB4036.prod.exchangelabs.com>
+ <CAGxFJbSkuspyGR1-f=aED+WnR0bEVfxLV_C-pfkA8Xj4yfM9_w@mail.gmail.com>
+Message-ID: <BL0PR01MB403675492C3C426B8607BF8BFA649@BL0PR01MB4036.prod.exchangelabs.com>
+
+Bert,
+
+Thanks for providing this solution.  It produces the desired graph.
+
+To see how I want to distinguish groups, you should look at original data (mydf).  There are two groups (Aa and Bb), each with two time series (long and short).  Long is always positive.  Short is always negative.  Therefore, there is no need to distinguish between long and short.  I only need to distinguish between Aa and Bb.  
+
+I agree that more than six lines in the graph will make it cluttered.  In fact the above exercise is to avoid clutter in the key.  No need to show Aa.long and Aa.short, because long and short are obvious.
+
+Thanks,
+Naresh
+
+Sent from my iPhone
+
+> On Aug 10, 2022, at 10:02 PM, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> 
+> ?It is unclear to me how you wish to define and distinguish groups.
+> Assuming you wish to have separate lines for the interaction as
+> Deepayan showed, but want the colors (or line types or both) to differ
+> only by by the "name" factor, then is this what you want?
+> 
+> trellis.par.set(superpose.line = list(lty = 1:6)) ## or other line
+> types you create
+> u.names <- unique(mydf.long$name)
+> xyplot(X ~ date, groups = interaction(name,G), data = mydf.long,
+>       type = c("l","g"),
+>       col.line = trellis.par.get("superpose.line")$col[
+>          seq_along(u.names)],
+>       lty =  trellis.par.get("superpose.line")$lty[
+>          seq_along(u.names)]
+> )
+> 
+> Notes:
+> 1. If this is not what you want, I give up. Others may have better insight.
+> 2. If this is what you want, Deepayan may be able to provide you a
+> nicer way to do it.
+> 3. If you have more different names than 6 or 7, then you may have to
+> add more line types or colors to the superpose.line settings. Though I
+> would think the plot would be pretty much a mess, if so.
+> 
+> Bert
+> 
+> 
+>> On Wed, Aug 10, 2022 at 4:57 PM Naresh Gurbuxani
+>> <naresh_gurbuxani at hotmail.com> wrote:
+>> 
+>> Actually I meant types (e.g., lty = 1:2).  But colors would also work.  But I do not want to specify these in call to xyplot().
+>> 
+>> In my actual problem, there are more than two groups.  Moreover, the number of groups changes from case to case.  In my set up, I use trellis.par.set() to set line styles, colors, pch, etc.
+>> 
+>> I would the call to xyplot() to automatically use the set options.
+>> 
+>> Thanks,
+>> Naresh
+>> 
+>> Sent from my iPhone
+>> 
+>>>> On Aug 10, 2022, at 5:40 PM, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>>> 
+>>> ?I assume you mean two line colors, not types.
+>>> Like this?
+>>> 
+>>> xyplot(X ~ date, groups = interaction(name,G), data = mydf.long,
+>>>      type = c("l", "g"), col.line = c("blue","red"))
+>>> 
+>>> 
+>>> Cheers,
+>>> Bert
+>>> 
+>>>> On Wed, Aug 10, 2022 at 2:12 PM Naresh Gurbuxani
+>>>> <naresh_gurbuxani at hotmail.com> wrote:
+>>>> 
+>>>> Deepayan,
+>>>> 
+>>>> Thanks for providing a solution.  While this is close to my goal, I want one more change.  The line type (lty) should be the same for long and short.  The line type should only change according to ?name? group.  So the the graph will have two line types (not four as in your solution).
+>>>> 
+>>>> Is it possible?
+>>>> 
+>>>> Thanks,
+>>>> Narrsh
+>>>> 
+>>>> Sent from my iPhone
+>>>> 
+>>>>>> On Aug 10, 2022, at 9:37 AM, Deepayan Sarkar <deepayan.sarkar at gmail.com> wrote:
+>>>>> 
+>>>>> ?On Wed, Aug 10, 2022 at 4:53 PM Naresh Gurbuxani
+>>>>> <naresh_gurbuxani at hotmail.com> wrote:
+>>>>>> 
+>>>>>> 
+>>>>>> I want to merge two panels into one.  Is it possible to do this?
+>>>>>> 
+>>>>>> Thanks,
+>>>>>> Naresh
+>>>>>> 
+>>>>>> library(lattice)
+>>>>>> mydf <- data.frame(date = rep(seq.Date(as.Date("2022-08-01"), by = 1,
+>>>>>> length.out = 10), 2), name = c(rep("Aa", 10), rep("Bb", 10)),
+>>>>>> long = runif(20, 2, 10), short = runif(20, -10, 0))
+>>>>>> 
+>>>>>> # This plots data in two panels.  I want all four lines in one panel.
+>>>>>> xyplot(long + short ~ date, groups = name, data = mydf, type = c("l",
+>>>>>> "g"))
+>>>>> 
+>>>>> The "extended" formula API (with +) is really only meant as an
+>>>>> alternative to reshape() for simple cases. In your case, you probably
+>>>>> want something like
+>>>>> 
+>>>>> mydf.long = reshape(mydf, direction = "long", varying = list(c("long",
+>>>>> "short")), v.names = "X", timevar = "G", times = c("long", "short"))
+>>>>> 
+>>>>> xyplot(X ~ date, groups = interaction(name, G), data = mydf.long, type
+>>>>> = c("l", "g"))
+>>>>> 
+>>>>> -Deepayan
+>>>>> 
+>>>>>> # This does not work
+>>>>>> # No error in R session
+>>>>>> # Graph window says: "Error using packet 1
+>>>>>> # argument 'subscripts' is missing, with no default"
+>>>>>> xyplot(long ~ date, data = mydf, groups = name, type = c("l", "g"),
+>>>>>> panel = function(x, y, ..., subscripts) {
+>>>>>> panel.xyplot(x, y, ...)
+>>>>>> panel.xyplot(mydf$date[subscripts], mydf$short[subscripts], ...)})
+>>>>>> 
+>>>>>> ______________________________________________
+>>>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>> ______________________________________________
+>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>>> and provide commented, minimal, self-contained, reproducible code.
+
+From bogu@@chr|@to|er @end|ng |rom gm@||@com  Thu Aug 11 16:50:09 2022
+From: bogu@@chr|@to|er @end|ng |rom gm@||@com (bogus christofer)
+Date: Thu, 11 Aug 2022 20:20:09 +0530
+Subject: [R] Fitted values from AR model
+Message-ID: <CAJKTqP7tOuF7TUiiuMpbRQOVwRCXsZVPXe9R7bQhG2O-Wj6HVg@mail.gmail.com>
+
+Hi,
+
+I have below AR model and fitted values from the forecast package
+
+library(forecast)
+dta = c(5.0, 11, 16, 23, 36, 58, 29, 20, 10, 8, 3, 0, 0, 2, 11, 27, 47, 63,
+60, 39)
+fit <- arima(dta, order=c(2,0,0))
+fitted(fit)
+
+This gives fitted values as
+
+Time Series:
+Start = 1
+End = 20
+Frequency = 1
+ [1] 13.461017  9.073427 18.022166 20.689420 26.352282 38.165635 57.502926
+9.812106 15.335303  8.298995 11.543320  6.606999  5.800820  7.502621
+9.930962 19.723966 34.045298 49.252447 57.333846 44.615067
+
+
+However when I compare this result with Python, I see significant
+difference particularly in the first few values as below
+
+from statsmodels.tsa.arima.model import ARIMA
+dta = [5.0, 11, 16, 23, 36, 58, 29, 20, 10, 8, 3, 0, 0, 2, 11, 27, 47, 63,
+60, 39]
+fit = ARIMA(dta, order=(2, 0, 0)).fit()
+fit.predict()
+
+array([21.24816788, 8.66048306, 18.02197059, 20.68931006,
+26.35225759,38.16574655, 57.503278 , 9.81253693, 15.33539514,
+8.29894655,11.54316056, 6.60679489, 5.80055038, 7.50232004,
+9.93067155,19.72374025, 34.04524337, 49.25265365, 57.3343347 , 44.6157026 ])
+
+Any idea why there are such difference between R and Python results will be
+very helpful.
+
+Thanks,
+
+	[[alternative HTML version deleted]]
+
+
