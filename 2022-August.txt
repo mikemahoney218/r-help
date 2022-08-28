@@ -19396,3 +19396,86 @@ Bogdan
 	[[alternative HTML version deleted]]
 
 
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Aug 28 01:44:28 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 27 Aug 2022 16:44:28 -0700
+Subject: [R] An intended unintended consequence
+Message-ID: <CAGxFJbSvgF=jYcxvbnOXsrx6hViQCthhmpP4+nh_2kd1XLxFgQ@mail.gmail.com>
+
+Note: This is a minor comment on a recent thread, and neither a query
+nor an answer to a query.
+----
+In a recent discussion thread here, it was asked how to compute the
+counts for the number of complete cases that are used for computing
+the entries in a correlation matrix obtained from
+cor(X, use = "pairwise.complete.obs")
+when there are missing values (i.e. NA's) in X.
+(Whether it is wise to do this is another issue; but here it just
+motivates this post).
+
+As part of his solution, John Fox provided the following idiom for
+computing the number of complete cases == rows without NA's from pairs
+of columns of a matrix Z when Z has NA's. For columns i and j, the
+number of rows without NA's is nrow(na.omit (Z[, c(i, j)] )). This
+clearly works, because na.omit() is a generic (S3) function designed
+to omit rows with NA's in matrix-like objects, and  nrow() then just
+counts the rows remaining, which is exactly what is needed.
+
+I would call this "an intended intended consequence", because John
+used na.omit() exactly as it's intended to be used.
+
+However, sometimes one can do "better" -- in this case in a speed of
+execution sense -- by "misusing" functionality in a way that is not
+intended.  Instead of John's "nrow(na.omit...))",  the idiom:
+sum(!is.na(rowSums(Z[, c(i,j)])))
+turns out to be considerably faster. Here's a little example that
+illustrates the point:
+
+>library(microbenchmark)
+> Z <- matrix(0, ncol = 2, nrow = 10000) ## 2 columns only for illustration
+
+> is.na(Z) <-sample(seq_len(20000),2000) ## 10% NA's
+
+> ## check that both methods give the same answer
+> nrow( na.omit(Z))
+[1] 8112
+> sum( !is.na( rowSums(Z)))
+[1] 8112
+## timings ##
+> print(microbenchmark( nrow(na.omit(Z)), times = 50), signif = 3)
+Unit: microseconds
+             expr min  lq mean median  uq max neval
+ nrow(na.omit(Z)) 116 122  128    128 132 160    50
+> # vs
+> print(microbenchmark( sum(!is.na(rowSums(Z, na.rm = TRUE))), times = 50), signif = 3)
+Unit: microseconds
+                             expr min   lq mean median   uq  max neval
+ sum(!is.na( rowSums(Z)))  28 28.9 32.1   32.4 33.5 41.3    50
+
+So a median time of 128 microseconds for nrow(na.omit...) vs. 32 for
+sum(!is,na(rowSums(...), i.e. four times as fast. Why? -- the na.omit
+approach does its looping at the interpreted R level; the
+sum(!is.na...)
+does most of its work at the compiled C level. There is a cost to this
+efficiency improvement, however: the fast code is more opaque and thus
+harder to understand and maintain, because it uses R's functionality
+in unintended ways, i.e. for intended unintended consequences. As,
+usual, he programmer must decide whether the tradeoff is worthwhile;
+but it's nice to know when a tradeoff exists.
+==========================================================
+For those who may be interested, here is a brief explanation of the
+tricks used in the faster solution.
+
+rowSums(Z) gives the sums by row in Z, and will give NA if a row
+contains any NA's. Note that this yields just a single vector of NA's
+and numeric values.
+!is.na (rowSums...) then converts the NA's to FALSE and numeric values
+to TRUE, i.e. logicals in this vector.
+But (TRUE, FALSE) is treated as (1, 0) by numeric operations, so
+sum(...) just sums up the 1's, which is the same as counting the TRUEs
+== complete case rows.
+
+Cheers,
+Bert
+
+
