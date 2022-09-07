@@ -3425,3 +3425,657 @@ Rui Barradas
 >
 
 
+From j@zh@o @end|ng |rom ye@h@net  Tue Sep  6 04:45:38 2022
+From: j@zh@o @end|ng |rom ye@h@net (Jinsong Zhao)
+Date: Tue, 6 Sep 2022 10:45:38 +0800
+Subject: [R] expand a matrix
+Message-ID: <cb3fe723-7f90-10fe-da10-e41002b84e11@yeah.net>
+
+Hi there,
+
+I have a matrix likes:
+ > m
+      [,1] [,2] [,3] [,4]
+[1,]   NA    1    2    3
+[2,]    1   NA    6    5
+[3,]    2    6   NA    4
+[4,]    3    5    4   NA
+
+I hope to expand it to 10 by 10 matrix, M, likes:
+ > M
+       [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
+  [1,]   NA   NA   NA   NA    1    1    2    3    3     3
+  [2,]   NA   NA   NA   NA    1    1    2    3    3     3
+  [3,]   NA   NA   NA   NA    1    1    2    3    3     3
+  [4,]   NA   NA   NA   NA    1    1    2    3    3     3
+  [5,]    1    1    1    1   NA   NA    6    5    5     5
+  [6,]    1    1    1    1   NA   NA    6    5    5     5
+  [7,]    2    2    2    2    6    6   NA    4    4     4
+  [8,]    3    3    3    3    5    5    4   NA   NA    NA
+  [9,]    3    3    3    3    5    5    4   NA   NA    NA
+[10,]    3    3    3    3    5    5    4   NA   NA    NA
+
+I use the following code:
+
+M <- matrix(NA, 10, 10)
+
+for (i in 1:10) {
+    for (j in 1:10) {
+       if (i %in% 1:4 & j %in% 5:6) M[i,j] <- M[j,i] <- m[1,2]
+       if (i %in% 1:4 & j == 7) M[i,j] <- M[j,i] <-m[1,3]
+       if (i %in% 1:4 & j %in% 8:10) M[i,j] <- M[j,i] <-m[1,4]
+       if (i %in% 5:6 & j == 7) M[i,j] <- M[j,i] <-m[2,3]
+       if (i %in% 5:6 & j %in% 8:10) M[i,j] <- M[j,i] <-m[2,4]
+       if (i == 7 & j %in% 8:10) M[i,j] <- M[j,i] <-m[3,4]
+    }
+}
+
+Is there any convenience way to do it? Thanks!
+
+Best,
+Jinsong
+
+
+From @kw@|mmo @end|ng |rom gm@||@com  Tue Sep  6 05:11:23 2022
+From: @kw@|mmo @end|ng |rom gm@||@com (Andrew Simmons)
+Date: Mon, 5 Sep 2022 23:11:23 -0400
+Subject: [R] expand a matrix
+In-Reply-To: <cb3fe723-7f90-10fe-da10-e41002b84e11@yeah.net>
+References: <cb3fe723-7f90-10fe-da10-e41002b84e11@yeah.net>
+Message-ID: <CAPcHnpQm1HPYOGuKPnc9wy1XbQQzbL=TRpC4urnbdXymJsVFbw@mail.gmail.com>
+
+You can specify multiple indexes to replace at once, so you can avoid
+a for loop entirely like this:
+M <- matrix(nrow = 10, ncol = 10)
+M[1:4, 5: 6] <- M[5: 6, 1:4] <- m[1, 2]
+M[1:4,    7] <- M[   7, 1:4] <- m[1, 3]
+M[1:4, 8:10] <- M[8:10, 1:4] <- m[1, 4]
+M[5:6,    7] <- M[   7, 5:6] <- m[2, 3]
+M[5:6, 8:10] <- M[8:10, 5:6] <- m[2, 4]
+M[  7, 8:10] <- M[8:10,   7] <- m[3, 4]
+M
+
+
+You could also specify it directly with function 'matrix', it is
+somewhat ugly though:
+M <- matrix(c(
+        NA,     NA,     NA,     NA, m[1,2], m[1,2], m[1,3], m[1,4],
+m[1,4], m[1,4],
+        NA,     NA,     NA,     NA, m[1,2], m[1,2], m[1,3], m[1,4],
+m[1,4], m[1,4],
+        NA,     NA,     NA,     NA, m[1,2], m[1,2], m[1,3], m[1,4],
+m[1,4], m[1,4],
+        NA,     NA,     NA,     NA, m[1,2], m[1,2], m[1,3], m[1,4],
+m[1,4], m[1,4],
+    m[1,2], m[1,2], m[1,2], m[1,2],     NA,     NA, m[2,3], m[2,4],
+m[2,4], m[2,4],
+    m[1,2], m[1,2], m[1,2], m[1,2],     NA,     NA, m[2,3], m[2,4],
+m[2,4], m[2,4],
+    m[1,3], m[1,3], m[1,3], m[1,3], m[2,3], m[2,3],     NA, m[3,4],
+m[3,4], m[3,4],
+    m[1,4], m[1,4], m[1,4], m[1,4], m[2,4], m[2,4], m[3,4],     NA,
+ NA,     NA,
+    m[1,4], m[1,4], m[1,4], m[1,4], m[2,4], m[2,4], m[3,4],     NA,
+ NA,     NA,
+    m[1,4], m[1,4], m[1,4], m[1,4], m[2,4], m[2,4], m[3,4],     NA,
+ NA,     NA
+), nrow = 10, ncol = 10, byrow = TRUE)
+M
+
+
+If it interests you, you could take a look at package 'Matrix', it
+contains classes for specific types of matrices, including upper
+triangular matrices. This package helps to improve speed of linear
+algebra computations and reduce the memory size of matrices.
+
+On Mon, Sep 5, 2022 at 10:46 PM Jinsong Zhao <jszhao at yeah.net> wrote:
+>
+> Hi there,
+>
+> I have a matrix likes:
+>  > m
+>       [,1] [,2] [,3] [,4]
+> [1,]   NA    1    2    3
+> [2,]    1   NA    6    5
+> [3,]    2    6   NA    4
+> [4,]    3    5    4   NA
+>
+> I hope to expand it to 10 by 10 matrix, M, likes:
+>  > M
+>        [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
+>   [1,]   NA   NA   NA   NA    1    1    2    3    3     3
+>   [2,]   NA   NA   NA   NA    1    1    2    3    3     3
+>   [3,]   NA   NA   NA   NA    1    1    2    3    3     3
+>   [4,]   NA   NA   NA   NA    1    1    2    3    3     3
+>   [5,]    1    1    1    1   NA   NA    6    5    5     5
+>   [6,]    1    1    1    1   NA   NA    6    5    5     5
+>   [7,]    2    2    2    2    6    6   NA    4    4     4
+>   [8,]    3    3    3    3    5    5    4   NA   NA    NA
+>   [9,]    3    3    3    3    5    5    4   NA   NA    NA
+> [10,]    3    3    3    3    5    5    4   NA   NA    NA
+>
+> I use the following code:
+>
+> M <- matrix(NA, 10, 10)
+>
+> for (i in 1:10) {
+>     for (j in 1:10) {
+>        if (i %in% 1:4 & j %in% 5:6) M[i,j] <- M[j,i] <- m[1,2]
+>        if (i %in% 1:4 & j == 7) M[i,j] <- M[j,i] <-m[1,3]
+>        if (i %in% 1:4 & j %in% 8:10) M[i,j] <- M[j,i] <-m[1,4]
+>        if (i %in% 5:6 & j == 7) M[i,j] <- M[j,i] <-m[2,3]
+>        if (i %in% 5:6 & j %in% 8:10) M[i,j] <- M[j,i] <-m[2,4]
+>        if (i == 7 & j %in% 8:10) M[i,j] <- M[j,i] <-m[3,4]
+>     }
+> }
+>
+> Is there any convenience way to do it? Thanks!
+>
+> Best,
+> Jinsong
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Tue Sep  6 08:30:00 2022
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Tue, 6 Sep 2022 12:00:00 +0530
+Subject: [R] expand a matrix
+In-Reply-To: <cb3fe723-7f90-10fe-da10-e41002b84e11@yeah.net>
+References: <cb3fe723-7f90-10fe-da10-e41002b84e11@yeah.net>
+Message-ID: <CADfFDC7-WMR=p2+6CU4dppidcbZnVMqPkteSfERrvXESigehVQ@mail.gmail.com>
+
+On Tue, Sep 6, 2022 at 8:16 AM Jinsong Zhao <jszhao at yeah.net> wrote:
+>
+> Hi there,
+>
+> I have a matrix likes:
+>  > m
+>       [,1] [,2] [,3] [,4]
+> [1,]   NA    1    2    3
+> [2,]    1   NA    6    5
+> [3,]    2    6   NA    4
+> [4,]    3    5    4   NA
+>
+> I hope to expand it to 10 by 10 matrix, M, likes:
+>  > M
+>        [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
+>   [1,]   NA   NA   NA   NA    1    1    2    3    3     3
+>   [2,]   NA   NA   NA   NA    1    1    2    3    3     3
+>   [3,]   NA   NA   NA   NA    1    1    2    3    3     3
+>   [4,]   NA   NA   NA   NA    1    1    2    3    3     3
+>   [5,]    1    1    1    1   NA   NA    6    5    5     5
+>   [6,]    1    1    1    1   NA   NA    6    5    5     5
+>   [7,]    2    2    2    2    6    6   NA    4    4     4
+>   [8,]    3    3    3    3    5    5    4   NA   NA    NA
+>   [9,]    3    3    3    3    5    5    4   NA   NA    NA
+> [10,]    3    3    3    3    5    5    4   NA   NA    NA
+>
+> I use the following code:
+>
+> M <- matrix(NA, 10, 10)
+>
+> for (i in 1:10) {
+>     for (j in 1:10) {
+>        if (i %in% 1:4 & j %in% 5:6) M[i,j] <- M[j,i] <- m[1,2]
+>        if (i %in% 1:4 & j == 7) M[i,j] <- M[j,i] <-m[1,3]
+>        if (i %in% 1:4 & j %in% 8:10) M[i,j] <- M[j,i] <-m[1,4]
+>        if (i %in% 5:6 & j == 7) M[i,j] <- M[j,i] <-m[2,3]
+>        if (i %in% 5:6 & j %in% 8:10) M[i,j] <- M[j,i] <-m[2,4]
+>        if (i == 7 & j %in% 8:10) M[i,j] <- M[j,i] <-m[3,4]
+>     }
+> }
+>
+> Is there any convenience way to do it? Thanks!
+
+Assuming I understand what you are trying to do, perhaps
+
+i <- rep(1:4, c(4, 2, 1, 3))
+m[i, i]
+
+Like most operations in R, indexing is vectorized.
+
+Best,
+-Deepayan
+
+
+> Best,
+> Jinsong
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From j@zh@o @end|ng |rom ye@h@net  Tue Sep  6 10:09:44 2022
+From: j@zh@o @end|ng |rom ye@h@net (Jinsong Zhao)
+Date: Tue, 6 Sep 2022 16:09:44 +0800
+Subject: [R] expand a matrix
+In-Reply-To: <CADfFDC7-WMR=p2+6CU4dppidcbZnVMqPkteSfERrvXESigehVQ@mail.gmail.com>
+References: <cb3fe723-7f90-10fe-da10-e41002b84e11@yeah.net>
+ <CADfFDC7-WMR=p2+6CU4dppidcbZnVMqPkteSfERrvXESigehVQ@mail.gmail.com>
+Message-ID: <e9b2f9d4-14cd-2a57-4e79-1c716ef22fbd@yeah.net>
+
+On 2022/9/6 14:30, Deepayan Sarkar wrote:
+> On Tue, Sep 6, 2022 at 8:16 AM Jinsong Zhao <jszhao at yeah.net> wrote:
+>>
+>> Hi there,
+>>
+>> I have a matrix likes:
+>>   > m
+>>        [,1] [,2] [,3] [,4]
+>> [1,]   NA    1    2    3
+>> [2,]    1   NA    6    5
+>> [3,]    2    6   NA    4
+>> [4,]    3    5    4   NA
+>>
+>> I hope to expand it to 10 by 10 matrix, M, likes:
+>>   > M
+>>         [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
+>>    [1,]   NA   NA   NA   NA    1    1    2    3    3     3
+>>    [2,]   NA   NA   NA   NA    1    1    2    3    3     3
+>>    [3,]   NA   NA   NA   NA    1    1    2    3    3     3
+>>    [4,]   NA   NA   NA   NA    1    1    2    3    3     3
+>>    [5,]    1    1    1    1   NA   NA    6    5    5     5
+>>    [6,]    1    1    1    1   NA   NA    6    5    5     5
+>>    [7,]    2    2    2    2    6    6   NA    4    4     4
+>>    [8,]    3    3    3    3    5    5    4   NA   NA    NA
+>>    [9,]    3    3    3    3    5    5    4   NA   NA    NA
+>> [10,]    3    3    3    3    5    5    4   NA   NA    NA
+>>
+>> I use the following code:
+>>
+>> M <- matrix(NA, 10, 10)
+>>
+>> for (i in 1:10) {
+>>      for (j in 1:10) {
+>>         if (i %in% 1:4 & j %in% 5:6) M[i,j] <- M[j,i] <- m[1,2]
+>>         if (i %in% 1:4 & j == 7) M[i,j] <- M[j,i] <-m[1,3]
+>>         if (i %in% 1:4 & j %in% 8:10) M[i,j] <- M[j,i] <-m[1,4]
+>>         if (i %in% 5:6 & j == 7) M[i,j] <- M[j,i] <-m[2,3]
+>>         if (i %in% 5:6 & j %in% 8:10) M[i,j] <- M[j,i] <-m[2,4]
+>>         if (i == 7 & j %in% 8:10) M[i,j] <- M[j,i] <-m[3,4]
+>>      }
+>> }
+>>
+>> Is there any convenience way to do it? Thanks!
+> 
+> Assuming I understand what you are trying to do, perhaps
+> 
+> i <- rep(1:4, c(4, 2, 1, 3))
+> m[i, i]
+> 
+> Like most operations in R, indexing is vectorized.
+
+That is exactly what I expected. Thanks a lot!
+
+Best,
+Jinsong
+
+> 
+> Best,
+> -Deepayan
+> 
+> 
+>> Best,
+>> Jinsong
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From grond @end|ng |rom number|@nd@de  Tue Sep  6 11:39:52 2022
+From: grond @end|ng |rom number|@nd@de (Wolfgang Grond)
+Date: Tue, 6 Sep 2022 11:39:52 +0200
+Subject: [R] Reading PDF files with German umlauts using tabulizer
+Message-ID: <09dd654e-3f0e-8b1d-ef5c-e52d94d17e3e@numberland.de>
+
+Dear all,
+
+I have some trouble with reading PDF files in German language.
+
+I want to extract text and tables with the tabulizer package, and every 
+things goes well as long as I read English texts.
+
+When I try the same code
+
+text <- extract_text(file = "Pub_001.pdf")
+
+with documents in German language
+
+German umlauts are not recognized.
+
+They are either replaced by a combination of characters.
+
+Instead of
+
+"Entmischung und Kristallisation in Gl?sern des Systems"
+                                      --
+I get
+
+"Entmischung und Kristallisation in GHisern des Systems"
+                                      --
+
+or replaced by ascii like this
+
+instead of
+
+"In Gl?sern des Systems"
+       -
+I get
+
+"In Glasern des Systems"
+       -
+
+Opening the file with Adobe Reader tells me that encoding is "Ansi"
+
+Is there a way to read this file correctly?
+
+Thanks in advance for any idea.
+
+Regards
+
+
+From drj|m|emon @end|ng |rom gm@||@com  Tue Sep  6 13:06:25 2022
+From: drj|m|emon @end|ng |rom gm@||@com (Jim Lemon)
+Date: Tue, 6 Sep 2022 21:06:25 +1000
+Subject: [R] Clustering of datasets
+In-Reply-To: <CAOFE=kNDFKE6RPEfz=gy5KaX_p=bk--EKknsfwLfwk+LbxbgJg@mail.gmail.com>
+References: <CAOFE=kMwHNdi0USgSqs1_91YmqmP-yTy8HpAKK5qKpsKRVCaCw@mail.gmail.com>
+ <CAOFE=kMCzDM2yOsEaRXQvje4kwK9U9jrwPV2AXGkqjzF0rvo6A@mail.gmail.com>
+ <CAOFE=kNDFKE6RPEfz=gy5KaX_p=bk--EKknsfwLfwk+LbxbgJg@mail.gmail.com>
+Message-ID: <CA+8X3fXki5d8TSes6g3ijj7QWd9YzSyhSDtY0iDo9OyEtnsxmA@mail.gmail.com>
+
+Hi Subhamitra,
+I've had a look at this and made some guesses about what you might be
+trying to do. If I create a data frame with country, integration and
+efficiency, I get a reasonable looking three cluster solution. This may be
+completely wrong as far as what you want. When you plot the clusters of the
+separate measures, the "Index" values are just the order of the countries
+in the data frame. I can't see how this means anything unless you have
+ordered the countries on some measure unknown to me. Also, I'm unsure of
+what the two measures you are using represent. This may give you a start on
+getting sensible clusters. Let me know how you go with it.
+
+# create a data frame with both measures
+DMs<-data.frame(Country=DMs1$Country,Integration=DMs1$DATA,
+ Efficiency=DMs2$Data)
+# perform the clustering
+km<-kmeans(DMs[,2:3],centers=3)
+# plot the result
+plot(DMs$Integration,DMs$Efficiency,
+ main="DM clusters by Integration and Efficiency",
+ xlab="Integration",ylab="Efficiency",pch=19,
+ col=km$cluster)
+text(DMs$Integration,DMs$Efficiency+0.03,DMs$Country,col=km$cluster)
+points(km$centers,pch=rep(19,3),cex=3,col=1:3)
+legend(-0.3,-0.1,
+ c("cluster 1","cluster 2","cluster 3"),
+ col=1:3,pch=19)
+
+Jim
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: sp_km1.png
+Type: image/png
+Size: 32739 bytes
+Desc: not available
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20220906/7476a136/attachment.png>
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Sep  6 19:15:59 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 6 Sep 2022 19:15:59 +0200
+Subject: [R] Error Running arules
+In-Reply-To: <36e20317-dac8-f238-55e9-037300d02663@shdawson.com>
+References: <6a9b48c4-dbb3-2996-da5c-c11893531454@shdawson.com>
+ <20220902090806.5a978489@parabola>
+ <b999a04b-3b63-ef76-174f-66a870012fca@shdawson.com>
+ <CAGxFJbS1f+FZWZ=N==1HT4yb8xBADtAqy3vdOW9A9aiAeyskeA@mail.gmail.com>
+ <3b0840dc-f414-0666-9fb2-c95ce9ebc0e0@shdawson.com>
+ <36e20317-dac8-f238-55e9-037300d02663@shdawson.com>
+Message-ID: <20220906191559.14c5aba2@parabola>
+
+On Sun, 4 Sep 2022 12:14:23 -0400
+"Stephen H. Dawson, DSL via R-help" <r-help at r-project.org> wrote:
+
+> The problem he estimates is a version mismatch within my R packages, 
+> although all packages I am using come from R repositories.
+> Specifically, something is off on the r-base version I am running.
+
+Could you provide a small example (including a small, anonymised
+version of ./input/DataSet.csv) that would reproduce the problem? In my
+opinion, there's debugging to be done, but that's relatively
+complicated. I would start with options(error = recover), browse the
+variables at the point of the crash (who's calling eval()? what's the
+expression being evaluated? what's in the environment?) and try to
+figure out why the expectations of the expression aren't met by the
+environment.
+
+What's suspicious is that I can't find any mention of a variable named
+"Insert" or a piece of code saying eval(ei, envir) in the code of the
+"arules" package, and it doesn't have any non-core or recommended hard
+dependencies except "generics". The reason I asked for a traceback() is
+to clarify where exactly the error happens and perhaps uncover a reason
+for the failure through that.
+
+-- 
+Best regards,
+Ivan
+
+
+From @erv|ce @end|ng |rom @hd@w@on@com  Tue Sep  6 21:47:20 2022
+From: @erv|ce @end|ng |rom @hd@w@on@com (Stephen H. Dawson, DSL)
+Date: Tue, 6 Sep 2022 15:47:20 -0400
+Subject: [R] Error Running arules
+In-Reply-To: <20220906191559.14c5aba2@parabola>
+References: <6a9b48c4-dbb3-2996-da5c-c11893531454@shdawson.com>
+ <20220902090806.5a978489@parabola>
+ <b999a04b-3b63-ef76-174f-66a870012fca@shdawson.com>
+ <CAGxFJbS1f+FZWZ=N==1HT4yb8xBADtAqy3vdOW9A9aiAeyskeA@mail.gmail.com>
+ <3b0840dc-f414-0666-9fb2-c95ce9ebc0e0@shdawson.com>
+ <36e20317-dac8-f238-55e9-037300d02663@shdawson.com>
+ <20220906191559.14c5aba2@parabola>
+Message-ID: <d8289355-8248-7887-1c85-3d81c78c2fb0@shdawson.com>
+
+Hi Ivan,
+
+
+Thanks for the response.
+
+I added the line to the top of my script:
+traceback()
+
+I ran my script with my arules code today. Now, there are no errors. I 
+am now getting the expected output from my install, the same output as 
+the arules package maintainer is getting per his email to me on his 
+findings.
+
+I looked over my notes from the past few days. I did get a kernel update 
+from my distribution repository after posting to the help list. I have 
+not had the time over the weekend to run the arules script again to 
+determine if things are working as expected. I also wanted to take the 
+time and think about the problem from a distance to gain perspective.
+
+I can only conclude at this point the kernel used when running the code 
+last week was not compatible with r-base 4.2.
+
+I will be grateful for the little things in life being resolved without 
+the pain of doing a rinse-and-repeat exercise of uninstalling and 
+installing R.
+
+
+Kindest Regards,
+*Stephen Dawson, DSL*
+/Executive Strategy Consultant/
+Business & Technology
++1 (865) 804-3454
+http://www.shdawson.com
+
+
+On 9/6/22 13:15, Ivan Krylov wrote:
+> On Sun, 4 Sep 2022 12:14:23 -0400
+> "Stephen H. Dawson, DSL via R-help" <r-help at r-project.org> wrote:
+>
+>> The problem he estimates is a version mismatch within my R packages,
+>> although all packages I am using come from R repositories.
+>> Specifically, something is off on the r-base version I am running.
+> Could you provide a small example (including a small, anonymised
+> version of ./input/DataSet.csv) that would reproduce the problem? In my
+> opinion, there's debugging to be done, but that's relatively
+> complicated. I would start with options(error = recover), browse the
+> variables at the point of the crash (who's calling eval()? what's the
+> expression being evaluated? what's in the environment?) and try to
+> figure out why the expectations of the expression aren't met by the
+> environment.
+>
+> What's suspicious is that I can't find any mention of a variable named
+> "Insert" or a piece of code saying eval(ei, envir) in the code of the
+> "arules" package, and it doesn't have any non-core or recommended hard
+> dependencies except "generics". The reason I asked for a traceback() is
+> to clarify where exactly the error happens and perhaps uncover a reason
+> for the failure through that.
+>
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Sep  6 22:36:05 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 6 Sep 2022 22:36:05 +0200
+Subject: [R] Error Running arules
+In-Reply-To: <d8289355-8248-7887-1c85-3d81c78c2fb0@shdawson.com>
+References: <6a9b48c4-dbb3-2996-da5c-c11893531454@shdawson.com>
+ <20220902090806.5a978489@parabola>
+ <b999a04b-3b63-ef76-174f-66a870012fca@shdawson.com>
+ <CAGxFJbS1f+FZWZ=N==1HT4yb8xBADtAqy3vdOW9A9aiAeyskeA@mail.gmail.com>
+ <3b0840dc-f414-0666-9fb2-c95ce9ebc0e0@shdawson.com>
+ <36e20317-dac8-f238-55e9-037300d02663@shdawson.com>
+ <20220906191559.14c5aba2@parabola>
+ <d8289355-8248-7887-1c85-3d81c78c2fb0@shdawson.com>
+Message-ID: <20220906223605.63612c5f@parabola>
+
+On Tue, 6 Sep 2022 15:47:20 -0400
+"Stephen H. Dawson, DSL" <service at shdawson.com> wrote:
+
+> I added the line to the top of my script:
+> traceback()
+
+The best way to use traceback() is to run it immediately after getting
+an error:
+
+f <- function() g()
+g <- function() h()
+h <- function() stop("I'm causing an error")
+f()
+# Error in h() : I'm causing an error
+traceback()
+# 4: stop("I'm causing an error") at #1
+# 3: h() at #1
+# 2: g() at #1
+# 1: f()
+
+Depending on how you run scripts, placing a traceback() right after the
+line that crashes may be not enough: R stops the whole execution
+process, requiring you to type traceback() manually. Alternatively,
+options(error = traceback) will run it for you every time an unhandled
+error happens, including interrupts (which is annoying).
+
+options(error = recover) will let you interactively inspect the values
+of the variables at the time of the crash. Using dump.frames (see its
+help page) will save the variables into file or global variable to
+inspect them later. I haven't seen them shared on the mailing list (too
+large?), but it could be an option. options(error = NULL) restores the
+default behaviour.
+
+When debugging is unavoidable, R Inferno
+<https://www.burns-stat.com/documents/books/the-r-inferno/> is one of
+good resources on how to do it with R code.
+
+> I ran my script with my arules code today. Now, there are no errors.
+
+Congratulations on having it solve itself! Let's hope the error won't
+return.
+
+-- 
+Best regards,
+Ivan
+
+
+From @erv|ce @end|ng |rom @hd@w@on@com  Tue Sep  6 22:45:31 2022
+From: @erv|ce @end|ng |rom @hd@w@on@com (Stephen H. Dawson, DSL)
+Date: Tue, 6 Sep 2022 16:45:31 -0400
+Subject: [R] Error Running arules
+In-Reply-To: <20220906223605.63612c5f@parabola>
+References: <6a9b48c4-dbb3-2996-da5c-c11893531454@shdawson.com>
+ <20220902090806.5a978489@parabola>
+ <b999a04b-3b63-ef76-174f-66a870012fca@shdawson.com>
+ <CAGxFJbS1f+FZWZ=N==1HT4yb8xBADtAqy3vdOW9A9aiAeyskeA@mail.gmail.com>
+ <3b0840dc-f414-0666-9fb2-c95ce9ebc0e0@shdawson.com>
+ <36e20317-dac8-f238-55e9-037300d02663@shdawson.com>
+ <20220906191559.14c5aba2@parabola>
+ <d8289355-8248-7887-1c85-3d81c78c2fb0@shdawson.com>
+ <20220906223605.63612c5f@parabola>
+Message-ID: <f952e01d-e255-e1d5-ed29-c8638a2c0a02@shdawson.com>
+
+Thanks, Ivan. I appreciate all of your kind assistance and your 
+encouragement.
+
+
+*Stephen Dawson, DSL*
+/Executive Strategy Consultant/
+Business & Technology
++1 (865) 804-3454
+http://www.shdawson.com
+
+
+On 9/6/22 16:36, Ivan Krylov wrote:
+> On Tue, 6 Sep 2022 15:47:20 -0400
+> "Stephen H. Dawson, DSL" <service at shdawson.com> wrote:
+>
+>> I added the line to the top of my script:
+>> traceback()
+> The best way to use traceback() is to run it immediately after getting
+> an error:
+>
+> f <- function() g()
+> g <- function() h()
+> h <- function() stop("I'm causing an error")
+> f()
+> # Error in h() : I'm causing an error
+> traceback()
+> # 4: stop("I'm causing an error") at #1
+> # 3: h() at #1
+> # 2: g() at #1
+> # 1: f()
+>
+> Depending on how you run scripts, placing a traceback() right after the
+> line that crashes may be not enough: R stops the whole execution
+> process, requiring you to type traceback() manually. Alternatively,
+> options(error = traceback) will run it for you every time an unhandled
+> error happens, including interrupts (which is annoying).
+>
+> options(error = recover) will let you interactively inspect the values
+> of the variables at the time of the crash. Using dump.frames (see its
+> help page) will save the variables into file or global variable to
+> inspect them later. I haven't seen them shared on the mailing list (too
+> large?), but it could be an option. options(error = NULL) restores the
+> default behaviour.
+>
+> When debugging is unavoidable, R Inferno
+> <https://www.burns-stat.com/documents/books/the-r-inferno/> is one of
+> good resources on how to do it with R code.
+>
+>> I ran my script with my arules code today. Now, there are no errors.
+> Congratulations on having it solve itself! Let's hope the error won't
+> return.
+>
+
+
