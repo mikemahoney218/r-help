@@ -8610,3 +8610,755 @@ This message was scanned by Libraesva ESG and is believed to be clean.
 	[[alternative HTML version deleted]]
 
 
+From tr|ng @end|ng |rom gvdnet@dk  Fri Sep 16 08:05:22 2022
+From: tr|ng @end|ng |rom gvdnet@dk (Troels Ring)
+Date: Fri, 16 Sep 2022 08:05:22 +0200
+Subject: [R] uniroot problem
+Message-ID: <33b85c27-b7d2-4dfa-4686-ab79b552059a@gvdnet.dk>
+
+Dear friends - I have a problem with root finding using uniroot as goes:
+
+I have the function
+
+ASTA <- function(SID,H,ATOT,KA) {H + SID - kw/H - ATOT*KA/KA+H }
+
+I know SID = 0.01199 - and I know H = 10^-4.57 - and I know kw = 1e-14
+
+Therefore, as I make KA = 10^-seq(1,10,length=100), by letting ASTA = 0, 
+I can find ATOT for each KA as
+
+ATOT <-? (H+SID-kw/H)*(KA+H)/KA
+
+
+and
+
+ ? summary(ATOT) =??? Min.? 1st Qu.?? Median???? Mean? 3rd Qu. Max.
+ ???????????????????????????????????? 0.012??? 0.013??? 0.115 171.263?? 
+18.278 3234.407
+
+However, if I make use of uniroot by:
+
+KA <- seq(1,10,length=100)
+KA <- 10^-KA
+
+ATOT <- c()
+
+for (i in 1:100) {
+ ? ATOT[i] <- uniroot(ASTA,c(-1e3,1e3),tol=1e-20,maxiter=1e4,
+ ???????????????????? SID=SID,KA=KA[i],H=10^-pH[1])$root
+}
+
+I get 100 identical ATOT values of 0.01204383 and no warnings.
+
+I'm on Windows 10, using slightly old
+
+$version.string
+[1] "R version 4.0.5 (2021-03-31)"
+
+Best wishes
+
+Troels Ring, MD
+Aalborg, Denmark
+
+
+From @kw@|mmo @end|ng |rom gm@||@com  Fri Sep 16 08:21:47 2022
+From: @kw@|mmo @end|ng |rom gm@||@com (Andrew Simmons)
+Date: Fri, 16 Sep 2022 02:21:47 -0400
+Subject: [R] uniroot problem
+In-Reply-To: <33b85c27-b7d2-4dfa-4686-ab79b552059a@gvdnet.dk>
+References: <33b85c27-b7d2-4dfa-4686-ab79b552059a@gvdnet.dk>
+Message-ID: <CAPcHnpRhN7+mX=LT7hV06yZsVJVWtBYu0MSZzikDOej20rNtTg@mail.gmail.com>
+
+In this line:
+
+for (i in 1:100) {
+   ATOT[i] <- uniroot(ASTA,c(-1e3,1e3),tol=1e-20,maxiter=1e4,
+                      SID=SID,KA=KA[i],H=10^-pH[1])$root
+}
+
+you've used variable pH, but have no definition for this variable.
+
+
+Also, I can't tell which location has a mistake, but these aren't equivalent:
+
+ASTA <- H + SID - kw/H - ATOT*KA/KA+H
+ATOT <-  (H+SID-kw/H)*(KA+H)/KA
+
+I'm assuming the first one is incorrect, it seems redundant to
+multiply then divide by KA, so change ASTA to:
+
+ASTA <- function(SID,H,ATOT,KA) H + SID - kw/H - ATOT*KA/(KA+H)
+
+I tried something like this:
+
+ASTA <- function(SID,H,ATOT,KA) H + SID - kw/H - ATOT*KA/(KA+H)
+
+SID <- 0.01199
+H <- 10^-4.57
+kw <- 1e-14
+
+KA <- 10^-seq(1, 10, length.out = 100)
+
+ATOT1 <- (H + SID - kw/H) * (KA + H)/KA
+
+ATOT2 <- vapply(KA, function(ka) {
+    uniroot(ASTA, c(-10000, 10000), SID = SID, H = H, KA = ka, tol =
+1e-20, maxiter = 10000)$root
+}, 0)
+
+
+ASTA(SID, H, ATOT1, KA)
+ASTA(SID, H, ATOT2, KA)
+
+and it seems to work for me. The biggest absolute diff is ~1e-13
+
+On Fri, Sep 16, 2022 at 2:05 AM Troels Ring <tring at gvdnet.dk> wrote:
+>
+> Dear friends - I have a problem with root finding using uniroot as goes:
+>
+> I have the function
+>
+> ASTA <- function(SID,H,ATOT,KA) {H + SID - kw/H - ATOT*KA/KA+H }
+>
+> I know SID = 0.01199 - and I know H = 10^-4.57 - and I know kw = 1e-14
+>
+> Therefore, as I make KA = 10^-seq(1,10,length=100), by letting ASTA = 0,
+> I can find ATOT for each KA as
+>
+> ATOT <-  (H+SID-kw/H)*(KA+H)/KA
+>
+>
+> and
+>
+>    summary(ATOT) =    Min.  1st Qu.   Median     Mean  3rd Qu. Max.
+>                                       0.012    0.013    0.115 171.263
+> 18.278 3234.407
+>
+> However, if I make use of uniroot by:
+>
+> KA <- seq(1,10,length=100)
+> KA <- 10^-KA
+>
+> ATOT <- c()
+>
+> for (i in 1:100) {
+>    ATOT[i] <- uniroot(ASTA,c(-1e3,1e3),tol=1e-20,maxiter=1e4,
+>                       SID=SID,KA=KA[i],H=10^-pH[1])$root
+> }
+>
+> I get 100 identical ATOT values of 0.01204383 and no warnings.
+>
+> I'm on Windows 10, using slightly old
+>
+> $version.string
+> [1] "R version 4.0.5 (2021-03-31)"
+>
+> Best wishes
+>
+> Troels Ring, MD
+> Aalborg, Denmark
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From tr|ng @end|ng |rom gvdnet@dk  Fri Sep 16 10:06:19 2022
+From: tr|ng @end|ng |rom gvdnet@dk (Troels Ring)
+Date: Fri, 16 Sep 2022 10:06:19 +0200
+Subject: [R] Fwd:  uniroot problem
+In-Reply-To: <3c470ce3-496a-e01b-6560-7bc07226b42d@gvdnet.dk>
+References: <3c470ce3-496a-e01b-6560-7bc07226b42d@gvdnet.dk>
+Message-ID: <da7a6a1d-3a2e-d30d-070d-27e8f3264426@gvdnet.dk>
+
+
+
+
+-------- Videresendt meddelelse --------
+Emne: 	Re: [R] uniroot problem
+Dato: 	Fri, 16 Sep 2022 10:05:43 +0200
+Fra: 	Troels Ring <tring at gvdnet.dk>
+Til: 	Andrew Simmons <akwsimmo at gmail.com>
+
+
+
+Thanks a lot? - sorry for the confusion - pH[1] was the known pH 4.57.
+
+ ?But you were rigth: I made simple errors:
+
+ASTA was exactly as you deduced
+
+ASTA <- H + SID - kw/H - ATOT*KA/(KA+H)
+
+And this cures the problem! And had nothing to do with uniroot!
+Thanks a lot!!!
+
+Den 16-09-2022 kl. 08:21 skrev Andrew Simmons:
+> In this line:
+>
+> for (i in 1:100) {
+>      ATOT[i] <- uniroot(ASTA,c(-1e3,1e3),tol=1e-20,maxiter=1e4,
+>                         SID=SID,KA=KA[i],H=10^-pH[1])$root
+> }
+>
+> you've used variable pH, but have no definition for this variable.
+>
+>
+> Also, I can't tell which location has a mistake, but these aren't equivalent:
+>
+> ASTA <- H + SID - kw/H - ATOT*KA/KA+H
+> ATOT <-  (H+SID-kw/H)*(KA+H)/KA
+>
+> I'm assuming the first one is incorrect, it seems redundant to
+> multiply then divide by KA, so change ASTA to:
+>
+> ASTA <- function(SID,H,ATOT,KA) H + SID - kw/H - ATOT*KA/(KA+H)
+>
+> I tried something like this:
+>
+> ASTA <- function(SID,H,ATOT,KA) H + SID - kw/H - ATOT*KA/(KA+H)
+>
+> SID <- 0.01199
+> H <- 10^-4.57
+> kw <- 1e-14
+>
+> KA <- 10^-seq(1, 10, length.out = 100)
+>
+> ATOT1 <- (H + SID - kw/H) * (KA + H)/KA
+>
+> ATOT2 <- vapply(KA, function(ka) {
+>       uniroot(ASTA, c(-10000, 10000), SID = SID, H = H, KA = ka, tol =
+> 1e-20, maxiter = 10000)$root
+> }, 0)
+>
+>
+> ASTA(SID, H, ATOT1, KA)
+> ASTA(SID, H, ATOT2, KA)
+>
+> and it seems to work for me. The biggest absolute diff is ~1e-13
+>
+> On Fri, Sep 16, 2022 at 2:05 AM Troels Ring<tring at gvdnet.dk>  wrote:
+>> Dear friends - I have a problem with root finding using uniroot as goes:
+>>
+>> I have the function
+>>
+>> ASTA <- function(SID,H,ATOT,KA) {H + SID - kw/H - ATOT*KA/KA+H }
+>>
+>> I know SID = 0.01199 - and I know H = 10^-4.57 - and I know kw = 1e-14
+>>
+>> Therefore, as I make KA = 10^-seq(1,10,length=100), by letting ASTA = 0,
+>> I can find ATOT for each KA as
+>>
+>> ATOT <-  (H+SID-kw/H)*(KA+H)/KA
+>>
+>>
+>> and
+>>
+>>      summary(ATOT) =    Min.  1st Qu.   Median     Mean  3rd Qu. Max.
+>>                                         0.012    0.013    0.115 171.263
+>> 18.278 3234.407
+>>
+>> However, if I make use of uniroot by:
+>>
+>> KA <- seq(1,10,length=100)
+>> KA <- 10^-KA
+>>
+>> ATOT <- c()
+>>
+>> for (i in 1:100) {
+>>      ATOT[i] <- uniroot(ASTA,c(-1e3,1e3),tol=1e-20,maxiter=1e4,
+>>                         SID=SID,KA=KA[i],H=10^-pH[1])$root
+>> }
+>>
+>> I get 100 identical ATOT values of 0.01204383 and no warnings.
+>>
+>> I'm on Windows 10, using slightly old
+>>
+>> $version.string
+>> [1] "R version 4.0.5 (2021-03-31)"
+>>
+>> Best wishes
+>>
+>> Troels Ring, MD
+>> Aalborg, Denmark
+>>
+>> ______________________________________________
+>> R-help at r-project.org  mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guidehttp://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> ______________________________________________
+> R-help at r-project.org  mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guidehttp://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+	[[alternative HTML version deleted]]
+
+
+From y@ngk@|9999 @end|ng |rom y@hoo@com  Fri Sep 16 19:26:45 2022
+From: y@ngk@|9999 @end|ng |rom y@hoo@com (Kai Yang)
+Date: Fri, 16 Sep 2022 17:26:45 +0000 (UTC)
+Subject: [R] rename files in R
+References: <1179852228.2613336.1663349205099.ref@mail.yahoo.com>
+Message-ID: <1179852228.2613336.1663349205099@mail.yahoo.com>
+
+Hello,I have a lot of files with not meaningful name, such as:? file1.txt, file2.txt ...... I need to rename them using the information from the first row of the files. Now I can get the information from the first row of each file. Now, I need know how to rename them in R (using loop?).?Thank you for your helpKai
+
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Fri Sep 16 19:38:26 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Fri, 16 Sep 2022 18:38:26 +0100
+Subject: [R] rename files in R
+In-Reply-To: <1179852228.2613336.1663349205099@mail.yahoo.com>
+References: <1179852228.2613336.1663349205099.ref@mail.yahoo.com>
+ <1179852228.2613336.1663349205099@mail.yahoo.com>
+Message-ID: <bd1a87eb-00a3-3a54-3020-8ed744df05b5@sapo.pt>
+
+Hello,
+
+Please post the first row of 2 or 3 files and the expected result.
+
+You can rename files with ?file.rename. This function is vectorized its 
+on arguments so you do not need a loop, only the source and destination 
+filenames. Both vectors should have the same length, if not strange 
+things will occur including data loss.
+
+Hope this helps,
+
+Rui Barradas
+
+?s 18:26 de 16/09/2022, Kai Yang via R-help escreveu:
+> Hello,I have a lot of files with not meaningful name, such as:? file1.txt, file2.txt ...... I need to rename them using the information from the first row of the files. Now I can get the information from the first row of each file. Now, I need know how to rename them in R (using loop?).?Thank you for your helpKai
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From y@ngk@|9999 @end|ng |rom y@hoo@com  Fri Sep 16 19:51:49 2022
+From: y@ngk@|9999 @end|ng |rom y@hoo@com (Kai Yang)
+Date: Fri, 16 Sep 2022 17:51:49 +0000 (UTC)
+Subject: [R] rename files in R
+In-Reply-To: <bd1a87eb-00a3-3a54-3020-8ed744df05b5@sapo.pt>
+References: <1179852228.2613336.1663349205099.ref@mail.yahoo.com>
+ <1179852228.2613336.1663349205099@mail.yahoo.com>
+ <bd1a87eb-00a3-3a54-3020-8ed744df05b5@sapo.pt>
+Message-ID: <1484246431.2613424.1663350709591@mail.yahoo.com>
+
+ Hello,Here is the example:??
+??file name? ? first row??file1.txt? ? ?abc.txt??file2.txt? ? ?bed.txt??file3.txt? ? ?gogo.txt??.?.?file1243.txt? ? last.txt????
+I want to use loop because I need to read the first row information for first file, and then rename the file, then go to next file. I'm not sure if this is right way to approach my goal. Any suggestion will be appreciated.?Thanks,?Kai    On Friday, September 16, 2022 at 10:38:32 AM PDT, Rui Barradas <ruipbarradas at sapo.pt> wrote:  
+ 
+ Hello,
+
+Please post the first row of 2 or 3 files and the expected result.
+
+You can rename files with ?file.rename. This function is vectorized its 
+on arguments so you do not need a loop, only the source and destination 
+filenames. Both vectors should have the same length, if not strange 
+things will occur including data loss.
+
+Hope this helps,
+
+Rui Barradas
+
+?s 18:26 de 16/09/2022, Kai Yang via R-help escreveu:
+> Hello,I have a lot of files with not meaningful name, such as:? file1.txt, file2.txt ...... I need to rename them using the information from the first row of the files. Now I can get the information from the first row of each file. Now, I need know how to rename them in R (using loop?).?Thank you for your helpKai
+> 
+> 
+> ??? [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+  
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Fri Sep 16 20:01:28 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Fri, 16 Sep 2022 19:01:28 +0100
+Subject: [R] rename files in R
+In-Reply-To: <1484246431.2613424.1663350709591@mail.yahoo.com>
+References: <1179852228.2613336.1663349205099.ref@mail.yahoo.com>
+ <1179852228.2613336.1663349205099@mail.yahoo.com>
+ <bd1a87eb-00a3-3a54-3020-8ed744df05b5@sapo.pt>
+ <1484246431.2613424.1663350709591@mail.yahoo.com>
+Message-ID: <5976c8fc-2070-aa81-69ed-59325cfd1dd7@sapo.pt>
+
+Hello,
+
+Something like the following might work.
+
+
+
+filenames <- list.files(pattern = "^file\\d+\\.txt$")
+destnames <- sapply(filenames, scan, what = character(), sep = "\n", n = 
+1L, strip.white = TRUE)
+
+if(length(filenames) == length(destnames))
+   file.rename(filenames, destnames)
+else message("something went wrong")
+
+
+
+But I would make copies of 2 or 3 files first and test with, say,
+
+filenames[1:2] and destnames[1:2]
+
+
+Hope this helps,
+
+Rui Barradas
+
+?s 18:51 de 16/09/2022, Kai Yang escreveu:
+>   Hello,Here is the example:
+>  ??file name? ? first row??file1.txt? ? ?abc.txt??file2.txt? ? ?bed.txt??file3.txt? ? ?gogo.txt??.?.?file1243.txt? ? last.txt
+> I want to use loop because I need to read the first row information for first file, and then rename the file, then go to next file. I'm not sure if this is right way to approach my goal. Any suggestion will be appreciated.?Thanks,?Kai    On Friday, September 16, 2022 at 10:38:32 AM PDT, Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>   
+>   Hello,
+> 
+> Please post the first row of 2 or 3 files and the expected result.
+> 
+> You can rename files with ?file.rename. This function is vectorized its
+> on arguments so you do not need a loop, only the source and destination
+> filenames. Both vectors should have the same length, if not strange
+> things will occur including data loss.
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> ?s 18:26 de 16/09/2022, Kai Yang via R-help escreveu:
+>> Hello,I have a lot of files with not meaningful name, such as:? file1.txt, file2.txt ...... I need to rename them using the information from the first row of the files. Now I can get the information from the first row of each file. Now, I need know how to rename them in R (using loop?).?Thank you for your helpKai
+>>
+>>
+>>  ??? [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From y@ngk@|9999 @end|ng |rom y@hoo@com  Fri Sep 16 20:24:28 2022
+From: y@ngk@|9999 @end|ng |rom y@hoo@com (Kai Yang)
+Date: Fri, 16 Sep 2022 18:24:28 +0000 (UTC)
+Subject: [R] rename files in R
+In-Reply-To: <5976c8fc-2070-aa81-69ed-59325cfd1dd7@sapo.pt>
+References: <1179852228.2613336.1663349205099.ref@mail.yahoo.com>
+ <1179852228.2613336.1663349205099@mail.yahoo.com>
+ <bd1a87eb-00a3-3a54-3020-8ed744df05b5@sapo.pt>
+ <1484246431.2613424.1663350709591@mail.yahoo.com>
+ <5976c8fc-2070-aa81-69ed-59325cfd1dd7@sapo.pt>
+Message-ID: <1757366261.2612528.1663352668960@mail.yahoo.com>
+
+ Thank you. I'll try this. --- Kai
+    On Friday, September 16, 2022 at 11:01:33 AM PDT, Rui Barradas <ruipbarradas at sapo.pt> wrote:  
+ 
+ Hello,
+
+Something like the following might work.
+
+
+
+filenames <- list.files(pattern = "^file\\d+\\.txt$")
+destnames <- sapply(filenames, scan, what = character(), sep = "\n", n = 
+1L, strip.white = TRUE)
+
+if(length(filenames) == length(destnames))
+? file.rename(filenames, destnames)
+else message("something went wrong")
+
+
+
+But I would make copies of 2 or 3 files first and test with, say,
+
+filenames[1:2] and destnames[1:2]
+
+
+Hope this helps,
+
+Rui Barradas
+
+?s 18:51 de 16/09/2022, Kai Yang escreveu:
+>? Hello,Here is the example:
+>? ??file name? ? first row??file1.txt? ? ?abc.txt??file2.txt? ? ?bed.txt??file3.txt? ? ?gogo.txt??.?.?file1243.txt? ? last.txt
+> I want to use loop because I need to read the first row information for first file, and then rename the file, then go to next file. I'm not sure if this is right way to approach my goal. Any suggestion will be appreciated.?Thanks,?Kai? ? On Friday, September 16, 2022 at 10:38:32 AM PDT, Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>? 
+>? Hello,
+> 
+> Please post the first row of 2 or 3 files and the expected result.
+> 
+> You can rename files with ?file.rename. This function is vectorized its
+> on arguments so you do not need a loop, only the source and destination
+> filenames. Both vectors should have the same length, if not strange
+> things will occur including data loss.
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> ?s 18:26 de 16/09/2022, Kai Yang via R-help escreveu:
+>> Hello,I have a lot of files with not meaningful name, such as:? file1.txt, file2.txt ...... I need to rename them using the information from the first row of the files. Now I can get the information from the first row of each file. Now, I need know how to rename them in R (using loop?).?Thank you for your helpKai
+>>
+>>
+>>? ??? [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>? ? 
+  
+	[[alternative HTML version deleted]]
+
+
+From k@y|@@b@zz@n@ @end|ng |rom m@||@utoronto@c@  Fri Sep 16 15:48:55 2022
+From: k@y|@@b@zz@n@ @end|ng |rom m@||@utoronto@c@ (Kayla Bazzana)
+Date: Fri, 16 Sep 2022 13:48:55 +0000
+Subject: [R] nlme gls issue
+Message-ID: <YT3PR01MB5938E2E96B2E94B331AC62E4CA489@YT3PR01MB5938.CANPRD01.PROD.OUTLOOK.COM>
+
+Hi there,
+
+I'm having issues running a gls within the nlme package that neither I nor any of my colleagues can figure out. The gls itself seems to run fine (i.e. doesn't give an error message and produces a seemingly normal summary output), but when I try to calculate the rsquared of the gls model, it simply returns an "NA". Is this an issue you've encountered before? If so, can you point me in the right direction of how to remedy it?
+
+Thank you!
+Kayla
+
+-------------------
+Kayla Bazzana (she/her)
+Ph.D. Candidate, Evans Lab
+Department of Natural History, Royal Ontario Museum
+Department of Ecology and Evolutionary Biology, University of Toronto
+
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sat Sep 17 00:34:38 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Fri, 16 Sep 2022 23:34:38 +0100
+Subject: [R] rename files in R
+In-Reply-To: <1757366261.2612528.1663352668960@mail.yahoo.com>
+References: <1179852228.2613336.1663349205099.ref@mail.yahoo.com>
+ <1179852228.2613336.1663349205099@mail.yahoo.com>
+ <bd1a87eb-00a3-3a54-3020-8ed744df05b5@sapo.pt>
+ <1484246431.2613424.1663350709591@mail.yahoo.com>
+ <5976c8fc-2070-aa81-69ed-59325cfd1dd7@sapo.pt>
+ <1757366261.2612528.1663352668960@mail.yahoo.com>
+Message-ID: <3d75fd33-b1be-a0b3-3c6e-d9ea60a35ff5@sapo.pt>
+
+Hello,
+
+Sorry, it should be
+
+
+if(length(filenames) == length(destnames)) {
+   file.ename(filenames, destname)
+} else message("something went wrong")
+
+
+Hope this helps,
+
+Rui Barradas
+
+?s 19:24 de 16/09/2022, Kai Yang escreveu:
+>   Thank you. I'll try this. --- Kai
+>      On Friday, September 16, 2022 at 11:01:33 AM PDT, Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>   
+>   Hello,
+> 
+> Something like the following might work.
+> 
+> 
+> 
+> filenames <- list.files(pattern = "^file\\d+\\.txt$")
+> destnames <- sapply(filenames, scan, what = character(), sep = "\n", n =
+> 1L, strip.white = TRUE)
+> 
+> if(length(filenames) == length(destnames))
+>  ? file.rename(filenames, destnames)
+> else message("something went wrong")
+> 
+> 
+> 
+> But I would make copies of 2 or 3 files first and test with, say,
+> 
+> filenames[1:2] and destnames[1:2]
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> ?s 18:51 de 16/09/2022, Kai Yang escreveu:
+>>  ? Hello,Here is the example:
+>>  ? ??file name? ? first row??file1.txt? ? ?abc.txt??file2.txt? ? ?bed.txt??file3.txt? ? ?gogo.txt??.?.?file1243.txt? ? last.txt
+>> I want to use loop because I need to read the first row information for first file, and then rename the file, then go to next file. I'm not sure if this is right way to approach my goal. Any suggestion will be appreciated.?Thanks,?Kai? ? On Friday, September 16, 2022 at 10:38:32 AM PDT, Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>>    
+>>  ? Hello,
+>>
+>> Please post the first row of 2 or 3 files and the expected result.
+>>
+>> You can rename files with ?file.rename. This function is vectorized its
+>> on arguments so you do not need a loop, only the source and destination
+>> filenames. Both vectors should have the same length, if not strange
+>> things will occur including data loss.
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>> ?s 18:26 de 16/09/2022, Kai Yang via R-help escreveu:
+>>> Hello,I have a lot of files with not meaningful name, such as:? file1.txt, file2.txt ...... I need to rename them using the information from the first row of the files. Now I can get the information from the first row of each file. Now, I need know how to rename them in R (using loop?).?Thank you for your helpKai
+>>>
+>>>
+>>>  ? ??? [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>      
+>
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat Sep 17 02:06:40 2022
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Fri, 16 Sep 2022 20:06:40 -0400
+Subject: [R] rename files in R
+In-Reply-To: <3d75fd33-b1be-a0b3-3c6e-d9ea60a35ff5@sapo.pt>
+References: <1179852228.2613336.1663349205099.ref@mail.yahoo.com>
+ <1179852228.2613336.1663349205099@mail.yahoo.com>
+ <bd1a87eb-00a3-3a54-3020-8ed744df05b5@sapo.pt>
+ <1484246431.2613424.1663350709591@mail.yahoo.com>
+ <5976c8fc-2070-aa81-69ed-59325cfd1dd7@sapo.pt>
+ <1757366261.2612528.1663352668960@mail.yahoo.com>
+ <3d75fd33-b1be-a0b3-3c6e-d9ea60a35ff5@sapo.pt>
+Message-ID: <005701d8ca29$5d4fa440$17eeecc0$@gmail.com>
+
+Just a suggestion to add to blindly renaming a file.
+
+The request was for opening a file and reading something on the first line that is used to construct a filename.
+
+Fine but make a checklist including items like this that may apply to your need.
+
+- CLOSE any open file before renaming it.
+- Make sure the name is UNIQUE so you do not over-write an existing file or fail because the new name is in use.
+- Make sure the filename chosen  is valid on your target device and usable. That may mean avoiding some characters or suppressing spaces or replacing them with an underscore, making sure it does not start with a digit if that matters, and so on. And make sure you have a period and extension characters like .txt if that is needed and any number of other such considerations.
+- Until you are SURE consider making a backup copy of the files in some way rather than just blindly renaming them.
+
+If you encounter issues, decide on a secondary strategy. For example, if the header line on two files is identical, thus by the time you get to the second, file XYY.txt already appears, what do you do? Do you leave file69 alone or maybe name it XYZ2.txt or some other scheme of your choice? Note that this can get complex if you have dozens of files trying to be named the same.
+
+Only YOU know what your files and data are like and what results you want. People here can only answer your question on the mechanics of how to do the one thing you asked for: renaming. Even then, please look carefully as the example blow accidentally asks you to "ename(...)" and my guess is that won't do what you want.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Rui Barradas
+Sent: Friday, September 16, 2022 6:35 PM
+To: Kai Yang <yangkai9999 at yahoo.com>; R-help Mailing List <r-help at r-project.org>
+Subject: Re: [R] rename files in R
+
+Hello,
+
+Sorry, it should be
+
+
+if(length(filenames) == length(destnames)) {
+   file.ename(filenames, destname)
+} else message("something went wrong")
+
+
+Hope this helps,
+
+Rui Barradas
+
+?s 19:24 de 16/09/2022, Kai Yang escreveu:
+>   Thank you. I'll try this. --- Kai
+>      On Friday, September 16, 2022 at 11:01:33 AM PDT, Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>   
+>   Hello,
+> 
+> Something like the following might work.
+> 
+> 
+> 
+> filenames <- list.files(pattern = "^file\\d+\\.txt$") destnames <- 
+> sapply(filenames, scan, what = character(), sep = "\n", n = 1L, 
+> strip.white = TRUE)
+> 
+> if(length(filenames) == length(destnames))
+>    file.rename(filenames, destnames)
+> else message("something went wrong")
+> 
+> 
+> 
+> But I would make copies of 2 or 3 files first and test with, say,
+> 
+> filenames[1:2] and destnames[1:2]
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> ?s 18:51 de 16/09/2022, Kai Yang escreveu:
+>>    Hello,Here is the example:
+>>      file name    first row  file1.txt     abc.txt  file2.txt     
+>> bed.txt  file3.txt     gogo.txt  . . file1243.txt    last.txt I want to use loop because I need to read the first row information for first file, and then rename the file, then go to next file. I'm not sure if this is right way to approach my goal. Any suggestion will be appreciated. Thanks, Kai    On Friday, September 16, 2022 at 10:38:32 AM PDT, Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>>    
+>>    Hello,
+>>
+>> Please post the first row of 2 or 3 files and the expected result.
+>>
+>> You can rename files with ?file.rename. This function is vectorized 
+>> its on arguments so you do not need a loop, only the source and 
+>> destination filenames. Both vectors should have the same length, if 
+>> not strange things will occur including data loss.
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>> ?s 18:26 de 16/09/2022, Kai Yang via R-help escreveu:
+>>> Hello,I have a lot of files with not meaningful name, such as:  
+>>> file1.txt, file2.txt ...... I need to rename them using the 
+>>> information from the first row of the files. Now I can get the 
+>>> information from the first row of each file. Now, I need know how to 
+>>> rename them in R (using loop?). Thank you for your helpKai
+>>>
+>>>
+>>>        [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide 
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>      
+>
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
