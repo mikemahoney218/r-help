@@ -1,0 +1,377 @@
+From @v|@e@gro@@ @end|ng |rom gm@||@com  Sat Oct  1 01:01:28 2022
+From: @v|@e@gro@@ @end|ng |rom gm@||@com (Avi Gross)
+Date: Fri, 30 Sep 2022 19:01:28 -0400
+Subject: [R] Reading very large text files into R
+In-Reply-To: <BN6PR2201MB15533DA430761C7B4A46AD15CF569@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <CABxY9BMk+Y82OV8Rcaoe-r+GeheN9ji6hvGpjVjejKD0h0=E+A@mail.gmail.com>
+ <CABcYAdKtUWnUdpMBOZ6R_EajctOtVAHa=DUd6X4ytEr9H_acVQ@mail.gmail.com>
+ <BN6PR2201MB155318FFE325C623BE53AAC2CF569@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <004e01d8d501$12d6f2f0$3884d8d0$@gmail.com>
+ <BN6PR2201MB15533DA430761C7B4A46AD15CF569@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <CABaFrRZkz8td3gzznUbSkmy=F5gacnCigGkGpnpiY7xiwKDMBQ@mail.gmail.com>
+
+Those are valid reasons as examining data and cleaning or fixing it is a
+major thing to do before making an analysis or plots. Indeed, an extra
+column caused by something in an earlier column mat have messed up all
+columns to the right.
+
+My point was about replicating a problem like this may require many more
+lines from the file.
+
+On Fri, Sep 30, 2022, 5:58 PM Ebert,Timothy Aaron <tebert at ufl.edu> wrote:
+
+> The point was more to figure out why most lines have 15 values and some
+> give an error indicating that there are 16. Are there notes, or an extra
+> comma? Some weather stations fail and give interesting data at, before, or
+> after failure. Are the problem lines indicating machine failure? Typically
+> code does not randomly enter extra data. Most answers appear to assume that
+> the 16th column has been entered at the end of the data, but no evidence
+> indicates this is true. If there is an initial value at the beginning of
+> the row, then all of the data for that row will be in error if the "16"
+> value is deleted. I am just paranoid enough to suggest looking at one case
+> to make sure all is as assumed.
+>    Another way to address the problem is to test the data. Are there
+> temperatures less than -100 C or greater than 60 C? Why would one ever get
+> such a thing? Machine error, or a column misaligned so that humidity values
+> are in the temperature column.
+>
+> Tim
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of
+> avi.e.gross at gmail.com
+> Sent: Friday, September 30, 2022 3:16 PM
+> Cc: r-help at r-project.org
+> Subject: Re: [R] Reading very large text files into R
+>
+> [External Email]
+>
+> Tim and others,
+>
+> A point to consider is that there are various algorithms in the functions
+> used to read in formatted data into data.frame form and they vary. Some do
+> a look-ahead of some size to determine things and if they find a column
+> that LOOKS LIKE all integers for say the first thousand lines, they go and
+> read in that column as integer. If the first floating point value is
+> thousands of lines further along, things may go wrong.
+>
+> So asking for line/row 16 to have an extra 16th entry/column may work fine
+> for an algorithm that looks ahead and concludes there are 16 columns
+> throughout. Yet a file where the first time a sixteenth entry is seen is at
+> line/row 31,459 may well just set the algorithm to expect exactly 15
+> columns and then be surprised as noted above.
+>
+> I have stayed out of this discussion and others have supplied pretty much
+> what I would have said. I also see the data as flawed and ask which rows
+> are the valid ones. If a sixteenth column is allowed, it would be better if
+> all other rows had an empty sixteenth column. If not allowed, none should
+> have it.
+>
+> The approach I might take, again as others have noted, is to preprocess
+> the data file using some form of stream editor such as AWK that
+> automagically reads in a line at a time and parses lines into a collection
+> of tokens based on what separates them such as a comma. You can then either
+> write out just the first 15 to the output stream if your choice is to
+> ignore a spurious sixteenth, or write out all sixteen for every line, with
+> the last being some form of null most of the time. And, of course, to be
+> more general, you could make two passes through the file with the first one
+> determining the maximum number of entries as well as what the most common
+> number of entries is, and a second pass using that info to normalize the
+> file the way you want. And note some of what was mentioned could often be
+> done in this preprocessing such as removing any columns you do not want to
+> read into R later. Do note such filters may need to handle edge cases like
+> skipping comment lines or treating the row of headers differently.
+>
+> As some have shown, you can create your own filters within a language like
+> R too and either read in lines and pre-process them as discussed or
+> continue on to making your own data.frame and skip the read.table() type of
+> functionality. For very large files, though, having multiple variations in
+> memory at once may be an issue, especially if they are not removed and
+> further processing and analysis continues.
+>
+> Perhaps it might be sensible to contact those maintaining the data and
+> point out the anomaly and ask if their files might be saved alternately in
+> a format that can be used without anomalies.
+>
+> Avi
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Ebert,Timothy
+> Aaron
+> Sent: Friday, September 30, 2022 7:27 AM
+> To: Richard O'Keefe <raoknz at gmail.com>; Nick Wray <nickmwray at gmail.com>
+> Cc: r-help at r-project.org
+> Subject: Re: [R] Reading very large text files into R
+>
+> Hi Nick,
+>    Can you post one line of data with 15 entries followed by the next line
+> of data with 16 entries?
+>
+> Tim
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>
+> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&amp;data=05%7C01%7Ctebert%40ufl.edu%7C3d75da30d3744c13847308daa3184c98%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638001622016765705%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=5w0Yrih%2Fxf09zpgabscAzMTVzcw4nhjNKX5%2FgWEPVWk%3D&amp;reserved=0
+> PLEASE do read the posting guide
+> https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&amp;data=05%7C01%7Ctebert%40ufl.edu%7C3d75da30d3744c13847308daa3184c98%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638001622016765705%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=K4ddCaLbSB5XU8TELCMhDEFsG4drevbeRp2YKPxY2ag%3D&amp;reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From tebert @end|ng |rom u||@edu  Sat Oct  1 01:43:01 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Fri, 30 Sep 2022 23:43:01 +0000
+Subject: [R] Reading very large text files into R
+In-Reply-To: <CABaFrRZkz8td3gzznUbSkmy=F5gacnCigGkGpnpiY7xiwKDMBQ@mail.gmail.com>
+References: <CABxY9BMk+Y82OV8Rcaoe-r+GeheN9ji6hvGpjVjejKD0h0=E+A@mail.gmail.com>
+ <CABcYAdKtUWnUdpMBOZ6R_EajctOtVAHa=DUd6X4ytEr9H_acVQ@mail.gmail.com>
+ <BN6PR2201MB155318FFE325C623BE53AAC2CF569@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <004e01d8d501$12d6f2f0$3884d8d0$@gmail.com>
+ <BN6PR2201MB15533DA430761C7B4A46AD15CF569@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <CABaFrRZkz8td3gzznUbSkmy=F5gacnCigGkGpnpiY7xiwKDMBQ@mail.gmail.com>
+Message-ID: <BN6PR2201MB1553B86BFEE83B5EDD382CD9CF569@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+Truth
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Avi Gross
+Sent: Friday, September 30, 2022 7:01 PM
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] Reading very large text files into R
+
+[External Email]
+
+Those are valid reasons as examining data and cleaning or fixing it is a major thing to do before making an analysis or plots. Indeed, an extra column caused by something in an earlier column mat have messed up all columns to the right.
+
+My point was about replicating a problem like this may require many more lines from the file.
+
+On Fri, Sep 30, 2022, 5:58 PM Ebert,Timothy Aaron <tebert at ufl.edu> wrote:
+
+> The point was more to figure out why most lines have 15 values and 
+> some give an error indicating that there are 16. Are there notes, or 
+> an extra comma? Some weather stations fail and give interesting data 
+> at, before, or after failure. Are the problem lines indicating machine 
+> failure? Typically code does not randomly enter extra data. Most 
+> answers appear to assume that the 16th column has been entered at the 
+> end of the data, but no evidence indicates this is true. If there is 
+> an initial value at the beginning of the row, then all of the data for that row will be in error if the "16"
+> value is deleted. I am just paranoid enough to suggest looking at one 
+> case to make sure all is as assumed.
+>    Another way to address the problem is to test the data. Are there 
+> temperatures less than -100 C or greater than 60 C? Why would one ever 
+> get such a thing? Machine error, or a column misaligned so that 
+> humidity values are in the temperature column.
+>
+> Tim
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of 
+> avi.e.gross at gmail.com
+> Sent: Friday, September 30, 2022 3:16 PM
+> Cc: r-help at r-project.org
+> Subject: Re: [R] Reading very large text files into R
+>
+> [External Email]
+>
+> Tim and others,
+>
+> A point to consider is that there are various algorithms in the 
+> functions used to read in formatted data into data.frame form and they 
+> vary. Some do a look-ahead of some size to determine things and if 
+> they find a column that LOOKS LIKE all integers for say the first 
+> thousand lines, they go and read in that column as integer. If the 
+> first floating point value is thousands of lines further along, things may go wrong.
+>
+> So asking for line/row 16 to have an extra 16th entry/column may work 
+> fine for an algorithm that looks ahead and concludes there are 16 
+> columns throughout. Yet a file where the first time a sixteenth entry 
+> is seen is at line/row 31,459 may well just set the algorithm to 
+> expect exactly 15 columns and then be surprised as noted above.
+>
+> I have stayed out of this discussion and others have supplied pretty 
+> much what I would have said. I also see the data as flawed and ask 
+> which rows are the valid ones. If a sixteenth column is allowed, it 
+> would be better if all other rows had an empty sixteenth column. If 
+> not allowed, none should have it.
+>
+> The approach I might take, again as others have noted, is to 
+> preprocess the data file using some form of stream editor such as AWK 
+> that automagically reads in a line at a time and parses lines into a 
+> collection of tokens based on what separates them such as a comma. You 
+> can then either write out just the first 15 to the output stream if 
+> your choice is to ignore a spurious sixteenth, or write out all 
+> sixteen for every line, with the last being some form of null most of 
+> the time. And, of course, to be more general, you could make two 
+> passes through the file with the first one determining the maximum 
+> number of entries as well as what the most common number of entries 
+> is, and a second pass using that info to normalize the file the way 
+> you want. And note some of what was mentioned could often be done in 
+> this preprocessing such as removing any columns you do not want to 
+> read into R later. Do note such filters may need to handle edge cases like skipping comment lines or treating the row of headers differently.
+>
+> As some have shown, you can create your own filters within a language 
+> like R too and either read in lines and pre-process them as discussed 
+> or continue on to making your own data.frame and skip the read.table() 
+> type of functionality. For very large files, though, having multiple 
+> variations in memory at once may be an issue, especially if they are 
+> not removed and further processing and analysis continues.
+>
+> Perhaps it might be sensible to contact those maintaining the data and 
+> point out the anomaly and ask if their files might be saved 
+> alternately in a format that can be used without anomalies.
+>
+> Avi
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Ebert,Timothy 
+> Aaron
+> Sent: Friday, September 30, 2022 7:27 AM
+> To: Richard O'Keefe <raoknz at gmail.com>; Nick Wray 
+> <nickmwray at gmail.com>
+> Cc: r-help at r-project.org
+> Subject: Re: [R] Reading very large text files into R
+>
+> Hi Nick,
+>    Can you post one line of data with 15 entries followed by the next 
+> line of data with 16 entries?
+>
+> Tim
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>
+> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat
+> .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&amp;data=05%7C01%7Ctebert%40ufl
+> .edu%7C5044822c1b7f45f2b5f408daa337cc46%7C0d4da0f84a314d76ace60a62331e
+> 1b84%7C0%7C0%7C638001757304040018%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4w
+> LjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C
+> &amp;sdata=s1Vx7PfKdb12NTQFAsGPQ5k8oXBylcFyD30xtAnHqYQ%3D&amp;reserved
+> =0
+> PLEASE do read the posting guide
+> https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r
+> -project.org%2Fposting-guide.html&amp;data=05%7C01%7Ctebert%40ufl.edu%
+> 7C5044822c1b7f45f2b5f408daa337cc46%7C0d4da0f84a314d76ace60a62331e1b84%
+> 7C0%7C0%7C638001757304040018%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwM
+> DAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;
+> sdata=Q3cceHqosMsjflLn5cPgBE58EGdE%2B7riPYhubX%2BwEL8%3D&amp;reserved=
+> 0 and provide commented, minimal, self-contained, reproducible code.
+>
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&amp;data=05%7C01%7Ctebert%40ufl.edu%7C5044822c1b7f45f2b5f408daa337cc46%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638001757304040018%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=s1Vx7PfKdb12NTQFAsGPQ5k8oXBylcFyD30xtAnHqYQ%3D&amp;reserved=0
+PLEASE do read the posting guide https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&amp;data=05%7C01%7Ctebert%40ufl.edu%7C5044822c1b7f45f2b5f408daa337cc46%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638001757304040018%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=Q3cceHqosMsjflLn5cPgBE58EGdE%2B7riPYhubX%2BwEL8%3D&amp;reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From dr@@|@m@o|@ng| @end|ng |rom gm@||@com  Sat Oct  1 14:53:00 2022
+From: dr@@|@m@o|@ng| @end|ng |rom gm@||@com (Shah Alam)
+Date: Sat, 1 Oct 2022 14:53:00 +0200
+Subject: [R] could not find function "flexsurvreg"
+Message-ID: <CA+bivFj5M5HeVawxZXeZ4S9JgZUAY2eF8DCUb_JXyNiNoLk59A@mail.gmail.com>
+
+Dear All,
+I am analyzing trial data for survival. During the loading of the R package
+"flexsurv", the following error message appeared.
+
+"Loading required package: survival
+Error: package or namespace load failed for ?flexsurv? in loadNamespace(j
+<- i[[1L]], c(lib.loc, .libPaths()), versionCheck = vI[[j]]):
+ there is no package called ?lifecycle?
+
+Despite installing lifecycle package, loading lifecycle package results in
+the following error message:
+
+Error in library(lifecycle) : there is no package called ?lifecycle?
+
+Moreover, the flexsurvreg function in the flexsurv library also produces an
+error:
+
+Error in flexsurvreg(Surv(Time, Event) ~ 1, anc = NULL, data = data1,  :
+  could not find function "flexsurvreg"
+
+Several times I have installed and uninstalled packages, re-started R, but
+the error persists.
+
+Could anyone help me with the flexsurv package, why is it not working?
+
+Best regards,
+Shah
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sat Oct  1 15:29:15 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sat, 1 Oct 2022 14:29:15 +0100
+Subject: [R] could not find function "flexsurvreg"
+In-Reply-To: <CA+bivFj5M5HeVawxZXeZ4S9JgZUAY2eF8DCUb_JXyNiNoLk59A@mail.gmail.com>
+References: <CA+bivFj5M5HeVawxZXeZ4S9JgZUAY2eF8DCUb_JXyNiNoLk59A@mail.gmail.com>
+Message-ID: <2975651c-bf02-4f2c-a44d-9f49b7f84deb@sapo.pt>
+
+Hello,
+
+Not knowing which system you have, here is a way that usually works.
+
+1. If you are using an IDE sych as RStudio or RGui, save your work and 
+exit. This is because when the packages' namepaces are loaded, the 
+shared libs, if they exist, are blocked,
+
+2. Open a terminal window
+3. Run
+
+R -q -e "install.packages(c('lifecycle', 'flexsurv'))"
+
+
+The packages should now be installed.
+
+
+Hope this helps,
+
+Rui Barradas
+
+?s 13:53 de 01/10/2022, Shah Alam escreveu:
+> Dear All,
+> I am analyzing trial data for survival. During the loading of the R package
+> "flexsurv", the following error message appeared.
+> 
+> "Loading required package: survival
+> Error: package or namespace load failed for ?flexsurv? in loadNamespace(j
+> <- i[[1L]], c(lib.loc, .libPaths()), versionCheck = vI[[j]]):
+>   there is no package called ?lifecycle?
+> 
+> Despite installing lifecycle package, loading lifecycle package results in
+> the following error message:
+> 
+> Error in library(lifecycle) : there is no package called ?lifecycle?
+> 
+> Moreover, the flexsurvreg function in the flexsurv library also produces an
+> error:
+> 
+> Error in flexsurvreg(Surv(Time, Event) ~ 1, anc = NULL, data = data1,  :
+>    could not find function "flexsurvreg"
+> 
+> Several times I have installed and uninstalled packages, re-started R, but
+> the error persists.
+> 
+> Could anyone help me with the flexsurv package, why is it not working?
+> 
+> Best regards,
+> Shah
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
