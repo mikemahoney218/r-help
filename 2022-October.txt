@@ -3842,3 +3842,1163 @@ On October 4, 2022 10:32:55 AM PDT, Rui Barradas <ruipbarradas at sapo.pt> wrote
 Sent from my phone. Please excuse my brevity.
 
 
+From tder@mu@ @end|ng |rom p@rtner@@org  Wed Oct  5 01:35:09 2022
+From: tder@mu@ @end|ng |rom p@rtner@@org (Deramus, Thomas Patrick)
+Date: Tue, 4 Oct 2022 23:35:09 +0000
+Subject: [R] Getting "Error in ect,
+ plot.new has not been called yet" despite grouping plot call
+Message-ID: <PH0PR04MB7493E39389D0196BEC260CB6BE5A9@PH0PR04MB7493.namprd04.prod.outlook.com>
+
+Sorry to cross-post on Stackoverflow and here but I'm having some difficulty.
+https://stackoverflow.com/questions/73942794/still-getting-error-in-ect-plot-new-has-not-been-called-yet-despite-grouping
+
+Trying to make a nested loop that produces PDFs off different graphs, one for ACF/PACF diagnostics and another for the actual data, based on some time-series analyses I'm doing.
+
+Unfortunately, I keep getting the dreaded: Error plot.new has not been called yet
+
+The code is meant to write a PDF containing the ACF and PACF graphs, then do some analyses on the timeseries, and then make a separate PDF containing a plot describing the timeseries based on the p-values of each test for each individual.
+
+library(plyr)
+library(dplyr)
+library(ggplot2)
+library(Kendall)
+library(lubridate)
+library(xts)
+library(TTR)
+library(trend)
+library(forecast)
+library(openxlsx)
+
+Game_Metrics_Word_Task <- read.xlsx("GamePack_Analytics_ALL_TIME_Short.xlsx", "Boggle")
+Game_Metrics_Word_Task <- Game_Metrics_Word_Task %>% filter(grepl('1440', StudyId))
+Game_Metrics_Word_Task$DeviceTime <- ymd_hms(Game_Metrics_Word_Task$DeviceTime,  tz = "America/New_York")
+Game_Metrics_Word_Task <- Game_Metrics_Word_Task[!duplicated(Game_Metrics_Word_Task[1:2,])]
+
+Participant_Word_Task <- split(arrange(Game_Metrics_Word_Task,StudyId,DeviceTime), arrange(Game_Metrics_Word_Task,StudyId,DeviceTime,StudyId,DeviceTime)$StudyId)
+
+WordFrame <- data.frame(Participant = c(0), Task = c(0), MannKendall_Tau = c(0), MannKendall_P = c(0), Sen_Slope_Value = c(0), Sen_Slope_Pval = c(0), Pettitts_CIV = c(0), Pettitts_Pval = c(0), ARIMA_Model = c(0), Time_to_Petit = c(0), Number_of_Trials_to_Pettitt = c(0), Playtime_to_Petit_seconds = c(0), Time_Start_to_end_days = c(0), Number_of_Total_Trials = c(0), Total_Playtime_seconds = c(0), Learning_rate_days = c(0), Learning_rate_seconds = c(0), Learned_Task = c(0))
+
+for (i in 1:length(Participant_Word_Task)){
+    success_series <- xts(filter(Participant_Word_Task[[i]], GameEndReason == "TIMER_UP")$NumberOfSuccesfulWords , order.by=as.POSIXct(filter(Participant_Word_Task[[i]], GameEndReason == "TIMER_UP")$DeviceTime))
+    original_series <- xts(Participant_Word_Task[[i]]$NumberOfSuccesfulWords, order.by=as.POSIXct(Participant_Word_Task[[i]]$DeviceTime))
+    success_decomp <- ts(success_series, frequency = nweeks(success_series))
+    original_decomp <- ts(original_series, frequency = nweeks(success_series))
+
+    pdf(paste("Word_Task_Autocorrelation_plots_for_subject_",unique(Participant_Word_Task[[i]]$StudyId),".pdf" ,collapse = NULL, sep = ""))
+    par(mfrow=c(1,2))
+    Autocorrelationplot <- acf(success_decomp, main=paste(""))
+    PartialAutocorrelationplot <- pacf(success_decomp, main=paste(""))
+    mtext(paste("Word Task Auto and Partialauto correlations for subject ",unique(Participant_Word_Task[[i]]$StudyId)), side = 3, line = -3, outer = TRUE)
+    dev.off()
+
+    AutomatedArimaoutputs <- auto.arima(success_decomp)
+    p <- length(AutomatedArimaoutputs$model$phi)
+    #AR component
+    q <- length(AutomatedArimaoutputs$model$theta)
+    #MA component
+    d <- AutomatedArimaoutputs$model$Delta
+    #order of difference
+    WordFrame[i,1] <- unique(Participant_Word_Task[[i]]$StudyId)
+    WordFrame[i,2] <- "Word"
+    WordFrame[i,3] <- MannKendall(success_decomp)$tau[1]
+    WordFrame[i,4] <- MannKendall(success_decomp)$sl[1]
+    WordFrame[i,5] <- sens.slope(success_decomp)$estimates
+    WordFrame[i,6] <- sens.slope(success_decomp)$p.value
+    WordFrame[i,7] <- pettitt.test(success_decomp)$estimate
+    WordFrame[i,8] <- pettitt.test(success_decomp)$p.value
+    WordFrame[i,9] <- paste("ARIMA(",p,",",q,",",d,")", collapse = NULL, sep = "")
+    WordFrame[i,10] <- difftime(time(success_series[WordFrame[i,7]]),time(original_series[1]))
+    WordFrame[i,11] <- tail(which(grepl(success_series[WordFrame[i,7]], original_series)), n=1)
+    WordFrame[i,12] <- sum(Participant_Word_Task[[i]]$TotalDuration[1:WordFrame[i,11]])-sum(Participant_Word_Task[[i]]$TotalTimePaused[1:WordFrame[i,11]])
+    WordFrame[i,13] <- difftime(time(original_series[length(original_series)]),time(original_series[1]))
+    WordFrame[i,14] <- length(original_series)
+    WordFrame[i,15] <- sum(Participant_Word_Task[[i]]$TotalDuration[1:length(original_series)])-sum(Participant_Word_Task[[i]]$TotalTimePaused[1:length(original_series)])
+
+
+    simplemovingaverage <- SMA(original_series, n = nweeks(original_series))
+
+    if (WordFrame[i,4] <= 0.05 & WordFrame[i,6] <= 0.05 & WordFrame[i,8] <= 0.05){
+              {
+              pdf(paste(WordFrame[i,1],"_Word_Task_Acquisition.pdf",collapse = NULL, sep = ""))
+              plout <- plot(original_series,type='l',col='blue',xlab="Date of Play",ylab="Number of Successful Words")
+              lines(simplemovingaverage,type='l',col='red')
+              title(paste("Word Task Acquisition for Subject", WordFrame[i,1]))
+              abline(v = index(original_series[WordFrame[i,7]]),lty=2, col='green', lwd=3)
+              dev.off()
+              }
+              WordFrame[i,18] <- T
+              WordFrame[i,16] <- (1-(WordFrame[i,10]/WordFrame[i,13]))
+              WordFrame[i,17] <- (1-(WordFrame[i,12]/WordFrame[i,15]))
+    } else {
+              {
+              pdf(paste(WordFrame[i,1],"_Word_Task_Acquisition.pdf",collapse = NULL, sep = ""))
+              plout <- plot(original_series,type='l',col='blue',xlab="Date of Play",ylab="Number of Successful Words")
+              lines(simplemovingaverage,type='l',col='red')
+              title(paste("Word Task Acquisition for Subject", WordFrame[i,1]))
+              dev.off()
+              }
+              WordFrame[i,18] <- F
+              WordFrame[i,16] <- 0
+              WordFrame[i,17] <- 0
+    }
+}
+
+It will work just fine if I run the lines individually (e.g. set i = 1, 2, ect), and if I comment out abline and title (lines seems to work fine). But it will throw the error everytime I try to run the loop without these commented.
+
+Have tried just about everything I could find on the Stack forums to run everything as a single argument and I'm just not sure what is wrong with it.
+
+dev.list() spits out:
+
+pdf
+  2
+following the error.
+
+With abline and title commented out and lines run individually it's NULL.
+
+Happens in both RStudio
+
+2022.07.2+576 "Spotted Wakerobin" Release (e7373ef832b49b2a9b88162cfe7eac5f22c40b34, 2022-09-06) for Ubuntu Bionic
+Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) QtWebEngine/5.12.8 Chrome/69.0.3497.128 Safari/537.36
+
+And R:
+
+platform       x86_64-pc-linux-gnu
+arch           x86_64
+os             linux-gnu
+system         x86_64, linux-gnu
+status
+major          4
+minor          2.1
+year           2022
+month          06
+day            23
+svn rev        82513
+language       R
+version.string R version 4.2.1 (2022-06-23)
+nickname       Funny-Looking Kid
+
+
+My OS:
+PRETTY_NAME="Debian GNU/Linux 11 (bullseye)"
+NAME="Debian GNU/Linux"
+VERSION_ID="11"
+VERSION="11 (bullseye)"
+VERSION_CODENAME=bullseye
+ID=debian
+HOME_URL="https://www.debian.org/"
+SUPPORT_URL="https://www.debian.org/support"
+BUG_REPORT_URL="https://bugs.debian.org/"
+No LSB modules are available.
+Distributor ID:???Debian
+Description:??????Debian GNU/Linux 11 (bullseye)
+Release:????11
+Codename:???bullseye
+         Icon name: computer-desktop
+           Chassis: desktop
+        Machine ID: 053ebf23707f49c8ad4e0684f4cf19d3
+           Boot ID: d0e6294d3b944286bef10e76c21e6401
+  Operating System: Debian GNU/Linux 11 (bullseye)
+            Kernel: Linux 5.10.0-18-amd64
+      Architecture: x86-64
+
+
+Any suggestions would be greatly appreciated.
+
+--
+
+Thomas DeRamus (He/Him/His)
+
+Data Analyst
+
+Massachusetts General Hospital Brigham
+
+Alzheimer?s Clinical & Translational Research Unit
+
+149 13th Street
+
+Charlestown, MA 02129
+
+Phone: 205-834-5066
+
+Email: tderamus at partners.org<mailto:tderamus at partners.org>, tpderamus at gmail.com<mailto:tpderamus at gmail.com>
+
+
+[https://ci3.googleusercontent.com/mail-sig/AIorK4we2sU30P2HyfDQF5hpEjYTt-9FTBK7cAVsP7EenrZ0nsKCf48fuYMtElj6Szn_2fpSPWr66eQ][https://ci3.googleusercontent.com/mail-sig/AIorK4yyY0DlImU0UONJrHTbPc5T3lJj8Kmu8SbDKJJ3XjcX6CgvVsvSueYKwficYFz4zXt6fZV8YIY]
+
+?If knowledge can create problems, it is not through ignorance that we can solve them.?
+
+?Issac Asimov
+The information in this e-mail is intended only for the person to whom it is addressed.  If you believe this e-mail was sent to you in error and the e-mail contains patient information, please contact the Mass General Brigham Compliance HelpLine at https://www.massgeneralbrigham.org/complianceline <https://www.massgeneralbrigham.org/complianceline> .
+Please note that this e-mail is not secure (encrypted).  If you do not wish to continue communication over unencrypted e-mail, please notify the sender of this message immediately.  Continuing to send or respond to e-mail after receiving this message means you understand and accept this risk and wish to continue to communicate over unencrypted e-mail. 
+
+From r@turner @end|ng |rom @uck|@nd@@c@nz  Wed Oct  5 12:06:08 2022
+From: r@turner @end|ng |rom @uck|@nd@@c@nz (Rolf Turner)
+Date: Wed, 5 Oct 2022 23:06:08 +1300
+Subject: [R] Getting "Error in ect,
+ plot.new has not been called yet" despite grouping plot call
+In-Reply-To: <PH0PR04MB7493E39389D0196BEC260CB6BE5A9@PH0PR04MB7493.namprd04.prod.outlook.com>
+References: <PH0PR04MB7493E39389D0196BEC260CB6BE5A9@PH0PR04MB7493.namprd04.prod.outlook.com>
+Message-ID: <20221005230608.793c8b9f@rolf-Latitude-E7470>
+
+
+What you doing or trying to do is far too complex for my poor feeble
+and senile brain to come anywhere near comprehending.  The code that
+you present exceeds my complexity tolerance by many orders of magnitude.
+
+I have a suggestion, but.  Strip your code down to the *essentials*.
+Construct a simple sequence of plotting commands, with *simple* names
+for the pdf files involved.  You should require only two or three such
+files and two or three index levels associated with each of your
+nested loops.
+
+Run the stripped down code and the source of the problem will almost
+surely become clear.
+
+cheers,
+
+Rolf Turner
+
+On Tue, 4 Oct 2022 23:35:09 +0000
+"Deramus, Thomas Patrick" <tderamus at partners.org> wrote:
+
+> Sorry to cross-post on Stackoverflow and here but I'm having some
+> difficulty.
+> https://stackoverflow.com/questions/73942794/still-getting-error-in-ect-plot-new-has-not-been-called-yet-despite-grouping
+> 
+> Trying to make a nested loop that produces PDFs off different graphs,
+> one for ACF/PACF diagnostics and another for the actual data, based
+> on some time-series analyses I'm doing.
+> 
+> Unfortunately, I keep getting the dreaded: Error plot.new has not
+> been called yet
+> 
+> The code is meant to write a PDF containing the ACF and PACF graphs,
+> then do some analyses on the timeseries, and then make a separate PDF
+> containing a plot describing the timeseries based on the p-values of
+> each test for each individual.
+> 
+> library(plyr)
+> library(dplyr)
+> library(ggplot2)
+> library(Kendall)
+> library(lubridate)
+> library(xts)
+> library(TTR)
+> library(trend)
+> library(forecast)
+> library(openxlsx)
+> 
+> Game_Metrics_Word_Task <-
+> read.xlsx("GamePack_Analytics_ALL_TIME_Short.xlsx", "Boggle")
+> Game_Metrics_Word_Task <- Game_Metrics_Word_Task %>%
+> filter(grepl('1440', StudyId)) Game_Metrics_Word_Task$DeviceTime <-
+> ymd_hms(Game_Metrics_Word_Task$DeviceTime,  tz = "America/New_York")
+> Game_Metrics_Word_Task <-
+> Game_Metrics_Word_Task[!duplicated(Game_Metrics_Word_Task[1:2,])]
+> 
+> Participant_Word_Task <-
+> split(arrange(Game_Metrics_Word_Task,StudyId,DeviceTime),
+> arrange(Game_Metrics_Word_Task,StudyId,DeviceTime,StudyId,DeviceTime)$StudyId)
+> 
+> WordFrame <- data.frame(Participant = c(0), Task = c(0),
+> MannKendall_Tau = c(0), MannKendall_P = c(0), Sen_Slope_Value = c(0),
+> Sen_Slope_Pval = c(0), Pettitts_CIV = c(0), Pettitts_Pval = c(0),
+> ARIMA_Model = c(0), Time_to_Petit = c(0), Number_of_Trials_to_Pettitt
+> = c(0), Playtime_to_Petit_seconds = c(0), Time_Start_to_end_days =
+> c(0), Number_of_Total_Trials = c(0), Total_Playtime_seconds = c(0),
+> Learning_rate_days = c(0), Learning_rate_seconds = c(0), Learned_Task
+> = c(0))
+> 
+> for (i in 1:length(Participant_Word_Task)){
+>     success_series <- xts(filter(Participant_Word_Task[[i]],
+> GameEndReason == "TIMER_UP")$NumberOfSuccesfulWords ,
+> order.by=as.POSIXct(filter(Participant_Word_Task[[i]], GameEndReason
+> == "TIMER_UP")$DeviceTime)) original_series <-
+> xts(Participant_Word_Task[[i]]$NumberOfSuccesfulWords,
+> order.by=as.POSIXct(Participant_Word_Task[[i]]$DeviceTime))
+> success_decomp <- ts(success_series, frequency =
+> nweeks(success_series)) original_decomp <- ts(original_series,
+> frequency = nweeks(success_series))
+> 
+>     pdf(paste("Word_Task_Autocorrelation_plots_for_subject_",unique(Participant_Word_Task[[i]]$StudyId),".pdf"
+> ,collapse = NULL, sep = "")) par(mfrow=c(1,2))
+>     Autocorrelationplot <- acf(success_decomp, main=paste(""))
+>     PartialAutocorrelationplot <- pacf(success_decomp, main=paste(""))
+>     mtext(paste("Word Task Auto and Partialauto correlations for
+> subject ",unique(Participant_Word_Task[[i]]$StudyId)), side = 3, line
+> = -3, outer = TRUE) dev.off()
+> 
+>     AutomatedArimaoutputs <- auto.arima(success_decomp)
+>     p <- length(AutomatedArimaoutputs$model$phi)
+>     #AR component
+>     q <- length(AutomatedArimaoutputs$model$theta)
+>     #MA component
+>     d <- AutomatedArimaoutputs$model$Delta
+>     #order of difference
+>     WordFrame[i,1] <- unique(Participant_Word_Task[[i]]$StudyId)
+>     WordFrame[i,2] <- "Word"
+>     WordFrame[i,3] <- MannKendall(success_decomp)$tau[1]
+>     WordFrame[i,4] <- MannKendall(success_decomp)$sl[1]
+>     WordFrame[i,5] <- sens.slope(success_decomp)$estimates
+>     WordFrame[i,6] <- sens.slope(success_decomp)$p.value
+>     WordFrame[i,7] <- pettitt.test(success_decomp)$estimate
+>     WordFrame[i,8] <- pettitt.test(success_decomp)$p.value
+>     WordFrame[i,9] <- paste("ARIMA(",p,",",q,",",d,")", collapse =
+> NULL, sep = "") WordFrame[i,10] <-
+> difftime(time(success_series[WordFrame[i,7]]),time(original_series[1]))
+> WordFrame[i,11] <- tail(which(grepl(success_series[WordFrame[i,7]],
+> original_series)), n=1) WordFrame[i,12] <-
+> sum(Participant_Word_Task[[i]]$TotalDuration[1:WordFrame[i,11]])-sum(Participant_Word_Task[[i]]$TotalTimePaused[1:WordFrame[i,11]])
+> WordFrame[i,13] <-
+> difftime(time(original_series[length(original_series)]),time(original_series[1]))
+> WordFrame[i,14] <- length(original_series) WordFrame[i,15] <-
+> sum(Participant_Word_Task[[i]]$TotalDuration[1:length(original_series)])-sum(Participant_Word_Task[[i]]$TotalTimePaused[1:length(original_series)])
+> 
+> 
+>     simplemovingaverage <- SMA(original_series, n =
+> nweeks(original_series))
+> 
+>     if (WordFrame[i,4] <= 0.05 & WordFrame[i,6] <= 0.05 &
+> WordFrame[i,8] <= 0.05){ {
+>               pdf(paste(WordFrame[i,1],"_Word_Task_Acquisition.pdf",collapse
+> = NULL, sep = "")) plout <-
+> plot(original_series,type='l',col='blue',xlab="Date of
+> Play",ylab="Number of Successful Words")
+> lines(simplemovingaverage,type='l',col='red') title(paste("Word Task
+> Acquisition for Subject", WordFrame[i,1])) abline(v =
+> index(original_series[WordFrame[i,7]]),lty=2, col='green', lwd=3)
+> dev.off() } WordFrame[i,18] <- T
+>               WordFrame[i,16] <- (1-(WordFrame[i,10]/WordFrame[i,13]))
+>               WordFrame[i,17] <- (1-(WordFrame[i,12]/WordFrame[i,15]))
+>     } else {
+>               {
+>               pdf(paste(WordFrame[i,1],"_Word_Task_Acquisition.pdf",collapse
+> = NULL, sep = "")) plout <-
+> plot(original_series,type='l',col='blue',xlab="Date of
+> Play",ylab="Number of Successful Words")
+> lines(simplemovingaverage,type='l',col='red') title(paste("Word Task
+> Acquisition for Subject", WordFrame[i,1])) dev.off() }
+>               WordFrame[i,18] <- F
+>               WordFrame[i,16] <- 0
+>               WordFrame[i,17] <- 0
+>     }
+> }
+> 
+> It will work just fine if I run the lines individually (e.g. set i =
+> 1, 2, ect), and if I comment out abline and title (lines seems to
+> work fine). But it will throw the error everytime I try to run the
+> loop without these commented.
+> 
+> Have tried just about everything I could find on the Stack forums to
+> run everything as a single argument and I'm just not sure what is
+> wrong with it.
+> 
+> dev.list() spits out:
+> 
+> pdf
+>   2
+> following the error.
+> 
+> With abline and title commented out and lines run individually it's
+> NULL.
+> 
+> Happens in both RStudio
+> 
+> 2022.07.2+576 "Spotted Wakerobin" Release
+> (e7373ef832b49b2a9b88162cfe7eac5f22c40b34, 2022-09-06) for Ubuntu
+> Bionic Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML,
+> like Gecko) QtWebEngine/5.12.8 Chrome/69.0.3497.128 Safari/537.36
+> 
+> And R:
+> 
+> platform       x86_64-pc-linux-gnu
+> arch           x86_64
+> os             linux-gnu
+> system         x86_64, linux-gnu
+> status
+> major          4
+> minor          2.1
+> year           2022
+> month          06
+> day            23
+> svn rev        82513
+> language       R
+> version.string R version 4.2.1 (2022-06-23)
+> nickname       Funny-Looking Kid
+> 
+> 
+> My OS:
+> PRETTY_NAME="Debian GNU/Linux 11 (bullseye)"
+> NAME="Debian GNU/Linux"
+> VERSION_ID="11"
+> VERSION="11 (bullseye)"
+> VERSION_CODENAME=bullseye
+> ID=debian
+> HOME_URL="https://www.debian.org"
+> SUPPORT_URL="https://www.debian.org/support"
+> BUG_REPORT_URL="https://bugs.debian.org"
+> No LSB modules are available.
+> Distributor ID:???Debian
+> Description:??????Debian GNU/Linux 11 (bullseye)
+> Release:????11
+> Codename:???bullseye
+>          Icon name: computer-desktop
+>            Chassis: desktop
+>         Machine ID: 053ebf23707f49c8ad4e0684f4cf19d3
+>            Boot ID: d0e6294d3b944286bef10e76c21e6401
+>   Operating System: Debian GNU/Linux 11 (bullseye)
+>             Kernel: Linux 5.10.0-18-amd64
+>       Architecture: x86-64
+> 
+> 
+> Any suggestions would be greatly appreciated.
+> 
+> --
+> 
+> Thomas DeRamus (He/Him/His)
+> 
+> Data Analyst
+> 
+> Massachusetts General Hospital Brigham
+> 
+> Alzheimer?s Clinical & Translational Research Unit
+> 
+> 149 13th Street
+> 
+> Charlestown, MA 02129
+> 
+> Phone: 205-834-5066
+> 
+> Email: tderamus at partners.org<mailto:tderamus at partners.org>,
+> tpderamus at gmail.com<mailto:tpderamus at gmail.com>
+> 
+> 
+> [https://ci3.googleusercontent.com/mail-sig/AIorK4we2sU30P2HyfDQF5hpEjYTt-9FTBK7cAVsP7EenrZ0nsKCf48fuYMtElj6Szn_2fpSPWr66eQ][https://ci3.googleusercontent.com/mail-sig/AIorK4yyY0DlImU0UONJrHTbPc5T3lJj8Kmu8SbDKJJ3XjcX6CgvVsvSueYKwficYFz4zXt6fZV8YIY]
+> 
+> ?If knowledge can create problems, it is not through ignorance that
+> we can solve them.?
+> 
+> ?Issac Asimov
+
+
+From petr@p|k@| @end|ng |rom prechez@@cz  Wed Oct  5 12:34:02 2022
+From: petr@p|k@| @end|ng |rom prechez@@cz (PIKAL Petr)
+Date: Wed, 5 Oct 2022 10:34:02 +0000
+Subject: [R] 
+ R version 4.2.1 install.packages does not work with IE proxy setting
+In-Reply-To: <20221004184256.7ce13c60@arachnoid>
+References: <344ae947626245a392ebba421f73e483@SRVEXCHCM1302.precheza.cz>
+ <20221004184256.7ce13c60@arachnoid>
+Message-ID: <9b38aacf51d746bb87a9cc3765a16b99@SRVEXCHCM1302.precheza.cz>
+
+Thanks, 
+
+the workaround works but we need try the "permanent" solution with
+Renviron.site file in future.
+
+Cheers
+Petr
+
+> -----Original Message-----
+> From: Ivan Krylov <krylov.r00t at gmail.com>
+> Sent: Tuesday, October 4, 2022 5:43 PM
+> To: PIKAL Petr <petr.pikal at precheza.cz>
+> Cc: r-help mailing list <r-help at r-project.org>
+> Subject: Re: [R] R version 4.2.1 install.packages does not work with IE
+proxy
+> setting
+> 
+> On Tue, 4 Oct 2022 11:01:14 +0000
+> PIKAL Petr <petr.pikal at precheza.cz> wrote:
+> 
+> > After we installed new R version R 4.2.1 installing packages through
+> > IE proxy setting is compromised with warning that R could not connect
+> > to server (tested in vanilla R).
+> 
+> R 4.1 deprecated the use of download.file(method = 'wininet'). R 4.2
+switched
+> the default download method to 'libcurl' and started giving warnings for
+> 'wininet' and http[s]:// URLs.
+> 
+> A workaround to get it working right now would be to set
+> options(download.file.method = 'wininet') and live with the resulting
+warnings
+> while R downloads the files, but a next version of R may remove 'wininet'
+> support altogether.
+> 
+> In order to get it working with the 'libcurl' method, you'll need to
+provide some
+> environment variables to curl:
+> https://stat.ethz.ch/pipermail/r-help/2022-September/475917.html
+> 
+> Not sure if libcurl would accept a patch to discover the Windows proxy
+settings
+> automatically, but I don't think it does that now.
+> 
+> --
+> Best regards,
+> Ivan
+
+From r@turner @end|ng |rom @uck|@nd@@c@nz  Thu Oct  6 00:28:02 2022
+From: r@turner @end|ng |rom @uck|@nd@@c@nz (Rolf Turner)
+Date: Thu, 6 Oct 2022 11:28:02 +1300
+Subject: [R] Getting "Error in ect,
+ plot.new has not been called yet" despite grouping plot call
+In-Reply-To: <PH0PR04MB7493CE9332F02B56C0AFE31FBE5D9@PH0PR04MB7493.namprd04.prod.outlook.com>
+References: <PH0PR04MB7493E39389D0196BEC260CB6BE5A9@PH0PR04MB7493.namprd04.prod.outlook.com>
+ <20221005230608.793c8b9f@rolf-Latitude-E7470>
+ <PH0PR04MB7493CE9332F02B56C0AFE31FBE5D9@PH0PR04MB7493.namprd04.prod.outlook.com>
+Message-ID: <20221006112802.6897cd27@rolf-Latitude-E7470>
+
+
+
+Your code is still much too complex for my feeble brain.
+
+Without trying to understand very much, I get the impression that the
+example is *not* reproducible.  It requires reading in Excel (yeucchh!)
+files to which no-one but you has access.
+
+Skip the reading-in completely.  Create toy data using rnorm() instead.
+Then someone may be able to help you.
+
+On Wed, 5 Oct 2022 13:32:00 +0000
+"Deramus, Thomas Patrick" <tderamus at partners.org> wrote:
+
+> Hi Rolf.
+> 
+> I followed your suggestion (though it's probably not as trimmed as it
+> could be), but the problem unfortunately persists.
+
+If the problem *didn't* persist, then *that* would have been
+unfortunate!  The idea is to reproduce the problem in a simpler context
+so that one can deduce what is causing the problem!
+
+> Does this make it any clearer or still too many moving parts to make
+> sense of?
+
+There are still (far) too many moving parts, for me anyway.  Someone
+cleverer than I might be able to see what the problem is.
+
+cheers,
+
+Rolf
+
+> 
+> rm(list = ls(all.names = TRUE)) #will clear all objects includes
+> hidden objects.
+> 
+> #Loads the packages
+> library(plyr)
+> library(dplyr)
+> library(ggplot2)
+> library(Kendall)
+> library(lubridate)
+> library(xts)
+> library(TTR)
+> library(trend)
+> library(forecast)
+> library(openxlsx)
+> 
+> #Uses the learningCurve Package from Github:
+> #https://github.com/AFIT-R/learningCurve
+> library(learningCurve)
+> 
+> #Only load this if using VS Studio because it changes the plot
+> function
+> #https://stackoverflow.com/questions/52284345/how-to-show-r-graph-from-visual-studio-code
+> library(httpgd) library(languageserver)
+> 
+> #Loads the Excel files to Dataframes and cleans the data
+> Game_Metrics_Word_Task <-
+> read.xlsx("GamePack_Analytics_ALL_TIME_Short.xlsx", "Boggle")
+> Game_Metrics_Word_Task <- Game_Metrics_Word_Task %>%
+> filter(grepl('1440', StudyId)) Game_Metrics_Word_Task$DeviceTime <-
+> ymd_hms(Game_Metrics_Word_Task$DeviceTime,  tz = "America/New_York")
+> Game_Metrics_Word_Task <-
+> Game_Metrics_Word_Task[!duplicated(Game_Metrics_Word_Task[1:2,])]
+> 
+> #Splits the dataframe into a tibble containing each participant
+> Participant_Word_Task <-
+> split(arrange(Game_Metrics_Word_Task,StudyId,DeviceTime),
+> arrange(Game_Metrics_Word_Task,StudyId,DeviceTime,StudyId,DeviceTime)$StudyId)
+> 
+> #Generates a blank output dataframe
+> WordFrame <- data.frame(Participant = c(0), Task = c(0),
+> MannKendall_Tau = c(0), MannKendall_P = c(0), Sen_Slope_Value = c(0),
+> Sen_Slope_Pval = c(0), Pettitts_CIV = c(0), Pettitts_Pval = c(0),
+> ARIMA_Model = c(0), Time_to_Petit = c(0), Number_of_Trials_to_Pettitt
+> = c(0), Playtime_to_Petit_seconds = c(0), Time_Start_to_end_days =
+> c(0), Number_of_Total_Trials = c(0), Total_Playtime_seconds = c(0),
+> Learning_rate_days = c(0), Learning_rate_seconds = c(0), Learned_Task
+> = c(0))
+> 
+> #The number of subjects in the xlsx file
+> #Reduced to 2 for ease of use
+> for (i in 1:2){
+>   #This timeseries only includes the trials where the participant
+> completed the task success_series <-
+> xts(filter(Participant_Word_Task[[i]], GameEndReason ==
+> "TIMER_UP")$NumberOfSuccesfulWords ,
+> order.by=as.POSIXct(filter(Participant_Word_Task[[i]], GameEndReason
+> == "TIMER_UP")$DeviceTime)) #This timeseries includes ALL the trials
+> for the sake of plotting original_series <-
+> xts(Participant_Word_Task[[i]]$NumberOfSuccesfulWords,
+> order.by=as.POSIXct(Participant_Word_Task[[i]]$DeviceTime))
+> 
+>   #This is a decomposing process that xts seems to need for plotting.
+>   #nweeks is needed for xts to plot the x-axis
+>   success_decomp <- ts(success_series, frequency =
+> nweeks(success_series)) original_decomp <- ts(original_series,
+> frequency = nweeks(success_series))
+> 
+>   #Values which will be included in the plots
+>   WordFrame[i,1] <- unique(Participant_Word_Task[[i]]$StudyId)
+>   WordFrame[i,5] <- sens.slope(success_decomp)$estimates
+>   WordFrame[i,6] <- sens.slope(success_decomp)$p.value
+>   WordFrame[i,7] <- pettitt.test(success_decomp)$estimate
+>   WordFrame[i,8] <- pettitt.test(success_decomp)$p.value
+> 
+>   #The simple moving average that will be overlayed with the plotted
+> data simplemovingaverage <- SMA(original_series, n =
+> nweeks(original_series))
+> 
+>   #If the three tests are statistically significant, add a green
+> horizontal like to value WordFrame[i,7] #Which would be where the
+> slope changes in the series #Fluid variables have been removed from
+> all pdf() and paste() functions for ease-of-use if (WordFrame[i,4] <=
+> 0.05 & WordFrame[i,6] <= 0.05 & WordFrame[i,8] <= 0.05){ {
+>       pdf(file = "Word_Task_Acquisition.pdf")
+>       plout <- plot(original_series)
+>       lines(simplemovingaverage)
+>       abline(v = index(original_series[WordFrame[i,7]]),lty=2,
+> col='green', lwd=3) title(paste("Word Task Acquisition for Subject"))
+>       dev.off()
+>      }
+>   #If the three tests are NOT statistically significant, generate a
+> plot with NO horizontal line at WordFrame[i,7] } else {
+>     {
+>       pdf(file = "Word_Task_Acquisition.pdf")
+>       plout <- plot(original_series)
+>       lines(simplemovingaverage)
+>       title(paste("Word Task Acquisition for Subject"))
+>       dev.off()
+>     }
+>   }
+> }
+> 
+> ________________________________
+> From: Rolf Turner <r.turner at auckland.ac.nz>
+> Sent: Wednesday, October 5, 2022 6:06 AM
+> To: Deramus, Thomas Patrick <tderamus at partners.org>
+> Cc: r-help at r-project.org <r-help at r-project.org>
+> Subject: Re: [R] Getting "Error in ect, plot.new has not been called
+> yet" despite grouping plot call
+> 
+>         External Email - Use Caution
+> 
+> What you doing or trying to do is far too complex for my poor feeble
+> and senile brain to come anywhere near comprehending.  The code that
+> you present exceeds my complexity tolerance by many orders of
+> magnitude.
+> 
+> I have a suggestion, but.  Strip your code down to the *essentials*.
+> Construct a simple sequence of plotting commands, with *simple* names
+> for the pdf files involved.  You should require only two or three such
+> files and two or three index levels associated with each of your
+> nested loops.
+> 
+> Run the stripped down code and the source of the problem will almost
+> surely become clear.
+> 
+> cheers,
+> 
+> Rolf Turner
+> 
+> On Tue, 4 Oct 2022 23:35:09 +0000
+> "Deramus, Thomas Patrick" <tderamus at partners.org> wrote:
+> 
+> > Sorry to cross-post on Stackoverflow and here but I'm having some
+> > difficulty.
+> > https://secure-web.cisco.com/1_juqv4RvefQFJofsnOQcQA3Ixge89s4uC26pjoPBaYOSxSLGisKtgUTZkanxeHNRqNmjl30B8wYKfsppHje4T8Su77i7t8UbMKzs3GBKEyQva4yTjPH76Q9-l6tT24bB4qNMPQeFAxrkG5lpozNpGrDIAjfKCMvgS-5Qjs-QmvhWZfo84_3SK9rHhJjJvO9CqXb0MewWwI-dEmkZemjxnliGe_D9nooo7Ebjuw0dpBuMnrdaTzQxDdivsbkujPnrGurdjLARh93RW5IWPszNwaoziRD7P-30McF1PrAP8_yjWrhxQ_S3AgG6k40EoQJU/https%3A%2F%2Fstackoverflow.com%2Fquestions%2F73942794%2Fstill-getting-error-in-ect-plot-new-has-not-been-called-yet-despite-grouping
+> >
+> > Trying to make a nested loop that produces PDFs off different
+> > graphs, one for ACF/PACF diagnostics and another for the actual
+> > data, based on some time-series analyses I'm doing.
+> >
+> > Unfortunately, I keep getting the dreaded: Error plot.new has not
+> > been called yet
+> >
+> > The code is meant to write a PDF containing the ACF and PACF graphs,
+> > then do some analyses on the timeseries, and then make a separate
+> > PDF containing a plot describing the timeseries based on the
+> > p-values of each test for each individual.
+> >
+> > library(plyr)
+> > library(dplyr)
+> > library(ggplot2)
+> > library(Kendall)
+> > library(lubridate)
+> > library(xts)
+> > library(TTR)
+> > library(trend)
+> > library(forecast)
+> > library(openxlsx)
+> >
+> > Game_Metrics_Word_Task <-
+> > read.xlsx("GamePack_Analytics_ALL_TIME_Short.xlsx", "Boggle")
+> > Game_Metrics_Word_Task <- Game_Metrics_Word_Task %>%
+> > filter(grepl('1440', StudyId)) Game_Metrics_Word_Task$DeviceTime <-
+> > ymd_hms(Game_Metrics_Word_Task$DeviceTime,  tz = "America/New_York")
+> > Game_Metrics_Word_Task <-
+> > Game_Metrics_Word_Task[!duplicated(Game_Metrics_Word_Task[1:2,])]
+> >
+> > Participant_Word_Task <-
+> > split(arrange(Game_Metrics_Word_Task,StudyId,DeviceTime),
+> > arrange(Game_Metrics_Word_Task,StudyId,DeviceTime,StudyId,DeviceTime)$StudyId)
+> >
+> > WordFrame <- data.frame(Participant = c(0), Task = c(0),
+> > MannKendall_Tau = c(0), MannKendall_P = c(0), Sen_Slope_Value =
+> > c(0), Sen_Slope_Pval = c(0), Pettitts_CIV = c(0), Pettitts_Pval =
+> > c(0), ARIMA_Model = c(0), Time_to_Petit = c(0),
+> > Number_of_Trials_to_Pettitt = c(0), Playtime_to_Petit_seconds =
+> > c(0), Time_Start_to_end_days = c(0), Number_of_Total_Trials = c(0),
+> > Total_Playtime_seconds = c(0), Learning_rate_days = c(0),
+> > Learning_rate_seconds = c(0), Learned_Task = c(0))
+> >
+> > for (i in 1:length(Participant_Word_Task)){
+> >     success_series <- xts(filter(Participant_Word_Task[[i]],
+> > GameEndReason == "TIMER_UP")$NumberOfSuccesfulWords ,
+> > order.by=as.POSIXct(filter(Participant_Word_Task[[i]], GameEndReason
+> > == "TIMER_UP")$DeviceTime)) original_series <-
+> > xts(Participant_Word_Task[[i]]$NumberOfSuccesfulWords,
+> > order.by=as.POSIXct(Participant_Word_Task[[i]]$DeviceTime))
+> > success_decomp <- ts(success_series, frequency =
+> > nweeks(success_series)) original_decomp <- ts(original_series,
+> > frequency = nweeks(success_series))
+> >
+> >     pdf(paste("Word_Task_Autocorrelation_plots_for_subject_",unique(Participant_Word_Task[[i]]$StudyId),".pdf"
+> > ,collapse = NULL, sep = "")) par(mfrow=c(1,2))
+> >     Autocorrelationplot <- acf(success_decomp, main=paste(""))
+> >     PartialAutocorrelationplot <- pacf(success_decomp,
+> > main=paste("")) mtext(paste("Word Task Auto and Partialauto
+> > correlations for subject
+> > ",unique(Participant_Word_Task[[i]]$StudyId)), side = 3, line = -3,
+> > outer = TRUE) dev.off()
+> >
+> >     AutomatedArimaoutputs <- auto.arima(success_decomp)
+> >     p <- length(AutomatedArimaoutputs$model$phi)
+> >     #AR component
+> >     q <- length(AutomatedArimaoutputs$model$theta)
+> >     #MA component
+> >     d <- AutomatedArimaoutputs$model$Delta
+> >     #order of difference
+> >     WordFrame[i,1] <- unique(Participant_Word_Task[[i]]$StudyId)
+> >     WordFrame[i,2] <- "Word"
+> >     WordFrame[i,3] <- MannKendall(success_decomp)$tau[1]
+> >     WordFrame[i,4] <- MannKendall(success_decomp)$sl[1]
+> >     WordFrame[i,5] <- sens.slope(success_decomp)$estimates
+> >     WordFrame[i,6] <- sens.slope(success_decomp)$p.value
+> >     WordFrame[i,7] <- pettitt.test(success_decomp)$estimate
+> >     WordFrame[i,8] <- pettitt.test(success_decomp)$p.value
+> >     WordFrame[i,9] <- paste("ARIMA(",p,",",q,",",d,")", collapse =
+> > NULL, sep = "") WordFrame[i,10] <-
+> > difftime(time(success_series[WordFrame[i,7]]),time(original_series[1]))
+> > WordFrame[i,11] <- tail(which(grepl(success_series[WordFrame[i,7]],
+> > original_series)), n=1) WordFrame[i,12] <-
+> > sum(Participant_Word_Task[[i]]$TotalDuration[1:WordFrame[i,11]])-sum(Participant_Word_Task[[i]]$TotalTimePaused[1:WordFrame[i,11]])
+> > WordFrame[i,13] <-
+> > difftime(time(original_series[length(original_series)]),time(original_series[1]))
+> > WordFrame[i,14] <- length(original_series) WordFrame[i,15] <-
+> > sum(Participant_Word_Task[[i]]$TotalDuration[1:length(original_series)])-sum(Participant_Word_Task[[i]]$TotalTimePaused[1:length(original_series)])
+> >
+> >
+> >     simplemovingaverage <- SMA(original_series, n =
+> > nweeks(original_series))
+> >
+> >     if (WordFrame[i,4] <= 0.05 & WordFrame[i,6] <= 0.05 &
+> > WordFrame[i,8] <= 0.05){ {
+> >               pdf(paste(WordFrame[i,1],"_Word_Task_Acquisition.pdf",collapse
+> > = NULL, sep = "")) plout <-
+> > plot(original_series,type='l',col='blue',xlab="Date of
+> > Play",ylab="Number of Successful Words")
+> > lines(simplemovingaverage,type='l',col='red') title(paste("Word Task
+> > Acquisition for Subject", WordFrame[i,1])) abline(v =
+> > index(original_series[WordFrame[i,7]]),lty=2, col='green', lwd=3)
+> > dev.off() } WordFrame[i,18] <- T
+> >               WordFrame[i,16] <-
+> > (1-(WordFrame[i,10]/WordFrame[i,13])) WordFrame[i,17] <-
+> > (1-(WordFrame[i,12]/WordFrame[i,15])) } else {
+> >               {
+> >               pdf(paste(WordFrame[i,1],"_Word_Task_Acquisition.pdf",collapse
+> > = NULL, sep = "")) plout <-
+> > plot(original_series,type='l',col='blue',xlab="Date of
+> > Play",ylab="Number of Successful Words")
+> > lines(simplemovingaverage,type='l',col='red') title(paste("Word Task
+> > Acquisition for Subject", WordFrame[i,1])) dev.off() }
+> >               WordFrame[i,18] <- F
+> >               WordFrame[i,16] <- 0
+> >               WordFrame[i,17] <- 0
+> >     }
+> > }
+> >
+> > It will work just fine if I run the lines individually (e.g. set i =
+> > 1, 2, ect), and if I comment out abline and title (lines seems to
+> > work fine). But it will throw the error everytime I try to run the
+> > loop without these commented.
+> >
+> > Have tried just about everything I could find on the Stack forums to
+> > run everything as a single argument and I'm just not sure what is
+> > wrong with it.
+> >
+> > dev.list() spits out:
+> >
+> > pdf
+> >   2
+> > following the error.
+> >
+> > With abline and title commented out and lines run individually it's
+> > NULL.
+> >
+> > Happens in both RStudio
+> >
+> > 2022.07.2+576 "Spotted Wakerobin" Release
+> > (e7373ef832b49b2a9b88162cfe7eac5f22c40b34, 2022-09-06) for Ubuntu
+> > Bionic Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML,
+> > like Gecko) QtWebEngine/5.12.8 Chrome/69.0.3497.128 Safari/537.36
+> >
+> > And R:
+> >
+> > platform       x86_64-pc-linux-gnu
+> > arch           x86_64
+> > os             linux-gnu
+> > system         x86_64, linux-gnu
+> > status
+> > major          4
+> > minor          2.1
+> > year           2022
+> > month          06
+> > day            23
+> > svn rev        82513
+> > language       R
+> > version.string R version 4.2.1 (2022-06-23)
+> > nickname       Funny-Looking Kid
+> >
+> >
+> > My OS:
+> > PRETTY_NAME="Debian GNU/Linux 11 (bullseye)"
+> > NAME="Debian GNU/Linux"
+> > VERSION_ID="11"
+> > VERSION="11 (bullseye)"
+> > VERSION_CODENAME=bullseye
+> > ID=debian
+> > HOME_URL="https://secure-web.cisco.com/1Ruvt90Q90ixR-GE-RDiKJgzRpfDjlNz-lZTqQQGM8Tf4GAoj5QOfE2vXMaMWxMoexuf1npQrX7uAjFuU2viz28h42RPmHQK7jGDX7BpRLkTNcERyxHVKJTxgYegXo-n9N7rqegcKsrr47xlGmTcMOJcBAqH7SpTPQlYDOGgjz1ErtetQRzUsd-eKs9l4oCVPiF6SKV40C7s_NXm0tuCswL2Jhyfv70-edCtBO_4j9-3dSi5ZdFLYaWsMScnwwxNIGYU2n0vw5NH4GJcZNsv6Scu-r6W8ndJaGL4UmX9J3PX0LrdFyjLbGtA7RqPpKFUQ/https%3A%2F%2Fwww.debian.org"
+> > SUPPORT_URL="https://secure-web.cisco.com/1gveQttVrJNRSM85857IiydpLraxrrtJobMyCNkRvQ4V2f00DH67Z0hEa50LLpCVYQvIjMsQZxHAVMZvYQV_Cp2-e82TDZzPY4aSR2td2th3bwuXGxtI7CTgSUudOWgPpmnwVLT5r34EnwXEmwnMoiPVnOEC7slpF1fLGq11wSynuyttcTagMfpN6qdYfgtbu_mz0JOBUecQ-etUQYw5BDmXEKv5JZ_y5Uyt8Q89Kirhi7Hk8FMbCVcxRZpOZZmghxlPMxYaNVIOnln-R0H8J2QIzqE49cQQPKkFZ9O29zpr8odlBXqjObKn24ReYPDhH/https%3A%2F%2Fwww.debian.org%2Fsupport"
+> > BUG_REPORT_URL="https://secure-web.cisco.com/1tepDnCjDgHsmvw9Eth-7nfyKi3doVSOFKVzz83wskdyf8lsrEVkG2NYw7am6ePhSFfjQXdDyceMyc21Un-vqTirSQYKdPavRdKJy85HgHMP66Xk-OgxFf-5KXiPzmFreDfuuJlYizGSUNOLcADyNVTCo47xFfRgtB83Hs8j3yYAJFrff7TqNOFWzSzTcfrycio_WSSfbQkLpUl-1xGzg-dvP16tKuwkRr62bkPeydXJC_iH1FfnWv5b1G04au3aFmRTem8t2RS40LPMS9Mh0UmMvHD_9qwX16cFMHQ8U4x9Sp9IUcAFhgnbffOyPQm1C/https%3A%2F%2Fbugs.debian.org"
+> > No LSB modules are available.
+> > Distributor ID:???Debian
+> > Description:??????Debian GNU/Linux 11 (bullseye)
+> > Release:????11
+> > Codename:???bullseye
+> >          Icon name: computer-desktop
+> >            Chassis: desktop
+> >         Machine ID: 053ebf23707f49c8ad4e0684f4cf19d3
+> >            Boot ID: d0e6294d3b944286bef10e76c21e6401
+> >   Operating System: Debian GNU/Linux 11 (bullseye)
+> >             Kernel: Linux 5.10.0-18-amd64
+> >       Architecture: x86-64
+> >
+> >
+> > Any suggestions would be greatly appreciated.
+> >
+> > --
+> >
+> > Thomas DeRamus (He/Him/His)
+> >
+> > Data Analyst
+> >
+> > Massachusetts General Hospital Brigham
+> >
+> > Alzheimer?s Clinical & Translational Research Unit
+> >
+> > 149 13th Street
+> >
+> > Charlestown, MA 02129
+> >
+> > Phone: 205-834-5066
+> >
+> > Email: tderamus at partners.org<mailto:tderamus at partners.org>,
+> > tpderamus at gmail.com<mailto:tpderamus at gmail.com>
+> >
+> >
+> > [https://secure-web.cisco.com/1AI4S4rz4bDZGM8naa-19GTAeSORO5ZmNe056Q_nhPRk4JVAzPiRKUBWitBK5TpxoKBLoLvNfoMDanGd1n5Bnf4SJFT7l7HnaLcjjH7oVk2BZdDfCLHo8a8eePvD4XrF2Fw3iuxKgIZY5dwdesP3P8pSvkmVGvyZ-HiEKRetk4uJHhRa6gSgOQ8MbCVKmi6XP1dtozTEH1RpDrFJ4EyevPO52UzaTAY6CR8USLWNbsxXJsnsjUz1G6_4P7B3ULuMu9mEPeQz_GnTrSXTrGZooK_idhoEougti7I8NYV0CS09Yahmp4Fe_vh9wu4Jkdal3/https://ci3.googleusercontent.com/mail-sig/AIorK4we2sU30P2HyfDQF5hpEjYTt-9FTBK7cAVsP7EenrZ0nsKCf48fuYMtElj6Szn_2fpSPWr66eQ][https://ci3.googleusercontent.com/mail-sig/AIorK4yyY0DlImU0UONJrHTbPc5T3lJj8Kmu8SbDKJJ3XjcX6CgvVsvSueYKwficYFz4zXt6fZV8YIY]
+> >
+> > ?If knowledge can create problems, it is not through ignorance that
+> > we can solve them.?
+> >
+> > ?Issac Asimo
+
+
+From jo@h@m@u|r|ch @end|ng |rom gm@||@com  Thu Oct  6 03:16:18 2022
+From: jo@h@m@u|r|ch @end|ng |rom gm@||@com (Joshua Ulrich)
+Date: Wed, 5 Oct 2022 20:16:18 -0500
+Subject: [R] Getting "Error in ect,
+ plot.new has not been called yet" despite grouping plot call
+In-Reply-To: <PH0PR04MB7493E39389D0196BEC260CB6BE5A9@PH0PR04MB7493.namprd04.prod.outlook.com>
+References: <PH0PR04MB7493E39389D0196BEC260CB6BE5A9@PH0PR04MB7493.namprd04.prod.outlook.com>
+Message-ID: <CAPPM_gRn-HVg2oc8fkNDsJtqm1VSpa4C68z0tCHxPN7b7qQWEw@mail.gmail.com>
+
+Hi,
+
+My hunch is that you need to add print(plout) before you call dev.off().
+See https://stackoverflow.com/a/39853861
+
+Try that and let me know if that works. If not, I'll take a closer look
+later.
+
+Best,
+Josh
+
+
+On Wed, Oct 5, 2022, 1:40 AM Deramus, Thomas Patrick <tderamus at partners.org>
+wrote:
+
+> Sorry to cross-post on Stackoverflow and here but I'm having some
+> difficulty.
+>
+> https://stackoverflow.com/questions/73942794/still-getting-error-in-ect-plot-new-has-not-been-called-yet-despite-grouping
+>
+> Trying to make a nested loop that produces PDFs off different graphs, one
+> for ACF/PACF diagnostics and another for the actual data, based on some
+> time-series analyses I'm doing.
+>
+> Unfortunately, I keep getting the dreaded: Error plot.new has not been
+> called yet
+>
+> The code is meant to write a PDF containing the ACF and PACF graphs, then
+> do some analyses on the timeseries, and then make a separate PDF containing
+> a plot describing the timeseries based on the p-values of each test for
+> each individual.
+>
+> library(plyr)
+> library(dplyr)
+> library(ggplot2)
+> library(Kendall)
+> library(lubridate)
+> library(xts)
+> library(TTR)
+> library(trend)
+> library(forecast)
+> library(openxlsx)
+>
+> Game_Metrics_Word_Task <-
+> read.xlsx("GamePack_Analytics_ALL_TIME_Short.xlsx", "Boggle")
+> Game_Metrics_Word_Task <- Game_Metrics_Word_Task %>% filter(grepl('1440',
+> StudyId))
+> Game_Metrics_Word_Task$DeviceTime <-
+> ymd_hms(Game_Metrics_Word_Task$DeviceTime,  tz = "America/New_York")
+> Game_Metrics_Word_Task <-
+> Game_Metrics_Word_Task[!duplicated(Game_Metrics_Word_Task[1:2,])]
+>
+> Participant_Word_Task <-
+> split(arrange(Game_Metrics_Word_Task,StudyId,DeviceTime),
+> arrange(Game_Metrics_Word_Task,StudyId,DeviceTime,StudyId,DeviceTime)$StudyId)
+>
+> WordFrame <- data.frame(Participant = c(0), Task = c(0), MannKendall_Tau =
+> c(0), MannKendall_P = c(0), Sen_Slope_Value = c(0), Sen_Slope_Pval = c(0),
+> Pettitts_CIV = c(0), Pettitts_Pval = c(0), ARIMA_Model = c(0),
+> Time_to_Petit = c(0), Number_of_Trials_to_Pettitt = c(0),
+> Playtime_to_Petit_seconds = c(0), Time_Start_to_end_days = c(0),
+> Number_of_Total_Trials = c(0), Total_Playtime_seconds = c(0),
+> Learning_rate_days = c(0), Learning_rate_seconds = c(0), Learned_Task =
+> c(0))
+>
+> for (i in 1:length(Participant_Word_Task)){
+>     success_series <- xts(filter(Participant_Word_Task[[i]], GameEndReason
+> == "TIMER_UP")$NumberOfSuccesfulWords , order.by=as.POSIXct(filter(Participant_Word_Task[[i]],
+> GameEndReason == "TIMER_UP")$DeviceTime))
+>     original_series <-
+> xts(Participant_Word_Task[[i]]$NumberOfSuccesfulWords, order.by
+> =as.POSIXct(Participant_Word_Task[[i]]$DeviceTime))
+>     success_decomp <- ts(success_series, frequency =
+> nweeks(success_series))
+>     original_decomp <- ts(original_series, frequency =
+> nweeks(success_series))
+>
+>
+> pdf(paste("Word_Task_Autocorrelation_plots_for_subject_",unique(Participant_Word_Task[[i]]$StudyId),".pdf"
+> ,collapse = NULL, sep = ""))
+>     par(mfrow=c(1,2))
+>     Autocorrelationplot <- acf(success_decomp, main=paste(""))
+>     PartialAutocorrelationplot <- pacf(success_decomp, main=paste(""))
+>     mtext(paste("Word Task Auto and Partialauto correlations for subject
+> ",unique(Participant_Word_Task[[i]]$StudyId)), side = 3, line = -3, outer =
+> TRUE)
+>     dev.off()
+>
+>     AutomatedArimaoutputs <- auto.arima(success_decomp)
+>     p <- length(AutomatedArimaoutputs$model$phi)
+>     #AR component
+>     q <- length(AutomatedArimaoutputs$model$theta)
+>     #MA component
+>     d <- AutomatedArimaoutputs$model$Delta
+>     #order of difference
+>     WordFrame[i,1] <- unique(Participant_Word_Task[[i]]$StudyId)
+>     WordFrame[i,2] <- "Word"
+>     WordFrame[i,3] <- MannKendall(success_decomp)$tau[1]
+>     WordFrame[i,4] <- MannKendall(success_decomp)$sl[1]
+>     WordFrame[i,5] <- sens.slope(success_decomp)$estimates
+>     WordFrame[i,6] <- sens.slope(success_decomp)$p.value
+>     WordFrame[i,7] <- pettitt.test(success_decomp)$estimate
+>     WordFrame[i,8] <- pettitt.test(success_decomp)$p.value
+>     WordFrame[i,9] <- paste("ARIMA(",p,",",q,",",d,")", collapse = NULL,
+> sep = "")
+>     WordFrame[i,10] <-
+> difftime(time(success_series[WordFrame[i,7]]),time(original_series[1]))
+>     WordFrame[i,11] <- tail(which(grepl(success_series[WordFrame[i,7]],
+> original_series)), n=1)
+>     WordFrame[i,12] <-
+> sum(Participant_Word_Task[[i]]$TotalDuration[1:WordFrame[i,11]])-sum(Participant_Word_Task[[i]]$TotalTimePaused[1:WordFrame[i,11]])
+>     WordFrame[i,13] <-
+> difftime(time(original_series[length(original_series)]),time(original_series[1]))
+>     WordFrame[i,14] <- length(original_series)
+>     WordFrame[i,15] <-
+> sum(Participant_Word_Task[[i]]$TotalDuration[1:length(original_series)])-sum(Participant_Word_Task[[i]]$TotalTimePaused[1:length(original_series)])
+>
+>
+>     simplemovingaverage <- SMA(original_series, n =
+> nweeks(original_series))
+>
+>     if (WordFrame[i,4] <= 0.05 & WordFrame[i,6] <= 0.05 & WordFrame[i,8]
+> <= 0.05){
+>               {
+>
+> pdf(paste(WordFrame[i,1],"_Word_Task_Acquisition.pdf",collapse = NULL, sep
+> = ""))
+>               plout <- plot(original_series,type='l',col='blue',xlab="Date
+> of Play",ylab="Number of Successful Words")
+>               lines(simplemovingaverage,type='l',col='red')
+>               title(paste("Word Task Acquisition for Subject",
+> WordFrame[i,1]))
+>               abline(v = index(original_series[WordFrame[i,7]]),lty=2,
+> col='green', lwd=3)
+>               dev.off()
+>               }
+>               WordFrame[i,18] <- T
+>               WordFrame[i,16] <- (1-(WordFrame[i,10]/WordFrame[i,13]))
+>               WordFrame[i,17] <- (1-(WordFrame[i,12]/WordFrame[i,15]))
+>     } else {
+>               {
+>
+> pdf(paste(WordFrame[i,1],"_Word_Task_Acquisition.pdf",collapse = NULL, sep
+> = ""))
+>               plout <- plot(original_series,type='l',col='blue',xlab="Date
+> of Play",ylab="Number of Successful Words")
+>               lines(simplemovingaverage,type='l',col='red')
+>               title(paste("Word Task Acquisition for Subject",
+> WordFrame[i,1]))
+>               dev.off()
+>               }
+>               WordFrame[i,18] <- F
+>               WordFrame[i,16] <- 0
+>               WordFrame[i,17] <- 0
+>     }
+> }
+>
+> It will work just fine if I run the lines individually (e.g. set i = 1, 2,
+> ect), and if I comment out abline and title (lines seems to work fine). But
+> it will throw the error everytime I try to run the loop without these
+> commented.
+>
+> Have tried just about everything I could find on the Stack forums to run
+> everything as a single argument and I'm just not sure what is wrong with it.
+>
+> dev.list() spits out:
+>
+> pdf
+>   2
+> following the error.
+>
+> With abline and title commented out and lines run individually it's NULL.
+>
+> Happens in both RStudio
+>
+> 2022.07.2+576 "Spotted Wakerobin" Release
+> (e7373ef832b49b2a9b88162cfe7eac5f22c40b34, 2022-09-06) for Ubuntu Bionic
+> Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko)
+> QtWebEngine/5.12.8 Chrome/69.0.3497.128 Safari/537.36
+>
+> And R:
+>
+> platform       x86_64-pc-linux-gnu
+> arch           x86_64
+> os             linux-gnu
+> system         x86_64, linux-gnu
+> status
+> major          4
+> minor          2.1
+> year           2022
+> month          06
+> day            23
+> svn rev        82513
+> language       R
+> version.string R version 4.2.1 (2022-06-23)
+> nickname       Funny-Looking Kid
+>
+>
+> My OS:
+> PRETTY_NAME="Debian GNU/Linux 11 (bullseye)"
+> NAME="Debian GNU/Linux"
+> VERSION_ID="11"
+> VERSION="11 (bullseye)"
+> VERSION_CODENAME=bullseye
+> ID=debian
+> HOME_URL="https://www.debian.org/"
+> SUPPORT_URL="https://www.debian.org/support"
+> BUG_REPORT_URL="https://bugs.debian.org/"
+> No LSB modules are available.
+> Distributor ID: Debian
+> Description: Debian GNU/Linux 11 (bullseye)
+> Release: 11
+> Codename: bullseye
+>          Icon name: computer-desktop
+>            Chassis: desktop
+>         Machine ID: 053ebf23707f49c8ad4e0684f4cf19d3
+>            Boot ID: d0e6294d3b944286bef10e76c21e6401
+>   Operating System: Debian GNU/Linux 11 (bullseye)
+>             Kernel: Linux 5.10.0-18-amd64
+>       Architecture: x86-64
+>
+>
+> Any suggestions would be greatly appreciated.
+>
+> --
+>
+> Thomas DeRamus (He/Him/His)
+>
+> Data Analyst
+>
+> Massachusetts General Hospital Brigham
+>
+> Alzheimer?s Clinical & Translational Research Unit
+>
+> 149 13th Street
+>
+> Charlestown, MA 02129
+>
+> Phone: 205-834-5066
+>
+> Email: tderamus at partners.org<mailto:tderamus at partners.org>,
+> tpderamus at gmail.com<mailto:tpderamus at gmail.com>
+>
+>
+> [
+> https://ci3.googleusercontent.com/mail-sig/AIorK4we2sU30P2HyfDQF5hpEjYTt-9FTBK7cAVsP7EenrZ0nsKCf48fuYMtElj6Szn_2fpSPWr66eQ][https://ci3.googleusercontent.com/mail-sig/AIorK4yyY0DlImU0UONJrHTbPc5T3lJj8Kmu8SbDKJJ3XjcX6CgvVsvSueYKwficYFz4zXt6fZV8YIY
+> ]
+>
+> ?If knowledge can create problems, it is not through ignorance that we can
+> solve them.?
+>
+> ?Issac Asimov
+> The information in this e-mail is intended only for th...{{dropped:22}}
+
+
