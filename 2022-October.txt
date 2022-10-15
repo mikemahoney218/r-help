@@ -12884,3 +12884,285 @@ On 10/13/2022 10:30 PM, Bill Dunlap wrote:
 	[[alternative HTML version deleted]]
 
 
+From drj|m|emon @end|ng |rom gm@||@com  Fri Oct 14 05:34:03 2022
+From: drj|m|emon @end|ng |rom gm@||@com (Jim Lemon)
+Date: Fri, 14 Oct 2022 14:34:03 +1100
+Subject: [R] Forestplot, grid graphics Viewplot grid.arange
+In-Reply-To: <MN2PR04MB6702AE692142D79F71F213BC97209@MN2PR04MB6702.namprd04.prod.outlook.com>
+References: <MN2PR04MB6702AE692142D79F71F213BC97209@MN2PR04MB6702.namprd04.prod.outlook.com>
+Message-ID: <CA+8X3fVh3bJqZ8VNTujuB-VsWp7VOtniZtzqm9m+G9K7fuFvhg@mail.gmail.com>
+
+Hi Mary,
+I didn't see any answers to your post, but doing something like this
+is quite easy in base graphics. If you are still stuck, I may be able
+to suggest something.
+
+Jim
+
+On Mon, Oct 10, 2022 at 6:05 PM Putt, Mary <mputt at pennmedicine.upenn.edu> wrote:
+>
+>
+> I have created several plots using the forestplot package and the link shown here. <https://cran.r-project.org/web/packages/forestplot/vignettes/forestplot.html > Great package !
+> Next step is to combine two plots into a single graphic. The code provided on the link results in 'bleeding' of the graphics/text into each other. I don't want to clip it as I need the text elements. I am guessing the problem involves the combination of text and graphics in the 'plot'. I fooled around with the original post and also did some hunting online but no luck Thanks in advance.
+> library(foresplot)
+> data("dfHRQoL")
+>
+> #create individual forest plots for Sweden and Denmark
+> fp_sweden <- dfHRQoL |>
+>   filter(group == "Sweden") |>
+>   mutate(est = sprintf("%.2f", mean), .after = labeltext) |>
+>   forestplot(labeltext = c(labeltext, est),
+>              title = "Sweden",
+>              clip = c(-.1, Inf),
+>              xlab = "EQ-5D index",
+>              new_page = FALSE)
+>
+> fp_denmark <- dfHRQoL |>
+>   filter(group == "Denmark") |>
+>   mutate(est = sprintf("%.2f", mean), .after = labeltext) |>
+>   forestplot(labeltext = c(labeltext, est),
+>              title = "Denmark",
+>              clip = c(-.1, Inf),
+>              xlab = "EQ-5D index",
+>              new_page = FALSE)
+>
+>
+>
+> #now combine into a single plot using the web code; but this one bleeds into each other
+> library(grid)
+>
+> #####
+> #Put plots together using grid graphics
+> #Attempt 1 from website
+>
+> #####
+> grid.newpage()
+> borderWidth <- unit(4, "pt")
+> width <- unit(convertX(unit(1, "npc") - borderWidth, unitTo = "npc", valueOnly = TRUE)/2, "npc")
+> pushViewport(viewport(layout = grid.layout(nrow = 1,
+>                                            ncol = 3,
+>                                            widths = unit.c(width,
+>                                                            borderWidth,
+>                                                            width))
+> )
+> )
+> pushViewport(viewport(layout.pos.row = 1,
+>                       layout.pos.col = 1))
+> fp_sweden
+> upViewport()
+> pushViewport(viewport(layout.pos.row = 1,
+>                       layout.pos.col = 2))
+> grid.rect(gp = gpar(fill = "grey", col = "red"))
+> upViewport()
+> pushViewport(viewport(layout.pos.row = 1,
+>                       layout.pos.col = 3))
+> fp_denmark
+> upViewport(2)
+>
+>
+> ####
+> #Attempt 2 from website, still a problem.
+> ####
+> grid.newpage()
+> borderWidth <- unit(4, "pt")
+> width <- unit(convertX(unit(1, "npc") - borderWidth, unitTo = "npc", valueOnly = TRUE)/2, "npc")
+> pushViewport(viewport(layout = grid.layout(nrow = 1,
+>                                            ncol = 3,
+>                                            widths = c(0.45, 0.1, 0.45))
+> )
+> )
+> pushViewport(viewport(layout.pos.row = 1,
+>                       layout.pos.col = 1))
+> fp_sweden
+> upViewport()
+>
+> pushViewport(viewport(layout.pos.row = 1,
+>                       layout.pos.col = 3))
+> fp_denmark
+> upViewport(2)
+>
+> ###
+> #Attempt 3 converting to grobs and use patchwork
+> ###
+> library(ggplotify)
+> library(patchwork)
+>
+> fpd_grob <- grid2grob(print(fp_denmark))
+>
+> p1 <- grid2grob(print(fp_denmark))
+> p2 <- grid2grob(print(fp_sweden))
+> p_both <- wrap_elements(p1) + wrap_elements(p2)
+> p_both
+>
+> #same problem with grid.arrange()**strong text**
+>
+>
+>
+> Mary Putt, PhD, ScD
+> Professor of Biostatistics
+> Department of Biostatistics, Epidemiology & Informatics
+> Pereleman School of Medicine
+> University of Pennsylvania
+>
+> 215-573-7020
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ||@t@ @end|ng |rom dewey@myzen@co@uk  Fri Oct 14 14:24:35 2022
+From: ||@t@ @end|ng |rom dewey@myzen@co@uk (Michael Dewey)
+Date: Fri, 14 Oct 2022 13:24:35 +0100
+Subject: [R] Forestplot, grid graphics Viewplot grid.arange
+In-Reply-To: <CA+8X3fVh3bJqZ8VNTujuB-VsWp7VOtniZtzqm9m+G9K7fuFvhg@mail.gmail.com>
+References: <MN2PR04MB6702AE692142D79F71F213BC97209@MN2PR04MB6702.namprd04.prod.outlook.com>
+ <CA+8X3fVh3bJqZ8VNTujuB-VsWp7VOtniZtzqm9m+G9K7fuFvhg@mail.gmail.com>
+Message-ID: <951d7f81-aac6-d0fe-f450-ff6f8ae6d30c@dewey.myzen.co.uk>
+
+There are several other CRAN packages which provide forest plots (see 
+CRAN Task View for details) and they do not all use grip graphics which 
+I think the forestplot package does. It might be worth swapping to one 
+of them.
+
+Michael
+
+On 14/10/2022 04:34, Jim Lemon wrote:
+> Hi Mary,
+> I didn't see any answers to your post, but doing something like this
+> is quite easy in base graphics. If you are still stuck, I may be able
+> to suggest something.
+> 
+> Jim
+> 
+> On Mon, Oct 10, 2022 at 6:05 PM Putt, Mary <mputt at pennmedicine.upenn.edu> wrote:
+>>
+>>
+>> I have created several plots using the forestplot package and the link shown here. <https://cran.r-project.org/web/packages/forestplot/vignettes/forestplot.html > Great package !
+>> Next step is to combine two plots into a single graphic. The code provided on the link results in 'bleeding' of the graphics/text into each other. I don't want to clip it as I need the text elements. I am guessing the problem involves the combination of text and graphics in the 'plot'. I fooled around with the original post and also did some hunting online but no luck Thanks in advance.
+>> library(foresplot)
+>> data("dfHRQoL")
+>>
+>> #create individual forest plots for Sweden and Denmark
+>> fp_sweden <- dfHRQoL |>
+>>    filter(group == "Sweden") |>
+>>    mutate(est = sprintf("%.2f", mean), .after = labeltext) |>
+>>    forestplot(labeltext = c(labeltext, est),
+>>               title = "Sweden",
+>>               clip = c(-.1, Inf),
+>>               xlab = "EQ-5D index",
+>>               new_page = FALSE)
+>>
+>> fp_denmark <- dfHRQoL |>
+>>    filter(group == "Denmark") |>
+>>    mutate(est = sprintf("%.2f", mean), .after = labeltext) |>
+>>    forestplot(labeltext = c(labeltext, est),
+>>               title = "Denmark",
+>>               clip = c(-.1, Inf),
+>>               xlab = "EQ-5D index",
+>>               new_page = FALSE)
+>>
+>>
+>>
+>> #now combine into a single plot using the web code; but this one bleeds into each other
+>> library(grid)
+>>
+>> #####
+>> #Put plots together using grid graphics
+>> #Attempt 1 from website
+>>
+>> #####
+>> grid.newpage()
+>> borderWidth <- unit(4, "pt")
+>> width <- unit(convertX(unit(1, "npc") - borderWidth, unitTo = "npc", valueOnly = TRUE)/2, "npc")
+>> pushViewport(viewport(layout = grid.layout(nrow = 1,
+>>                                             ncol = 3,
+>>                                             widths = unit.c(width,
+>>                                                             borderWidth,
+>>                                                             width))
+>> )
+>> )
+>> pushViewport(viewport(layout.pos.row = 1,
+>>                        layout.pos.col = 1))
+>> fp_sweden
+>> upViewport()
+>> pushViewport(viewport(layout.pos.row = 1,
+>>                        layout.pos.col = 2))
+>> grid.rect(gp = gpar(fill = "grey", col = "red"))
+>> upViewport()
+>> pushViewport(viewport(layout.pos.row = 1,
+>>                        layout.pos.col = 3))
+>> fp_denmark
+>> upViewport(2)
+>>
+>>
+>> ####
+>> #Attempt 2 from website, still a problem.
+>> ####
+>> grid.newpage()
+>> borderWidth <- unit(4, "pt")
+>> width <- unit(convertX(unit(1, "npc") - borderWidth, unitTo = "npc", valueOnly = TRUE)/2, "npc")
+>> pushViewport(viewport(layout = grid.layout(nrow = 1,
+>>                                             ncol = 3,
+>>                                             widths = c(0.45, 0.1, 0.45))
+>> )
+>> )
+>> pushViewport(viewport(layout.pos.row = 1,
+>>                        layout.pos.col = 1))
+>> fp_sweden
+>> upViewport()
+>>
+>> pushViewport(viewport(layout.pos.row = 1,
+>>                        layout.pos.col = 3))
+>> fp_denmark
+>> upViewport(2)
+>>
+>> ###
+>> #Attempt 3 converting to grobs and use patchwork
+>> ###
+>> library(ggplotify)
+>> library(patchwork)
+>>
+>> fpd_grob <- grid2grob(print(fp_denmark))
+>>
+>> p1 <- grid2grob(print(fp_denmark))
+>> p2 <- grid2grob(print(fp_sweden))
+>> p_both <- wrap_elements(p1) + wrap_elements(p2)
+>> p_both
+>>
+>> #same problem with grid.arrange()**strong text**
+>>
+>>
+>>
+>> Mary Putt, PhD, ScD
+>> Professor of Biostatistics
+>> Department of Biostatistics, Epidemiology & Informatics
+>> Pereleman School of Medicine
+>> University of Pennsylvania
+>>
+>> 215-573-7020
+>>
+>>          [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+> 
+
+-- 
+Michael
+http://www.dewey.myzen.co.uk/home.html
+
+
