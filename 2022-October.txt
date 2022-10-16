@@ -13166,3 +13166,148 @@ Michael
 http://www.dewey.myzen.co.uk/home.html
 
 
+From @ndre|@ko@tyrk@ @end|ng |rom gm@||@com  Fri Oct 14 13:07:16 2022
+From: @ndre|@ko@tyrk@ @end|ng |rom gm@||@com (=?UTF-8?Q?Andre=C3=AF_V=2E_Kostyrka?=)
+Date: Fri, 14 Oct 2022 15:07:16 +0400
+Subject: [R] Unintended behaviour of stats::time not returning integers for
+ the first cycle
+Message-ID: <CAFnf=nq0qZDVS6cUJseJr8Dm9cqs_vn8uVd7OrAyH6-yLX4uxA@mail.gmail.com>
+
+Dear all,
+
+
+
+I was using stats::time to obtain the year as a floor of it, and
+encountered a problem: due to a rounding error (most likely due to its
+reliance on the base::seq.int internally, but correct me if I am wrong),
+the actual number corresponding to the beginning of a year X can still be
+(X-1).9999999..., resulting in the following undesirable behaviour.
+
+
+
+One of the simplest ways of getting the year from a ts object is
+floor(time(...)). However, if the starting time cannot be represented
+nicely as a power of 2, then, supposedly integer time does not have a
+.000000... mantissa:
+
+
+
+x <- ts(2:252, start = c(2002, 2), freq = 12)
+
+d <- seq.Date(as.Date("2002-02-01"), to = as.Date("2022-12-01"), by =
+"month")
+
+true.year <- rep(2002:2022, each = 12)[-1]
+
+wrong.year <- floor(as.numeric(time(x)))
+
+tail(cbind(as.character(d), true.year, wrong.year), 15) # Look at 2022-01-01
+
+print(as.numeric(time(x))[240], 20) # 2021.9999999999997726, the floor of
+which is 2021
+
+
+
+Yes, I have read the 'R inferno' book and know the famous '0.3 != 0.7 -
+0.4' example, but I believe that the expected / intended behaviour would be
+actually returning round years for the first observation in a year. This
+could be achieved by rounding the near-integer time to integers.
+
+
+
+Since users working with dates are expecting to get exact integer years for
+the first cycle of a ts, this should be changed. Thank you in advance for
+considering a fix.
+
+
+
+Yours sincerely,
+
+Andre? V. Kostyrka
+
+	[[alternative HTML version deleted]]
+
+
+From er|cjberger @end|ng |rom gm@||@com  Sat Oct 15 09:55:38 2022
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Sat, 15 Oct 2022 10:55:38 +0300
+Subject: [R] 
+ Unintended behaviour of stats::time not returning integers for
+ the first cycle
+In-Reply-To: <CAFnf=nq0qZDVS6cUJseJr8Dm9cqs_vn8uVd7OrAyH6-yLX4uxA@mail.gmail.com>
+References: <CAFnf=nq0qZDVS6cUJseJr8Dm9cqs_vn8uVd7OrAyH6-yLX4uxA@mail.gmail.com>
+Message-ID: <CAGgJW74NbseVm1aYDsN2ga1CKsG9iA3Dk_UJFn6Yb81yA6Oi2w@mail.gmail.com>
+
+Alternatively
+
+correct.year <- floor(time(x)+1e-6)
+
+On Sat, Oct 15, 2022 at 10:26 AM Andre? V. Kostyrka <
+andrei.kostyrka at gmail.com> wrote:
+
+> Dear all,
+>
+>
+>
+> I was using stats::time to obtain the year as a floor of it, and
+> encountered a problem: due to a rounding error (most likely due to its
+> reliance on the base::seq.int internally, but correct me if I am wrong),
+> the actual number corresponding to the beginning of a year X can still be
+> (X-1).9999999..., resulting in the following undesirable behaviour.
+>
+>
+>
+> One of the simplest ways of getting the year from a ts object is
+> floor(time(...)). However, if the starting time cannot be represented
+> nicely as a power of 2, then, supposedly integer time does not have a
+> .000000... mantissa:
+>
+>
+>
+> x <- ts(2:252, start = c(2002, 2), freq = 12)
+>
+> d <- seq.Date(as.Date("2002-02-01"), to = as.Date("2022-12-01"), by =
+> "month")
+>
+> true.year <- rep(2002:2022, each = 12)[-1]
+>
+> wrong.year <- floor(as.numeric(time(x)))
+>
+> tail(cbind(as.character(d), true.year, wrong.year), 15) # Look at
+> 2022-01-01
+>
+> print(as.numeric(time(x))[240], 20) # 2021.9999999999997726, the floor of
+> which is 2021
+>
+>
+>
+> Yes, I have read the 'R inferno' book and know the famous '0.3 != 0.7 -
+> 0.4' example, but I believe that the expected / intended behaviour would be
+> actually returning round years for the first observation in a year. This
+> could be achieved by rounding the near-integer time to integers.
+>
+>
+>
+> Since users working with dates are expecting to get exact integer years for
+> the first cycle of a ts, this should be changed. Thank you in advance for
+> considering a fix.
+>
+>
+>
+> Yours sincerely,
+>
+> Andre? V. Kostyrka
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
