@@ -14158,3 +14158,331 @@ On October 18, 2022 5:26:28 AM PDT, "Andre? V. Kostyrka" <andrei.kostyrka at gma
 Sent from my phone. Please excuse my brevity.
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Oct 19 10:05:31 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 19 Oct 2022 10:05:31 +0200
+Subject: [R] 
+ Unintended behaviour of stats::time not returning integers for
+ the first cycle
+In-Reply-To: <CAFnf=nqQ9cXKFX4Xz++d3yDjeW_R6c+DuOzfdsx3MuAnp6O-Nw@mail.gmail.com>
+References: <CAFnf=nq0qZDVS6cUJseJr8Dm9cqs_vn8uVd7OrAyH6-yLX4uxA@mail.gmail.com>
+ <CAGgJW74NbseVm1aYDsN2ga1CKsG9iA3Dk_UJFn6Yb81yA6Oi2w@mail.gmail.com>
+ <CAFnf=nqQ9cXKFX4Xz++d3yDjeW_R6c+DuOzfdsx3MuAnp6O-Nw@mail.gmail.com>
+Message-ID: <25423.45003.376171.329679@stat.math.ethz.ch>
+
+>>>>> Andre? V Kostyrka 
+>>>>>     on Tue, 18 Oct 2022 16:26:28 +0400 writes:
+
+    > Sure, this works, and I was thinking about this solution, but it seems like
+    > a dirty one-time trick. I was wondering whether the following 3 lines could
+    > be considered for inclusion by the core developers, but did not know which
+    > mailing list to write to. 
+
+As Jeff alluded to, *every* message to this list has a footer
+with a link to *the POSTING GUIDE"  ...
+
+and from there you quickly learn it is 'R-devel' (instead of 'R-help').
+
+Now that we have already half a dozen messages here, let's keep
+the whole thread here, even if only for ease of reading the list archives(!)
+
+    > Here is my proposal:
+
+    > correctTime <- function (x, offset = 0, ...) { # Changes
+    > stats:::time.default
+    >  n <- if (is.matrix(x)) nrow(x) else length(x)
+    >  xtsp <- attr(hasTsp(x), "tsp")
+    >  y <- seq.int(xtsp[1L], xtsp[2L], length.out = n) + offset/xtsp[3L]
+    >  round.y <- round(y)
+    >  near.integer <- abs(round.y - y) < sqrt(.Machine$double.eps)
+    >  y[near.integer] <- round.y[near.integer]
+    >  tsp(y) <- xtsp
+    > y
+    > }
+
+Yes, some such change does make sense to me, too.
+As the computations above are relatively costly (compared to the
+current  time.default()  implementation),
+and also for strict back compatibility reasons, I think the
+correction should only happen when the user asks for it,  say by
+using a new argument 'roundYear = TRUE'  (where the default
+remains roundYear=FALSE).
+
+Martin Maechler
+ETH Zurich  and  R Core tam
+
+    > x <- ts(2:252, start = c(2002, 2), freq = 12)
+    > d <- seq.Date(as.Date("2002-02-01"), to = as.Date("2022-12-01"), by =
+    > "month")
+    > true.year <- rep(2002:2022, each = 12)[-1]
+    > wrong.year <- floor(as.numeric(time(x)))
+    > print(as.numeric(time(x))[240], 20) # 2021.9999999999997726, the floor of
+    > which is 2021
+    > print(correctTime(x)[240], 20) # 2022
+
+    > On Sat, Oct 15, 2022 at 11:56 AM Eric Berger <ericjberger at gmail.com> wrote:
+
+    >> Alternatively
+    >> 
+    >> correct.year <- floor(time(x)+1e-6)
+    >> 
+    >> On Sat, Oct 15, 2022 at 10:26 AM Andre? V. Kostyrka <
+    >> andrei.kostyrka at gmail.com> wrote:
+    >> 
+    >>> Dear all,
+    >>> 
+    >>> 
+    >>> 
+    >>> I was using stats::time to obtain the year as a floor of it, and
+    >>> encountered a problem: due to a rounding error (most likely due to its
+    >>> reliance on the base::seq.int internally, but correct me if I am wrong),
+    >>> the actual number corresponding to the beginning of a year X can still be
+    >>> (X-1).9999999..., resulting in the following undesirable behaviour.
+    >>> 
+    >>> 
+    >>> 
+    >>> One of the simplest ways of getting the year from a ts object is
+    >>> floor(time(...)). However, if the starting time cannot be represented
+    >>> nicely as a power of 2, then, supposedly integer time does not have a
+    >>> .000000... mantissa:
+    >>> 
+    >>> 
+    >>> 
+    >>> x <- ts(2:252, start = c(2002, 2), freq = 12)
+    >>> 
+    >>> d <- seq.Date(as.Date("2002-02-01"), to = as.Date("2022-12-01"), by =
+    >>> "month")
+    >>> 
+    >>> true.year <- rep(2002:2022, each = 12)[-1]
+    >>> 
+    >>> wrong.year <- floor(as.numeric(time(x)))
+    >>> 
+    >>> tail(cbind(as.character(d), true.year, wrong.year), 15) # Look at
+    >>> 2022-01-01
+    >>> 
+    >>> print(as.numeric(time(x))[240], 20) # 2021.9999999999997726, the floor of
+    >>> which is 2021
+    >>> 
+    >>> 
+    >>> 
+    >>> Yes, I have read the 'R inferno' book and know the famous '0.3 != 0.7 -
+    >>> 0.4' example, but I believe that the expected / intended behaviour would
+    >>> be
+    >>> actually returning round years for the first observation in a year. This
+    >>> could be achieved by rounding the near-integer time to integers.
+    >>> 
+    >>> 
+    >>> 
+    >>> Since users working with dates are expecting to get exact integer years
+    >>> for
+    >>> the first cycle of a ts, this should be changed. Thank you in advance for
+    >>> considering a fix.
+    >>> 
+    >>> 
+    >>> 
+    >>> Yours sincerely,
+    >>> 
+    >>> Andre? V. Kostyrka
+    >>> 
+    >>> [[alternative HTML version deleted]]
+    >>> 
+    >>> ______________________________________________
+    >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+    >>> https://stat.ethz.ch/mailman/listinfo/r-help
+    >>> PLEASE do read the posting guide
+    >>> http://www.R-project.org/posting-guide.html
+    >>> and provide commented, minimal, self-contained, reproducible code.
+    >>> 
+    >> 
+
+    > [[alternative HTML version deleted]]
+
+    > ______________________________________________
+    > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+    > https://stat.ethz.ch/mailman/listinfo/r-help
+    > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+    > and provide commented, minimal, self-contained, reproducible code.
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Oct 19 11:44:56 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 19 Oct 2022 11:44:56 +0200
+Subject: [R] 
+ Unintended behaviour of stats::time not returning integers for
+ the first cycle
+In-Reply-To: <25423.45003.376171.329679@stat.math.ethz.ch>
+References: <CAFnf=nq0qZDVS6cUJseJr8Dm9cqs_vn8uVd7OrAyH6-yLX4uxA@mail.gmail.com>
+ <CAGgJW74NbseVm1aYDsN2ga1CKsG9iA3Dk_UJFn6Yb81yA6Oi2w@mail.gmail.com>
+ <CAFnf=nqQ9cXKFX4Xz++d3yDjeW_R6c+DuOzfdsx3MuAnp6O-Nw@mail.gmail.com>
+ <25423.45003.376171.329679@stat.math.ethz.ch>
+Message-ID: <25423.50968.986873.492087@stat.math.ethz.ch>
+
+>>>>> Martin Maechler 
+>>>>>     on Wed, 19 Oct 2022 10:05:31 +0200 writes:
+
+>>>>> Andre? V Kostyrka 
+>>>>>     on Tue, 18 Oct 2022 16:26:28 +0400 writes:
+
+    >> Sure, this works, and I was thinking about this solution, but it seems like
+    >> a dirty one-time trick. I was wondering whether the following 3 lines could
+    >> be considered for inclusion by the core developers, but did not know which
+    >> mailing list to write to. 
+
+    > As Jeff alluded to, *every* message to this list has a footer
+    > with a link to *the POSTING GUIDE"  ...
+
+    > and from there you quickly learn it is 'R-devel' (instead of 'R-help').
+
+    > Now that we have already half a dozen messages here, let's keep
+    > the whole thread here, even if only for ease of reading the list archives(!)
+
+    >> Here is my proposal:
+
+    >> correctTime <- function (x, offset = 0, ...) { # Changes
+    >> stats:::time.default
+    >> n <- if (is.matrix(x)) nrow(x) else length(x)
+    >> xtsp <- attr(hasTsp(x), "tsp")
+    >> y <- seq.int(xtsp[1L], xtsp[2L], length.out = n) + offset/xtsp[3L]
+    >> round.y <- round(y)
+    >> near.integer <- abs(round.y - y) < sqrt(.Machine$double.eps)
+    >> y[near.integer] <- round.y[near.integer]
+    >> tsp(y) <- xtsp
+    >> y
+    >> }
+
+    > Yes, some such change does make sense to me, too.
+    > As the computations above are relatively costly (compared to the
+    > current  time.default()  implementation),
+    > and also for strict back compatibility reasons, I think the
+    > correction should only happen when the user asks for it,  say by
+    > using a new argument 'roundYear = TRUE'  (where the default
+    > remains roundYear=FALSE).
+
+    > Martin Maechler
+    > ETH Zurich  and  R Core tam
+
+After some more thinking and pondering:
+
+No, there's no need for a 'roundYear = *' argument, but rather
+we'd use the 'ts.eps' argument as in many similar situations
+with ts() objects needing rounding adjustments.
+
+Consequently, my current (only little tested) proposal  is
+
+time.default <- function (x, offset = 0, ts.eps = getOption("ts.eps"), ...)
+{
+    xtsp <- attr(hasTsp(x), "tsp")
+    y <- seq.int(xtsp[1L], xtsp[2L], length.out = NROW(x)) + offset/xtsp[3L]
+    if(ts.eps > 0) {
+        iy <- round(y)
+        nearI <- abs(iy - y) < ts.eps
+        y[nearI] <- iy[nearI]
+    }
+    tsp(y) <- xtsp
+    y
+}
+
+It *does* fix your example(s) below.
+
+Martin
+
+
+    >> x <- ts(2:252, start = c(2002, 2), freq = 12)
+    >> d <- seq.Date(as.Date("2002-02-01"), to = as.Date("2022-12-01"), by =
+    >> "month")
+    >> true.year <- rep(2002:2022, each = 12)[-1]
+    >> wrong.year <- floor(as.numeric(time(x)))
+    >> print(as.numeric(time(x))[240], 20) # 2021.9999999999997726, the floor of
+    >> which is 2021
+    >> print(correctTime(x)[240], 20) # 2022
+
+    >> On Sat, Oct 15, 2022 at 11:56 AM Eric Berger <ericjberger at gmail.com> wrote:
+
+    >>> Alternatively
+    >>> 
+    >>> correct.year <- floor(time(x)+1e-6)
+    >>> 
+    >>> On Sat, Oct 15, 2022 at 10:26 AM Andre? V. Kostyrka <
+    >>> andrei.kostyrka at gmail.com> wrote:
+    >>> 
+    >>>> Dear all,
+    >>>> 
+    >>>> 
+    >>>> 
+    >>>> I was using stats::time to obtain the year as a floor of it, and
+    >>>> encountered a problem: due to a rounding error (most likely due to its
+    >>>> reliance on the base::seq.int internally, but correct me if I am wrong),
+    >>>> the actual number corresponding to the beginning of a year X can still be
+    >>>> (X-1).9999999..., resulting in the following undesirable behaviour.
+    >>>> 
+    >>>> 
+    >>>> 
+    >>>> One of the simplest ways of getting the year from a ts object is
+    >>>> floor(time(...)). However, if the starting time cannot be represented
+    >>>> nicely as a power of 2, then, supposedly integer time does not have a
+    >>>> .000000... mantissa:
+    >>>> 
+    >>>> 
+    >>>> 
+    >>>> x <- ts(2:252, start = c(2002, 2), freq = 12)
+    >>>> 
+    >>>> d <- seq.Date(as.Date("2002-02-01"), to = as.Date("2022-12-01"), by =
+    >>>> "month")
+    >>>> 
+    >>>> true.year <- rep(2002:2022, each = 12)[-1]
+    >>>> 
+    >>>> wrong.year <- floor(as.numeric(time(x)))
+    >>>> 
+    >>>> tail(cbind(as.character(d), true.year, wrong.year), 15) # Look at
+    >>>> 2022-01-01
+    >>>> 
+    >>>> print(as.numeric(time(x))[240], 20) # 2021.9999999999997726, the floor of
+    >>>> which is 2021
+    >>>> 
+    >>>> 
+    >>>> 
+    >>>> Yes, I have read the 'R inferno' book and know the famous '0.3 != 0.7 -
+    >>>> 0.4' example, but I believe that the expected / intended behaviour would
+    >>>> be
+    >>>> actually returning round years for the first observation in a year. This
+    >>>> could be achieved by rounding the near-integer time to integers.
+    >>>> 
+    >>>> 
+    >>>> 
+    >>>> Since users working with dates are expecting to get exact integer years
+    >>>> for
+    >>>> the first cycle of a ts, this should be changed. Thank you in advance for
+    >>>> considering a fix.
+    >>>> 
+    >>>> 
+    >>>> 
+    >>>> Yours sincerely,
+    >>>> 
+    >>>> Andre? V. Kostyrka
+    >>>> 
+    >>>> [[alternative HTML version deleted]]
+    >>>> 
+    >>>> ______________________________________________
+    >>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+    >>>> https://stat.ethz.ch/mailman/listinfo/r-help
+    >>>> PLEASE do read the posting guide
+    >>>> http://www.R-project.org/posting-guide.html
+    >>>> and provide commented, minimal, self-contained, reproducible code.
+    >>>> 
+    >>> 
+
+    >> [[alternative HTML version deleted]]
+
+    >> ______________________________________________
+    >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+    >> https://stat.ethz.ch/mailman/listinfo/r-help
+    >> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+    >> and provide commented, minimal, self-contained, reproducible code.
+
+    > ______________________________________________
+    > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+    > https://stat.ethz.ch/mailman/listinfo/r-help
+    > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+    > and provide commented, minimal, self-contained, reproducible code.
+
+
