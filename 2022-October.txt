@@ -16880,3 +16880,705 @@ Gunter <bgunter.4567 at gmail.com> wrote:
 > > and provide commented, minimal, self-contained, reproducible code.
 
 
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Oct 22 03:49:16 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Fri, 21 Oct 2022 18:49:16 -0700
+Subject: [R] getting data from a "vertical" table into a "2-dimensional"
+ grid
+In-Reply-To: <CAHfBD2esHdxuT4XATSQoGgAgT=gkjvjb9rvtaVaeT8=3TJrFgw@mail.gmail.com>
+References: <CAHfBD2fx1k6XhdoCmQRheCd=Q1a=TmHRvWoaBWbdbhX=148HzA@mail.gmail.com>
+ <CAHfBD2cSb9scG=Sw4=PVZBoTRyYN=aPfbZ6hYXxp0VUOBnzreA@mail.gmail.com>
+ <CAHfBD2fPrxQTTeWVY2DUWpVnBaqQt7UtiX0Jo5TOz0GEj30mJA@mail.gmail.com>
+ <CAGxFJbQYcj1Jk9NX6VT3jSjQhokm9wzVouQiuX2ZT7jjKdViTw@mail.gmail.com>
+ <CAHfBD2esHdxuT4XATSQoGgAgT=gkjvjb9rvtaVaeT8=3TJrFgw@mail.gmail.com>
+Message-ID: <CAGxFJbSFfLtBdbphuL_jAkC6_5UcNM8ca-jyep95AYFH6C-pCg@mail.gmail.com>
+
+Well, if you know the column subscripts you need, just forget about the names!
+
+I would just write a (one-liner) function to do it for any data frame:
+
+myfun <- function(dat)tapply(dat[,3], dat[,1:2], sum)
+## dat[,1:2] is a list because it's a data frame and all data frames are lists
+
+myfun(data_original) ## then gives the result
+
+## you could even make the indices arguments of the myfun if they
+change in different
+## data sets
+
+-- Bert
+
+On Fri, Oct 21, 2022 at 5:14 PM Kelly Thompson <kt1572757 at gmail.com> wrote:
+>
+> Bert,
+> Thanks! I'm pretty sure what you provided gets me to what I was
+> looking for, and is much simpler. I really appreciate your help.
+>
+> A follow-up question:
+> I adjusted the code to not use "hard-coded" column names.
+>
+> mat2 <- with(data_original, tapply( get(names(data_original)[3]),
+> list( get(names(data_original)[1]), get(names(data_original)[2])), sum
+> ))
+>
+> Is there any better way to write that?
+>
+> Thanks again!
+> -----
+>
+> For clarity and to improve upon what I previously wrote, and so I can
+> practice writing questions like this and asking for help, here's a
+> recap of my question and "reproducible code", and the "better way" you
+> provided:
+>
+> I have data presented in a 3-column data frame as shown below in
+> "data_original".
+>
+> I want to aggregate the data in column 3, with the "by" argument using
+> the first and second columns of "data_original".
+>
+> I want the results of the aggregation in a matrix, as shown below in "mat1".
+>
+> As my end "result", I want a matrix with one row for each unique value
+> of column1 of data_original and one column for each unique value of
+> column2 of data_original.
+>
+> What I show below seems like one way this can be done.
+>
+> My question: Are there easier or better ways to do this, especially in
+> Base R, and also in R packages?
+>
+>
+> #create data
+> set.seed(1)
+> data_original <- data.frame(year = rep(1990:1999, length  = 50),
+> category = sample(1:5, size = 50, replace = TRUE),  sales =
+> sample(0:99999, size = 50 , replace = TRUE) )
+> dim(data_original)
+>
+> #remove rows where data_original[,1] == 1990 & data_original[,2] == 5,
+> to ensure there is at least one NA in the desired matrix (this is an
+> "edge" case I want the code to "deal with" correctly.)
+> data_original <- data_original[ (data_original[,1] == 1990 &
+> data_original[,2] == 5) == FALSE, ]
+> dim(data_original)
+>
+> #aggregate data
+> data_aggregate_col3_by_col1_and_col2 <- aggregate(x =
+> data_original[3], by = list(data_original[,1], data_original[,2]), FUN
+> = sum)
+> colnames(data_aggregate_col3_by_col1_and_col2) <- colnames(data_original)
+> dim(data_aggregate_col3_by_col1_and_col2)
+>
+> data_expanded <-
+> expand.grid(unique(data_aggregate_col3_by_col1_and_col2[,1]),
+> unique(data_aggregate_col3_by_col1_and_col2[,2]))
+> colnames(data_expanded) <- colnames(data_aggregate_col3_by_col1_and_col2)[1:2]
+> dim(data_expanded)
+>
+> data_expanded <- merge(data_expanded,
+> data_aggregate_col3_by_col1_and_col2, all = TRUE)
+> dim(data_expanded)
+>
+> mat1 <- matrix(data = data_expanded[,3], nrow =
+> length(unique(data_expanded[,1])), ncol =
+> length(unique(data_expanded[,2])) , byrow = TRUE, dimnames = list(
+> unique(data_expanded[,1]), unique(data_expanded[,2]) ) )
+>
+> #this is an easier way, using with and tapply
+> mat2 <- with(data_original, tapply( get(names(data_original)[3]),
+> list( get(names(data_original)[1]), get(names(data_original)[2])), sum
+> ))
+> #check that mat1 and mat 2 are "nearly equal"
+> all.equal(mat1, mat2)
+>
+>
+>
+> Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> > "As my end result, I want a matrix or data frame, with one row for each
+> > year, and one column for each category."
+> >
+> > If I understand you correctly, no reshaping gymnastics are needed --
+> > just use ?tapply:
+> >
+> > set.seed(1)
+> > do <- data.frame(year = rep(1990:1999, length  = 50),
+> > category = sample(1:5, size = 50, replace = TRUE),
+> > sales = sample(0:99999, size = 50 , replace = TRUE) )
+> >
+> >
+> > with(do, tapply(sales, list(year, category),sum))
+> >  ## which gives the matrix:
+> >
+> >          1      2      3     4     5
+> > 1990  13283     NA  55083 87522 64877
+> > 1991     NA  80963     NA 30100 28277
+> > 1992   9391 202916     NA 55090    NA
+> > 1993  29696 167344     NA    NA 17625
+> > 1994  98015  99521     NA 70536 52252
+> > 1995 157003     NA  26875    NA 11366
+> > 1996  32986  88683   6562 79475 95282
+> > 1997  13601     NA 134757 12398    NA
+> > 1998  30537  51117  31333 20204    NA
+> > 1999  39240  87845  62479    NA 98804
+> >
+> > If this is not what you wanted, you may need to explain further or
+> > await a response from someone more insightful than I.
+> >
+> > Cheers,
+> > Bert
+> >
+> >
+> > On Fri, Oct 21, 2022 at 3:34 PM Kelly Thompson <kt1572757 at gmail.com> wrote:
+> > >
+> > > As my end result, I want a matrix or data frame, with one row for each
+> > > year, and one column for each category.
+> > >
+> > > On Fri, Oct 21, 2022 at 6:23 PM Kelly Thompson <kt1572757 at gmail.com> wrote:
+> > > >
+> > > > # I think this might be a better example.
+> > > >
+> > > > # I have data presented in a "vertical" dataframe as shown below in
+> > > > data_original.
+> > > > # I want this data in a matrix or "grid", as shown below.
+> > > > # What I show below seems like one way this can be done.
+> > > >
+> > > > # My question: Are there easier or better ways to do this, especially
+> > > > in Base R, and also in R packages?
+> > > >
+> > > > #create data
+> > > > set.seed(1)
+> > > > data_original <- data.frame(year = rep(1990:1999, length  = 50),
+> > > > category = sample(1:5, size = 50, replace = TRUE),  sales =
+> > > > sample(0:99999, size = 50 , replace = TRUE) )
+> > > > dim(data_original)
+> > > >
+> > > > #remove rows where data_original$year == 1990 & data_original$category
+> > > > == 5, to ensure there is at least one NA in the "grid"
+> > > > data_original <- data_original[ (data_original$year == 1990 &
+> > > > data_original$category == 5) == FALSE, ]
+> > > > dim(data_original)
+> > > >
+> > > > #aggregate data
+> > > > data_aggregate_sum_by_year_and_category <- aggregate(x =
+> > > > data_original$sales, by = list(year = data_original$year, category =
+> > > > data_original$category), FUN = sum)
+> > > > colnames(data_aggregate_sum_by_year_and_category) <- c('year',
+> > > > 'category', 'sum_of_sales')
+> > > > dim(data_aggregate_sum_by_year_and_category)
+> > > >
+> > > > data_expanded <- expand.grid(year =
+> > > > unique(data_aggregate_sum_by_year_and_category$year), category =
+> > > > unique(data_aggregate_sum_by_year_and_category$category))
+> > > > dim(data_expanded)
+> > > > data_expanded <- merge(data_expanded,
+> > > > data_aggregate_sum_by_year_and_category, all = TRUE)
+> > > > dim(data_expanded)
+> > > >
+> > > > mat <- matrix(data = data_expanded$sum_of_sales, nrow =
+> > > > length(unique(data_expanded$year)), ncol =
+> > > > length(unique(data_expanded$category)) , byrow = TRUE, dimnames =
+> > > > list( unique(data_expanded$year), unique(data_expanded$category) ) )
+> > > >
+> > > >
+> > > > data_original
+> > > > data_expanded
+> > > > mat
+> > > >
+> > > > On Fri, Oct 21, 2022 at 5:03 PM Kelly Thompson <kt1572757 at gmail.com> wrote:
+> > > > >
+> > > > > ###
+> > > > > #I have data presented in a "vertical" data frame as shown below in
+> > > > > data_original.
+> > > > > #I want this data in a matrix or "grid", as shown below.
+> > > > > #What I show below seems like one way this can be done.
+> > > > >
+> > > > > #My question: Are there easier or better ways to do this, especially
+> > > > > in Base R, and also in R packages?
+> > > > >
+> > > > > #reproducible example
+> > > > >
+> > > > > data_original <- data.frame(year = c('1990', '1999', '1990', '1989'),
+> > > > > size = c('s', 'l', 'xl', 'xs'),  n = c(99, 33, 3, 4) )
+> > > > >
+> > > > > data_expanded <- expand.grid(unique(data_original$year),
+> > > > > unique(data_original$size), stringsAsFactors = FALSE )
+> > > > > colnames(data_expanded) <- c('year', 'size')
+> > > > > data_expanded <- merge(data_expanded, data_original, all = TRUE)
+> > > > >
+> > > > > mat <- matrix(data = data_expanded $n, nrow =
+> > > > > length(unique(data_expanded $year)), ncol =
+> > > > > length(unique(data_expanded $size)) , byrow = TRUE, dimnames = list(
+> > > > > unique(data_expanded$year), unique(data_expanded$size) ) )
+> > > > >
+> > > > > data_original
+> > > > > data_expanded
+> > > > > mat
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From po|c1410 @end|ng |rom gm@||@com  Sat Oct 22 08:27:44 2022
+From: po|c1410 @end|ng |rom gm@||@com (CALUM POLWART)
+Date: Sat, 22 Oct 2022 07:27:44 +0100
+Subject: [R] getting data from a "vertical" table into a "2-dimensional"
+ grid
+In-Reply-To: <CAHfBD2fPrxQTTeWVY2DUWpVnBaqQt7UtiX0Jo5TOz0GEj30mJA@mail.gmail.com>
+References: <CAHfBD2fx1k6XhdoCmQRheCd=Q1a=TmHRvWoaBWbdbhX=148HzA@mail.gmail.com>
+ <CAHfBD2cSb9scG=Sw4=PVZBoTRyYN=aPfbZ6hYXxp0VUOBnzreA@mail.gmail.com>
+ <CAHfBD2fPrxQTTeWVY2DUWpVnBaqQt7UtiX0Jo5TOz0GEj30mJA@mail.gmail.com>
+Message-ID: <CA+etgPm3XKoJ8jO_wHnixnOi4TJeWG_SOntVnO99VSMX0nvhag@mail.gmail.com>
+
+You asked for base R but also said or using other methods. So for
+completeness here is a solution using Tidyverse
+
+library(tidyverse)
+data_original <- data.frame(
+  year = c('1990', '1999', '1990', '1989'),
+  size = c('s', 'l', 'xl', 'xs'),  n = c(99, 33, 3, 4) )
+
+data_original |>
+  pivot_wider(
+    id_cols = year,
+    names_from = size,
+    values_from = n
+  )
+
+# A tibble: 3 x 5
+  year      s     l    xl    xs
+  <chr> <dbl> <dbl> <dbl> <dbl>
+1 1990     99    NA     3    NA
+2 1999     NA    33    NA    NA
+3 1989     NA    NA    NA     4
+
+
+If you really  want a matrix add
+
+ |>
+as.matrix()
+
+To the end.
+
+I saw you asked if you can use column position and the answer is the same
+here you can replace size with 2. BUT beware this is prone to errors if
+data gets changes in order etc.
+
+This obviously needs to use tidyverse which some people hate. But it does
+make the code much more readable to understand what you are doing...
+
+On Fri, 21 Oct 2022, 23:34 Kelly Thompson, <kt1572757 at gmail.com> wrote:
+
+> As my end result, I want a matrix or data frame, with one row for each
+> year, and one column for each category.
+>
+> On Fri, Oct 21, 2022 at 6:23 PM Kelly Thompson <kt1572757 at gmail.com>
+> wrote:
+> >
+> > # I think this might be a better example.
+> >
+> > # I have data presented in a "vertical" dataframe as shown below in
+> > data_original.
+> > # I want this data in a matrix or "grid", as shown below.
+> > # What I show below seems like one way this can be done.
+> >
+> > # My question: Are there easier or better ways to do this, especially
+> > in Base R, and also in R packages?
+> >
+> > #create data
+> > set.seed(1)
+> > data_original <- data.frame(year = rep(1990:1999, length  = 50),
+> > category = sample(1:5, size = 50, replace = TRUE),  sales =
+> > sample(0:99999, size = 50 , replace = TRUE) )
+> > dim(data_original)
+> >
+> > #remove rows where data_original$year == 1990 & data_original$category
+> > == 5, to ensure there is at least one NA in the "grid"
+> > data_original <- data_original[ (data_original$year == 1990 &
+> > data_original$category == 5) == FALSE, ]
+> > dim(data_original)
+> >
+> > #aggregate data
+> > data_aggregate_sum_by_year_and_category <- aggregate(x =
+> > data_original$sales, by = list(year = data_original$year, category =
+> > data_original$category), FUN = sum)
+> > colnames(data_aggregate_sum_by_year_and_category) <- c('year',
+> > 'category', 'sum_of_sales')
+> > dim(data_aggregate_sum_by_year_and_category)
+> >
+> > data_expanded <- expand.grid(year =
+> > unique(data_aggregate_sum_by_year_and_category$year), category =
+> > unique(data_aggregate_sum_by_year_and_category$category))
+> > dim(data_expanded)
+> > data_expanded <- merge(data_expanded,
+> > data_aggregate_sum_by_year_and_category, all = TRUE)
+> > dim(data_expanded)
+> >
+> > mat <- matrix(data = data_expanded$sum_of_sales, nrow =
+> > length(unique(data_expanded$year)), ncol =
+> > length(unique(data_expanded$category)) , byrow = TRUE, dimnames =
+> > list( unique(data_expanded$year), unique(data_expanded$category) ) )
+> >
+> >
+> > data_original
+> > data_expanded
+> > mat
+> >
+> > On Fri, Oct 21, 2022 at 5:03 PM Kelly Thompson <kt1572757 at gmail.com>
+> wrote:
+> > >
+> > > ###
+> > > #I have data presented in a "vertical" data frame as shown below in
+> > > data_original.
+> > > #I want this data in a matrix or "grid", as shown below.
+> > > #What I show below seems like one way this can be done.
+> > >
+> > > #My question: Are there easier or better ways to do this, especially
+> > > in Base R, and also in R packages?
+> > >
+> > > #reproducible example
+> > >
+> > > data_original <- data.frame(year = c('1990', '1999', '1990', '1989'),
+> > > size = c('s', 'l', 'xl', 'xs'),  n = c(99, 33, 3, 4) )
+> > >
+> > > data_expanded <- expand.grid(unique(data_original$year),
+> > > unique(data_original$size), stringsAsFactors = FALSE )
+> > > colnames(data_expanded) <- c('year', 'size')
+> > > data_expanded <- merge(data_expanded, data_original, all = TRUE)
+> > >
+> > > mat <- matrix(data = data_expanded $n, nrow =
+> > > length(unique(data_expanded $year)), ncol =
+> > > length(unique(data_expanded $size)) , byrow = TRUE, dimnames = list(
+> > > unique(data_expanded$year), unique(data_expanded$size) ) )
+> > >
+> > > data_original
+> > > data_expanded
+> > > mat
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From cw||cox @end|ng |rom m|nderoo@org  Sat Oct 22 02:41:12 2022
+From: cw||cox @end|ng |rom m|nderoo@org (Chris Wilcox)
+Date: Sat, 22 Oct 2022 00:41:12 +0000
+Subject: [R] fitting gam with constraints on parameters in mgcv
+References: <1aac115f-1308-4eda-b2ca-e37139e7cc5f.885d0088-4e5f-4468-a392-c2714b03c5b3.c3bbdd5d-6d58-4deb-bf5a-ff64c6ec7b10@emailsignatures365.codetwo.com>
+Message-ID: <SEZPR02MB6048C702CB7A3A0FD91D91F2D22C9@SEZPR02MB6048.apcprd02.prod.outlook.com>
+
+Hi all,
+
+I am trying to fit a gam using mgcv which has a mix of smooth and parametric terms.  The model is for some count data on fish catches.  I am modelling variation in location and time, but also differences among individual operators.  I am interested in the differences in operators specifically, and so am treating them as a fixed effect in my model.  While there are solutions for my problem outlined below in a glm context, I need to work with a gam as I have a 2 dimensional surface that is a key feature of the model.
+
+My challenge is that some levels of the fixed effect for vessels always have responses of 0, leading them to have coefficient estimates that move to negative infinity, due to the log link. This leads to convergence failures.
+
+I am looking for ways to solve this issue.  One obvious solution is to move to a Bayesian approach, and use weakly informative priors on the fixed effects terms.  I have implemented this in brms, using the same structure.  This works, but the complexity of the models means that the fitting time is much longer and I have a number of data sets to analyze.
+
+I have found a few related questions:
+https://stats.stackexchange.com/questions/504542/dealing-with-quasi-complete-separation-in-general-additive-model?r=SearchResults&s=1%7C34.9004<https://stats.stackexchange.com/questions/504542/dealing-with-quasi-complete-separation-in-general-additive-model?r=SearchResults&s=1%7C34.9004>
+https://stats.stackexchange.com/questions/11109/how-to-deal-with-perfect-separation-in-logistic-regression<https://stats.stackexchange.com/questions/11109/how-to-deal-with-perfect-separation-in-logistic-regression>
+but the first which dealt with gams wasn't resolved, and the second didn't appear to have any viable solutions that I haven't tried.
+
+I would like to find a way to address this using gams in mgcv.  It seems like there should be two possibilities, using penalties of some sort on the fixed effect term or imposing a constraint on the fixed effect term.  After a lot of reading, I have not been able to find a good example of a penalty approach, and I am struggling to operationalize the pcls example from the mgcv help.
+
+The help for pcls in mgcv is https://rdrr.io/cran/mgcv/man/pcls.html<https://rdrr.io/cran/mgcv/man/pcls.html> and the first example is the closest to what we are trying to do.
+
+I have included an example dataset to illustrate the problem, any suggestions are greatly appreciated.
+
+#set up data
+Lat <- runif(100,1,20)
+Lon <- runif(100,1,20)
+Year <- runif(100,1,10)
+Vessel <- rep((1:5)/10,each = 20)
+Lambda <- exp(0.1*Lat - 0.01*Lat^2 + 0.1*Lon + 0.01*Lon^2 + 0.05*Year + Vessel)
+Vessel <- as.factor(Vessel)
+Catch <- apply(matrix(Lambda),1,rpois,n=1)
+dt <- data.frame(Lat,Lon,Year,Vessel,Catch)
+
+#now fit gam
+M <- gam(Catch ~ s(Lat,Lon) + s(Year) + Vessel, family = tw, data = dt)
+
+#create separation, all observations zero for one vessel
+dt$Catch[dt$Vessel == levels(dt$Vessel)[2]] <- 0
+
+#now fit gam again with separation
+M <- gam(Catch ~ s(Lat,Lon) + s(Year) + Vessel, family = tw, data = dt)
+
+
+Thanks,
+
+Chris
+
+
+
+Chris Wilcox
+Minderoo Foundation * Flourishing Oceans
+[cid:Minderoo-80w_fc252a32-0168-44a0-8b65-5f9c7e67697f.png]
+M       +61 439 071 210
+P       +61 8 6460 4949
+L       Hobart (GMT+10)
+E       cwilcox at minderoo.org
+W       minderoo.org<https://www.minderoo.org/>
+
+Please consider the environment before printing this email.
+This email and any attachments may contain confidential information and may be subject to legal professional privilege. This email and attachments are intended only for the named addressee. If you are not the named addressee your access to this material is not authorised and you should not disseminate, distribute or copy this e-mail or use the information contained in it. Please notify the sender immediately by e-mail if you have received this e-mail by mistake and delete this e-mail from your system. The sender does not guarantee that this e-mail or any attachments are secure, error-free or free from viruses. The sender therefore does not accept liability for any loss or damage resulting (either directly or indirectly) from any such error or virus. The content and opinions set out in this email and any attachments are not necessarily those of Minderoo Foundation Limited, Tattarang Pty Ltd, their respective related entities, nor any person or entity who is or becomes a director, company secretary, officer, member, manager, employee or contractor (whether directly or indirectly) or related entity of the previously specified entities. This email and any attachments are also subject to copyright and may not be reproduced without permission.
+
+From t@v|b@r @end|ng |rom gm@||@com  Sat Oct 22 11:28:41 2022
+From: t@v|b@r @end|ng |rom gm@||@com (Micha Silver)
+Date: Sat, 22 Oct 2022 12:28:41 +0300
+Subject: [R] Opening shapefiles in R
+In-Reply-To: <CABxY9BPCaQT3V4BUHruL5Sj+Y351gmPTYTDOFUmoGWyXF5Ysvg@mail.gmail.com>
+References: <CABxY9BPCaQT3V4BUHruL5Sj+Y351gmPTYTDOFUmoGWyXF5Ysvg@mail.gmail.com>
+Message-ID: <d0534f85-2115-1bb4-1973-bcab678b1964@gmail.com>
+
+Hello Nick:
+
+
+First: as Jeff pointed out, you'll probably have better luck posting to 
+the r-sig-geo list.
+
+
+On 21/10/2022 14:25, Nick Wray wrote:
+> Hello
+>
+> I have managed to download and plot the outline for the River Tweed In the
+> Sottish borders)  catchment using this code.  21009 is a zipfile downloaded
+> from the FEH website https://fehweb.ceh.ac.uk/Map:
+>
+> require(rgdal)
+>
+> shape <- readOGR(dsn ="C:/Users/nick/Desktop/PhD Oct 22", layer = "21009")
+
+
+Second: The R-spatial "ecosystem" has undergone some major changes 
+recent years. You'd be well advised, I think, to switch to using the 
+`sf` package for vector data. So reading in a shapefile would be 
+`sf::st_read(dsn="...")`
+
+
+
+Third: Regarding your other post about string representations of 
+geometries. Can you be more specific as to what your final goal is? The 
+"canonical" string representation of geometries is Well Known Text (WKT) 
+and can be returned with the `sf::st_as_text()` function. Does that help?
+
+
+Kind regards,
+
+Micha
+
+
+> shape
+>
+> plot(shape)
+>
+> and I get an outline of the Tweed catchment which I can use
+>
+> the zipfile has eight documents all with the name ?21009.? and the suffixes
+> cpg/dbf/prj/sbn/sbx/shp/shp/shx   There are two .shp docs, one labelled as
+> SHP file and one as XML file.
+>
+> However
+>
+> I then have downloaded a file of a plot of all the rivers in the uk from
+> https://osdatahub.os.uk/downloads/open
+>
+> I?ve put this data into a zipfile with the name ?rivers?   Within this are
+> eight docs ? four with the names HydroNode. and suffixes dbf/prj/shp/shx
+> and four with the name WatercourseLink. and the four suffixes.
+>
+> Just subbing in ?rivers? for ?21009? in my code above doesn?t work and I
+> can?t find a way of getting into the shapefiles and opening them
+>
+>
+> I'd be grateful if anyone can help me get further with this
+>
+> Thanks Nick Wray
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Micha Silver
+Ben Gurion Univ.
+Sde Boker, Remote Sensing Lab
+cell: +972-523-665918
+
+
+From n|ckmwr@y @end|ng |rom gm@||@com  Sat Oct 22 12:52:32 2022
+From: n|ckmwr@y @end|ng |rom gm@||@com (Nick Wray)
+Date: Sat, 22 Oct 2022 11:52:32 +0100
+Subject: [R] Opening shapefiles in R
+In-Reply-To: <d0534f85-2115-1bb4-1973-bcab678b1964@gmail.com>
+References: <CABxY9BPCaQT3V4BUHruL5Sj+Y351gmPTYTDOFUmoGWyXF5Ysvg@mail.gmail.com>
+ <d0534f85-2115-1bb4-1973-bcab678b1964@gmail.com>
+Message-ID: <CABxY9BPCOiQjJskYY86qqehOCy8OLQRRkKg_yqeNKE6oEHy25Q@mail.gmail.com>
+
+Hi Micha  Thanks for your ideas which I will look into   I hadn't heard of
+r-sig-geo before but I've signed up to it.  I'm a bit of beginner as far as
+geospatial in R goes.  What I am ultimately trying to do is this - my PhD
+research is into the relative proportions of the effects of climate change
+and land use on streamflow in Scottish rivers (I'm based at Edinburgh) and
+to this end I need to create a map of catchments eg the Tweed onto which I
+can placing flow gauging stations/ weather stations etc .  I have catchment
+outline shapefiles and the stations but finding the bit of the whole of the
+UK river system shapefile which is the Tweed catchment is tricky, as the
+shapefile matrix doesn't have names in it and I am trying to identify the
+Tweed and its tributaries from the coordinates of its mouth sources and so
+on...  that's why i need to pull out the coordinates.  Any suggestions 'd
+be v welcome  Nick
+
+On Sat, 22 Oct 2022 at 10:28, Micha Silver <tsvibar at gmail.com> wrote:
+
+> Hello Nick:
+>
+>
+> First: as Jeff pointed out, you'll probably have better luck posting to
+> the r-sig-geo list.
+>
+>
+> On 21/10/2022 14:25, Nick Wray wrote:
+> > Hello
+> >
+> > I have managed to download and plot the outline for the River Tweed In
+> the
+> > Sottish borders)  catchment using this code.  21009 is a zipfile
+> downloaded
+> > from the FEH website https://fehweb.ceh.ac.uk/Map:
+> >
+> > require(rgdal)
+> >
+> > shape <- readOGR(dsn ="C:/Users/nick/Desktop/PhD Oct 22", layer =
+> "21009")
+>
+>
+> Second: The R-spatial "ecosystem" has undergone some major changes
+> recent years. You'd be well advised, I think, to switch to using the
+> `sf` package for vector data. So reading in a shapefile would be
+> `sf::st_read(dsn="...")`
+>
+>
+>
+> Third: Regarding your other post about string representations of
+> geometries. Can you be more specific as to what your final goal is? The
+> "canonical" string representation of geometries is Well Known Text (WKT)
+> and can be returned with the `sf::st_as_text()` function. Does that help?
+>
+>
+> Kind regards,
+>
+> Micha
+>
+>
+> > shape
+> >
+> > plot(shape)
+> >
+> > and I get an outline of the Tweed catchment which I can use
+> >
+> > the zipfile has eight documents all with the name ?21009.? and the
+> suffixes
+> > cpg/dbf/prj/sbn/sbx/shp/shp/shx   There are two .shp docs, one labelled
+> as
+> > SHP file and one as XML file.
+> >
+> > However
+> >
+> > I then have downloaded a file of a plot of all the rivers in the uk from
+> > https://osdatahub.os.uk/downloads/open
+> >
+> > I?ve put this data into a zipfile with the name ?rivers?   Within this
+> are
+> > eight docs ? four with the names HydroNode. and suffixes dbf/prj/shp/shx
+> > and four with the name WatercourseLink. and the four suffixes.
+> >
+> > Just subbing in ?rivers? for ?21009? in my code above doesn?t work and I
+> > can?t find a way of getting into the shapefiles and opening them
+> >
+> >
+> > I'd be grateful if anyone can help me get further with this
+> >
+> > Thanks Nick Wray
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> --
+> Micha Silver
+> Ben Gurion Univ.
+> Sde Boker, Remote Sensing Lab
+> cell: +972-523-665918
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@r@|@m@ck @end|ng |rom hotm@||@com  Sat Oct 22 21:05:45 2022
+From: m@r@|@m@ck @end|ng |rom hotm@||@com (L... L...)
+Date: Sat, 22 Oct 2022 19:05:45 +0000
+Subject: [R] shaded area between a curve and a circle
+In-Reply-To: <BY2PR20MB0453D2D4E8AED84B9EFC584B96780@BY2PR20MB0453.namprd20.prod.outlook.com>
+References: <BY2PR20MB0453D2D4E8AED84B9EFC584B96780@BY2PR20MB0453.namprd20.prod.outlook.com>
+Message-ID: <BYAPR06MB5254269EE5E61F1E23F2C233962C9@BYAPR06MB5254.namprd06.prod.outlook.com>
+
+Dear, I have a picture in which I draw a circle over the standard normal curve. See below the lines used to draw the figure. The figure is ok, but my problem is: How to shade the areas A, B, C, D, E and F? I know I have to find the points of intersection but I don't know how to find them. Suggestions will be welcome.
+
+library(plotrix)
+
+x   <-  seq(-3.0, 3.0, 0.01)
+fy  <-  dnorm(x)
+fy  <-  fy / max(fy)
+
+x11()
+plot(x, fy, ylim = c(-1, 1), col = "white", lwd = 1.5, xlim = c(-3, 3), lty = 1)
+draw.circle(0.0, 0.0, 2.00,  border = 'blue', lty = 1, lwd = 0.8)
+
+lines(x, fy, type = 'l', ylim = c(-1,1), col = 'red', )
+lines(x,-fy, type = 'l', ylim = c(-1,1), col = 'red')
+
+text( 0.0, 0.90, "A"); text( 0.0,-0.90, "B")
+text(-1.8, 0.25, "C"); text( 1.8, 0.25, "D")
+text(-1.8,-0.25, "E"); text( 1.8,-0.25, "F")
+
+Best regards
+
+ML
+
+
+
+________________________________
+
+
+
+	[[alternative HTML version deleted]]
+
+
