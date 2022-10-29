@@ -24679,3 +24679,1282 @@ Best regards,
 Ivan
 
 
+From p@u| @end|ng |rom @t@t@@uck|@nd@@c@nz  Fri Oct 28 06:39:08 2022
+From: p@u| @end|ng |rom @t@t@@uck|@nd@@c@nz (Paul Murrell)
+Date: Fri, 28 Oct 2022 17:39:08 +1300
+Subject: [R] Adding page numbers to existing PDFs
+In-Reply-To: <ECE6CC42-16C5-46D0-BBDC-C287AAD88A4D@plessthan.com>
+References: <ECE6CC42-16C5-46D0-BBDC-C287AAD88A4D@plessthan.com>
+Message-ID: <27201784-7387-b584-16e7-912a53f90077@stat.auckland.ac.nz>
+
+Hi
+
+Below is a script that does the job for a very simple R plot, making use 
+of R and a couple of free software tools (ghostscript and poppler).  It 
+may or may not help with your real problem (NOTE the WARNING) ...
+
+
+library(grImport)
+
+## Multipage PDF created by R
+pdf("plot-in.pdf")
+plot(1)
+plot(2)
+dev.off()
+
+## Separate into individual pages
+system("pdfseparate plot-in.pdf plot-in-%d.pdf")
+
+inFiles <- list.files(pattern="plot-in-[0-9]+.pdf")
+
+for (i in seq_along(inFiles)) {
+     ## Convert to PostScript
+     ## (WARNING:  may cause [some] rasterization, depending on content
+     ##            of plot and on the conversion tool;  anything that is
+     ##            rasterized will NOT get imported)
+     system(paste0("pdf2ps plot-in-", i, ".pdf plot-in-", i, ".ps"))
+
+     ## Import to R
+     PostScriptTrace(paste0("plot-in-", i, ".ps"),
+                     paste0("plot-in-", i, ".xml"))
+     plot <- readPicture(paste0("plot-in-", i, ".xml"))
+
+     ## Add page number (in new PDF)
+     pdf(paste0("plot-out-", i, ".pdf"))
+     grid.picture(plot)
+     grid.text(paste0("Page ", i), .5, unit(1, "lines"))
+     dev.off()
+}
+
+outFiles <- list.files(pattern="plot-out-[0-9]+.pdf")
+
+## Recombine into single, multi-page PDF
+system(paste0("pdfunite ", paste(outFiles, collapse=" "),
+               " plot-out.pdf"))
+
+
+If you do want to use something like this, let me know, because there 
+are some other limitations that you might want to be aware of.
+
+Paul
+
+On 22/10/2022 6:45 am, Dennis Fisher wrote:
+> R 4.2.1
+> OS X
+> 
+> Colleagues
+> 
+> I have multipage PDF files that were created in R ? the files do NOT 
+> have page numbers. I would like to add page numbers after the fact, 
+> i.e., read a file into R, add margin text, then output as a PDF.
+> Can this be done in R (base R or a package)?
+> It can be done in Python using reportlab.pdfgen ? however, the file size 
+> increases prohibitively.
+> 
+> Dennis
+> 
+> Dennis Fisher MD
+> P < (The "P Less Than" Company)
+> Phone / Fax: 1-866-PLessThan (1-866-753-7784)
+> www.PLessThan.com 
+> <http://www.PLessThan.com>
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help 
+> <https://stat.ethz.ch/mailman/listinfo/r-help>
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html 
+> <http://www.R-project.org/posting-guide.html>
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Dr Paul Murrell
+Te Kura Tatauranga | Department of Statistics
+Waipapa Taumata Rau | The University of Auckland
+Private Bag 92019, Auckland, New Zealand
+64 9 3737599 x85392
+paul at stat.auckland.ac.nz
+www.stat.auckland.ac.nz/~paul/
+
+
+From h||m@r@berger @end|ng |rom gmx@de  Fri Oct 28 09:12:51 2022
+From: h||m@r@berger @end|ng |rom gmx@de (Hilmar Berger)
+Date: Fri, 28 Oct 2022 09:12:51 +0200
+Subject: [R] $ subset operator behavior in lapply
+In-Reply-To: <CAPcHnpR76bVd+KMfLtdmKjrv5VHCKiXRJQ0jyA+eUr3W9hNmAA@mail.gmail.com>
+References: <a4c65980-e23b-ffeb-0276-f5ff6422ed13@gmx.de>
+ <CAPcHnpR76bVd+KMfLtdmKjrv5VHCKiXRJQ0jyA+eUr3W9hNmAA@mail.gmail.com>
+Message-ID: <b0955b78-10b8-1b37-3b32-7e80b37052c3@gmx.de>
+
+Hi Andrew,
+
+thanks a lot, that fully explains it.
+
+Sorry for the HTML text. For the record I put the original code again
+below.
+
+Best regards
+
+Hilmar
+
+
+On 27.10.22 18:34, Andrew Simmons wrote:
+> $ does not evaluate its second argument, it does something like
+> as.character(substitute(name)).
+>
+> You should be using
+>
+> lapply(list, function(x) x$a)
+>
+> or
+>
+> lapply(list, `[[`, "a")
+>
+>
+> On Thu, Oct 27, 2022, 12:29 Hilmar Berger <hilmar.berger at gmx.de> wrote:
+>
+>     Dear all,
+>
+>     I'm a little bit surprised by the behavior of the $ operator when used
+>     in lapply - any indication what might be wrong is appreciated.
+>
+
+ > xx = list(A=list(a=1:3, b=LETTERS[1:3]),"B"=list(a=7:9, b=LETTERS[7:9]))
+ > lapply(xx,`$`,"a")
+$A
+NULL
+
+$B
+NULL
+
+ > `$`(xx[[1]],"a")
+[1] 1 2 3
+ > lapply(xx,`[`,"a")
+$A
+$A$a
+[1] 1 2 3
+
+
+$B
+$B$a
+[1] 7 8 9
+
+
+>     Any idea why I
+>     `$`(object, name) works when applied to the single list element
+>     but not
+>     within lapply (in contrast to `[`)?
+>     I checked the help page of the extraction operators but could not find
+>     anything that explains this. Thanks and best regards Hilmar >
+>     sessionInfo() R version 4.2.1 (2022-06-23) Platform:
+>     x86_64-pc-linux-gnu
+>     (64-bit) Running under: Ubuntu 20.04.5 LTS Matrix products: default
+>     BLAS: /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3 LAPACK:
+>     /usr/lib/x86_64-linux-gnu/openblas-pthread/liblapack.so.3 locale: [1]
+>     LC_CTYPE=en_US.UTF-8 LC_NUMERIC=C [3] LC_TIME=de_DE.UTF-8
+>     LC_COLLATE=en_US.UTF-8 [5] LC_MONETARY=de_DE.UTF-8
+>     LC_MESSAGES=en_US.UTF-8 [7] LC_PAPER=de_DE.UTF-8 LC_NAME=C [9]
+>     LC_ADDRESS=C LC_TELEPHONE=C [11] LC_MEASUREMENT=de_DE.UTF-8
+>     LC_IDENTIFICATION=C attached base packages: [1] stats graphics
+>     grDevices
+>     utils datasets methods base loaded via a namespace (and not attached):
+>     [1] compiler_4.2.1
+>
+>     ? ? ? ? [[alternative HTML version deleted]]
+>
+>     ______________________________________________
+>     R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>     https://stat.ethz.ch/mailman/listinfo/r-help
+>     PLEASE do read the posting guide
+>     http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>     and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@rong|u@|u|g| @end|ng |rom gm@||@com  Fri Oct 28 11:43:30 2022
+From: m@rong|u@|u|g| @end|ng |rom gm@||@com (Luigi Marongiu)
+Date: Fri, 28 Oct 2022 11:43:30 +0200
+Subject: [R] Replace values based on neither condition
+Message-ID: <CAMk+s2TUwKwcgGHFzd_87X8Az_ppAea5U6SU29=uKgVhbbgzxA@mail.gmail.com>
+
+Hello,
+I have a data frame with a string column. All data that are neither
+"POS" nor "NEG" should've replaced by an NA. How can I implement that
+(even with extra libraries)? My attempts actually wipe out POS and
+NEG...
+Thank you
+
+```
+df = data.frame(a = 1:5, b = c("",      "31.35", "POS",   "20.61", "NEG"),
+                stringsAsFactors = F)
+df$b[!(df$b == "POS") & (df$b == "NEG")] = NA
+df$b[(df$b == "POS") | (df$b == "NEG")] = NA
+```
+
+-- 
+Best regards,
+Luigi
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Fri Oct 28 11:53:24 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Fri, 28 Oct 2022 10:53:24 +0100
+Subject: [R] Replace values based on neither condition
+In-Reply-To: <CAMk+s2TUwKwcgGHFzd_87X8Az_ppAea5U6SU29=uKgVhbbgzxA@mail.gmail.com>
+References: <CAMk+s2TUwKwcgGHFzd_87X8Az_ppAea5U6SU29=uKgVhbbgzxA@mail.gmail.com>
+Message-ID: <c4f5a1f8-6af8-8f37-64ff-92758fbc232e@sapo.pt>
+
+?s 10:43 de 28/10/2022, Luigi Marongiu escreveu:
+> Hello,
+> I have a data frame with a string column. All data that are neither
+> "POS" nor "NEG" should've replaced by an NA. How can I implement that
+> (even with extra libraries)? My attempts actually wipe out POS and
+> NEG...
+> Thank you
+> 
+> ```
+> df = data.frame(a = 1:5, b = c("",      "31.35", "POS",   "20.61", "NEG"),
+>                  stringsAsFactors = F)
+> df$b[!(df$b == "POS") & (df$b == "NEG")] = NA
+> df$b[(df$b == "POS") | (df$b == "NEG")] = NA
+> ```
+> 
+
+Hello,
+
+Here is a way.
+Use `%in%` to get the values equal to either "POS" or "NEG", negate its 
+result and function `is.na<-` assigns NA's.
+
+
+df = data.frame(a = 1:5, b = c("", "31.35", "POS", "20.61", "NEG"),
+                 stringsAsFactors = FALSE)
+
+is.na(df$b) <- !df$b %in% c("POS", "NEG")
+df
+#>   a    b
+#> 1 1 <NA>
+#> 2 2 <NA>
+#> 3 3  POS
+#> 4 4 <NA>
+#> 5 5  NEG
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+From m@rong|u@|u|g| @end|ng |rom gm@||@com  Fri Oct 28 13:04:49 2022
+From: m@rong|u@|u|g| @end|ng |rom gm@||@com (Luigi Marongiu)
+Date: Fri, 28 Oct 2022 13:04:49 +0200
+Subject: [R] Replace values based on neither condition
+In-Reply-To: <c4f5a1f8-6af8-8f37-64ff-92758fbc232e@sapo.pt>
+References: <CAMk+s2TUwKwcgGHFzd_87X8Az_ppAea5U6SU29=uKgVhbbgzxA@mail.gmail.com>
+ <c4f5a1f8-6af8-8f37-64ff-92758fbc232e@sapo.pt>
+Message-ID: <CAMk+s2R_QXnpHKjnnQKmCLxvpy7QLR35dN5maN0zpYHTe25Cmg@mail.gmail.com>
+
+Perfect, thank you!
+
+On Fri, Oct 28, 2022 at 11:53 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>
+> ?s 10:43 de 28/10/2022, Luigi Marongiu escreveu:
+> > Hello,
+> > I have a data frame with a string column. All data that are neither
+> > "POS" nor "NEG" should've replaced by an NA. How can I implement that
+> > (even with extra libraries)? My attempts actually wipe out POS and
+> > NEG...
+> > Thank you
+> >
+> > ```
+> > df = data.frame(a = 1:5, b = c("",      "31.35", "POS",   "20.61", "NEG"),
+> >                  stringsAsFactors = F)
+> > df$b[!(df$b == "POS") & (df$b == "NEG")] = NA
+> > df$b[(df$b == "POS") | (df$b == "NEG")] = NA
+> > ```
+> >
+>
+> Hello,
+>
+> Here is a way.
+> Use `%in%` to get the values equal to either "POS" or "NEG", negate its
+> result and function `is.na<-` assigns NA's.
+>
+>
+> df = data.frame(a = 1:5, b = c("", "31.35", "POS", "20.61", "NEG"),
+>                  stringsAsFactors = FALSE)
+>
+> is.na(df$b) <- !df$b %in% c("POS", "NEG")
+> df
+> #>   a    b
+> #> 1 1 <NA>
+> #> 2 2 <NA>
+> #> 3 3  POS
+> #> 4 4 <NA>
+> #> 5 5  NEG
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+
+
+
+-- 
+Best regards,
+Luigi
+
+
+From @ggp@@erge| @end|ng |rom gm@||@com  Fri Oct 28 15:52:59 2022
+From: @ggp@@erge| @end|ng |rom gm@||@com (Sergei Ko)
+Date: Fri, 28 Oct 2022 14:52:59 +0100
+Subject: [R] Unexpected result for df column $ subset with non-existent name
+Message-ID: <CAK2fHGdyp99FytVT0_U0p2jyDu16C=qVW1BS8-5RWofCZ6TOdw@mail.gmail.com>
+
+Hi All,
+
+Just noticed that R returns results for non-existent name if you have
+another variable with the same beginning when you subset with $.
+See the code below:
+name_0 <- "ID"
+name_1 <- "name"
+name_2 <- "name1"
+
+v0 <- 1:200
+v1 <- c(rep(0,100), rep(1,100))
+v2 <- c(rep(0,50), rep(1,150))
+
+df <- as.data.frame(cbind(v0, v1, v2))
+colnames(df) <- c(name_0, name_1, name_2)
+
+df_1 <- df[, c(name_0, name_1)]
+df_2 <- df[, c(name_0, name_2)]
+
+table(df$name)
+table(df_1$name)
+table(df_2$name)
+colnames(df_2)[2] <- "name10"
+table(df_2$name)
+colnames(df_2)[2] <- "name_any"
+table(df_2$name)
+table(df_2[,"name"])
+
+The last row produces an error as intended.
+Any ideas?
+
+Win 10
+R version 4.2.1 (2022-06-23 ucrt) -- "Funny-Looking Kid"
+
+Regards,
+Sergiy
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Fri Oct 28 16:25:28 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Fri, 28 Oct 2022 07:25:28 -0700
+Subject: [R] 
+ Unexpected result for df column $ subset with non-existent name
+In-Reply-To: <CAK2fHGdyp99FytVT0_U0p2jyDu16C=qVW1BS8-5RWofCZ6TOdw@mail.gmail.com>
+References: <CAK2fHGdyp99FytVT0_U0p2jyDu16C=qVW1BS8-5RWofCZ6TOdw@mail.gmail.com>
+Message-ID: <CAGxFJbQAYHFE6_JM1QriRTz0S-w3Dt8t5gsyh89maWXvTDgkGQ@mail.gmail.com>
+
+Does this explain it: (from ?Extract)
+
+
+name
+A literal character string or a name (possibly backtick quoted). For
+extraction, this is normally (see under ?Environments?) **partially
+matched** to the names of the object.
+
+-- Bert
+
+On Fri, Oct 28, 2022 at 6:53 AM Sergei Ko <sggp.sergei at gmail.com> wrote:
+>
+> Hi All,
+>
+> Just noticed that R returns results for non-existent name if you have
+> another variable with the same beginning when you subset with $.
+> See the code below:
+> name_0 <- "ID"
+> name_1 <- "name"
+> name_2 <- "name1"
+>
+> v0 <- 1:200
+> v1 <- c(rep(0,100), rep(1,100))
+> v2 <- c(rep(0,50), rep(1,150))
+>
+> df <- as.data.frame(cbind(v0, v1, v2))
+> colnames(df) <- c(name_0, name_1, name_2)
+>
+> df_1 <- df[, c(name_0, name_1)]
+> df_2 <- df[, c(name_0, name_2)]
+>
+> table(df$name)
+> table(df_1$name)
+> table(df_2$name)
+> colnames(df_2)[2] <- "name10"
+> table(df_2$name)
+> colnames(df_2)[2] <- "name_any"
+> table(df_2$name)
+> table(df_2[,"name"])
+>
+> The last row produces an error as intended.
+> Any ideas?
+>
+> Win 10
+> R version 4.2.1 (2022-06-23 ucrt) -- "Funny-Looking Kid"
+>
+> Regards,
+> Sergiy
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From JH@rm@e @end|ng |rom roku@com  Fri Oct 28 16:38:59 2022
+From: JH@rm@e @end|ng |rom roku@com (Jorgen Harmse)
+Date: Fri, 28 Oct 2022 14:38:59 +0000
+Subject: [R] unexpected 'else' in " else"
+In-Reply-To: <mailman.368146.1.1666864801.47134.r-help@r-project.org>
+References: <mailman.368146.1.1666864801.47134.r-help@r-project.org>
+Message-ID: <MW4PR01MB6465FDA0F0EDEE3DCFEFE648DC329@MW4PR01MB6465.prod.exchangelabs.com>
+
+Richard O'Keefe's remarks on the workings of the interpreter are correct, but the code examples are ugly and hard to read. (On the other hand, anyone who has used the debugger may be de-sensitised to horrible code formatting.) The use of whitespace should if possible reflect the structure of the code, and I would usually rather throw in a few extra delimiters than obscure the structure.
+
+Regards,
+Jorgen Harmse.
+
+
+Examples (best viewed in a real text editor so things line up):
+
+
+{ if (x<y)
+    z <- x
+  else
+    z <- y
+}
+
+Or
+
+{ if(x<y) z <- x
+  else z <- y
+}
+
+x <- ( y
+      + z)
+
+Or
+
+( x
+<- y
+   + z
+)
+
+Or
+
+?
+
+
+Message: 1
+Date: Wed, 26 Oct 2022 23:03:30 +1300
+From: "Richard O'Keefe" <raoknz at gmail.com>
+To: Jinsong Zhao <jszhao at yeah.net>
+Cc: "r-help at r-project.org" <r-help at r-project.org>
+Subject: Re: [R] unexpected 'else' in " else"
+Message-ID:
+        <CABcYAd+=v6FvOqi7JjK7iR5RScVdDBGZK_BASQ-z0=k6TKEyYA at mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+
+...
+
+The basic issue is that the top level wants to get started
+on your command AS SOON AS IT HAS A COMPLETE COMMAND,
+and if (...) stmt
+is complete.  It's not going to hang around "Waiting for Godot"
+for an 'else' that might never ever ever turn up.  So
+   if (x < y) z <-
+   x else z <- y
+is absolutely fine, no braces needed, while
+   if (x < y) z <- x
+   else z <- y
+will see the eager top level rush off to do your bidding
+at the end of the first line and then be completely
+baffled by an 'else' where it does not expect one.
+
+It's the same reason that you break AFTER infix operators
+instead of BEFORE.
+   x <- y +
+   z
+works fine, while
+   x <- y
+   + z
+doesn't.
+
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From tebert @end|ng |rom u||@edu  Fri Oct 28 17:22:10 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Fri, 28 Oct 2022 15:22:10 +0000
+Subject: [R] unexpected 'else' in " else"
+In-Reply-To: <MW4PR01MB6465FDA0F0EDEE3DCFEFE648DC329@MW4PR01MB6465.prod.exchangelabs.com>
+References: <mailman.368146.1.1666864801.47134.r-help@r-project.org>
+ <MW4PR01MB6465FDA0F0EDEE3DCFEFE648DC329@MW4PR01MB6465.prod.exchangelabs.com>
+Message-ID: <DM5PR2201MB1564DAAC17B6431D4A3228A1CF329@DM5PR2201MB1564.namprd22.prod.outlook.com>
+
+I appreciate this thread on coding. My preference for reading is to have complete sentences.
+I can read this:
+{ if (x<y)
+    z <- x
+  else
+    z <- y
+}
+
+This is much harder no matter how nicely everything is lined up.
+{ if 
+    (x<
+     y)
+       z <- 
+       x
+  else
+       z <- 
+       y
+}
+
+
+Regards,
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Jorgen Harmse via R-help
+Sent: Friday, October 28, 2022 10:39 AM
+To: r-help at r-project.org
+Subject: Re: [R] unexpected 'else' in " else"
+
+[External Email]
+
+Richard O'Keefe's remarks on the workings of the interpreter are correct, but the code examples are ugly and hard to read. (On the other hand, anyone who has used the debugger may be de-sensitised to horrible code formatting.) The use of whitespace should if possible reflect the structure of the code, and I would usually rather throw in a few extra delimiters than obscure the structure.
+
+Regards,
+Jorgen Harmse.
+
+
+Examples (best viewed in a real text editor so things line up):
+
+
+{ if (x<y)
+    z <- x
+  else
+    z <- y
+}
+
+Or
+
+{ if(x<y) z <- x
+  else z <- y
+}
+
+x <- ( y
+      + z)
+
+Or
+
+( x
+<- y
+   + z
+)
+
+Or
+
+ 
+
+
+Message: 1
+Date: Wed, 26 Oct 2022 23:03:30 +1300
+From: "Richard O'Keefe" <raoknz at gmail.com>
+To: Jinsong Zhao <jszhao at yeah.net>
+Cc: "r-help at r-project.org" <r-help at r-project.org>
+Subject: Re: [R] unexpected 'else' in " else"
+Message-ID:
+        <CABcYAd+=v6FvOqi7JjK7iR5RScVdDBGZK_BASQ-z0=k6TKEyYA at mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+
+...
+
+The basic issue is that the top level wants to get started on your command AS SOON AS IT HAS A COMPLETE COMMAND, and if (...) stmt is complete.  It's not going to hang around "Waiting for Godot"
+for an 'else' that might never ever ever turn up.  So
+   if (x < y) z <-
+   x else z <- y
+is absolutely fine, no braces needed, while
+   if (x < y) z <- x
+   else z <- y
+will see the eager top level rush off to do your bidding at the end of the first line and then be completely baffled by an 'else' where it does not expect one.
+
+It's the same reason that you break AFTER infix operators instead of BEFORE.
+   x <- y +
+   z
+works fine, while
+   x <- y
+   + z
+doesn't.
+
+
+
+
+
+        [[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Fri Oct 28 17:42:41 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Fri, 28 Oct 2022 16:42:41 +0100
+Subject: [R] 
+ Unexpected result for df column $ subset with non-existent name
+In-Reply-To: <CAK2fHGdyp99FytVT0_U0p2jyDu16C=qVW1BS8-5RWofCZ6TOdw@mail.gmail.com>
+References: <CAK2fHGdyp99FytVT0_U0p2jyDu16C=qVW1BS8-5RWofCZ6TOdw@mail.gmail.com>
+Message-ID: <3a137783-46d7-32b6-39ab-a42252d55bd0@sapo.pt>
+
+?s 14:52 de 28/10/2022, Sergei Ko escreveu:
+> Hi All,
+> 
+> Just noticed that R returns results for non-existent name if you have
+> another variable with the same beginning when you subset with $.
+> See the code below:
+> name_0 <- "ID"
+> name_1 <- "name"
+> name_2 <- "name1"
+> 
+> v0 <- 1:200
+> v1 <- c(rep(0,100), rep(1,100))
+> v2 <- c(rep(0,50), rep(1,150))
+> 
+> df <- as.data.frame(cbind(v0, v1, v2))
+> colnames(df) <- c(name_0, name_1, name_2)
+> 
+> df_1 <- df[, c(name_0, name_1)]
+> df_2 <- df[, c(name_0, name_2)]
+> 
+> table(df$name)
+> table(df_1$name)
+> table(df_2$name)
+> colnames(df_2)[2] <- "name10"
+> table(df_2$name)
+> colnames(df_2)[2] <- "name_any"
+> table(df_2$name)
+> table(df_2[,"name"])
+> 
+> The last row produces an error as intended.
+> Any ideas?
+> 
+> Win 10
+> R version 4.2.1 (2022-06-23 ucrt) -- "Funny-Looking Kid"
+> 
+> Regards,
+> Sergiy
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+This behavior, partial matching of column or list members names when 
+extracting with `$` is practically a FAQ.
+See the latest R-Help thread on it after the release of R 4.0
+
+
+https://stat.ethz.ch/pipermail/r-help/2020-May/467143.html
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+From JH@rm@e @end|ng |rom roku@com  Fri Oct 28 18:25:23 2022
+From: JH@rm@e @end|ng |rom roku@com (Jorgen Harmse)
+Date: Fri, 28 Oct 2022 16:25:23 +0000
+Subject: [R] [EXTERNAL] RE: unexpected 'else' in " else"
+In-Reply-To: <DM5PR2201MB1564DAAC17B6431D4A3228A1CF329@DM5PR2201MB1564.namprd22.prod.outlook.com>
+References: <mailman.368146.1.1666864801.47134.r-help@r-project.org>
+ <MW4PR01MB6465FDA0F0EDEE3DCFEFE648DC329@MW4PR01MB6465.prod.exchangelabs.com>
+ <DM5PR2201MB1564DAAC17B6431D4A3228A1CF329@DM5PR2201MB1564.namprd22.prod.outlook.com>
+Message-ID: <MW4PR01MB646567CE731DA39CEA00B515DC329@MW4PR01MB6465.prod.exchangelabs.com>
+
+Thank you for the comment. I don?t like the vertical sprawl either, but I assumed for the examples that the variable names were supposed to be very long or were stand-ins for complicated sub-expressions. Sometimes it?s better to put sub-expression results into temporary variables (and possibly use delayedAssign to preserve short-circuit behaviour), but I was discussing my line-break preferences in case breaks are needed.
+
+Regards,
+Jorgen Harmse.
+
+
+From: Ebert,Timothy Aaron <tebert at ufl.edu>
+Date: Friday, 28October, 2022 at 10:22
+To: Jorgen Harmse <JHarmse at roku.com>, r-help at r-project.org <r-help at r-project.org>
+Subject: [EXTERNAL] RE: unexpected 'else' in " else"
+I appreciate this thread on coding. My preference for reading is to have complete sentences.
+I can read this:
+{ if (x<y)
+    z <- x
+  else
+    z <- y
+}
+
+This is much harder no matter how nicely everything is lined up.
+{ if
+    (x<
+     y)
+       z <-
+       x
+  else
+       z <-
+       y
+}
+
+
+Regards,
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Jorgen Harmse via R-help
+Sent: Friday, October 28, 2022 10:39 AM
+To: r-help at r-project.org
+Subject: Re: [R] unexpected 'else' in " else"
+
+[External Email]
+
+Richard O'Keefe's remarks on the workings of the interpreter are correct, but the code examples are ugly and hard to read. (On the other hand, anyone who has used the debugger may be de-sensitised to horrible code formatting.) The use of whitespace should if possible reflect the structure of the code, and I would usually rather throw in a few extra delimiters than obscure the structure.
+
+Regards,
+Jorgen Harmse.
+
+
+Examples (best viewed in a real text editor so things line up):
+
+
+{ if (x<y)
+    z <- x
+  else
+    z <- y
+}
+
+Or
+
+{ if(x<y) z <- x
+  else z <- y
+}
+
+x <- ( y
+      + z)
+
+Or
+
+( x
+<- y
+   + z
+)
+
+Or
+
+
+
+
+Message: 1
+Date: Wed, 26 Oct 2022 23:03:30 +1300
+From: "Richard O'Keefe" <raoknz at gmail.com>
+To: Jinsong Zhao <jszhao at yeah.net>
+Cc: "r-help at r-project.org" <r-help at r-project.org>
+Subject: Re: [R] unexpected 'else' in " else"
+Message-ID:
+        <CABcYAd+=v6FvOqi7JjK7iR5RScVdDBGZK_BASQ-z0=k6TKEyYA at mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+
+...
+
+The basic issue is that the top level wants to get started on your command AS SOON AS IT HAS A COMPLETE COMMAND, and if (...) stmt is complete.  It's not going to hang around "Waiting for Godot"
+for an 'else' that might never ever ever turn up.  So
+   if (x < y) z <-
+   x else z <- y
+is absolutely fine, no braces needed, while
+   if (x < y) z <- x
+   else z <- y
+will see the eager top level rush off to do your bidding at the end of the first line and then be completely baffled by an 'else' where it does not expect one.
+
+It's the same reason that you break AFTER infix operators instead of BEFORE.
+   x <- y +
+   z
+works fine, while
+   x <- y
+   + z
+doesn't.
+
+
+
+
+
+        [[alternative HTML version deleted]]
+
+	[[alternative HTML version deleted]]
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Fri Oct 28 23:42:13 2022
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Sat, 29 Oct 2022 00:42:13 +0300
+Subject: [R] Partition vector of strings into lines of preferred width
+Message-ID: <10785f12-0860-bf49-d6d4-fdc953e2a866@syonic.eu>
+
+Dear R-Users,
+
+text = "
+What is the best way to split/cut a vector of strings into lines of 
+preferred width?
+I have come up with a simple solution, albeit naive, as it involves many 
+arithmetic divisions.
+I have an alternative idea which avoids this problem.
+But I may miss some existing functionality!"
+
+# Long vector of strings:
+str = strsplit(text, " |(?<=\n)", perl=TRUE)[[1]];
+lenWords = nchar(str);
+
+# simple, but naive solution:
+# - it involves many divisions;
+cut.character.int = function(n, w) {
+ ?? ?ncm = cumsum(n);
+ ?? ?nwd = ncm %/% w;
+ ?? ?count = rle(nwd)$lengths;
+ ?? ?pos = cumsum(count);
+ ?? ?posS = pos[ - length(pos)] + 1;
+ ?? ?posS = c(1, posS);
+ ?? ?pos = rbind(posS, pos);
+ ?? ?return(pos);
+}
+
+npos = cut.character.int(lenWords, w=30);
+# lets print the results;
+for(id in seq(ncol(npos))) {
+ ?? len = npos[2, id] - npos[1, id];
+ ?? cat(str[seq(npos[1, id], npos[2, id])], c(rep(" ", len), "\n"));
+}
+
+
+The first solution performs an arithmetic division on all string 
+lengths. It is possible to find out the total length and divide only the 
+last element of the cumsum. Something like this should work (although it 
+is not properly tested).
+
+
+w = 30;
+cumlen = cumsum(lenWords);
+max = tail(cumlen, 1) %/% w + 1;
+pos = cut(cumlen, seq(0, max) * w);
+count = rle(as.numeric(pos))$lengths;
+# everything else is the same;
+pos = cumsum(count);
+posS = pos[ - length(pos)] + 1;
+posS = c(1, posS);
+pos = rbind(posS, pos);
+
+npos = pos; # then print
+
+
+The cut() may be optimized as well, as the cumsum is sorted ascending. I 
+did not evaluate the efficiency of the code either.
+
+But do I miss some existing functionality?
+
+
+Note:
+
+- technically, the cut() function should probably return a vector of 
+indices (something like: rep(seq_along(count), count)), but it was more 
+practical to have both the start and end positions.
+
+
+Many thanks,
+
+
+Leonard
+
+
+From @kw@|mmo @end|ng |rom gm@||@com  Fri Oct 28 23:51:15 2022
+From: @kw@|mmo @end|ng |rom gm@||@com (Andrew Simmons)
+Date: Fri, 28 Oct 2022 17:51:15 -0400
+Subject: [R] Partition vector of strings into lines of preferred width
+In-Reply-To: <10785f12-0860-bf49-d6d4-fdc953e2a866@syonic.eu>
+References: <10785f12-0860-bf49-d6d4-fdc953e2a866@syonic.eu>
+Message-ID: <CAPcHnpR5ytsF3aA6L+cgB-HfAS+9t=k=Uy09OatTpTcrrCqmsA@mail.gmail.com>
+
+I would suggest using strwrap(), the documentation at ?strwrap has
+plenty of details and examples.
+For paragraphs, I would usually do something like:
+
+strwrap(x = , width = 80, indent = 4)
+
+On Fri, Oct 28, 2022 at 5:42 PM Leonard Mada via R-help
+<r-help at r-project.org> wrote:
+>
+> Dear R-Users,
+>
+> text = "
+> What is the best way to split/cut a vector of strings into lines of
+> preferred width?
+> I have come up with a simple solution, albeit naive, as it involves many
+> arithmetic divisions.
+> I have an alternative idea which avoids this problem.
+> But I may miss some existing functionality!"
+>
+> # Long vector of strings:
+> str = strsplit(text, " |(?<=\n)", perl=TRUE)[[1]];
+> lenWords = nchar(str);
+>
+> # simple, but naive solution:
+> # - it involves many divisions;
+> cut.character.int = function(n, w) {
+>      ncm = cumsum(n);
+>      nwd = ncm %/% w;
+>      count = rle(nwd)$lengths;
+>      pos = cumsum(count);
+>      posS = pos[ - length(pos)] + 1;
+>      posS = c(1, posS);
+>      pos = rbind(posS, pos);
+>      return(pos);
+> }
+>
+> npos = cut.character.int(lenWords, w=30);
+> # lets print the results;
+> for(id in seq(ncol(npos))) {
+>     len = npos[2, id] - npos[1, id];
+>     cat(str[seq(npos[1, id], npos[2, id])], c(rep(" ", len), "\n"));
+> }
+>
+>
+> The first solution performs an arithmetic division on all string
+> lengths. It is possible to find out the total length and divide only the
+> last element of the cumsum. Something like this should work (although it
+> is not properly tested).
+>
+>
+> w = 30;
+> cumlen = cumsum(lenWords);
+> max = tail(cumlen, 1) %/% w + 1;
+> pos = cut(cumlen, seq(0, max) * w);
+> count = rle(as.numeric(pos))$lengths;
+> # everything else is the same;
+> pos = cumsum(count);
+> posS = pos[ - length(pos)] + 1;
+> posS = c(1, posS);
+> pos = rbind(posS, pos);
+>
+> npos = pos; # then print
+>
+>
+> The cut() may be optimized as well, as the cumsum is sorted ascending. I
+> did not evaluate the efficiency of the code either.
+>
+> But do I miss some existing functionality?
+>
+>
+> Note:
+>
+> - technically, the cut() function should probably return a vector of
+> indices (something like: rep(seq_along(count), count)), but it was more
+> practical to have both the start and end positions.
+>
+>
+> Many thanks,
+>
+>
+> Leonard
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From mtmorg@n@b|oc @end|ng |rom gm@||@com  Fri Oct 28 23:52:46 2022
+From: mtmorg@n@b|oc @end|ng |rom gm@||@com (Martin Morgan)
+Date: Fri, 28 Oct 2022 21:52:46 +0000
+Subject: [R] Partition vector of strings into lines of preferred width
+In-Reply-To: <10785f12-0860-bf49-d6d4-fdc953e2a866@syonic.eu>
+References: <10785f12-0860-bf49-d6d4-fdc953e2a866@syonic.eu>
+Message-ID: <BY5PR04MB662799055664B540A2FD2FB4F9329@BY5PR04MB6627.namprd04.prod.outlook.com>
+
+> strwrap(text)
+[1] "What is the best way to split/cut a vector of strings into lines of"
+[2] "preferred width? I have come up with a simple solution, albeit naive,"
+[3] "as it involves many arithmetic divisions. I have an alternative idea"
+[4] "which avoids this problem. But I may miss some existing functionality!"
+
+Maybe used as
+
+> strwrap(text)  |> paste(collapse = "\n") |> cat("\n")
+What is the best way to split/cut a vector of strings into lines of
+preferred width? I have come up with a simple solution, albeit naive,
+as it involves many arithmetic divisions. I have an alternative idea
+which avoids this problem. But I may miss some existing functionality!
+>
+
+?
+
+From: R-help <r-help-bounces at r-project.org> on behalf of Leonard Mada via R-help <r-help at r-project.org>
+Date: Friday, October 28, 2022 at 5:42 PM
+To: R-help Mailing List <r-help at r-project.org>
+Subject: [R] Partition vector of strings into lines of preferred width
+Dear R-Users,
+
+text = "
+What is the best way to split/cut a vector of strings into lines of
+preferred width?
+I have come up with a simple solution, albeit naive, as it involves many
+arithmetic divisions.
+I have an alternative idea which avoids this problem.
+But I may miss some existing functionality!"
+
+# Long vector of strings:
+str = strsplit(text, " |(?<=\n)", perl=TRUE)[[1]];
+lenWords = nchar(str);
+
+# simple, but naive solution:
+# - it involves many divisions;
+cut.character.int = function(n, w) {
+     ncm = cumsum(n);
+     nwd = ncm %/% w;
+     count = rle(nwd)$lengths;
+     pos = cumsum(count);
+     posS = pos[ - length(pos)] + 1;
+     posS = c(1, posS);
+     pos = rbind(posS, pos);
+     return(pos);
+}
+
+npos = cut.character.int(lenWords, w=30);
+# lets print the results;
+for(id in seq(ncol(npos))) {
+    len = npos[2, id] - npos[1, id];
+    cat(str[seq(npos[1, id], npos[2, id])], c(rep(" ", len), "\n"));
+}
+
+
+The first solution performs an arithmetic division on all string
+lengths. It is possible to find out the total length and divide only the
+last element of the cumsum. Something like this should work (although it
+is not properly tested).
+
+
+w = 30;
+cumlen = cumsum(lenWords);
+max = tail(cumlen, 1) %/% w + 1;
+pos = cut(cumlen, seq(0, max) * w);
+count = rle(as.numeric(pos))$lengths;
+# everything else is the same;
+pos = cumsum(count);
+posS = pos[ - length(pos)] + 1;
+posS = c(1, posS);
+pos = rbind(posS, pos);
+
+npos = pos; # then print
+
+
+The cut() may be optimized as well, as the cumsum is sorted ascending. I
+did not evaluate the efficiency of the code either.
+
+But do I miss some existing functionality?
+
+
+Note:
+
+- technically, the cut() function should probably return a vector of
+indices (something like: rep(seq_along(count), count)), but it was more
+practical to have both the start and end positions.
+
+
+Many thanks,
+
+
+Leonard
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Sat Oct 29 00:07:42 2022
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Sat, 29 Oct 2022 01:07:42 +0300
+Subject: [R] Partition vector of strings into lines of preferred width
+In-Reply-To: <CAPcHnpR5ytsF3aA6L+cgB-HfAS+9t=k=Uy09OatTpTcrrCqmsA@mail.gmail.com>
+References: <10785f12-0860-bf49-d6d4-fdc953e2a866@syonic.eu>
+ <CAPcHnpR5ytsF3aA6L+cgB-HfAS+9t=k=Uy09OatTpTcrrCqmsA@mail.gmail.com>
+Message-ID: <0f0100f8-8692-6bb5-070e-8b46dc58bfb6@syonic.eu>
+
+Dear Andrew,
+
+
+Thank you for the fast reply. I forgot about strwrap. Though my problem 
+is slightly different.
+
+
+I do have the actual vector. Of course, I could first join the strings - 
+but this then involves both a join and a split (done by strwrap). Maybe 
+its possible to avoid the join and the split. My 2nd approach may be 
+also fine, but I have not tested it thoroughly (and I may miss an 
+existing solution).
+
+
+Sincerely,
+
+
+Leonard
+
+
+On 10/29/2022 12:51 AM, Andrew Simmons wrote:
+> I would suggest using strwrap(), the documentation at ?strwrap has
+> plenty of details and examples.
+> For paragraphs, I would usually do something like:
+>
+> strwrap(x = , width = 80, indent = 4)
+>
+> On Fri, Oct 28, 2022 at 5:42 PM Leonard Mada via R-help
+> <r-help at r-project.org> wrote:
+>> Dear R-Users,
+>>
+>> text = "
+>> What is the best way to split/cut a vector of strings into lines of
+>> preferred width?
+>> I have come up with a simple solution, albeit naive, as it involves many
+>> arithmetic divisions.
+>> I have an alternative idea which avoids this problem.
+>> But I may miss some existing functionality!"
+>>
+>> # Long vector of strings:
+>> str = strsplit(text, " |(?<=\n)", perl=TRUE)[[1]];
+>> lenWords = nchar(str);
+>>
+>> # simple, but naive solution:
+>> # - it involves many divisions;
+>> cut.character.int = function(n, w) {
+>>       ncm = cumsum(n);
+>>       nwd = ncm %/% w;
+>>       count = rle(nwd)$lengths;
+>>       pos = cumsum(count);
+>>       posS = pos[ - length(pos)] + 1;
+>>       posS = c(1, posS);
+>>       pos = rbind(posS, pos);
+>>       return(pos);
+>> }
+>>
+>> npos = cut.character.int(lenWords, w=30);
+>> # lets print the results;
+>> for(id in seq(ncol(npos))) {
+>>      len = npos[2, id] - npos[1, id];
+>>      cat(str[seq(npos[1, id], npos[2, id])], c(rep(" ", len), "\n"));
+>> }
+>>
+>>
+>> The first solution performs an arithmetic division on all string
+>> lengths. It is possible to find out the total length and divide only the
+>> last element of the cumsum. Something like this should work (although it
+>> is not properly tested).
+>>
+>>
+>> w = 30;
+>> cumlen = cumsum(lenWords);
+>> max = tail(cumlen, 1) %/% w + 1;
+>> pos = cut(cumlen, seq(0, max) * w);
+>> count = rle(as.numeric(pos))$lengths;
+>> # everything else is the same;
+>> pos = cumsum(count);
+>> posS = pos[ - length(pos)] + 1;
+>> posS = c(1, posS);
+>> pos = rbind(posS, pos);
+>>
+>> npos = pos; # then print
+>>
+>>
+>> The cut() may be optimized as well, as the cumsum is sorted ascending. I
+>> did not evaluate the efficiency of the code either.
+>>
+>> But do I miss some existing functionality?
+>>
+>>
+>> Note:
+>>
+>> - technically, the cut() function should probably return a vector of
+>> indices (something like: rep(seq_along(count), count)), but it was more
+>> practical to have both the start and end positions.
+>>
+>>
+>> Many thanks,
+>>
+>>
+>> Leonard
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From r@turner @end|ng |rom @uck|@nd@@c@nz  Sat Oct 29 00:53:40 2022
+From: r@turner @end|ng |rom @uck|@nd@@c@nz (Rolf Turner)
+Date: Sat, 29 Oct 2022 11:53:40 +1300
+Subject: [R] 
+ Unexpected result for df column $ subset with non-existent name
+In-Reply-To: <3a137783-46d7-32b6-39ab-a42252d55bd0@sapo.pt>
+References: <CAK2fHGdyp99FytVT0_U0p2jyDu16C=qVW1BS8-5RWofCZ6TOdw@mail.gmail.com>
+ <3a137783-46d7-32b6-39ab-a42252d55bd0@sapo.pt>
+Message-ID: <20221029115340.2861407e@rolf-Latitude-E7470>
+
+On Fri, 28 Oct 2022 16:42:41 +0100
+Rui Barradas <ruipbarradas at sapo.pt> wrote:
+
+<SNIP>
+
+> This behavior, partial matching of column or list members names when 
+> extracting with `$` is practically a FAQ.
+> See the latest R-Help thread on it after the release of R 4.0
+> 
+> 
+> https://stat.ethz.ch/pipermail/r-help/2020-May/467143.html
+> 
+> 
+> Hope this helps,
+
+See also fortunes::fortune("toad"). :-)
+
+cheers,
+
+Rolf
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Phone: +64-9-373-7599 ext. 88276
+
+
