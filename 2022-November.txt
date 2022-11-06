@@ -861,3 +861,1020 @@ Sent from my phone. Please excuse my brevity.
 	[[alternative HTML version deleted]]
 
 
+From T|||@ny@Duh| @end|ng |rom tu|t@@edu  Fri Nov  4 16:13:54 2022
+From: T|||@ny@Duh| @end|ng |rom tu|t@@edu (Duhl, Tiffany R.)
+Date: Fri, 4 Nov 2022 15:13:54 +0000
+Subject: [R] Selecting a minimum value of an attribute associated with point
+ values neighboring a given point and assigning it as a new attribute
+Message-ID: <BN6PR05MB35887EFE01222DBF7C359AAB903B9@BN6PR05MB3588.namprd05.prod.outlook.com>
+
+Hello,
+
+I have sets of spatial points with LAT, LON coords (unprojected, WGS84 datum) and several value attributes associated with each point, from numerous csv files (with an average of 6,000-9,000 points in each file) as shown in the following example:
+
+data<- read.csv("R_find_pts_testdata.csv")
+
+> data
+    ID      Date         Time        LAT            LON           Conc    Leg.Speed    CO2  H2O BC61 Hr Min Sec
+1   76 4/19/2021 21:25:38 42.40066 -70.98802 99300   0.0 mph 428.39 9.57  578 21  25  38
+2   77 4/19/2021 21:25:39 42.40066 -70.98802 96730   0.0 mph 428.04 9.57  617 21  25  39
+3   79 4/19/2021 21:25:41 42.40066 -70.98802 98800   0.2 mph 427.10 9.57 1027 21  25  41
+4   80 4/19/2021 21:25:42 42.40066 -70.98802 96510     2 mph 427.99 9.58 1381 21  25  42
+5   81 4/19/2021 21:25:43 42.40067 -70.98801 95540     3 mph 427.99 9.58 1271 21  25  43
+6   82 4/19/2021 21:25:44 42.40068 -70.98799 94720     4 mph 427.20 9.57  910 21  25  44
+7   83 4/19/2021 21:25:45 42.40069 -70.98797 94040     5 mph 427.18 9.57  652 21  25  45
+8   84 4/19/2021 21:25:46 42.40072 -70.98795 95710     7 mph 427.07 9.57  943 21  25  46
+9   85 4/19/2021 21:25:47 42.40074 -70.98792 96200     8 mph 427.44 9.56  650 21  25  47
+10  86 4/19/2021 21:25:48 42.40078 -70.98789 93750    10 mph 428.76 9.57  761 21  25  48
+11  87 4/19/2021 21:25:49 42.40081 -70.98785 93360    11 mph 429.25 9.56 1158 21  25  49
+12  88 4/19/2021 21:25:50 42.40084 -70.98781 94340    12 mph 429.56 9.57  107 21  25  50
+13  89 4/19/2021 21:25:51 42.40087 -70.98775 92780    12 mph 428.62 9.56  720 21  25  51
+
+
+What I want to do is, for each point, identify all points within 50m of that point, find the minimum value of the "Conc" attribute of each nearby set of points (including the original point) and then create a new variable ("Conc_min") and assign this minimum value to a new variable added to "data".
+
+So far, I have the following code:
+
+library(spdep)
+library(sf)
+
+setwd("C:\\mydirectory\\")
+data<- read.csv("R_find_pts_testdata.csv")
+
+#make sure the data is a data frame
+pts <- data.frame(data)
+
+#create spatial data frame and define projection
+pts_coords <- cbind(pts$LON, pts$LAT)
+data_pts <- SpatialPointsDataFrame(coords= pts_coords,
+data=pts, proj4string = CRS("+proj=longlat +datum=WGS84"))
+
+#Re-project to WGS 84 / UTM zone 18N, so the analysis is in units of m
+ptsUTM  <- sf::st_as_sf(data_pts, coords = c("LAT", "LON"), remove = F)%>% st_transform(32618)
+
+#create 50 m buffer around each point then intersect with points and finally find neighbors within the buffers
+pts_buf <- sf::st_buffer(ptsUTM, 50)
+coords  <- sf::st_coordinates(ptsUTM)
+int <- sf::st_intersects(pts_buf, ptsUTM)
+x   <- spdep::dnearneigh(coords, 0, 50)
+
+Now at this point, I'm not sure what to either the "int" (a sgbp list) or "x" (nb object) objects (or even if I need them both)
+
+> int
+Sparse geometry binary predicate list of length 974, where the predicate was `intersects'
+first 10 elements:
+ 1: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+ 2: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+ 3: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+ 4: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+ 5: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+ 6: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+ 7: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+ 8: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+ 9: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+
+> x
+Neighbour list object:
+Number of regions: 974
+Number of nonzero links: 34802
+Percentage nonzero weights: 3.668481
+Average number of links: 35.73101
+
+One thought is that maybe I don't need the dnearneigh function and can instead convert "int" into a dataframe and somehow merge or associate (perhaps with an inner join) the ID fields of the buffered and intersecting points and then compute the minimum value of "Conc" grouping by ID:
+
+> as.data.frame(int)
+    row.id col.id
+1        1      1
+2        1      2
+3        1      3
+4        1      4
+5        1      5
+6        1      6
+7        1      7
+8        1      8
+9        1      9
+10       1     10
+11       1     11
+12       1     12
+13       1     13
+14       1     14
+15       1     15
+16       1     16
+17       1     17
+18       1     18
+19       2      1
+20       2      2
+21       2      3
+22       2      4
+23       2      5
+24       2      6
+25       2      7
+26       2      8
+27       2      9
+28       2     10
+
+
+So in the above example I'd like to take the minimum of "Conc" among the col.id points grouped with row.id 1 (i.e., col.ids 1-18) and assign the  minimum value of this group as a new variable in data (Data$Conc_min), and do the same for row.id 2 and all the rest of the rows.
+
+I'm just not sure how to do this and I appreciate any help folks might have on this matter!
+
+Many thanks,
+-Tiffany
+
+	[[alternative HTML version deleted]]
+
+
+From @|gbert @end|ng |rom w|w|@hu-ber||n@de  Sat Nov  5 09:04:23 2022
+From: @|gbert @end|ng |rom w|w|@hu-ber||n@de (Sigbert Klinke)
+Date: Sat, 5 Nov 2022 09:04:23 +0100
+Subject: [R] rio: list of extensions for supported formats
+Message-ID: <419a5ed0-ac91-65c0-838f-a05307f9bbc0@wiwi.hu-berlin.de>
+
+Hi,
+
+is there a function in the package rio to get the file extensions listed 
+in the vignette under supported formats?
+
+Thanks Sigbert
+
+
+From @@ch@ndh|@| @end|ng |rom bt|nternet@com  Sat Nov  5 14:47:54 2022
+From: @@ch@ndh|@| @end|ng |rom bt|nternet@com (Amarjit Chandhial)
+Date: Sat, 5 Nov 2022 13:47:54 +0000 (GMT)
+Subject: [R] Associate a .R file with the RGui
+Message-ID: <6c894531.98c9.184480c446a.Webtop.100@btinternet.com>
+
+
+
+
+Hi Andrew/Petr,
+
+
+Thanks for the replies.
+
+In R Console if I run:
+
+R.home("bin")
+
+I get the following
+
+"C:/PROGRA~1/R/R-42~1.2/bin/x64"
+
+which is where
+
+Rgui.exe is (within the x64 folder there are 13 files in total: 8 . exe 
+and 5 .dll).
+
+
+In file Explorer if I right-click on a .R file -> Open With -> R for 
+Windows GUI Front-End
+
+RGui (64-bit) opens but the .R file does not appear in the editor.
+
+
+Amarjit
+
+
+------ Original Message ------
+From: "Andrew Simmons" <akwsimmo at gmail.com>
+To: "Amarjit Chandhial" <a.chandhial at btinternet.com>
+Cc: "R-help Mailing List" <r-help at r-project.org>
+Sent: Friday, 4 Nov, 2022 At 09:08
+Subject: Re: [R] Associate a .R file with the RGui
+
+In an R session, run this:
+
+writeLines(normalizePath(R.home("bin")))
+
+
+Right click your .R file > Open with > Choose another app > Check the 
+box "Always use this app to open .R files" > Look for another app on 
+this PC
+Paste the directory found above, then select "Rgui.exe"
+
+
+On Fri, Nov 4, 2022, 04:49 Amarjit Chandhial via R-help 
+<r-help at r-project.org <mailto:r-help at r-project.org> > wrote:
+
+  Hi,
+
+
+  My OS is Windows 11 Pro 64-Bit, I have R 4.2.2 and RStudio installed.
+
+  If I double-click on a .R file in File Explorer the OS gives me the
+  option of opening the .R in RStudio, or Look for an app in the 
+Microsoft
+  Store, or More Apps. Similarly with a right-click.
+
+  I would like to associate a .R file with the RGui, not RStudio, thus
+  when I double-click on a .R file in File Explorer the .R file opens in
+  the R Editor in RGui.
+
+  On my PC R 4.2.2 is located in "C:/Program Files/R/R-4.2.2/etc"
+
+  Please can someone provide step-by-step instructions on how to
+  associate?
+
+
+  thanks,
+  Amarjit
+
+          [[alternative HTML version deleted]]
+
+  ______________________________________________
+  R-help at r-project.org <mailto:R-help at r-project.org>  mailing list -- To 
+UNSUBSCRIBE and more, see
+  https://stat.ethz.ch/mailman/listinfo/r-help 
+<https://stat.ethz.ch/mailman/listinfo/r-help>
+  PLEASE do read the posting guide 
+http://www.R-project.org/posting-guide.html 
+<http://www.R-project.org/posting-guide.html>
+  and provide commented, minimal, self-contained, reproducible code.
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sat Nov  5 16:03:49 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sat, 05 Nov 2022 08:03:49 -0700
+Subject: [R] Associate a .R file with the RGui
+In-Reply-To: <6c894531.98c9.184480c446a.Webtop.100@btinternet.com>
+References: <6c894531.98c9.184480c446a.Webtop.100@btinternet.com>
+Message-ID: <8F61167A-345F-4615-9C55-1C486A8DE0B1@dcn.davis.ca.us>
+
+RGui is not an editor. It is a console (aka REPL, https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop).
+
+When using RGui, it is up to you to edit your R file in an external editor like Notepad++ and copy paste code snippets or use source("yourfile.R") as desired.
+
+On November 5, 2022 6:47:54 AM PDT, Amarjit Chandhial via R-help <r-help at r-project.org> wrote:
+>
+>
+>
+>Hi Andrew/Petr,
+>
+>
+>Thanks for the replies.
+>
+>In R Console if I run:
+>
+>R.home("bin")
+>
+>I get the following
+>
+>"C:/PROGRA~1/R/R-42~1.2/bin/x64"
+>
+>which is where
+>
+>Rgui.exe is (within the x64 folder there are 13 files in total: 8 . exe 
+>and 5 .dll).
+>
+>
+>In file Explorer if I right-click on a .R file -> Open With -> R for 
+>Windows GUI Front-End
+>
+>RGui (64-bit) opens but the .R file does not appear in the editor.
+>
+>
+>Amarjit
+>
+>
+>------ Original Message ------
+>From: "Andrew Simmons" <akwsimmo at gmail.com>
+>To: "Amarjit Chandhial" <a.chandhial at btinternet.com>
+>Cc: "R-help Mailing List" <r-help at r-project.org>
+>Sent: Friday, 4 Nov, 2022 At 09:08
+>Subject: Re: [R] Associate a .R file with the RGui
+>
+>In an R session, run this:
+>
+>writeLines(normalizePath(R.home("bin")))
+>
+>
+>Right click your .R file > Open with > Choose another app > Check the 
+>box "Always use this app to open .R files" > Look for another app on 
+>this PC
+>Paste the directory found above, then select "Rgui.exe"
+>
+>
+>On Fri, Nov 4, 2022, 04:49 Amarjit Chandhial via R-help 
+><r-help at r-project.org <mailto:r-help at r-project.org> > wrote:
+>
+>  Hi,
+>
+>
+>  My OS is Windows 11 Pro 64-Bit, I have R 4.2.2 and RStudio installed.
+>
+>  If I double-click on a .R file in File Explorer the OS gives me the
+>  option of opening the .R in RStudio, or Look for an app in the 
+>Microsoft
+>  Store, or More Apps. Similarly with a right-click.
+>
+>  I would like to associate a .R file with the RGui, not RStudio, thus
+>  when I double-click on a .R file in File Explorer the .R file opens in
+>  the R Editor in RGui.
+>
+>  On my PC R 4.2.2 is located in "C:/Program Files/R/R-4.2.2/etc"
+>
+>  Please can someone provide step-by-step instructions on how to
+>  associate?
+>
+>
+>  thanks,
+>  Amarjit
+>
+>          [[alternative HTML version deleted]]
+>
+>  ______________________________________________
+>  R-help at r-project.org <mailto:R-help at r-project.org>  mailing list -- To 
+>UNSUBSCRIBE and more, see
+>  https://stat.ethz.ch/mailman/listinfo/r-help 
+><https://stat.ethz.ch/mailman/listinfo/r-help>
+>  PLEASE do read the posting guide 
+>http://www.R-project.org/posting-guide.html 
+><http://www.R-project.org/posting-guide.html>
+>  and provide commented, minimal, self-contained, reproducible code.
+>
+>
+>
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Nov  5 16:08:31 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 5 Nov 2022 08:08:31 -0700
+Subject: [R] 
+ Selecting a minimum value of an attribute associated with point
+ values neighboring a given point and assigning it as a new attribute
+In-Reply-To: <BN6PR05MB35887EFE01222DBF7C359AAB903B9@BN6PR05MB3588.namprd05.prod.outlook.com>
+References: <BN6PR05MB35887EFE01222DBF7C359AAB903B9@BN6PR05MB3588.namprd05.prod.outlook.com>
+Message-ID: <CAGxFJbSkg9zAqk0dGcr3qJe2z2C04NEZFdHN8hWQA3oSbfHukQ@mail.gmail.com>
+
+Probably better posted on R-sig-geo.
+
+-- Bert
+
+On Sat, Nov 5, 2022 at 12:36 AM Duhl, Tiffany R. <Tiffany.Duhl at tufts.edu>
+wrote:
+
+> Hello,
+>
+> I have sets of spatial points with LAT, LON coords (unprojected, WGS84
+> datum) and several value attributes associated with each point, from
+> numerous csv files (with an average of 6,000-9,000 points in each file) as
+> shown in the following example:
+>
+> data<- read.csv("R_find_pts_testdata.csv")
+>
+> > data
+>     ID      Date         Time        LAT            LON           Conc
+> Leg.Speed    CO2  H2O BC61 Hr Min Sec
+> 1   76 4/19/2021 21:25:38 42.40066 -70.98802 99300   0.0 mph 428.39 9.57
+> 578 21  25  38
+> 2   77 4/19/2021 21:25:39 42.40066 -70.98802 96730   0.0 mph 428.04 9.57
+> 617 21  25  39
+> 3   79 4/19/2021 21:25:41 42.40066 -70.98802 98800   0.2 mph 427.10 9.57
+> 1027 21  25  41
+> 4   80 4/19/2021 21:25:42 42.40066 -70.98802 96510     2 mph 427.99 9.58
+> 1381 21  25  42
+> 5   81 4/19/2021 21:25:43 42.40067 -70.98801 95540     3 mph 427.99 9.58
+> 1271 21  25  43
+> 6   82 4/19/2021 21:25:44 42.40068 -70.98799 94720     4 mph 427.20 9.57
+> 910 21  25  44
+> 7   83 4/19/2021 21:25:45 42.40069 -70.98797 94040     5 mph 427.18 9.57
+> 652 21  25  45
+> 8   84 4/19/2021 21:25:46 42.40072 -70.98795 95710     7 mph 427.07 9.57
+> 943 21  25  46
+> 9   85 4/19/2021 21:25:47 42.40074 -70.98792 96200     8 mph 427.44 9.56
+> 650 21  25  47
+> 10  86 4/19/2021 21:25:48 42.40078 -70.98789 93750    10 mph 428.76 9.57
+> 761 21  25  48
+> 11  87 4/19/2021 21:25:49 42.40081 -70.98785 93360    11 mph 429.25 9.56
+> 1158 21  25  49
+> 12  88 4/19/2021 21:25:50 42.40084 -70.98781 94340    12 mph 429.56 9.57
+> 107 21  25  50
+> 13  89 4/19/2021 21:25:51 42.40087 -70.98775 92780    12 mph 428.62 9.56
+> 720 21  25  51
+>
+>
+> What I want to do is, for each point, identify all points within 50m of
+> that point, find the minimum value of the "Conc" attribute of each nearby
+> set of points (including the original point) and then create a new variable
+> ("Conc_min") and assign this minimum value to a new variable added to
+> "data".
+>
+> So far, I have the following code:
+>
+> library(spdep)
+> library(sf)
+>
+> setwd("C:\\mydirectory\\")
+> data<- read.csv("R_find_pts_testdata.csv")
+>
+> #make sure the data is a data frame
+> pts <- data.frame(data)
+>
+> #create spatial data frame and define projection
+> pts_coords <- cbind(pts$LON, pts$LAT)
+> data_pts <- SpatialPointsDataFrame(coords= pts_coords,
+> data=pts, proj4string = CRS("+proj=longlat +datum=WGS84"))
+>
+> #Re-project to WGS 84 / UTM zone 18N, so the analysis is in units of m
+> ptsUTM  <- sf::st_as_sf(data_pts, coords = c("LAT", "LON"), remove = F)%>%
+> st_transform(32618)
+>
+> #create 50 m buffer around each point then intersect with points and
+> finally find neighbors within the buffers
+> pts_buf <- sf::st_buffer(ptsUTM, 50)
+> coords  <- sf::st_coordinates(ptsUTM)
+> int <- sf::st_intersects(pts_buf, ptsUTM)
+> x   <- spdep::dnearneigh(coords, 0, 50)
+>
+> Now at this point, I'm not sure what to either the "int" (a sgbp list) or
+> "x" (nb object) objects (or even if I need them both)
+>
+> > int
+> Sparse geometry binary predicate list of length 974, where the predicate
+> was `intersects'
+> first 10 elements:
+>  1: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>  2: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>  3: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>  4: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>  5: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>  6: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>  7: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>  8: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>  9: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>
+> > x
+> Neighbour list object:
+> Number of regions: 974
+> Number of nonzero links: 34802
+> Percentage nonzero weights: 3.668481
+> Average number of links: 35.73101
+>
+> One thought is that maybe I don't need the dnearneigh function and can
+> instead convert "int" into a dataframe and somehow merge or associate
+> (perhaps with an inner join) the ID fields of the buffered and intersecting
+> points and then compute the minimum value of "Conc" grouping by ID:
+>
+> > as.data.frame(int)
+>     row.id col.id
+> 1        1      1
+> 2        1      2
+> 3        1      3
+> 4        1      4
+> 5        1      5
+> 6        1      6
+> 7        1      7
+> 8        1      8
+> 9        1      9
+> 10       1     10
+> 11       1     11
+> 12       1     12
+> 13       1     13
+> 14       1     14
+> 15       1     15
+> 16       1     16
+> 17       1     17
+> 18       1     18
+> 19       2      1
+> 20       2      2
+> 21       2      3
+> 22       2      4
+> 23       2      5
+> 24       2      6
+> 25       2      7
+> 26       2      8
+> 27       2      9
+> 28       2     10
+>
+>
+> So in the above example I'd like to take the minimum of "Conc" among the
+> col.id points grouped with row.id 1 (i.e., col.ids 1-18) and assign the
+> minimum value of this group as a new variable in data (Data$Conc_min), and
+> do the same for row.id 2 and all the rest of the rows.
+>
+> I'm just not sure how to do this and I appreciate any help folks might
+> have on this matter!
+>
+> Many thanks,
+> -Tiffany
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @@ch@ndh|@| @end|ng |rom bt|nternet@com  Sat Nov  5 17:58:49 2022
+From: @@ch@ndh|@| @end|ng |rom bt|nternet@com (Amarjit Chandhial)
+Date: Sat, 5 Nov 2022 16:58:49 +0000
+Subject: [R] Associate a .R file with the RGui
+In-Reply-To: <8F61167A-345F-4615-9C55-1C486A8DE0B1@dcn.davis.ca.us>
+References: <6c894531.98c9.184480c446a.Webtop.100@btinternet.com>
+ <8F61167A-345F-4615-9C55-1C486A8DE0B1@dcn.davis.ca.us>
+Message-ID: <69B40FD3-25AC-4180-9DC4-737C82BBFA85@btinternet.com>
+
+Hi Jeff,
+
+
+Please see my original question.
+
+
+Thanks,
+Amarjiit 
+
+
+
+> On 5 Nov 2022, at 15:03, Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrote:
+> 
+> RGui is not an editor. It is a console (aka REPL, https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop).
+> 
+> When using RGui, it is up to you to edit your R file in an external editor like Notepad++ and copy paste code snippets or use source("yourfile.R") as desired.
+> 
+>> On November 5, 2022 6:47:54 AM PDT, Amarjit Chandhial via R-help <r-help at r-project.org> wrote:
+>> 
+>> 
+>> 
+>> Hi Andrew/Petr,
+>> 
+>> 
+>> Thanks for the replies.
+>> 
+>> In R Console if I run:
+>> 
+>> R.home("bin")
+>> 
+>> I get the following
+>> 
+>> "C:/PROGRA~1/R/R-42~1.2/bin/x64"
+>> 
+>> which is where
+>> 
+>> Rgui.exe is (within the x64 folder there are 13 files in total: 8 . exe 
+>> and 5 .dll).
+>> 
+>> 
+>> In file Explorer if I right-click on a .R file -> Open With -> R for 
+>> Windows GUI Front-End
+>> 
+>> RGui (64-bit) opens but the .R file does not appear in the editor.
+>> 
+>> 
+>> Amarjit
+>> 
+>> 
+>> ------ Original Message ------
+>> From: "Andrew Simmons" <akwsimmo at gmail.com>
+>> To: "Amarjit Chandhial" <a.chandhial at btinternet.com>
+>> Cc: "R-help Mailing List" <r-help at r-project.org>
+>> Sent: Friday, 4 Nov, 2022 At 09:08
+>> Subject: Re: [R] Associate a .R file with the RGui
+>> 
+>> In an R session, run this:
+>> 
+>> writeLines(normalizePath(R.home("bin")))
+>> 
+>> 
+>> Right click your .R file > Open with > Choose another app > Check the 
+>> box "Always use this app to open .R files" > Look for another app on 
+>> this PC
+>> Paste the directory found above, then select "Rgui.exe"
+>> 
+>> 
+>> On Fri, Nov 4, 2022, 04:49 Amarjit Chandhial via R-help 
+>> <r-help at r-project.org <mailto:r-help at r-project.org> > wrote:
+>> 
+>> Hi,
+>> 
+>> 
+>> My OS is Windows 11 Pro 64-Bit, I have R 4.2.2 and RStudio installed.
+>> 
+>> If I double-click on a .R file in File Explorer the OS gives me the
+>> option of opening the .R in RStudio, or Look for an app in the 
+>> Microsoft
+>> Store, or More Apps. Similarly with a right-click.
+>> 
+>> I would like to associate a .R file with the RGui, not RStudio, thus
+>> when I double-click on a .R file in File Explorer the .R file opens in
+>> the R Editor in RGui.
+>> 
+>> On my PC R 4.2.2 is located in "C:/Program Files/R/R-4.2.2/etc"
+>> 
+>> Please can someone provide step-by-step instructions on how to
+>> associate?
+>> 
+>> 
+>> thanks,
+>> Amarjit
+>> 
+>>         [[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-help at r-project.org <mailto:R-help at r-project.org>  mailing list -- To 
+>> UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help 
+>> <https://stat.ethz.ch/mailman/listinfo/r-help>
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html 
+>> <http://www.R-project.org/posting-guide.html>
+>> and provide commented, minimal, self-contained, reproducible code.
+>> 
+>> 
+>> 
+>> 
+>>    [[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> -- 
+> Sent from my phone. Please excuse my brevity.
+
+
+From th|erry@ze|| @end|ng |rom gm@||@com  Sat Nov  5 18:36:52 2022
+From: th|erry@ze|| @end|ng |rom gm@||@com (Thierry Zell)
+Date: Sat, 5 Nov 2022 13:36:52 -0400
+Subject: [R] Is this *always* the intended R^2 value for no intercept in lm?
+Message-ID: <CALAJGyCDBnYiaEFfOOBtkvWgxaSb=+hE1beDk6AOBFaoLswYPw@mail.gmail.com>
+
+I am puzzled by the computation of R^2 with intercept omitted that is
+already illustrated by the following example taken from help("lm")
+
+## Annette Dobson (1990) "An Introduction to Generalized Linear Models".
+## Page 9: Plant Weight Data.
+ctl <- c(4.17,5.58,5.18,6.11,4.50,4.61,5.17,4.53,5.33,5.14)
+trt <- c(4.81,4.17,4.41,3.59,5.87,3.83,6.03,4.89,4.32,4.69)
+group <- gl(2, 10, 20, labels = c("Ctl","Trt"))
+weight <- c(ctl, trt)
+lm.D9 <- lm(weight ~ group)
+lm.D90 <- lm(weight ~ group - 1) # omitting intercept
+
+The calculations for the R^2 for both models  are consistent with the
+help("summary.lm") description:
+"y* is the mean of y[i] if there is an intercept and zero otherwise."
+Which causes a dramatic difference in the resulting R^2 values.
+
+r2.D9 <- summary(lm.D9)$r.squared
+r2.D90 <- summary(lm.D90)$r.squared
+
+all.equal(r2.D9, 0.0730775989903856) #TRUE
+all.equal(r2.D90, 0.981783272435264) #TRUE
+
+This is counter-intuitive to say the least since the two models have
+identical predictions and both models could be described more
+accurately as two intercepts rather than zero. I see three
+possibilities:
+
+1. This is the intended result, in which case no fix is required, but
+I?d be curious to understand the argument better.
+2. This is an unfortunate outcome but not worth fixing as the user can
+easily compute the correct R^2. In this case, I'd suggest that this
+unintuitive behavior should be explicitly called out in the
+documentation.
+3. This is a bug worth fixing.
+
+I look forward to hearing the community?s opinion on this.
+Thanks in advance!
+
+
+From jrkr|de@u @end|ng |rom gm@||@com  Sat Nov  5 20:39:21 2022
+From: jrkr|de@u @end|ng |rom gm@||@com (John Kane)
+Date: Sat, 5 Nov 2022 15:39:21 -0400
+Subject: [R] rio: list of extensions for supported formats
+In-Reply-To: <419a5ed0-ac91-65c0-838f-a05307f9bbc0@wiwi.hu-berlin.de>
+References: <419a5ed0-ac91-65c0-838f-a05307f9bbc0@wiwi.hu-berlin.de>
+Message-ID: <CAKZQJMCRtXHy1TtfyGXpK8cZk_38roeBDidabRvWt6r2RNCGZw@mail.gmail.com>
+
+nnnnnnnnnnnnnnnno idea but there is a list here
+https://thomasleeper.com/rio/articles/rio.html
+
+On Sat, 5 Nov 2022 at 04:04, Sigbert Klinke <sigbert at wiwi.hu-berlin.de>
+wrote:
+
+> Hi,
+>
+> is there a function in the package rio to get the file extensions listed
+> in the vignette under supported formats?
+>
+> Thanks Sigbert
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+-- 
+John Kane
+Kingston ON Canada
+
+	[[alternative HTML version deleted]]
+
+
+From jrkr|de@u @end|ng |rom gm@||@com  Sat Nov  5 20:40:00 2022
+From: jrkr|de@u @end|ng |rom gm@||@com (John Kane)
+Date: Sat, 5 Nov 2022 15:40:00 -0400
+Subject: [R] rio: list of extensions for supported formats
+In-Reply-To: <CAKZQJMCRtXHy1TtfyGXpK8cZk_38roeBDidabRvWt6r2RNCGZw@mail.gmail.com>
+References: <419a5ed0-ac91-65c0-838f-a05307f9bbc0@wiwi.hu-berlin.de>
+ <CAKZQJMCRtXHy1TtfyGXpK8cZk_38roeBDidabRvWt6r2RNCGZw@mail.gmail.com>
+Message-ID: <CAKZQJMAD8nGBdcuqYydajKhwe0KjZtYsC5MYDH5s03SezG5DUw@mail.gmail.com>
+
+Cat was being helpful.
+
+On Sat, 5 Nov 2022 at 15:39, John Kane <jrkrideau at gmail.com> wrote:
+
+> nnnnnnnnnnnnnnnno idea but there is a list here
+> https://thomasleeper.com/rio/articles/rio.html
+>
+> On Sat, 5 Nov 2022 at 04:04, Sigbert Klinke <sigbert at wiwi.hu-berlin.de>
+> wrote:
+>
+>> Hi,
+>>
+>> is there a function in the package rio to get the file extensions listed
+>> in the vignette under supported formats?
+>>
+>> Thanks Sigbert
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+>
+> --
+> John Kane
+> Kingston ON Canada
+>
+
+
+-- 
+John Kane
+Kingston ON Canada
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Nov  5 20:40:35 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 5 Nov 2022 12:40:35 -0700
+Subject: [R] 
+ Is this *always* the intended R^2 value for no intercept in lm?
+In-Reply-To: <CALAJGyCDBnYiaEFfOOBtkvWgxaSb=+hE1beDk6AOBFaoLswYPw@mail.gmail.com>
+References: <CALAJGyCDBnYiaEFfOOBtkvWgxaSb=+hE1beDk6AOBFaoLswYPw@mail.gmail.com>
+Message-ID: <CAGxFJbQTzxLtALLdcChx0dBhGRuEBvZBTrmebqVSmEqxNBE2ag@mail.gmail.com>
+
+FAQ 7.41
+and
+https://stackoverflow.com/questions/57415793/r-squared-in-lm-for-zero-intercept-model
+
+(among numerous others that could no doubt be found with a bit of
+searching).
+
+In short, the "null models" against which you are comparing the fitted
+model are different with and without an intercept.
+
+--Bert
+
+
+
+On Sat, Nov 5, 2022 at 11:52 AM Thierry Zell <thierry.zell at gmail.com> wrote:
+
+> I am puzzled by the computation of R^2 with intercept omitted that is
+> already illustrated by the following example taken from help("lm")
+>
+> ## Annette Dobson (1990) "An Introduction to Generalized Linear Models".
+> ## Page 9: Plant Weight Data.
+> ctl <- c(4.17,5.58,5.18,6.11,4.50,4.61,5.17,4.53,5.33,5.14)
+> trt <- c(4.81,4.17,4.41,3.59,5.87,3.83,6.03,4.89,4.32,4.69)
+> group <- gl(2, 10, 20, labels = c("Ctl","Trt"))
+> weight <- c(ctl, trt)
+> lm.D9 <- lm(weight ~ group)
+> lm.D90 <- lm(weight ~ group - 1) # omitting intercept
+>
+> The calculations for the R^2 for both models  are consistent with the
+> help("summary.lm") description:
+> "y* is the mean of y[i] if there is an intercept and zero otherwise."
+> Which causes a dramatic difference in the resulting R^2 values.
+>
+> r2.D9 <- summary(lm.D9)$r.squared
+> r2.D90 <- summary(lm.D90)$r.squared
+>
+> all.equal(r2.D9, 0.0730775989903856) #TRUE
+> all.equal(r2.D90, 0.981783272435264) #TRUE
+>
+> This is counter-intuitive to say the least since the two models have
+> identical predictions and both models could be described more
+> accurately as two intercepts rather than zero. I see three
+> possibilities:
+>
+> 1. This is the intended result, in which case no fix is required, but
+> I?d be curious to understand the argument better.
+> 2. This is an unfortunate outcome but not worth fixing as the user can
+> easily compute the correct R^2. In this case, I'd suggest that this
+> unintuitive behavior should be explicitly called out in the
+> documentation.
+> 3. This is a bug worth fixing.
+>
+> I look forward to hearing the community?s opinion on this.
+> Thanks in advance!
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From dw|n@em|u@ @end|ng |rom comc@@t@net  Sun Nov  6 01:40:40 2022
+From: dw|n@em|u@ @end|ng |rom comc@@t@net (David Winsemius)
+Date: Sat, 5 Nov 2022 17:40:40 -0700
+Subject: [R] Associate a .R file with the RGui
+In-Reply-To: <69B40FD3-25AC-4180-9DC4-737C82BBFA85@btinternet.com>
+References: <6c894531.98c9.184480c446a.Webtop.100@btinternet.com>
+ <8F61167A-345F-4615-9C55-1C486A8DE0B1@dcn.davis.ca.us>
+ <69B40FD3-25AC-4180-9DC4-737C82BBFA85@btinternet.com>
+Message-ID: <4da62093-4035-7401-2d80-d47cc319a468@comcast.net>
+
+
+On 11/5/22 09:58, Amarjit Chandhial via R-help wrote:
+> Hi Jeff,
+>
+>
+> Please see my original question.
+
+You were told that RGui is not an editor.
+
+Are you implying that your initial message contained an implicit request 
+for instructions on how to get R code in an .R file to be opened 
+automagically when double-clicked or to have "open in <some editor>" 
+appear when right-clicked? (I didn't see that clearly expressed.)
+
+If you want something else to happen with a file that has a .R extension 
+when double-clicked or right-clicked in a GUI file manager, then you 
+need to configure your OS to do whatever else it is that you expect. 
+This is not really an R question. It's an OS question. There are many 
+editors that can also bring up R consoles when the right? key combo is 
+pressed. They do require some study for their specific actions, but this 
+is not really the place to get guidance on the fine details.
+
+-- 
+
+David.
+
+>
+>
+> Thanks,
+> Amarjiit
+>
+>
+>
+>> On 5 Nov 2022, at 15:03, Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrote:
+>>
+>> RGui is not an editor. It is a console (aka REPL, https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop).
+>>
+>> When using RGui, it is up to you to edit your R file in an external editor like Notepad++ and copy paste code snippets or use source("yourfile.R") as desired.
+>>
+>>> On November 5, 2022 6:47:54 AM PDT, Amarjit Chandhial via R-help <r-help at r-project.org> wrote:
+>>>
+>>>
+>>>
+>>> Hi Andrew/Petr,
+>>>
+>>>
+>>> Thanks for the replies.
+>>>
+>>> In R Console if I run:
+>>>
+>>> R.home("bin")
+>>>
+>>> I get the following
+>>>
+>>> "C:/PROGRA~1/R/R-42~1.2/bin/x64"
+>>>
+>>> which is where
+>>>
+>>> Rgui.exe is (within the x64 folder there are 13 files in total: 8 . exe
+>>> and 5 .dll).
+>>>
+>>>
+>>> In file Explorer if I right-click on a .R file -> Open With -> R for
+>>> Windows GUI Front-End
+>>>
+>>> RGui (64-bit) opens but the .R file does not appear in the editor.
+>>>
+>>>
+>>> Amarjit
+>>>
+>>>
+>>> ------ Original Message ------
+>>> From: "Andrew Simmons" <akwsimmo at gmail.com>
+>>> To: "Amarjit Chandhial" <a.chandhial at btinternet.com>
+>>> Cc: "R-help Mailing List" <r-help at r-project.org>
+>>> Sent: Friday, 4 Nov, 2022 At 09:08
+>>> Subject: Re: [R] Associate a .R file with the RGui
+>>>
+>>> In an R session, run this:
+>>>
+>>> writeLines(normalizePath(R.home("bin")))
+>>>
+>>>
+>>> Right click your .R file > Open with > Choose another app > Check the
+>>> box "Always use this app to open .R files" > Look for another app on
+>>> this PC
+>>> Paste the directory found above, then select "Rgui.exe"
+>>>
+>>>
+>>> On Fri, Nov 4, 2022, 04:49 Amarjit Chandhial via R-help
+>>> <r-help at r-project.org <mailto:r-help at r-project.org> > wrote:
+>>>
+>>> Hi,
+>>>
+>>>
+>>> My OS is Windows 11 Pro 64-Bit, I have R 4.2.2 and RStudio installed.
+>>>
+>>> If I double-click on a .R file in File Explorer the OS gives me the
+>>> option of opening the .R in RStudio, or Look for an app in the
+>>> Microsoft
+>>> Store, or More Apps. Similarly with a right-click.
+>>>
+>>> I would like to associate a .R file with the RGui, not RStudio, thus
+>>> when I double-click on a .R file in File Explorer the .R file opens in
+>>> the R Editor in RGui.
+>>>
+>>> On my PC R 4.2.2 is located in "C:/Program Files/R/R-4.2.2/etc"
+>>>
+>>> Please can someone provide step-by-step instructions on how to
+>>> associate?
+>>>
+>>>
+>>> thanks,
+>>> Amarjit
+>>>
+>>>          [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org <mailto:R-help at r-project.org>  mailing list -- To
+>>> UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> <https://stat.ethz.ch/mailman/listinfo/r-help>
+>>> PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> <http://www.R-project.org/posting-guide.html>
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>>
+>>>
+>>>
+>>>     [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>> -- 
+>> Sent from my phone. Please excuse my brevity.
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
