@@ -5948,3 +5948,1676 @@ Hope this helps,
 Rui Barradas
 
 
+From er|cjberger @end|ng |rom gm@||@com  Tue Nov  8 07:52:10 2022
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Tue, 8 Nov 2022 08:52:10 +0200
+Subject: [R] [External] Re: Selecting a minimum value of an attribute
+ associated with point values neighboring a given point and assigning it as
+ a new attribute
+In-Reply-To: <3247be10-6d5c-12d5-1634-2a9e934f431e@gmail.com>
+References: <BN6PR05MB35887EFE01222DBF7C359AAB903B9@BN6PR05MB3588.namprd05.prod.outlook.com>
+ <CAGxFJbSkg9zAqk0dGcr3qJe2z2C04NEZFdHN8hWQA3oSbfHukQ@mail.gmail.com>
+ <CAGgJW767Ein1S+MSywb57B2UtmE0EJodDVokPEx5_-c5BTFR1Q@mail.gmail.com>
+ <CAGgJW77yY0_GDQWEAxzSdRh0N3kXgj9zrSEYUzuVsFnHyeE=aA@mail.gmail.com>
+ <BN6PR05MB3588015F46997E64D5F8F138903D9@BN6PR05MB3588.namprd05.prod.outlook.com>
+ <3247be10-6d5c-12d5-1634-2a9e934f431e@gmail.com>
+Message-ID: <CAGgJW76LXFdbQFuqE1b-HCrQKNn08DB7voOGzN0cnkromYK0NQ@mail.gmail.com>
+
+## Some further comments and approaches, divided into 3 sections
+##
+## Section 1: Micha's modified code
+## Section 2: Eric's modified code:
+##    a) uses Micha's dist_matrix from dnearneigh instead of the f() function
+##    b) add check that it gets the same solution as Micha's modified code
+## Section 3: Solution explicitly using a graph (via package igraph)
+
+## ###########################################################
+
+## Section 1: Micha's modified code
+##
+## Major change: OP wanted the Min Conc value
+##               to include the Conc of the point itself
+## Minor Changes: no need to write/read csv file;
+##                change MAX_DIST to 50 for fewer neighbors
+
+library(sf)
+library(spdep)
+
+## Prepare fictitious data
+## Create a data.frame with n random points
+set.seed(234) ## for reproducibility
+N <- 1000L
+
+LON <- runif(N, -70.0, -69.0)
+LAT <- runif(N, 42.0, 43.0)
+Conc <- runif(N, 90000, 100000)
+df <- data.frame(LON, LAT, Conc)
+
+## Create a distance matrix for all points,
+## which contains indices to those points within
+## a certain buffer distance, just as you did in your example.
+
+MAX_DIST <- 50
+pts <- st_as_sf(df, coords=c('LON', 'LAT'), crs=4326)
+dist_matrix <- dnearneigh(pts, 0, MAX_DIST, use_s2=TRUE)
+
+cat("Average number of neighbors within cutoff = ",
+    mean(unlist(lapply(dist_matrix,length))),"\n")
+
+## Function to get minimum Conc values for one row of distance matrix
+MinConc <- function(x, lst, pts) {
+    ## x is an index to a single point,
+    ## lst is a list of point indices from distance matrix
+    ## that are within the buffer distance
+    Concs <- lapply(lst, function(p) {
+        pts$Conc[p]
+    })
+    ## return(min(c(Concs[[1]])) - ## original code - forgets to
+include the point itself
+    return(min(c(Concs[[1]], pts$Conc[x]))) ## modified code
+}
+
+## Now apply this function to all points in pts
+Conc_min <- lapply(1:N, function(i) {
+  MinConc(i, dist_matrix[i], pts)
+})
+
+Conc_min <- data.frame("Conc_min" = as.numeric(Conc_min))
+
+# Add back as new attrib to original points sf object
+pts_with_min <- do.call(cbind, c(pts, Conc_min))
+
+## ###########################################################
+
+## Section 2: Eric's modified code:
+
+A <- matrix(0,N,N)
+z <- sapply(1:N, \(i) A[i, dist_matrix[[i]]] <<- 1) ## z is ignored
+B <- A + diag(N)
+C <- diag(Conc)
+D <- B %*% C
+D[D==0] <- NA
+Conc_min.eric <- apply(D,MAR=1,\(v) min(v,na.rm=TRUE) )
+test <- identical(Conc_min$Conc_min, Conc_min.eric)
+cat("test = ", test, "\n")
+
+## ###########################################################
+
+## Section 3: Solution explicitly using a graph (via package igraph)
+
+## For those with some familiarity with graphs, the matrix 'B' is
+## an adjacency matrix. This suggests using graphs explicitly to solve
+## the problem. Here is how to rewrite my code using graphs.
+
+library(igraph)
+g <- graph_from_adjacency_matrix(B,"undirected")
+g <- set_vertex_attr(g, "Conc", 1:N, Conc )
+
+Conc_min.igraph <- sapply(1:N, \(i) min(vertex_attr(g,"Conc",neighbors(g,i))))
+test.igraph <- identical(Conc_min$Conc_min, Conc_min.igraph)
+cat("test.igraph = ", test.igraph, "\n")
+
+Eric
+
+On Mon, Nov 7, 2022 at 3:11 PM Micha Silver <tsvibar at gmail.com> wrote:
+>
+> Eric's solution notwithstanding, here's a more "spatial" approach.
+>
+>
+> I first create a fictitious set of 1000 points (and save to CSV to
+> replicate your workflow)
+>
+> library(sf)
+> library(spdep)
+>
+> # Prepare fictitious data
+> # Create a data.frame with 1000 random points, and save to CSV
+> LON <- runif(1000, -70.0, -69.0)
+> LAT <- runif(1000, 42.0, 43.0)
+> Conc <- runif(1000, 90000, 100000)
+> df <- data.frame(LON, LAT, Conc)
+> csv_file = "/tmp/pts_testdata.csv"
+> write.csv(df, csv_file)
+>
+>
+> Now read that CSV back in directly as an sf object (No need for the old
+> SpatialPointsDataFrame). THen create a distance matrix for all points,
+> which contains indicies to those points within a certain buffer
+> distance, just as you did in your example.
+>
+>
+> # Read back in as sf object, including row index
+> pts <- st_as_sf(read.csv(csv_file), coords=c('LON', 'LAT'), crs=4326)
+> dist_matrix <- dnearneigh(pts, 0, 100, use_s2=TRUE) # use_s2 since these
+> are lon/lat
+>
+> Now I prepare a function to get the minimum Conv value among all points
+> within the buffer distance to a given single point:
+> # Function to get minimum Conc values for one row of distance matrix
+> MinConc <- function(x, lst, pts) {
+>    # x is an index to a single point,
+>    # lst is a list of point indices from distance matrix
+>    # that are within the buffer distance
+>    Concs <- lapply(lst, function(p) {
+>      pts$Conc[p]
+>    })
+>    return(min(Concs[[1]]))
+> }
+>
+> Next run that function on all points to get a list of minimum Conv
+> values for all points, and merge back to pts.
+>
+>
+> # Now apply this function to all points in pts
+> Conc_min <- lapply(pts$X, function(i){
+>    MinConc(i, dist_matrix[i], pts)
+> })
+> Conc_min <- data.frame("Conc_min" = as.integer(Conc_min))
+>
+> # Add back as new attrib to original points sf object
+> pts_with_min <- do.call(cbind, c(pts, Conc_min))
+>
+> HTH,
+>
+> Micha
+>
+>
+>
+> On 06/11/2022 18:40, Duhl, Tiffany R. wrote:
+> > Thanks so much Eric!
+> >
+> >   I'm going to play around with your toy code (pun intended) & see if I can make it work for my application.
+> >
+> > Cheers,
+> > -Tiffany
+> > ________________________________
+> > From: Eric Berger <ericjberger at gmail.com>
+> > Sent: Sunday, November 6, 2022 10:27 AM
+> > To: Bert Gunter <bgunter.4567 at gmail.com>
+> > Cc: Duhl, Tiffany R. <Tiffany.Duhl at tufts.edu>; R-help <R-help at r-project.org>
+> > Subject: [External] Re: [R] Selecting a minimum value of an attribute associated with point values neighboring a given point and assigning it as a new attribute
+> >
+> > Whoops ... left out a line in Part 2. Resending with the correction
+> >
+> > ## PART 2: You can use this code on the real data with f() defined appropriately
+> > A <- matrix(0,N,N)
+> > v <- 1:N
+> > ## get the indices (j,k) where j < k (as columns in a data.frame)
+> > idx <- expand.grid(v,v) |> rename(j=Var1,k=Var2) |> filter(j < k)
+> > u <- sapply(1:nrow(idx),
+> >             \(i){ j <- idx$j[i]; k <- idx$k[i]; A[j,k] <<- f(j,k,myData) })
+> > B <- A + t(A) + diag(N)
+> > C <- diag(myData$Conc)
+> > D <- B %*% C
+> > D[D==0] <- NA
+> > myData$Conc_min <- apply(D,MAR=1,\(v){min(v,na.rm=TRUE)})
+> > print(head(myData))
+> >
+> > On Sun, Nov 6, 2022 at 5:19 PM Eric Berger <ericjberger at gmail.com> wrote:
+> >> Hi Tiffany,
+> >> Here is some code that might help with your problem. I solve a "toy"
+> >> problem that is conceptually the same.
+> >> Part 1 sets up my toy problem. You would have to replace Part 1 with
+> >> your real case. The main point is to define
+> >> a function f(i, j, data) which returns 0 or 1 depending on whether the
+> >> observations in rows i and j in your dataset 'data'
+> >> are within your cutoff distance (i.e. 50m).
+> >>
+> >> You can then use Part 2 almost without changes (except for changing
+> >> 'myData' to the correct name of your data).
+> >>
+> >> I hope this helps,
+> >> Eric
+> >>
+> >> library(dplyr)
+> >>
+> >> ## PART 1: create fake data for minimal example
+> >> set.seed(123) ## for reproducibility
+> >> N <- 5       ## replace by number of locations (approx 9000 in your case)
+> >> MAX_DISTANCE <- 2  ## 50 in your case
+> >> myData <- data.frame(x=rnorm(N),y=rnorm(N),Conc=sample(1:N,N))
+> >>
+> >> ## The function which you must re-define for your actual case.
+> >> f <- function(i,j,a) {
+> >>   dist <- sqrt(sum((a[i,1:2] - a[j,1:2])^2)) ## Euclidean distance
+> >>   as.integer(dist < MAX_DISTANCE)
+> >> }
+> >>
+> >> ## PART 2: You can use this code on the real data with f() defined appropriately
+> >> A <- matrix(0,N,N)
+> >> ## get the indices (j,k) where j < k (as columns in a data.frame)
+> >> idx <- expand.grid(v,v) |> rename(j=Var1,k=Var2) |> filter(j < k)
+> >> u <- sapply(1:nrow(idx),\(i){ j <- idx$j[i]; k <- idx$k[i]; A[j,k] <<-
+> >> f(j,k,myData) })
+> >> B <- A + t(A) + diag(N)
+> >> C <- diag(myData$Conc)
+> >> D <- B %*% C
+> >> D[D==0] <- NA
+> >> myData$Conc_min <- apply(D,MAR=1,\(v){min(v,na.rm=TRUE)})
+> >> print(head(myData))
+> >>
+> >>
+> >> On Sat, Nov 5, 2022 at 5:14 PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >>> Probably better posted on R-sig-geo.
+> >>>
+> >>> -- Bert
+> >>>
+> >>> On Sat, Nov 5, 2022 at 12:36 AM Duhl, Tiffany R. <Tiffany.Duhl at tufts.edu>
+> >>> wrote:
+> >>>
+> >>>> Hello,
+> >>>>
+> >>>> I have sets of spatial points with LAT, LON coords (unprojected, WGS84
+> >>>> datum) and several value attributes associated with each point, from
+> >>>> numerous csv files (with an average of 6,000-9,000 points in each file) as
+> >>>> shown in the following example:
+> >>>>
+> >>>> data<- read.csv("R_find_pts_testdata.csv")
+> >>>>
+> >>>>> data
+> >>>>      ID      Date         Time        LAT            LON           Conc
+> >>>> Leg.Speed    CO2  H2O BC61 Hr Min Sec
+> >>>> 1   76 4/19/2021 21:25:38 42.40066 -70.98802 99300   0.0 mph 428.39 9.57
+> >>>> 578 21  25  38
+> >>>> 2   77 4/19/2021 21:25:39 42.40066 -70.98802 96730   0.0 mph 428.04 9.57
+> >>>> 617 21  25  39
+> >>>> 3   79 4/19/2021 21:25:41 42.40066 -70.98802 98800   0.2 mph 427.10 9.57
+> >>>> 1027 21  25  41
+> >>>> 4   80 4/19/2021 21:25:42 42.40066 -70.98802 96510     2 mph 427.99 9.58
+> >>>> 1381 21  25  42
+> >>>> 5   81 4/19/2021 21:25:43 42.40067 -70.98801 95540     3 mph 427.99 9.58
+> >>>> 1271 21  25  43
+> >>>> 6   82 4/19/2021 21:25:44 42.40068 -70.98799 94720     4 mph 427.20 9.57
+> >>>> 910 21  25  44
+> >>>> 7   83 4/19/2021 21:25:45 42.40069 -70.98797 94040     5 mph 427.18 9.57
+> >>>> 652 21  25  45
+> >>>> 8   84 4/19/2021 21:25:46 42.40072 -70.98795 95710     7 mph 427.07 9.57
+> >>>> 943 21  25  46
+> >>>> 9   85 4/19/2021 21:25:47 42.40074 -70.98792 96200     8 mph 427.44 9.56
+> >>>> 650 21  25  47
+> >>>> 10  86 4/19/2021 21:25:48 42.40078 -70.98789 93750    10 mph 428.76 9.57
+> >>>> 761 21  25  48
+> >>>> 11  87 4/19/2021 21:25:49 42.40081 -70.98785 93360    11 mph 429.25 9.56
+> >>>> 1158 21  25  49
+> >>>> 12  88 4/19/2021 21:25:50 42.40084 -70.98781 94340    12 mph 429.56 9.57
+> >>>> 107 21  25  50
+> >>>> 13  89 4/19/2021 21:25:51 42.40087 -70.98775 92780    12 mph 428.62 9.56
+> >>>> 720 21  25  51
+> >>>>
+> >>>>
+> >>>> What I want to do is, for each point, identify all points within 50m of
+> >>>> that point, find the minimum value of the "Conc" attribute of each nearby
+> >>>> set of points (including the original point) and then create a new variable
+> >>>> ("Conc_min") and assign this minimum value to a new variable added to
+> >>>> "data".
+> >>>>
+> >>>> So far, I have the following code:
+> >>>>
+> >>>> library(spdep)
+> >>>> library(sf)
+> >>>>
+> >>>> setwd("C:\\mydirectory\\")
+> >>>> data<- read.csv("R_find_pts_testdata.csv")
+> >>>>
+> >>>> #make sure the data is a data frame
+> >>>> pts <- data.frame(data)
+> >>>>
+> >>>> #create spatial data frame and define projection
+> >>>> pts_coords <- cbind(pts$LON, pts$LAT)
+> >>>> data_pts <- SpatialPointsDataFrame(coords= pts_coords,
+> >>>> data=pts, proj4string = CRS("+proj=longlat +datum=WGS84"))
+> >>>>
+> >>>> #Re-project to WGS 84 / UTM zone 18N, so the analysis is in units of m
+> >>>> ptsUTM  <- sf::st_as_sf(data_pts, coords = c("LAT", "LON"), remove = F)%>%
+> >>>> st_transform(32618)
+> >>>>
+> >>>> #create 50 m buffer around each point then intersect with points and
+> >>>> finally find neighbors within the buffers
+> >>>> pts_buf <- sf::st_buffer(ptsUTM, 50)
+> >>>> coords  <- sf::st_coordinates(ptsUTM)
+> >>>> int <- sf::st_intersects(pts_buf, ptsUTM)
+> >>>> x   <- spdep::dnearneigh(coords, 0, 50)
+> >>>>
+> >>>> Now at this point, I'm not sure what to either the "int" (a sgbp list) or
+> >>>> "x" (nb object) objects (or even if I need them both)
+> >>>>
+> >>>>> int
+> >>>> Sparse geometry binary predicate list of length 974, where the predicate
+> >>>> was `intersects'
+> >>>> first 10 elements:
+> >>>>   1: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>   2: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>   3: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>   4: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>   5: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>   6: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>   7: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>   8: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>   9: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>
+> >>>>> x
+> >>>> Neighbour list object:
+> >>>> Number of regions: 974
+> >>>> Number of nonzero links: 34802
+> >>>> Percentage nonzero weights: 3.668481
+> >>>> Average number of links: 35.73101
+> >>>>
+> >>>> One thought is that maybe I don't need the dnearneigh function and can
+> >>>> instead convert "int" into a dataframe and somehow merge or associate
+> >>>> (perhaps with an inner join) the ID fields of the buffered and intersecting
+> >>>> points and then compute the minimum value of "Conc" grouping by ID:
+> >>>>
+> >>>>> as.data.frame(int)
+> >>>>      row.id col.id
+> >>>> 1        1      1
+> >>>> 2        1      2
+> >>>> 3        1      3
+> >>>> 4        1      4
+> >>>> 5        1      5
+> >>>> 6        1      6
+> >>>> 7        1      7
+> >>>> 8        1      8
+> >>>> 9        1      9
+> >>>> 10       1     10
+> >>>> 11       1     11
+> >>>> 12       1     12
+> >>>> 13       1     13
+> >>>> 14       1     14
+> >>>> 15       1     15
+> >>>> 16       1     16
+> >>>> 17       1     17
+> >>>> 18       1     18
+> >>>> 19       2      1
+> >>>> 20       2      2
+> >>>> 21       2      3
+> >>>> 22       2      4
+> >>>> 23       2      5
+> >>>> 24       2      6
+> >>>> 25       2      7
+> >>>> 26       2      8
+> >>>> 27       2      9
+> >>>> 28       2     10
+> >>>>
+> >>>>
+> >>>> So in the above example I'd like to take the minimum of "Conc" among the
+> >>>> col.id points grouped with row.id 1 (i.e., col.ids 1-18) and assign the
+> >>>> minimum value of this group as a new variable in data (Data$Conc_min), and
+> >>>> do the same for row.id 2 and all the rest of the rows.
+> >>>>
+> >>>> I'm just not sure how to do this and I appreciate any help folks might
+> >>>> have on this matter!
+> >>>>
+> >>>> Many thanks,
+> >>>> -Tiffany
+> >>>>
+> >>>>          [[alternative HTML version deleted]]
+> >>>>
+> >>>> ______________________________________________
+> >>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>>> PLEASE do read the posting guide
+> >>>> http://www.R-project.org/posting-guide.html
+> >>>> and provide commented, minimal, self-contained, reproducible code.
+> >>>>
+> >>>          [[alternative HTML version deleted]]
+> >>>
+> >>> ______________________________________________
+> >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> >>> and provide commented, minimal, self-contained, reproducible code.
+> > Caution: This message originated from outside of the Tufts University organization. Please exercise caution when clicking links or opening attachments. When in doubt, email the TTS Service Desk at it at tufts.edu<mailto:it at tufts.edu> or call them directly at 617-627-3376.
+> >
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> --
+> Micha Silver
+> Ben Gurion Univ.
+> Sde Boker, Remote Sensing Lab
+> cell: +972-523-665918
+>
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Tue Nov  8 15:44:31 2022
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Tue, 8 Nov 2022 14:44:31 +0000
+Subject: [R] print and lapply....
+In-Reply-To: <CAGxFJbTF4KDzQq3PQBXhpLx87gWszVPy6Wta6XK1XdOwriWcHA@mail.gmail.com>
+References: <PU4P216MB1568A360DA25F1A43E00F62AC83C9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <85d70330-d644-9ad6-1c6f-e6ef21c4cd7f@sapo.pt>
+ <PU4P216MB1568124CE102CB3A02D058F1C83C9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <28f820bf-feef-b45f-a2e2-400374efe20f@sapo.pt>
+ <PU4P216MB1568284562B6403E256F76DDC83C9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAGxFJbTF4KDzQq3PQBXhpLx87gWszVPy6Wta6XK1XdOwriWcHA@mail.gmail.com>
+Message-ID: <PU4P216MB1568C694EEABC190FB8A3B06C83F9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Bert,
+                     Amazing! Very informative...THanks a lot.
+________________________________
+From: Bert Gunter <bgunter.4567 at gmail.com>
+Sent: Tuesday, November 8, 2022 2:15 AM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: Rui Barradas <ruipbarradas at sapo.pt>; R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] print and lapply....
+
+" The lapply() caches the result, and prints the output of the
+function in question  immediately after printing the final i. "
+
+I don't believe you understand how lists or lapply works. You seem to
+be trying to intuit from empirical behavior. Bad idea, if so. You need
+to read the docs or spend time with suitable tutorials.
+
+Consider:
+lapply produces a **list,** each component of which is the result of
+applying a function, FUN, to the components of its first argument
+(here 1:4), which is itself a list. Results are **not** cached in the
+sense you seem to think they are. The list object that is produced by
+the function is **only** printed if you ask it to be (via cat, print,
+or whatever) or, by default, if the result is unassigned. The default
+printing can be turned off via the invisible() function.
+
+So:
+
+> res <- lapply(TP, function(x){
++    print(x)
++    x^2}
++    )
+[1] 1
+[1] 2
+[1] 3
+[1] 4
+[1] 5
+## Nothing printed, but the results are the components of **list**
+res, which can be printed on the console by print(res) or simply:
+
+> res ## note the list syntax below
+[[1]]
+[1] 1
+
+[[2]]
+[1] 4
+
+[[3]]
+[1] 9
+
+[[4]]
+[1] 16
+
+[[5]]
+[1] 25
+
+Now can you explain what happens here:
+
+> invisible(lapply(TP, function(x){
++    print(x)
++    x^2}
++    ))
+[1] 1
+[1] 2
+[1] 3
+[1] 4
+[1] 5
+> ## results not printed; nothing assigned. Where can you find them? (See below)
+
+or here:
+
+> lapply(TP, function(x){
++    print(x)
++    x^2}
++    )
+[1] 1
+[1] 2
+[1] 3
+[1] 4
+[1] 5
+[[1]]
+[1] 1
+
+[[2]]
+[1] 4
+
+[[3]]
+[1] 9
+
+[[4]]
+[1] 16
+
+[[5]]
+[1] 25
+
+## How could you recover the results of the lapply and not just look
+at the console printout if the results have not been assigned?
+## Hint:  See ?.Last.value
+
+-- Bert
+
+On Mon, Nov 7, 2022 at 11:22 AM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>
+> Dear Rui,
+>                  THanks for your reply...The point is the loop is a scraping code, and in your examples you have assumed that the body acts on i, the loop variable. Can you adapt your code to JUST PRINT the loop variable i ?
+>
+> By the by, I think I have stumbled upon the answer: The lapply() caches the result, and prints the output of the function in question  immediately after printing the final i. The i's get printed serially, as the function progresses....
+>
+> > lapply(1:4,function(x){print(x);Sys.sleep(x^2);x^2})
+> [1] 1
+> [1] 2
+> [1] 3
+> [1] 4
+> [[1]]
+> [1] 1
+>
+> [[2]]
+> [1] 4
+>
+> [[3]]
+> [1] 9
+>
+> [[4]]
+> [1] 16
+>
+> Here x^2 's print only after 4 is printed on the console....
+>
+> tHanks anyways for your reply....
+>
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+> ________________________________
+> From: Rui Barradas <ruipbarradas at sapo.pt>
+> Sent: Tuesday, November 8, 2022 12:24 AM
+> To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+> Subject: Re: [R] print and lapply....
+>
+> ?s 18:33 de 07/11/2022, akshay kulkarni escreveu:
+> > Dear Rui,
+> >                     Actually, I am replacing a big for loop by the lapply() function, and report the progress:
+> >
+> > lapply(TP, function(i) { BODY; print(i)})
+> >
+> > Can you please adjust your solution in this light?
+> >
+> > THanking you,
+> > Yours sincerely,
+> > AKSHAY M KULKARNI
+> > ________________________________
+> > From: Rui Barradas <ruipbarradas at sapo.pt>
+> > Sent: Monday, November 7, 2022 11:59 PM
+> > To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+> > Subject: Re: [R] print and lapply....
+> >
+> > ?s 17:17 de 07/11/2022, akshay kulkarni escreveu:
+> >> Dear members,
+> >>                                I have the following code and output:
+> >>
+> >>> TP <- 1:4
+> >>> lapply(TP,function(x){print(x);x^2})
+> >> [1] 1
+> >> [1] 2
+> >> [1] 3
+> >> [1] 4
+> >> [[1]]
+> >> [1] 1
+> >>
+> >> [[2]]
+> >> [1] 4
+> >>
+> >> [[3]]
+> >> [1] 9
+> >>
+> >> [[4]]
+> >> [1] 16
+> >>
+> >> How do I make the print function output x along with x^2, i.e not at the beginning but before each of x^2?
+> >>
+> >> Many thanks in advance....
+> >>
+> >> THanking you,
+> >> Yours sincerely
+> >> AKSHAY M KULKARNI
+> >>
+> >>         [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+> > Hello,
+> >
+> > Here are two options, with ?cat and with ?message.
+> >
+> >
+> > TP <- 1:4
+> > lapply(TP, function(x){
+> >     cat("x =", x, "x^2 =", x^2, "\n")
+> > })
+> >
+> > lapply(TP, function(x){
+> >     msg <- paste("x =", x, "x^2 =", x^2)
+> >     message(msg)
+> > })
+> >
+> >
+> > Hope this helps,
+> >
+> > Rui Barradas
+> >
+> >
+> >
+> Hello,
+>
+>
+> What do you want the lapply loop to return? If you have a BODY doing
+> computations, do you want the lapply to return those values and report
+> the progress?
+>
+> I have chosen cat or message over print because
+>
+>   - cat returns invisible(NULL),
+>   - message returns invisible()
+>   - print returns a value, what it prints.
+>
+> Can you adapt the code below to your use case?
+>
+>
+>
+> TP <- 1:4
+> lapply(TP, function(x, verbose = TRUE){
+>    # BODY
+>    y <- rnorm(100, mean = x)
+>
+>    # show progress
+>    if(verbose)
+>      cat("x =", x, "x^2 =", x^2, "\n")
+>
+>    #return value
+>    c(x = x, mean = mean(y))
+> })
+>
+> lapply(TP, function(x, verbose = TRUE){
+>    # BODY
+>    y <- rnorm(100, mean = x)
+>
+>    # show progress
+>    if(verbose) {
+>      msg <- paste("x =", x, "x^2 =", x^2)
+>      message(msg)
+>    }
+>
+>    #return value
+>    c(x = x, mean = mean(y))
+> })
+>
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Tue Nov  8 15:47:21 2022
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Tue, 8 Nov 2022 14:47:21 +0000
+Subject: [R] print and lapply....
+In-Reply-To: <77cc1472-cb84-e953-f978-ebecaca7c4a9@sapo.pt>
+References: <PU4P216MB1568A360DA25F1A43E00F62AC83C9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <85d70330-d644-9ad6-1c6f-e6ef21c4cd7f@sapo.pt>
+ <PU4P216MB1568124CE102CB3A02D058F1C83C9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <28f820bf-feef-b45f-a2e2-400374efe20f@sapo.pt>
+ <PU4P216MB1568284562B6403E256F76DDC83C9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <77cc1472-cb84-e953-f978-ebecaca7c4a9@sapo.pt>
+Message-ID: <PU4P216MB1568B071D6953887BFF56AB5C83F9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Rui,
+                  The replies from you, Bert, Tim and solved my problem. My last question: what if I put print inside the body of the function passed on to lapply, instead of separately in the function argument of apply? Is this what you insinuated in your reply?
+
+THanking you,
+yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Rui Barradas <ruipbarradas at sapo.pt>
+Sent: Tuesday, November 8, 2022 2:20 AM
+To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] print and lapply....
+
+?s 19:22 de 07/11/2022, akshay kulkarni escreveu:
+> Dear Rui,
+>                   THanks for your reply...The point is the loop is a scraping code, and in your examples you have assumed that the body acts on i, the loop variable. Can you adapt your code to JUST PRINT the loop variable i ?
+>
+> By the by, I think I have stumbled upon the answer: The lapply() caches the result, and prints the output of the function in question  immediately after printing the final i. The i's get printed serially, as the function progresses....
+>
+>> lapply(1:4,function(x){print(x);Sys.sleep(x^2);x^2})
+> [1] 1
+> [1] 2
+> [1] 3
+> [1] 4
+> [[1]]
+> [1] 1
+>
+> [[2]]
+> [1] 4
+>
+> [[3]]
+> [1] 9
+>
+> [[4]]
+> [1] 16
+>
+> Here x^2 's print only after 4 is printed on the console....
+>
+> tHanks anyways for your reply....
+>
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+> ________________________________
+> From: Rui Barradas <ruipbarradas at sapo.pt>
+> Sent: Tuesday, November 8, 2022 12:24 AM
+> To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+> Subject: Re: [R] print and lapply....
+>
+> ?s 18:33 de 07/11/2022, akshay kulkarni escreveu:
+>> Dear Rui,
+>>                      Actually, I am replacing a big for loop by the lapply() function, and report the progress:
+>>
+>> lapply(TP, function(i) { BODY; print(i)})
+>>
+>> Can you please adjust your solution in this light?
+>>
+>> THanking you,
+>> Yours sincerely,
+>> AKSHAY M KULKARNI
+>> ________________________________
+>> From: Rui Barradas <ruipbarradas at sapo.pt>
+>> Sent: Monday, November 7, 2022 11:59 PM
+>> To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+>> Subject: Re: [R] print and lapply....
+>>
+>> ?s 17:17 de 07/11/2022, akshay kulkarni escreveu:
+>>> Dear members,
+>>>                                 I have the following code and output:
+>>>
+>>>> TP <- 1:4
+>>>> lapply(TP,function(x){print(x);x^2})
+>>> [1] 1
+>>> [1] 2
+>>> [1] 3
+>>> [1] 4
+>>> [[1]]
+>>> [1] 1
+>>>
+>>> [[2]]
+>>> [1] 4
+>>>
+>>> [[3]]
+>>> [1] 9
+>>>
+>>> [[4]]
+>>> [1] 16
+>>>
+>>> How do I make the print function output x along with x^2, i.e not at the beginning but before each of x^2?
+>>>
+>>> Many thanks in advance....
+>>>
+>>> THanking you,
+>>> Yours sincerely
+>>> AKSHAY M KULKARNI
+>>>
+>>>          [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>> Hello,
+>>
+>> Here are two options, with ?cat and with ?message.
+>>
+>>
+>> TP <- 1:4
+>> lapply(TP, function(x){
+>>      cat("x =", x, "x^2 =", x^2, "\n")
+>> })
+>>
+>> lapply(TP, function(x){
+>>      msg <- paste("x =", x, "x^2 =", x^2)
+>>      message(msg)
+>> })
+>>
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>>
+>>
+> Hello,
+>
+>
+> What do you want the lapply loop to return? If you have a BODY doing
+> computations, do you want the lapply to return those values and report
+> the progress?
+>
+> I have chosen cat or message over print because
+>
+>    - cat returns invisible(NULL),
+>    - message returns invisible()
+>    - print returns a value, what it prints.
+>
+> Can you adapt the code below to your use case?
+>
+>
+>
+> TP <- 1:4
+> lapply(TP, function(x, verbose = TRUE){
+>     # BODY
+>     y <- rnorm(100, mean = x)
+>
+>     # show progress
+>     if(verbose)
+>       cat("x =", x, "x^2 =", x^2, "\n")
+>
+>     #return value
+>     c(x = x, mean = mean(y))
+> })
+>
+> lapply(TP, function(x, verbose = TRUE){
+>     # BODY
+>     y <- rnorm(100, mean = x)
+>
+>     # show progress
+>     if(verbose) {
+>       msg <- paste("x =", x, "x^2 =", x^2)
+>       message(msg)
+>     }
+>
+>     #return value
+>     c(x = x, mean = mean(y))
+> })
+>
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+Hello,
+
+No, the x^2 are not printed after the i's. The x^2 are the function's
+return values. The function prints the i's, then returns x^2.
+
+As for your problem, it is now more clerar.
+I would write a function accepting a url to take care of scraping and
+call it in the lapply loop. The progress report can be in the loop, like
+below.
+
+This is a complete working example, scraping the Wikipedia list of
+countries by GDP. The urls are in a list (it's always the same, I'm not
+complicating things) and in a real scraping function I would wrap
+tryCatch around it, just in case.
+
+First the function, then the urls list, then the lapply loop.
+
+
+
+library(rvest)
+
+scrape <- function(url) {
+   page <- read_html(url)
+   gdp <- page |>
+     html_element(".wikitable") |>
+     html_table() |>
+     as.data.frame()
+   names(gdp) <- unlist(gdp[1,, drop = TRUE])
+   gdp <- gdp[-1,]
+   row.names(gdp) <- NULL
+
+   #return value
+   gdp
+}
+
+wiki_gdp_url <-
+"https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)"
+urls_list <- list(wiki_gdp_url, wiki_gdp_url)
+TP <- seq_along(urls_list)
+
+TP
+# [1] 1 2
+
+df_list <- lapply(TP, \(i) {
+   URL <- urls_list[[i]]
+   data <- scrape(URL)
+   # show progress
+   message("iteration: ", i)
+   #return value
+   data
+})
+
+str(df_list)
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Tue Nov  8 15:48:44 2022
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Tue, 8 Nov 2022 14:48:44 +0000
+Subject: [R] print and lapply....
+In-Reply-To: <BN6PR2201MB155366AA16C4F596735677B8CF3C9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <PU4P216MB1568A360DA25F1A43E00F62AC83C9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAPcHnpRxP9O1_EF81-9-+J+OOTePty3peRXgUVvW=_YYcXrstQ@mail.gmail.com>
+ <CAGxFJbSyM8XmQ+8s7mQRChMgJj6+qJO+OD==ML8No8yCA8SjaA@mail.gmail.com>
+ <PU4P216MB15688AD15B43427708CE42AEC83C9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <BN6PR2201MB155366AA16C4F596735677B8CF3C9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <PU4P216MB1568C75ADFFA7722DBE33C61C83F9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Tim,
+                   I think the recent replies from you, Bert and Rui cleared everything ...
+THanks a lot..
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Ebert,Timothy Aaron <tebert at ufl.edu>
+Sent: Tuesday, November 8, 2022 2:15 AM
+To: akshay kulkarni <akshay_e4 at hotmail.com>; Bert Gunter <bgunter.4567 at gmail.com>; Andrew Simmons <akwsimmo at gmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: RE: [R] print and lapply....
+
+Dear Akshay,
+    I think we have provided several solutions to the question asked. Can you please adjust your question to more closely align with what you need. It would be nice if you can provide sufficient detail so that we can see how you have adapted our solutions and how these have not quite addressed this problem.
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of akshay kulkarni
+Sent: Monday, November 7, 2022 1:10 PM
+To: Bert Gunter <bgunter.4567 at gmail.com>; Andrew Simmons <akwsimmo at gmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] print and lapply....
+
+[External Email]
+
+Dear Bert,
+                   Actually, I am replacing a big for loop by the lapply() function, and report the progress:
+
+lapply(TP, function(i) { BODY; print(i)})
+
+Can you please adjust your solution in this light?
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Bert Gunter <bgunter.4567 at gmail.com>
+Sent: Monday, November 7, 2022 11:16 PM
+To: Andrew Simmons <akwsimmo at gmail.com>
+Cc: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] print and lapply....
+
+Well... yes, of course. But assuming the sole purpose is to print the results and not to save them for further processing, the OP's approach seems rather painful. My preference would be to vectorize:
+
+> print(cbind(TP, TPsq =TP^2), print.gap = 3)
+       TP   TPsq
+[1,]    1      1
+[2,]    2      4
+[3,]    3      9
+[4,]    4     16
+
+See ?print.default for details
+
+-- Bert
+
+
+On Mon, Nov 7, 2022 at 9:20 AM Andrew Simmons <akwsimmo at gmail.com> wrote:
+>
+> put print() around x^2
+>
+> On Mon, Nov 7, 2022, 12:18 akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>
+> > Dear members,
+> >                              I have the following code and output:
+> >
+> > > TP <- 1:4
+> > > lapply(TP,function(x){print(x);x^2})
+> > [1] 1
+> > [1] 2
+> > [1] 3
+> > [1] 4
+> > [[1]]
+> > [1] 1
+> >
+> > [[2]]
+> > [1] 4
+> >
+> > [[3]]
+> > [1] 9
+> >
+> > [[4]]
+> > [1] 16
+> >
+> > How do I make the print function output x along with x^2, i.e not at
+> > the beginning but before each of x^2?
+> >
+> > Many thanks in advance....
+> >
+> > THanking you,
+> > Yours sincerely
+> > AKSHAY M KULKARNI
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fst
+> > at.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&amp;data=05%7C01%7Ctebert%4
+> > 0ufl.edu%7Cb726a89349ed4860265708dac0eb5d0a%7C0d4da0f84a314d76ace60a
+> > 62331e1b84%7C0%7C0%7C638034414365456384%7CUnknown%7CTWFpbGZsb3d8eyJW
+> > IjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C300
+> > 0%7C%7C%7C&amp;sdata=dQk1JPxWI4D0D6%2FSoC8LWw56749ulaFrGQc6affgBeM%3
+> > D&amp;reserved=0
+> > PLEASE do read the posting guide
+> > https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww
+> > .r-project.org%2Fposting-guide.html&amp;data=05%7C01%7Ctebert%40ufl.
+> > edu%7Cb726a89349ed4860265708dac0eb5d0a%7C0d4da0f84a314d76ace60a62331
+> > e1b84%7C0%7C0%7C638034414365456384%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiM
+> > C4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%
+> > 7C%7C&amp;sdata=KDskHBxmxe0DV9XO7GvkESemUNTq2w%2BT%2Fro%2Bgb4DS2w%3D
+> > &amp;reserved=0 and provide commented, minimal, self-contained,
+> > reproducible code.
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat
+> .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&amp;data=05%7C01%7Ctebert%40ufl
+> .edu%7Cb726a89349ed4860265708dac0eb5d0a%7C0d4da0f84a314d76ace60a62331e
+> 1b84%7C0%7C0%7C638034414365456384%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4w
+> LjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C
+> &amp;sdata=dQk1JPxWI4D0D6%2FSoC8LWw56749ulaFrGQc6affgBeM%3D&amp;reserv
+> ed=0 PLEASE do read the posting guide
+> https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r
+> -project.org%2Fposting-guide.html&amp;data=05%7C01%7Ctebert%40ufl.edu%
+> 7Cb726a89349ed4860265708dac0eb5d0a%7C0d4da0f84a314d76ace60a62331e1b84%
+> 7C0%7C0%7C638034414365612626%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwM
+> DAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;
+> sdata=OxZmpA4ORbfUq0gqM8ebZvK5bQTaiCwo0Y1ekn%2F3zBE%3D&amp;reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&amp;data=05%7C01%7Ctebert%40ufl.edu%7Cb726a89349ed4860265708dac0eb5d0a%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638034414365612626%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=OCyLwP3YBC3kfih9kaX6vEbPdzvAq1a48LeDRyqlYd0%3D&amp;reserved=0
+PLEASE do read the posting guide https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&amp;data=05%7C01%7Ctebert%40ufl.edu%7Cb726a89349ed4860265708dac0eb5d0a%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638034414365612626%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=OxZmpA4ORbfUq0gqM8ebZvK5bQTaiCwo0Y1ekn%2F3zBE%3D&amp;reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Tue Nov  8 16:21:56 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 8 Nov 2022 15:21:56 +0000
+Subject: [R] print and lapply....
+In-Reply-To: <PU4P216MB1568B071D6953887BFF56AB5C83F9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB1568A360DA25F1A43E00F62AC83C9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <85d70330-d644-9ad6-1c6f-e6ef21c4cd7f@sapo.pt>
+ <PU4P216MB1568124CE102CB3A02D058F1C83C9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <28f820bf-feef-b45f-a2e2-400374efe20f@sapo.pt>
+ <PU4P216MB1568284562B6403E256F76DDC83C9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <77cc1472-cb84-e953-f978-ebecaca7c4a9@sapo.pt>
+ <PU4P216MB1568B071D6953887BFF56AB5C83F9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <4228c15d-4dfb-34be-2ce8-ee3241f03e19@sapo.pt>
+
+?s 14:47 de 08/11/2022, akshay kulkarni escreveu:
+> Dear Rui,
+>                    The replies from you, Bert, Tim and solved my problem. My last question: what if I put print inside the body of the function passed on to lapply, instead of separately in the function argument of apply? Is this what you insinuated in your reply?
+> 
+> THanking you,
+> yours sincerely,
+> AKSHAY M KULKARNI
+> ________________________________
+> From: Rui Barradas <ruipbarradas at sapo.pt>
+> Sent: Tuesday, November 8, 2022 2:20 AM
+> To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+> Subject: Re: [R] print and lapply....
+> 
+> ?s 19:22 de 07/11/2022, akshay kulkarni escreveu:
+>> Dear Rui,
+>>                    THanks for your reply...The point is the loop is a scraping code, and in your examples you have assumed that the body acts on i, the loop variable. Can you adapt your code to JUST PRINT the loop variable i ?
+>>
+>> By the by, I think I have stumbled upon the answer: The lapply() caches the result, and prints the output of the function in question  immediately after printing the final i. The i's get printed serially, as the function progresses....
+>>
+>>> lapply(1:4,function(x){print(x);Sys.sleep(x^2);x^2})
+>> [1] 1
+>> [1] 2
+>> [1] 3
+>> [1] 4
+>> [[1]]
+>> [1] 1
+>>
+>> [[2]]
+>> [1] 4
+>>
+>> [[3]]
+>> [1] 9
+>>
+>> [[4]]
+>> [1] 16
+>>
+>> Here x^2 's print only after 4 is printed on the console....
+>>
+>> tHanks anyways for your reply....
+>>
+>> THanking you,
+>> Yours sincerely,
+>> AKSHAY M KULKARNI
+>> ________________________________
+>> From: Rui Barradas <ruipbarradas at sapo.pt>
+>> Sent: Tuesday, November 8, 2022 12:24 AM
+>> To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+>> Subject: Re: [R] print and lapply....
+>>
+>> ?s 18:33 de 07/11/2022, akshay kulkarni escreveu:
+>>> Dear Rui,
+>>>                       Actually, I am replacing a big for loop by the lapply() function, and report the progress:
+>>>
+>>> lapply(TP, function(i) { BODY; print(i)})
+>>>
+>>> Can you please adjust your solution in this light?
+>>>
+>>> THanking you,
+>>> Yours sincerely,
+>>> AKSHAY M KULKARNI
+>>> ________________________________
+>>> From: Rui Barradas <ruipbarradas at sapo.pt>
+>>> Sent: Monday, November 7, 2022 11:59 PM
+>>> To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+>>> Subject: Re: [R] print and lapply....
+>>>
+>>> ?s 17:17 de 07/11/2022, akshay kulkarni escreveu:
+>>>> Dear members,
+>>>>                                  I have the following code and output:
+>>>>
+>>>>> TP <- 1:4
+>>>>> lapply(TP,function(x){print(x);x^2})
+>>>> [1] 1
+>>>> [1] 2
+>>>> [1] 3
+>>>> [1] 4
+>>>> [[1]]
+>>>> [1] 1
+>>>>
+>>>> [[2]]
+>>>> [1] 4
+>>>>
+>>>> [[3]]
+>>>> [1] 9
+>>>>
+>>>> [[4]]
+>>>> [1] 16
+>>>>
+>>>> How do I make the print function output x along with x^2, i.e not at the beginning but before each of x^2?
+>>>>
+>>>> Many thanks in advance....
+>>>>
+>>>> THanking you,
+>>>> Yours sincerely
+>>>> AKSHAY M KULKARNI
+>>>>
+>>>>           [[alternative HTML version deleted]]
+>>>>
+>>>> ______________________________________________
+>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>>> and provide commented, minimal, self-contained, reproducible code.
+>>> Hello,
+>>>
+>>> Here are two options, with ?cat and with ?message.
+>>>
+>>>
+>>> TP <- 1:4
+>>> lapply(TP, function(x){
+>>>       cat("x =", x, "x^2 =", x^2, "\n")
+>>> })
+>>>
+>>> lapply(TP, function(x){
+>>>       msg <- paste("x =", x, "x^2 =", x^2)
+>>>       message(msg)
+>>> })
+>>>
+>>>
+>>> Hope this helps,
+>>>
+>>> Rui Barradas
+>>>
+>>>
+>>>
+>> Hello,
+>>
+>>
+>> What do you want the lapply loop to return? If you have a BODY doing
+>> computations, do you want the lapply to return those values and report
+>> the progress?
+>>
+>> I have chosen cat or message over print because
+>>
+>>     - cat returns invisible(NULL),
+>>     - message returns invisible()
+>>     - print returns a value, what it prints.
+>>
+>> Can you adapt the code below to your use case?
+>>
+>>
+>>
+>> TP <- 1:4
+>> lapply(TP, function(x, verbose = TRUE){
+>>      # BODY
+>>      y <- rnorm(100, mean = x)
+>>
+>>      # show progress
+>>      if(verbose)
+>>        cat("x =", x, "x^2 =", x^2, "\n")
+>>
+>>      #return value
+>>      c(x = x, mean = mean(y))
+>> })
+>>
+>> lapply(TP, function(x, verbose = TRUE){
+>>      # BODY
+>>      y <- rnorm(100, mean = x)
+>>
+>>      # show progress
+>>      if(verbose) {
+>>        msg <- paste("x =", x, "x^2 =", x^2)
+>>        message(msg)
+>>      }
+>>
+>>      #return value
+>>      c(x = x, mean = mean(y))
+>> })
+>>
+>>
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>>
+> Hello,
+> 
+> No, the x^2 are not printed after the i's. The x^2 are the function's
+> return values. The function prints the i's, then returns x^2.
+> 
+> As for your problem, it is now more clerar.
+> I would write a function accepting a url to take care of scraping and
+> call it in the lapply loop. The progress report can be in the loop, like
+> below.
+> 
+> This is a complete working example, scraping the Wikipedia list of
+> countries by GDP. The urls are in a list (it's always the same, I'm not
+> complicating things) and in a real scraping function I would wrap
+> tryCatch around it, just in case.
+> 
+> First the function, then the urls list, then the lapply loop.
+> 
+> 
+> 
+> library(rvest)
+> 
+> scrape <- function(url) {
+>     page <- read_html(url)
+>     gdp <- page |>
+>       html_element(".wikitable") |>
+>       html_table() |>
+>       as.data.frame()
+>     names(gdp) <- unlist(gdp[1,, drop = TRUE])
+>     gdp <- gdp[-1,]
+>     row.names(gdp) <- NULL
+> 
+>     #return value
+>     gdp
+> }
+> 
+> wiki_gdp_url <-
+> "https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)"
+> urls_list <- list(wiki_gdp_url, wiki_gdp_url)
+> TP <- seq_along(urls_list)
+> 
+> TP
+> # [1] 1 2
+> 
+> df_list <- lapply(TP, \(i) {
+>     URL <- urls_list[[i]]
+>     data <- scrape(URL)
+>     # show progress
+>     message("iteration: ", i)
+>     #return value
+>     data
+> })
+> 
+> str(df_list)
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> 
+Hello,
+
+Yes, you can put it in the function. I have separated the function from 
+printing the progress because I thought it might make things more clear, 
+that's all.
+
+Hope this helps,
+
+Rui Barradas
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Tue Nov  8 16:23:55 2022
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Tue, 8 Nov 2022 15:23:55 +0000
+Subject: [R] print and lapply....
+In-Reply-To: <4228c15d-4dfb-34be-2ce8-ee3241f03e19@sapo.pt>
+References: <PU4P216MB1568A360DA25F1A43E00F62AC83C9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <85d70330-d644-9ad6-1c6f-e6ef21c4cd7f@sapo.pt>
+ <PU4P216MB1568124CE102CB3A02D058F1C83C9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <28f820bf-feef-b45f-a2e2-400374efe20f@sapo.pt>
+ <PU4P216MB1568284562B6403E256F76DDC83C9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <77cc1472-cb84-e953-f978-ebecaca7c4a9@sapo.pt>
+ <PU4P216MB1568B071D6953887BFF56AB5C83F9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <4228c15d-4dfb-34be-2ce8-ee3241f03e19@sapo.pt>
+Message-ID: <PU4P216MB15682DD6A2516A6DFBAD8BBCC83F9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Rui,
+                  THanks a lot!
+
+THanking you,
+Yours sincerely
+AKSHAY M KULKARNI
+________________________________
+From: Rui Barradas <ruipbarradas at sapo.pt>
+Sent: Tuesday, November 8, 2022 8:51 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] print and lapply....
+
+?s 14:47 de 08/11/2022, akshay kulkarni escreveu:
+> Dear Rui,
+>                    The replies from you, Bert, Tim and solved my problem. My last question: what if I put print inside the body of the function passed on to lapply, instead of separately in the function argument of apply? Is this what you insinuated in your reply?
+>
+> THanking you,
+> yours sincerely,
+> AKSHAY M KULKARNI
+> ________________________________
+> From: Rui Barradas <ruipbarradas at sapo.pt>
+> Sent: Tuesday, November 8, 2022 2:20 AM
+> To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+> Subject: Re: [R] print and lapply....
+>
+> ?s 19:22 de 07/11/2022, akshay kulkarni escreveu:
+>> Dear Rui,
+>>                    THanks for your reply...The point is the loop is a scraping code, and in your examples you have assumed that the body acts on i, the loop variable. Can you adapt your code to JUST PRINT the loop variable i ?
+>>
+>> By the by, I think I have stumbled upon the answer: The lapply() caches the result, and prints the output of the function in question  immediately after printing the final i. The i's get printed serially, as the function progresses....
+>>
+>>> lapply(1:4,function(x){print(x);Sys.sleep(x^2);x^2})
+>> [1] 1
+>> [1] 2
+>> [1] 3
+>> [1] 4
+>> [[1]]
+>> [1] 1
+>>
+>> [[2]]
+>> [1] 4
+>>
+>> [[3]]
+>> [1] 9
+>>
+>> [[4]]
+>> [1] 16
+>>
+>> Here x^2 's print only after 4 is printed on the console....
+>>
+>> tHanks anyways for your reply....
+>>
+>> THanking you,
+>> Yours sincerely,
+>> AKSHAY M KULKARNI
+>> ________________________________
+>> From: Rui Barradas <ruipbarradas at sapo.pt>
+>> Sent: Tuesday, November 8, 2022 12:24 AM
+>> To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+>> Subject: Re: [R] print and lapply....
+>>
+>> ?s 18:33 de 07/11/2022, akshay kulkarni escreveu:
+>>> Dear Rui,
+>>>                       Actually, I am replacing a big for loop by the lapply() function, and report the progress:
+>>>
+>>> lapply(TP, function(i) { BODY; print(i)})
+>>>
+>>> Can you please adjust your solution in this light?
+>>>
+>>> THanking you,
+>>> Yours sincerely,
+>>> AKSHAY M KULKARNI
+>>> ________________________________
+>>> From: Rui Barradas <ruipbarradas at sapo.pt>
+>>> Sent: Monday, November 7, 2022 11:59 PM
+>>> To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+>>> Subject: Re: [R] print and lapply....
+>>>
+>>> ?s 17:17 de 07/11/2022, akshay kulkarni escreveu:
+>>>> Dear members,
+>>>>                                  I have the following code and output:
+>>>>
+>>>>> TP <- 1:4
+>>>>> lapply(TP,function(x){print(x);x^2})
+>>>> [1] 1
+>>>> [1] 2
+>>>> [1] 3
+>>>> [1] 4
+>>>> [[1]]
+>>>> [1] 1
+>>>>
+>>>> [[2]]
+>>>> [1] 4
+>>>>
+>>>> [[3]]
+>>>> [1] 9
+>>>>
+>>>> [[4]]
+>>>> [1] 16
+>>>>
+>>>> How do I make the print function output x along with x^2, i.e not at the beginning but before each of x^2?
+>>>>
+>>>> Many thanks in advance....
+>>>>
+>>>> THanking you,
+>>>> Yours sincerely
+>>>> AKSHAY M KULKARNI
+>>>>
+>>>>           [[alternative HTML version deleted]]
+>>>>
+>>>> ______________________________________________
+>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>>> and provide commented, minimal, self-contained, reproducible code.
+>>> Hello,
+>>>
+>>> Here are two options, with ?cat and with ?message.
+>>>
+>>>
+>>> TP <- 1:4
+>>> lapply(TP, function(x){
+>>>       cat("x =", x, "x^2 =", x^2, "\n")
+>>> })
+>>>
+>>> lapply(TP, function(x){
+>>>       msg <- paste("x =", x, "x^2 =", x^2)
+>>>       message(msg)
+>>> })
+>>>
+>>>
+>>> Hope this helps,
+>>>
+>>> Rui Barradas
+>>>
+>>>
+>>>
+>> Hello,
+>>
+>>
+>> What do you want the lapply loop to return? If you have a BODY doing
+>> computations, do you want the lapply to return those values and report
+>> the progress?
+>>
+>> I have chosen cat or message over print because
+>>
+>>     - cat returns invisible(NULL),
+>>     - message returns invisible()
+>>     - print returns a value, what it prints.
+>>
+>> Can you adapt the code below to your use case?
+>>
+>>
+>>
+>> TP <- 1:4
+>> lapply(TP, function(x, verbose = TRUE){
+>>      # BODY
+>>      y <- rnorm(100, mean = x)
+>>
+>>      # show progress
+>>      if(verbose)
+>>        cat("x =", x, "x^2 =", x^2, "\n")
+>>
+>>      #return value
+>>      c(x = x, mean = mean(y))
+>> })
+>>
+>> lapply(TP, function(x, verbose = TRUE){
+>>      # BODY
+>>      y <- rnorm(100, mean = x)
+>>
+>>      # show progress
+>>      if(verbose) {
+>>        msg <- paste("x =", x, "x^2 =", x^2)
+>>        message(msg)
+>>      }
+>>
+>>      #return value
+>>      c(x = x, mean = mean(y))
+>> })
+>>
+>>
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>>
+> Hello,
+>
+> No, the x^2 are not printed after the i's. The x^2 are the function's
+> return values. The function prints the i's, then returns x^2.
+>
+> As for your problem, it is now more clerar.
+> I would write a function accepting a url to take care of scraping and
+> call it in the lapply loop. The progress report can be in the loop, like
+> below.
+>
+> This is a complete working example, scraping the Wikipedia list of
+> countries by GDP. The urls are in a list (it's always the same, I'm not
+> complicating things) and in a real scraping function I would wrap
+> tryCatch around it, just in case.
+>
+> First the function, then the urls list, then the lapply loop.
+>
+>
+>
+> library(rvest)
+>
+> scrape <- function(url) {
+>     page <- read_html(url)
+>     gdp <- page |>
+>       html_element(".wikitable") |>
+>       html_table() |>
+>       as.data.frame()
+>     names(gdp) <- unlist(gdp[1,, drop = TRUE])
+>     gdp <- gdp[-1,]
+>     row.names(gdp) <- NULL
+>
+>     #return value
+>     gdp
+> }
+>
+> wiki_gdp_url <-
+> "https://en.wikipedia.org/wiki/List_of_countries_by_GDP_(nominal)"
+> urls_list <- list(wiki_gdp_url, wiki_gdp_url)
+> TP <- seq_along(urls_list)
+>
+> TP
+> # [1] 1 2
+>
+> df_list <- lapply(TP, \(i) {
+>     URL <- urls_list[[i]]
+>     data <- scrape(URL)
+>     # show progress
+>     message("iteration: ", i)
+>     #return value
+>     data
+> })
+>
+> str(df_list)
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+Hello,
+
+Yes, you can put it in the function. I have separated the function from
+printing the progress because I thought it might make things more clear,
+that's all.
+
+Hope this helps,
+
+Rui Barradas
+
+
+	[[alternative HTML version deleted]]
+
+
