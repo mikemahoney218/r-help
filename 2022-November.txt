@@ -7621,3 +7621,886 @@ Rui Barradas
 	[[alternative HTML version deleted]]
 
 
+From er|cjberger @end|ng |rom gm@||@com  Wed Nov  9 07:22:18 2022
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Wed, 9 Nov 2022 08:22:18 +0200
+Subject: [R] [External] Re: Selecting a minimum value of an attribute
+ associated with point values neighboring a given point and assigning it as
+ a new attribute
+In-Reply-To: <BN6PR05MB3588DCB2A66A6048CD9D7645903E9@BN6PR05MB3588.namprd05.prod.outlook.com>
+References: <BN6PR05MB35887EFE01222DBF7C359AAB903B9@BN6PR05MB3588.namprd05.prod.outlook.com>
+ <CAGxFJbSkg9zAqk0dGcr3qJe2z2C04NEZFdHN8hWQA3oSbfHukQ@mail.gmail.com>
+ <CAGgJW767Ein1S+MSywb57B2UtmE0EJodDVokPEx5_-c5BTFR1Q@mail.gmail.com>
+ <CAGgJW77yY0_GDQWEAxzSdRh0N3kXgj9zrSEYUzuVsFnHyeE=aA@mail.gmail.com>
+ <BN6PR05MB3588015F46997E64D5F8F138903D9@BN6PR05MB3588.namprd05.prod.outlook.com>
+ <3247be10-6d5c-12d5-1634-2a9e934f431e@gmail.com>
+ <BN6PR05MB3588DCB2A66A6048CD9D7645903E9@BN6PR05MB3588.namprd05.prod.outlook.com>
+Message-ID: <CAGgJW74vd+et3_ShdyXxL8bxWUknviy3i2kAfumAL79+_1JeaQ@mail.gmail.com>
+
+Hi Tiffany,
+You can replace
+
+Conc_min <- lapply(1:N, function(i) { ...
+
+by
+
+Conc_min <- lapply(seq_len(nrow(pts)), function(i) { ..
+
+Best,
+Eric
+
+On Wed, Nov 9, 2022 at 4:38 AM Duhl, Tiffany R. <Tiffany.Duhl at tufts.edu> wrote:
+>
+> First off, thanks SO much Eric and Micha for your help on this problem!  I think Micha's spatially-oriented solution with Eric's slight modifications will work best for my application but there is one snag (see the commented section near the end of the following code)-- basically I don't know how to apply the lapply operator to a list with a variable length (namely the length of my input csv files) rather than the fixed length that Eric used:
+>
+> library(sf)
+> library(spdep)
+> data<- read.csv("R_find_pts_testdata.csv")
+>
+> MAX_DIST <- 0.05  #50 m in km, the units of dnearneigh when coords are in degrees
+> pts <- st_as_sf(data, coords=c('LON', 'LAT'), crs=4326)
+> dist_matrix <- dnearneigh(pts, 0, MAX_DIST, use_s2=TRUE)
+>
+> #Micha's function to get the minimum Conc value among all points
+> #within the buffer distance to a given single point:
+> # Function to get minimum Conc values for one row of distance matrix
+>
+> MinConc <- function(x, lst, pts) {
+>    Concs <- lapply(lst, function(p) {
+>      pts$Conc[p]
+>    })
+>    return(min(Concs[[1]]))
+> }
+>
+> # above, x is an index to a single point, lst is a list of point indices
+> #from distance matrix within the buffer distance
+>
+> #Next run function on all points to get list of minimum Conc
+> #values for all points, and merge back to pts.
+> #...modified by Eric to include original point
+>
+> return(min(c(Concs[[1]], pts$Conc[x])))
+>
+> # Now apply this function to all points in pts
+> ###This is where the problem is, I think:
+> ###Eric had used N <- 1000L and later
+> ###Conc_min <- lapply(1:N, function(i) {
+> ### MinConc(i, dist_matrix[i], pts)})
+> ###But I need the length of the list the function is applied to
+> ###to be variable, depending on the length of the input csv file
+> ###unlike the dummy variable dataframe that Eric used with a set length
+> ###So I changed the "x" argument in lapply to "pts$X" but that generates an empty list
+>
+> Conc_min <- lapply(pts$X, function(i){
+>    MinConc(i, dist_matrix[i], pts)
+> #})
+> Conc_min <- data.frame("Conc_min" = as.integer(Conc_min))
+>
+> # Add back as new attrib to original points sf object
+> pts_with_min <- do.call(cbind, c(pts, Conc_min))
+>
+>
+>
+> Many thanks again for your help on this!
+> Best regards,
+> -Tiffany
+> ________________________________
+> From: Micha Silver <tsvibar at gmail.com>
+> Sent: Monday, November 7, 2022 8:11 AM
+> To: Duhl, Tiffany R. <Tiffany.Duhl at tufts.edu>; Eric Berger <ericjberger at gmail.com>
+> Cc: R-help <R-help at r-project.org>
+> Subject: Re: [R] [External] Re: Selecting a minimum value of an attribute associated with point values neighboring a given point and assigning it as a new attribute
+>
+> Eric's solution notwithstanding, here's a more "spatial" approach.
+>
+>
+> I first create a fictitious set of 1000 points (and save to CSV to
+> replicate your workflow)
+>
+> library(sf)
+> library(spdep)
+>
+> # Prepare fictitious data
+> # Create a data.frame with 1000 random points, and save to CSV
+> LON <- runif(1000, -70.0, -69.0)
+> LAT <- runif(1000, 42.0, 43.0)
+> Conc <- runif(1000, 90000, 100000)
+> df <- data.frame(LON, LAT, Conc)
+> csv_file = "/tmp/pts_testdata.csv"
+> write.csv(df, csv_file)
+>
+>
+> Now read that CSV back in directly as an sf object (No need for the old
+> SpatialPointsDataFrame). THen create a distance matrix for all points,
+> which contains indicies to those points within a certain buffer
+> distance, just as you did in your example.
+>
+>
+> # Read back in as sf object, including row index
+> pts <- st_as_sf(read.csv(csv_file), coords=c('LON', 'LAT'), crs=4326)
+> dist_matrix <- dnearneigh(pts, 0, 100, use_s2=TRUE) # use_s2 since these
+> are lon/lat
+>
+> Now I prepare a function to get the minimum Conv value among all points
+> within the buffer distance to a given single point:
+> # Function to get minimum Conc values for one row of distance matrix
+> MinConc <- function(x, lst, pts) {
+>    # x is an index to a single point,
+>    # lst is a list of point indices from distance matrix
+>    # that are within the buffer distance
+>    Concs <- lapply(lst, function(p) {
+>      pts$Conc[p]
+>    })
+>    return(min(Concs[[1]]))
+> }
+>
+> Next run that function on all points to get a list of minimum Conv
+> values for all points, and merge back to pts.
+>
+>
+> # Now apply this function to all points in pts
+> Conc_min <- lapply(pts$X, function(i){
+>    MinConc(i, dist_matrix[i], pts)
+> })
+> Conc_min <- data.frame("Conc_min" = as.integer(Conc_min))
+>
+> # Add back as new attrib to original points sf object
+> pts_with_min <- do.call(cbind, c(pts, Conc_min))
+>
+> HTH,
+>
+> Micha
+>
+>
+>
+> On 06/11/2022 18:40, Duhl, Tiffany R. wrote:
+> > Thanks so much Eric!
+> >
+> >   I'm going to play around with your toy code (pun intended) & see if I can make it work for my application.
+> >
+> > Cheers,
+> > -Tiffany
+> > ________________________________
+> > From: Eric Berger <ericjberger at gmail.com>
+> > Sent: Sunday, November 6, 2022 10:27 AM
+> > To: Bert Gunter <bgunter.4567 at gmail.com>
+> > Cc: Duhl, Tiffany R. <Tiffany.Duhl at tufts.edu>; R-help <R-help at r-project.org>
+> > Subject: [External] Re: [R] Selecting a minimum value of an attribute associated with point values neighboring a given point and assigning it as a new attribute
+> >
+> > Whoops ... left out a line in Part 2. Resending with the correction
+> >
+> > ## PART 2: You can use this code on the real data with f() defined appropriately
+> > A <- matrix(0,N,N)
+> > v <- 1:N
+> > ## get the indices (j,k) where j < k (as columns in a data.frame)
+> > idx <- expand.grid(v,v) |> rename(j=Var1,k=Var2) |> filter(j < k)
+> > u <- sapply(1:nrow(idx),
+> >             \(i){ j <- idx$j[i]; k <- idx$k[i]; A[j,k] <<- f(j,k,myData) })
+> > B <- A + t(A) + diag(N)
+> > C <- diag(myData$Conc)
+> > D <- B %*% C
+> > D[D==0] <- NA
+> > myData$Conc_min <- apply(D,MAR=1,\(v){min(v,na.rm=TRUE)})
+> > print(head(myData))
+> >
+> > On Sun, Nov 6, 2022 at 5:19 PM Eric Berger <ericjberger at gmail.com> wrote:
+> >> Hi Tiffany,
+> >> Here is some code that might help with your problem. I solve a "toy"
+> >> problem that is conceptually the same.
+> >> Part 1 sets up my toy problem. You would have to replace Part 1 with
+> >> your real case. The main point is to define
+> >> a function f(i, j, data) which returns 0 or 1 depending on whether the
+> >> observations in rows i and j in your dataset 'data'
+> >> are within your cutoff distance (i.e. 50m).
+> >>
+> >> You can then use Part 2 almost without changes (except for changing
+> >> 'myData' to the correct name of your data).
+> >>
+> >> I hope this helps,
+> >> Eric
+> >>
+> >> library(dplyr)
+> >>
+> >> ## PART 1: create fake data for minimal example
+> >> set.seed(123) ## for reproducibility
+> >> N <- 5       ## replace by number of locations (approx 9000 in your case)
+> >> MAX_DISTANCE <- 2  ## 50 in your case
+> >> myData <- data.frame(x=rnorm(N),y=rnorm(N),Conc=sample(1:N,N))
+> >>
+> >> ## The function which you must re-define for your actual case.
+> >> f <- function(i,j,a) {
+> >>   dist <- sqrt(sum((a[i,1:2] - a[j,1:2])^2)) ## Euclidean distance
+> >>   as.integer(dist < MAX_DISTANCE)
+> >> }
+> >>
+> >> ## PART 2: You can use this code on the real data with f() defined appropriately
+> >> A <- matrix(0,N,N)
+> >> ## get the indices (j,k) where j < k (as columns in a data.frame)
+> >> idx <- expand.grid(v,v) |> rename(j=Var1,k=Var2) |> filter(j < k)
+> >> u <- sapply(1:nrow(idx),\(i){ j <- idx$j[i]; k <- idx$k[i]; A[j,k] <<-
+> >> f(j,k,myData) })
+> >> B <- A + t(A) + diag(N)
+> >> C <- diag(myData$Conc)
+> >> D <- B %*% C
+> >> D[D==0] <- NA
+> >> myData$Conc_min <- apply(D,MAR=1,\(v){min(v,na.rm=TRUE)})
+> >> print(head(myData))
+> >>
+> >>
+> >> On Sat, Nov 5, 2022 at 5:14 PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >>> Probably better posted on R-sig-geo.
+> >>>
+> >>> -- Bert
+> >>>
+> >>> On Sat, Nov 5, 2022 at 12:36 AM Duhl, Tiffany R. <Tiffany.Duhl at tufts.edu>
+> >>> wrote:
+> >>>
+> >>>> Hello,
+> >>>>
+> >>>> I have sets of spatial points with LAT, LON coords (unprojected, WGS84
+> >>>> datum) and several value attributes associated with each point, from
+> >>>> numerous csv files (with an average of 6,000-9,000 points in each file) as
+> >>>> shown in the following example:
+> >>>>
+> >>>> data<- read.csv("R_find_pts_testdata.csv")
+> >>>>
+> >>>>> data
+> >>>>      ID      Date         Time        LAT            LON           Conc
+> >>>> Leg.Speed    CO2  H2O BC61 Hr Min Sec
+> >>>> 1   76 4/19/2021 21:25:38 42.40066 -70.98802 99300   0.0 mph 428.39 9.57
+> >>>> 578 21  25  38
+> >>>> 2   77 4/19/2021 21:25:39 42.40066 -70.98802 96730   0.0 mph 428.04 9.57
+> >>>> 617 21  25  39
+> >>>> 3   79 4/19/2021 21:25:41 42.40066 -70.98802 98800   0.2 mph 427.10 9.57
+> >>>> 1027 21  25  41
+> >>>> 4   80 4/19/2021 21:25:42 42.40066 -70.98802 96510     2 mph 427.99 9.58
+> >>>> 1381 21  25  42
+> >>>> 5   81 4/19/2021 21:25:43 42.40067 -70.98801 95540     3 mph 427.99 9.58
+> >>>> 1271 21  25  43
+> >>>> 6   82 4/19/2021 21:25:44 42.40068 -70.98799 94720     4 mph 427.20 9.57
+> >>>> 910 21  25  44
+> >>>> 7   83 4/19/2021 21:25:45 42.40069 -70.98797 94040     5 mph 427.18 9.57
+> >>>> 652 21  25  45
+> >>>> 8   84 4/19/2021 21:25:46 42.40072 -70.98795 95710     7 mph 427.07 9.57
+> >>>> 943 21  25  46
+> >>>> 9   85 4/19/2021 21:25:47 42.40074 -70.98792 96200     8 mph 427.44 9.56
+> >>>> 650 21  25  47
+> >>>> 10  86 4/19/2021 21:25:48 42.40078 -70.98789 93750    10 mph 428.76 9.57
+> >>>> 761 21  25  48
+> >>>> 11  87 4/19/2021 21:25:49 42.40081 -70.98785 93360    11 mph 429.25 9.56
+> >>>> 1158 21  25  49
+> >>>> 12  88 4/19/2021 21:25:50 42.40084 -70.98781 94340    12 mph 429.56 9.57
+> >>>> 107 21  25  50
+> >>>> 13  89 4/19/2021 21:25:51 42.40087 -70.98775 92780    12 mph 428.62 9.56
+> >>>> 720 21  25  51
+> >>>>
+> >>>>
+> >>>> What I want to do is, for each point, identify all points within 50m of
+> >>>> that point, find the minimum value of the "Conc" attribute of each nearby
+> >>>> set of points (including the original point) and then create a new variable
+> >>>> ("Conc_min") and assign this minimum value to a new variable added to
+> >>>> "data".
+> >>>>
+> >>>> So far, I have the following code:
+> >>>>
+> >>>> library(spdep)
+> >>>> library(sf)
+> >>>>
+> >>>> setwd("C:\\mydirectory\\")
+> >>>> data<- read.csv("R_find_pts_testdata.csv")
+> >>>>
+> >>>> #make sure the data is a data frame
+> >>>> pts <- data.frame(data)
+> >>>>
+> >>>> #create spatial data frame and define projection
+> >>>> pts_coords <- cbind(pts$LON, pts$LAT)
+> >>>> data_pts <- SpatialPointsDataFrame(coords= pts_coords,
+> >>>> data=pts, proj4string = CRS("+proj=longlat +datum=WGS84"))
+> >>>>
+> >>>> #Re-project to WGS 84 / UTM zone 18N, so the analysis is in units of m
+> >>>> ptsUTM  <- sf::st_as_sf(data_pts, coords = c("LAT", "LON"), remove = F)%>%
+> >>>> st_transform(32618)
+> >>>>
+> >>>> #create 50 m buffer around each point then intersect with points and
+> >>>> finally find neighbors within the buffers
+> >>>> pts_buf <- sf::st_buffer(ptsUTM, 50)
+> >>>> coords  <- sf::st_coordinates(ptsUTM)
+> >>>> int <- sf::st_intersects(pts_buf, ptsUTM)
+> >>>> x   <- spdep::dnearneigh(coords, 0, 50)
+> >>>>
+> >>>> Now at this point, I'm not sure what to either the "int" (a sgbp list) or
+> >>>> "x" (nb object) objects (or even if I need them both)
+> >>>>
+> >>>>> int
+> >>>> Sparse geometry binary predicate list of length 974, where the predicate
+> >>>> was `intersects'
+> >>>> first 10 elements:
+> >>>>   1: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>   2: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>   3: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>   4: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>   5: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>   6: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>   7: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>   8: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>   9: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+> >>>>
+> >>>>> x
+> >>>> Neighbour list object:
+> >>>> Number of regions: 974
+> >>>> Number of nonzero links: 34802
+> >>>> Percentage nonzero weights: 3.668481
+> >>>> Average number of links: 35.73101
+> >>>>
+> >>>> One thought is that maybe I don't need the dnearneigh function and can
+> >>>> instead convert "int" into a dataframe and somehow merge or associate
+> >>>> (perhaps with an inner join) the ID fields of the buffered and intersecting
+> >>>> points and then compute the minimum value of "Conc" grouping by ID:
+> >>>>
+> >>>>> as.data.frame(int)
+> >>>>      row.id col.id
+> >>>> 1        1      1
+> >>>> 2        1      2
+> >>>> 3        1      3
+> >>>> 4        1      4
+> >>>> 5        1      5
+> >>>> 6        1      6
+> >>>> 7        1      7
+> >>>> 8        1      8
+> >>>> 9        1      9
+> >>>> 10       1     10
+> >>>> 11       1     11
+> >>>> 12       1     12
+> >>>> 13       1     13
+> >>>> 14       1     14
+> >>>> 15       1     15
+> >>>> 16       1     16
+> >>>> 17       1     17
+> >>>> 18       1     18
+> >>>> 19       2      1
+> >>>> 20       2      2
+> >>>> 21       2      3
+> >>>> 22       2      4
+> >>>> 23       2      5
+> >>>> 24       2      6
+> >>>> 25       2      7
+> >>>> 26       2      8
+> >>>> 27       2      9
+> >>>> 28       2     10
+> >>>>
+> >>>>
+> >>>> So in the above example I'd like to take the minimum of "Conc" among the
+> >>>> col.id points grouped with row.id 1 (i.e., col.ids 1-18) and assign the
+> >>>> minimum value of this group as a new variable in data (Data$Conc_min), and
+> >>>> do the same for row.id 2 and all the rest of the rows.
+> >>>>
+> >>>> I'm just not sure how to do this and I appreciate any help folks might
+> >>>> have on this matter!
+> >>>>
+> >>>> Many thanks,
+> >>>> -Tiffany
+> >>>>
+> >>>>          [[alternative HTML version deleted]]
+> >>>>
+> >>>> ______________________________________________
+> >>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>>> PLEASE do read the posting guide
+> >>>> http://www.R-project.org/posting-guide.html
+> >>>> and provide commented, minimal, self-contained, reproducible code.
+> >>>>
+> >>>          [[alternative HTML version deleted]]
+> >>>
+> >>> ______________________________________________
+> >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> >>> and provide commented, minimal, self-contained, reproducible code.
+> > Caution: This message originated from outside of the Tufts University organization. Please exercise caution when clicking links or opening attachments. When in doubt, email the TTS Service Desk at it at tufts.edu<mailto:it at tufts.edu> or call them directly at 617-627-3376.
+> >
+> >
+> >        [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> --
+> Micha Silver
+> Ben Gurion Univ.
+> Sde Boker, Remote Sensing Lab
+> cell: +972-523-665918
+>
+
+
+From T|||@ny@Duh| @end|ng |rom tu|t@@edu  Wed Nov  9 03:38:15 2022
+From: T|||@ny@Duh| @end|ng |rom tu|t@@edu (Duhl, Tiffany R.)
+Date: Wed, 9 Nov 2022 02:38:15 +0000
+Subject: [R] [External] Re: Selecting a minimum value of an attribute
+ associated with point values neighboring a given point and assigning it as
+ a new attribute
+In-Reply-To: <3247be10-6d5c-12d5-1634-2a9e934f431e@gmail.com>
+References: <BN6PR05MB35887EFE01222DBF7C359AAB903B9@BN6PR05MB3588.namprd05.prod.outlook.com>
+ <CAGxFJbSkg9zAqk0dGcr3qJe2z2C04NEZFdHN8hWQA3oSbfHukQ@mail.gmail.com>
+ <CAGgJW767Ein1S+MSywb57B2UtmE0EJodDVokPEx5_-c5BTFR1Q@mail.gmail.com>
+ <CAGgJW77yY0_GDQWEAxzSdRh0N3kXgj9zrSEYUzuVsFnHyeE=aA@mail.gmail.com>
+ <BN6PR05MB3588015F46997E64D5F8F138903D9@BN6PR05MB3588.namprd05.prod.outlook.com>
+ <3247be10-6d5c-12d5-1634-2a9e934f431e@gmail.com>
+Message-ID: <BN6PR05MB3588DCB2A66A6048CD9D7645903E9@BN6PR05MB3588.namprd05.prod.outlook.com>
+
+First off, thanks SO much Eric and Micha for your help on this problem!  I think Micha's spatially-oriented solution with Eric's slight modifications will work best for my application but there is one snag (see the commented section near the end of the following code)-- basically I don't know how to apply the lapply operator to a list with a variable length (namely the length of my input csv files) rather than the fixed length that Eric used:
+
+library(sf)
+library(spdep)
+data<- read.csv("R_find_pts_testdata.csv")
+
+MAX_DIST <- 0.05  #50 m in km, the units of dnearneigh when coords are in degrees
+pts <- st_as_sf(data, coords=c('LON', 'LAT'), crs=4326)
+dist_matrix <- dnearneigh(pts, 0, MAX_DIST, use_s2=TRUE)
+
+#Micha's function to get the minimum Conc value among all points
+#within the buffer distance to a given single point:
+# Function to get minimum Conc values for one row of distance matrix
+
+MinConc <- function(x, lst, pts) {
+   Concs <- lapply(lst, function(p) {
+     pts$Conc[p]
+   })
+   return(min(Concs[[1]]))
+}
+
+# above, x is an index to a single point, lst is a list of point indices
+#from distance matrix within the buffer distance
+
+#Next run function on all points to get list of minimum Conc
+#values for all points, and merge back to pts.
+#...modified by Eric to include original point
+
+return(min(c(Concs[[1]], pts$Conc[x])))
+
+# Now apply this function to all points in pts
+###This is where the problem is, I think:
+###Eric had used N <- 1000L and later
+###Conc_min <- lapply(1:N, function(i) {
+### MinConc(i, dist_matrix[i], pts)})
+###But I need the length of the list the function is applied to
+###to be variable, depending on the length of the input csv file
+###unlike the dummy variable dataframe that Eric used with a set length
+###So I changed the "x" argument in lapply to "pts$X" but that generates an empty list
+
+Conc_min <- lapply(pts$X, function(i){
+   MinConc(i, dist_matrix[i], pts)
+#})
+Conc_min <- data.frame("Conc_min" = as.integer(Conc_min))
+
+# Add back as new attrib to original points sf object
+pts_with_min <- do.call(cbind, c(pts, Conc_min))
+
+
+
+Many thanks again for your help on this!
+Best regards,
+-Tiffany
+________________________________
+From: Micha Silver <tsvibar at gmail.com>
+Sent: Monday, November 7, 2022 8:11 AM
+To: Duhl, Tiffany R. <Tiffany.Duhl at tufts.edu>; Eric Berger <ericjberger at gmail.com>
+Cc: R-help <R-help at r-project.org>
+Subject: Re: [R] [External] Re: Selecting a minimum value of an attribute associated with point values neighboring a given point and assigning it as a new attribute
+
+Eric's solution notwithstanding, here's a more "spatial" approach.
+
+
+I first create a fictitious set of 1000 points (and save to CSV to
+replicate your workflow)
+
+library(sf)
+library(spdep)
+
+# Prepare fictitious data
+# Create a data.frame with 1000 random points, and save to CSV
+LON <- runif(1000, -70.0, -69.0)
+LAT <- runif(1000, 42.0, 43.0)
+Conc <- runif(1000, 90000, 100000)
+df <- data.frame(LON, LAT, Conc)
+csv_file = "/tmp/pts_testdata.csv"
+write.csv(df, csv_file)
+
+
+Now read that CSV back in directly as an sf object (No need for the old
+SpatialPointsDataFrame). THen create a distance matrix for all points,
+which contains indicies to those points within a certain buffer
+distance, just as you did in your example.
+
+
+# Read back in as sf object, including row index
+pts <- st_as_sf(read.csv(csv_file), coords=c('LON', 'LAT'), crs=4326)
+dist_matrix <- dnearneigh(pts, 0, 100, use_s2=TRUE) # use_s2 since these
+are lon/lat
+
+Now I prepare a function to get the minimum Conv value among all points
+within the buffer distance to a given single point:
+# Function to get minimum Conc values for one row of distance matrix
+MinConc <- function(x, lst, pts) {
+   # x is an index to a single point,
+   # lst is a list of point indices from distance matrix
+   # that are within the buffer distance
+   Concs <- lapply(lst, function(p) {
+     pts$Conc[p]
+   })
+   return(min(Concs[[1]]))
+}
+
+Next run that function on all points to get a list of minimum Conv
+values for all points, and merge back to pts.
+
+
+# Now apply this function to all points in pts
+Conc_min <- lapply(pts$X, function(i){
+   MinConc(i, dist_matrix[i], pts)
+})
+Conc_min <- data.frame("Conc_min" = as.integer(Conc_min))
+
+# Add back as new attrib to original points sf object
+pts_with_min <- do.call(cbind, c(pts, Conc_min))
+
+HTH,
+
+Micha
+
+
+
+On 06/11/2022 18:40, Duhl, Tiffany R. wrote:
+> Thanks so much Eric!
+>
+>   I'm going to play around with your toy code (pun intended) & see if I can make it work for my application.
+>
+> Cheers,
+> -Tiffany
+> ________________________________
+> From: Eric Berger <ericjberger at gmail.com>
+> Sent: Sunday, November 6, 2022 10:27 AM
+> To: Bert Gunter <bgunter.4567 at gmail.com>
+> Cc: Duhl, Tiffany R. <Tiffany.Duhl at tufts.edu>; R-help <R-help at r-project.org>
+> Subject: [External] Re: [R] Selecting a minimum value of an attribute associated with point values neighboring a given point and assigning it as a new attribute
+>
+> Whoops ... left out a line in Part 2. Resending with the correction
+>
+> ## PART 2: You can use this code on the real data with f() defined appropriately
+> A <- matrix(0,N,N)
+> v <- 1:N
+> ## get the indices (j,k) where j < k (as columns in a data.frame)
+> idx <- expand.grid(v,v) |> rename(j=Var1,k=Var2) |> filter(j < k)
+> u <- sapply(1:nrow(idx),
+>             \(i){ j <- idx$j[i]; k <- idx$k[i]; A[j,k] <<- f(j,k,myData) })
+> B <- A + t(A) + diag(N)
+> C <- diag(myData$Conc)
+> D <- B %*% C
+> D[D==0] <- NA
+> myData$Conc_min <- apply(D,MAR=1,\(v){min(v,na.rm=TRUE)})
+> print(head(myData))
+>
+> On Sun, Nov 6, 2022 at 5:19 PM Eric Berger <ericjberger at gmail.com> wrote:
+>> Hi Tiffany,
+>> Here is some code that might help with your problem. I solve a "toy"
+>> problem that is conceptually the same.
+>> Part 1 sets up my toy problem. You would have to replace Part 1 with
+>> your real case. The main point is to define
+>> a function f(i, j, data) which returns 0 or 1 depending on whether the
+>> observations in rows i and j in your dataset 'data'
+>> are within your cutoff distance (i.e. 50m).
+>>
+>> You can then use Part 2 almost without changes (except for changing
+>> 'myData' to the correct name of your data).
+>>
+>> I hope this helps,
+>> Eric
+>>
+>> library(dplyr)
+>>
+>> ## PART 1: create fake data for minimal example
+>> set.seed(123) ## for reproducibility
+>> N <- 5       ## replace by number of locations (approx 9000 in your case)
+>> MAX_DISTANCE <- 2  ## 50 in your case
+>> myData <- data.frame(x=rnorm(N),y=rnorm(N),Conc=sample(1:N,N))
+>>
+>> ## The function which you must re-define for your actual case.
+>> f <- function(i,j,a) {
+>>   dist <- sqrt(sum((a[i,1:2] - a[j,1:2])^2)) ## Euclidean distance
+>>   as.integer(dist < MAX_DISTANCE)
+>> }
+>>
+>> ## PART 2: You can use this code on the real data with f() defined appropriately
+>> A <- matrix(0,N,N)
+>> ## get the indices (j,k) where j < k (as columns in a data.frame)
+>> idx <- expand.grid(v,v) |> rename(j=Var1,k=Var2) |> filter(j < k)
+>> u <- sapply(1:nrow(idx),\(i){ j <- idx$j[i]; k <- idx$k[i]; A[j,k] <<-
+>> f(j,k,myData) })
+>> B <- A + t(A) + diag(N)
+>> C <- diag(myData$Conc)
+>> D <- B %*% C
+>> D[D==0] <- NA
+>> myData$Conc_min <- apply(D,MAR=1,\(v){min(v,na.rm=TRUE)})
+>> print(head(myData))
+>>
+>>
+>> On Sat, Nov 5, 2022 at 5:14 PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>>> Probably better posted on R-sig-geo.
+>>>
+>>> -- Bert
+>>>
+>>> On Sat, Nov 5, 2022 at 12:36 AM Duhl, Tiffany R. <Tiffany.Duhl at tufts.edu>
+>>> wrote:
+>>>
+>>>> Hello,
+>>>>
+>>>> I have sets of spatial points with LAT, LON coords (unprojected, WGS84
+>>>> datum) and several value attributes associated with each point, from
+>>>> numerous csv files (with an average of 6,000-9,000 points in each file) as
+>>>> shown in the following example:
+>>>>
+>>>> data<- read.csv("R_find_pts_testdata.csv")
+>>>>
+>>>>> data
+>>>>      ID      Date         Time        LAT            LON           Conc
+>>>> Leg.Speed    CO2  H2O BC61 Hr Min Sec
+>>>> 1   76 4/19/2021 21:25:38 42.40066 -70.98802 99300   0.0 mph 428.39 9.57
+>>>> 578 21  25  38
+>>>> 2   77 4/19/2021 21:25:39 42.40066 -70.98802 96730   0.0 mph 428.04 9.57
+>>>> 617 21  25  39
+>>>> 3   79 4/19/2021 21:25:41 42.40066 -70.98802 98800   0.2 mph 427.10 9.57
+>>>> 1027 21  25  41
+>>>> 4   80 4/19/2021 21:25:42 42.40066 -70.98802 96510     2 mph 427.99 9.58
+>>>> 1381 21  25  42
+>>>> 5   81 4/19/2021 21:25:43 42.40067 -70.98801 95540     3 mph 427.99 9.58
+>>>> 1271 21  25  43
+>>>> 6   82 4/19/2021 21:25:44 42.40068 -70.98799 94720     4 mph 427.20 9.57
+>>>> 910 21  25  44
+>>>> 7   83 4/19/2021 21:25:45 42.40069 -70.98797 94040     5 mph 427.18 9.57
+>>>> 652 21  25  45
+>>>> 8   84 4/19/2021 21:25:46 42.40072 -70.98795 95710     7 mph 427.07 9.57
+>>>> 943 21  25  46
+>>>> 9   85 4/19/2021 21:25:47 42.40074 -70.98792 96200     8 mph 427.44 9.56
+>>>> 650 21  25  47
+>>>> 10  86 4/19/2021 21:25:48 42.40078 -70.98789 93750    10 mph 428.76 9.57
+>>>> 761 21  25  48
+>>>> 11  87 4/19/2021 21:25:49 42.40081 -70.98785 93360    11 mph 429.25 9.56
+>>>> 1158 21  25  49
+>>>> 12  88 4/19/2021 21:25:50 42.40084 -70.98781 94340    12 mph 429.56 9.57
+>>>> 107 21  25  50
+>>>> 13  89 4/19/2021 21:25:51 42.40087 -70.98775 92780    12 mph 428.62 9.56
+>>>> 720 21  25  51
+>>>>
+>>>>
+>>>> What I want to do is, for each point, identify all points within 50m of
+>>>> that point, find the minimum value of the "Conc" attribute of each nearby
+>>>> set of points (including the original point) and then create a new variable
+>>>> ("Conc_min") and assign this minimum value to a new variable added to
+>>>> "data".
+>>>>
+>>>> So far, I have the following code:
+>>>>
+>>>> library(spdep)
+>>>> library(sf)
+>>>>
+>>>> setwd("C:\\mydirectory\\")
+>>>> data<- read.csv("R_find_pts_testdata.csv")
+>>>>
+>>>> #make sure the data is a data frame
+>>>> pts <- data.frame(data)
+>>>>
+>>>> #create spatial data frame and define projection
+>>>> pts_coords <- cbind(pts$LON, pts$LAT)
+>>>> data_pts <- SpatialPointsDataFrame(coords= pts_coords,
+>>>> data=pts, proj4string = CRS("+proj=longlat +datum=WGS84"))
+>>>>
+>>>> #Re-project to WGS 84 / UTM zone 18N, so the analysis is in units of m
+>>>> ptsUTM  <- sf::st_as_sf(data_pts, coords = c("LAT", "LON"), remove = F)%>%
+>>>> st_transform(32618)
+>>>>
+>>>> #create 50 m buffer around each point then intersect with points and
+>>>> finally find neighbors within the buffers
+>>>> pts_buf <- sf::st_buffer(ptsUTM, 50)
+>>>> coords  <- sf::st_coordinates(ptsUTM)
+>>>> int <- sf::st_intersects(pts_buf, ptsUTM)
+>>>> x   <- spdep::dnearneigh(coords, 0, 50)
+>>>>
+>>>> Now at this point, I'm not sure what to either the "int" (a sgbp list) or
+>>>> "x" (nb object) objects (or even if I need them both)
+>>>>
+>>>>> int
+>>>> Sparse geometry binary predicate list of length 974, where the predicate
+>>>> was `intersects'
+>>>> first 10 elements:
+>>>>   1: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>>>>   2: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>>>>   3: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>>>>   4: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>>>>   5: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>>>>   6: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>>>>   7: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>>>>   8: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>>>>   9: 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, ...
+>>>>
+>>>>> x
+>>>> Neighbour list object:
+>>>> Number of regions: 974
+>>>> Number of nonzero links: 34802
+>>>> Percentage nonzero weights: 3.668481
+>>>> Average number of links: 35.73101
+>>>>
+>>>> One thought is that maybe I don't need the dnearneigh function and can
+>>>> instead convert "int" into a dataframe and somehow merge or associate
+>>>> (perhaps with an inner join) the ID fields of the buffered and intersecting
+>>>> points and then compute the minimum value of "Conc" grouping by ID:
+>>>>
+>>>>> as.data.frame(int)
+>>>>      row.id col.id
+>>>> 1        1      1
+>>>> 2        1      2
+>>>> 3        1      3
+>>>> 4        1      4
+>>>> 5        1      5
+>>>> 6        1      6
+>>>> 7        1      7
+>>>> 8        1      8
+>>>> 9        1      9
+>>>> 10       1     10
+>>>> 11       1     11
+>>>> 12       1     12
+>>>> 13       1     13
+>>>> 14       1     14
+>>>> 15       1     15
+>>>> 16       1     16
+>>>> 17       1     17
+>>>> 18       1     18
+>>>> 19       2      1
+>>>> 20       2      2
+>>>> 21       2      3
+>>>> 22       2      4
+>>>> 23       2      5
+>>>> 24       2      6
+>>>> 25       2      7
+>>>> 26       2      8
+>>>> 27       2      9
+>>>> 28       2     10
+>>>>
+>>>>
+>>>> So in the above example I'd like to take the minimum of "Conc" among the
+>>>> col.id points grouped with row.id 1 (i.e., col.ids 1-18) and assign the
+>>>> minimum value of this group as a new variable in data (Data$Conc_min), and
+>>>> do the same for row.id 2 and all the rest of the rows.
+>>>>
+>>>> I'm just not sure how to do this and I appreciate any help folks might
+>>>> have on this matter!
+>>>>
+>>>> Many thanks,
+>>>> -Tiffany
+>>>>
+>>>>          [[alternative HTML version deleted]]
+>>>>
+>>>> ______________________________________________
+>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>> PLEASE do read the posting guide
+>>>> http://www.R-project.org/posting-guide.html
+>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>>
+>>>          [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+> Caution: This message originated from outside of the Tufts University organization. Please exercise caution when clicking links or opening attachments. When in doubt, email the TTS Service Desk at it at tufts.edu<mailto:it at tufts.edu> or call them directly at 617-627-3376.
+>
+>
+>        [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+--
+Micha Silver
+Ben Gurion Univ.
+Sde Boker, Remote Sensing Lab
+cell: +972-523-665918
+
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Nov  9 09:27:30 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 9 Nov 2022 11:27:30 +0300
+Subject: [R] [External] Re: Selecting a minimum value of an attribute
+ associated with point values neighboring a given point and assigning it as
+ a new attribute
+In-Reply-To: <BN6PR05MB3588DCB2A66A6048CD9D7645903E9@BN6PR05MB3588.namprd05.prod.outlook.com>
+References: <BN6PR05MB35887EFE01222DBF7C359AAB903B9@BN6PR05MB3588.namprd05.prod.outlook.com>
+ <CAGxFJbSkg9zAqk0dGcr3qJe2z2C04NEZFdHN8hWQA3oSbfHukQ@mail.gmail.com>
+ <CAGgJW767Ein1S+MSywb57B2UtmE0EJodDVokPEx5_-c5BTFR1Q@mail.gmail.com>
+ <CAGgJW77yY0_GDQWEAxzSdRh0N3kXgj9zrSEYUzuVsFnHyeE=aA@mail.gmail.com>
+ <BN6PR05MB3588015F46997E64D5F8F138903D9@BN6PR05MB3588.namprd05.prod.outlook.com>
+ <3247be10-6d5c-12d5-1634-2a9e934f431e@gmail.com>
+ <BN6PR05MB3588DCB2A66A6048CD9D7645903E9@BN6PR05MB3588.namprd05.prod.outlook.com>
+Message-ID: <20221109112730.58e405fa@Tarkus>
+
+? Wed, 9 Nov 2022 02:38:15 +0000
+"Duhl, Tiffany R." <Tiffany.Duhl at tufts.edu> ?????:
+
+> MinConc <- function(x, lst, pts) {
+>    Concs <- lapply(lst, function(p) {
+>      pts$Conc[p]
+>    })
+>    return(min(Concs[[1]]))
+> }
+
+This function doesn't seem to use its first argument, x. Moreover,
+its return value seems to only depend on the first element of its
+second argument, lst.
+
+> ###But I need the length of the list the function is applied to
+> ###to be variable, depending on the length of the input csv file
+> ###unlike the dummy variable dataframe that Eric used with a set
+> ###length
+> ###So I changed the "x" argument in lapply to "pts$X" but
+> ###that generates an empty list
+> 
+> Conc_min <- lapply(pts$X, function(i){
+>    MinConc(i, dist_matrix[i], pts)
+> })
+
+So instead of doing extra work to obtain the list indices (use
+seq_along if you do need them) and to subset the one-element lists
+returned by dist_matrix[i] (use dist_matrix[[i]] to get the value
+instead of one-element list containing the value), it should be
+possible to perform
+
+Conc_min <- sapply(
+ dist_matrix,
+ function(neighbours) min(pts$Conc[neighbours])
+)
+
+This assumes that dist_matrix is of the same length as pts$X.
+
+Admittedly, the example above can't consider each point by itself,
+which isn't mentioned in dist_matrix (as far as I'm aware), so to
+include the original point, we can run
+
+mapply(
+ function(point, neighbours) min(pts$Conc[point], pts$Conc[neighbours]),
+ seq_along(pts$X), dist_matrix
+)
+
+-- 
+Best regards,
+Ivan
+
+
