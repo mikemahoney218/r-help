@@ -9026,3 +9026,286 @@ R-packages at r-project.org
 https://stat.ethz.ch/mailman/listinfo/r-packages
 
 
+From n|ckmwr@y @end|ng |rom gm@||@com  Mon Nov 14 14:04:31 2022
+From: n|ckmwr@y @end|ng |rom gm@||@com (Nick Wray)
+Date: Mon, 14 Nov 2022 13:04:31 +0000
+Subject: [R] Rate of Reading into R from net
+Message-ID: <CABxY9BPdUBp_jxQHi9+u4h_1fMgLd862SkoQQff7jw6jHKOqYA@mail.gmail.com>
+
+Hello I am trying read  nc rainfall  files directly from the UK centre for
+hydrology and ecology website -
+hourly:about 300Mb
+https://catalogue.ceh.ac.uk/datastore/eidchub/fc9423d6-3d54-467f-bb2b-fc7357a3941f/
+and daily about 90Mb
+https://catalogue.ceh.ac.uk/datastore/eidchub/2ab15bf0-ad08-415c-ba64-831168be7293/precip/
+
+I can download them "by hand" no problem using the ncdf4 package but
+there's lots and I wanted to streamline the process
+
+code I've used (which works for "by hand" downloading) is (for example)
+
+nc_data<-nc_open("
+https://catalogue.ceh.ac.uk/datastore/eidchub/2ab15bf0-ad08-415c-ba64-831168be7293/precip/chess-met_precip_gb_1km_daily_19610301-19610331.nc
+")
+
+However, when I run this I don't get an error message but R just sits there
+with the little red circle (at least 30 minutes for the 90Mb files)
+
+What I'm wondering is two things - a)is the data in fact downloading but
+it's just taking ages and I need to let it run and go and have a coffee
+                                                   b)is there (I can't find
+anything) within R which allows me to monitor the progress of the download,
+if in fact it is taking place?
+Thanks Nick Wray
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Nov 14 14:25:31 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 14 Nov 2022 16:25:31 +0300
+Subject: [R] Rate of Reading into R from net
+In-Reply-To: <CABxY9BPdUBp_jxQHi9+u4h_1fMgLd862SkoQQff7jw6jHKOqYA@mail.gmail.com>
+References: <CABxY9BPdUBp_jxQHi9+u4h_1fMgLd862SkoQQff7jw6jHKOqYA@mail.gmail.com>
+Message-ID: <20221114162531.7df503b8@arachnoid>
+
+? Mon, 14 Nov 2022 13:04:31 +0000
+Nick Wray <nickmwray at gmail.com> ?????:
+
+> nc_data<-nc_open("
+> https://catalogue.ceh.ac.uk/datastore/eidchub/2ab15bf0-ad08-415c-ba64-831168be7293/precip/chess-met_precip_gb_1km_daily_19610301-19610331.nc
+> ")
+> 
+> However, when I run this I don't get an error message but R just sits
+> there with the little red circle (at least 30 minutes for the 90Mb
+> files)
+
+Not sure why it just sits there, but looking at the package source
+code, I can see that ncdf4::nc_open eventually forwards its arguments
+to the nc_open function from the netcdf library:
+
+https://github.com/cran/ncdf4/blob/1.19/R/ncdf4.R#L568
+https://github.com/cran/ncdf4/blob/1.19/src/ncdf.c#L862
+https://docs.unidata.ucar.edu/netcdf-c/current/group__datasets.html#gaccbdb128a1640e204831256dbbc24d3e
+
+netcdf does support some form of remote file access, but only
+OPeNDAP-compatible URLs are supposed to work. Your links ask me to log
+in, which may mean that they won't work with netcdf. It might be easier
+to use one of the R packages that let you work with libcurl and give
+them the cookies from your browser in order to download the files
+first, then access them.
+
+See also: https://stackoverflow.com/a/70368135
+
+What does ncdump say about these URLs?
+
+-- 
+Best regards,
+Ivan
+
+[1] 
+
+
+From e@ @end|ng |rom enr|co@chum@nn@net  Mon Nov 14 14:37:58 2022
+From: e@ @end|ng |rom enr|co@chum@nn@net (Enrico Schumann)
+Date: Mon, 14 Nov 2022 14:37:58 +0100
+Subject: [R] Rate of Reading into R from net
+In-Reply-To: <CABxY9BPdUBp_jxQHi9+u4h_1fMgLd862SkoQQff7jw6jHKOqYA@mail.gmail.com>
+ (Nick Wray's message of "Mon, 14 Nov 2022 13:04:31 +0000")
+References: <CABxY9BPdUBp_jxQHi9+u4h_1fMgLd862SkoQQff7jw6jHKOqYA@mail.gmail.com>
+Message-ID: <877czxbqrt.fsf@enricoschumann.net>
+
+On Mon, 14 Nov 2022, Nick Wray writes:
+
+> Hello I am trying read  nc rainfall  files directly from the UK centre for
+> hydrology and ecology website -
+> hourly:about 300Mb
+> https://catalogue.ceh.ac.uk/datastore/eidchub/fc9423d6-3d54-467f-bb2b-fc7357a3941f/
+> and daily about 90Mb
+> https://catalogue.ceh.ac.uk/datastore/eidchub/2ab15bf0-ad08-415c-ba64-831168be7293/precip/
+>
+> I can download them "by hand" no problem using the ncdf4 package but
+> there's lots and I wanted to streamline the process
+>
+> code I've used (which works for "by hand" downloading) is (for example)
+>
+> nc_data<-nc_open("
+> https://catalogue.ceh.ac.uk/datastore/eidchub/2ab15bf0-ad08-415c-ba64-831168be7293/precip/chess-met_precip_gb_1km_daily_19610301-19610331.nc
+> ")
+>
+> However, when I run this I don't get an error message but R just sits there
+> with the little red circle (at least 30 minutes for the 90Mb files)
+>
+> What I'm wondering is two things - a)is the data in fact downloading but
+> it's just taking ages and I need to let it run and go and have a coffee
+>                                                    b)is there (I can't find
+> anything) within R which allows me to monitor the progress of the download,
+> if in fact it is taking place?
+> Thanks Nick Wray
+>
+
+Have you tried 'download.file'?  It should provide a
+progress bar if the file size is known.  I'd first
+download the file, and then read it.
+
+
+-- 
+Enrico Schumann
+Lucerne, Switzerland
+http://enricoschumann.net
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Mon Nov 14 16:44:45 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Mon, 14 Nov 2022 07:44:45 -0800
+Subject: [R] Logistic regression for large data
+In-Reply-To: <CAA6O3ziAbEHc3-zAu6Rw7UzuxeJNqroSbe04O_r--wrTj=yvZQ@mail.gmail.com>
+References: <CAA6O3ziAbEHc3-zAu6Rw7UzuxeJNqroSbe04O_r--wrTj=yvZQ@mail.gmail.com>
+Message-ID: <CAHqSRuQRDMPNbHk0C_iTCUb5mJhNh9tVg0jd-czJB+paOLjp3Q@mail.gmail.com>
+
+summary(Base)
+
+would show if one of columns of Base was read as character data instead of
+the expected numeric.  That could cause an explosion in the number of dummy
+variables, hence a huge design matrix.
+
+-Bill
+
+
+On Fri, Nov 11, 2022 at 11:30 PM George Brida <georgebrida94 at gmail.com>
+wrote:
+
+> Dear R users,
+>
+> I have a database  called Base.csv   (attached to this email) which
+> contains 13 columns and 8257 rows and whose the first 8 columns are dummy
+> variables which take 1 or 0. The problem is when I wrote the following
+> instructions to do a logistic regression , R runs for hours and hours
+> without giving an output:
+>
+> Base=read.csv("C:\\Users\\HP\\Desktop\\New\\Base.csv",header=FALSE,sep=";")
+>
+> fit_1=glm(Base[,2]~Base[,1]+Base[,10]+Base[,11]+Base[,12]+Base[,13],family=binomial(link="logit"))
+>
+> Apparently, there is not enough memory to have the requested output. Is
+> there any other function for logistic regression that handle large data and
+> return output in reasonable time.
+>
+> Many thanks
+>
+> Kind regards
+>
+> George
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From r@g|@11 @end|ng |rom hotm@||@com  Tue Nov 15 00:22:51 2022
+From: r@g|@11 @end|ng |rom hotm@||@com (Ragia .)
+Date: Mon, 14 Nov 2022 23:22:51 +0000
+Subject: [R] ubuntu 22
+Message-ID: <PAXP194MB1502217BBC0B17AC3EDF9297B3059@PAXP194MB1502.EURP194.PROD.OUTLOOK.COM>
+
+
+  dear group ,
+cant install r base into ubuntu 22.
+the msg is
+The following packages have unmet dependencies:
+ r-base-core : Depends: libicu70 (>= 70.1-1~) but it is not installable
+               Recommends: r-recommended but it is not going to be installed
+               Recommends: r-doc-html but it is not going to be installed
+E: Unable to correct problems, you have held broken packages.
+thanks in advance
+
+	[[alternative HTML version deleted]]
+
+
+From dw|n@em|u@ @end|ng |rom comc@@t@net  Tue Nov 15 00:53:58 2022
+From: dw|n@em|u@ @end|ng |rom comc@@t@net (David Winsemius)
+Date: Mon, 14 Nov 2022 15:53:58 -0800
+Subject: [R] unmet dependency for r-base-core ... was Re:  ubuntu 22
+In-Reply-To: <PAXP194MB1502217BBC0B17AC3EDF9297B3059@PAXP194MB1502.EURP194.PROD.OUTLOOK.COM>
+References: <PAXP194MB1502217BBC0B17AC3EDF9297B3059@PAXP194MB1502.EURP194.PROD.OUTLOOK.COM>
+Message-ID: <95531558-04de-2279-a465-e74cfa5e3e76@comcast.net>
+
+
+On 11/14/22 15:22, Ragia . wrote:
+>    dear group ,
+> cant install r base into ubuntu 22.
+> the msg is
+> The following packages have unmet dependencies:
+>   r-base-core : Depends: libicu70 (>= 70.1-1~) but it is not installable
+
+
+Have you tried looking up the package that would contain libicu70?? I 
+had no problem locating a copy of libicu70_70.1-2_amd64.deb 
+<https://ubuntu.pkgs.org/22.04/ubuntu-main-amd64/libicu70_70.1-2_amd64.deb.html> 
+with search terms: "libicu70 ubuntu 22".
+
+
+>                 Recommends: r-recommended but it is not going to be installed
+>                 Recommends: r-doc-html but it is not going to be installed
+> E: Unable to correct problems, you have held broken packages.
+> thanks in advance
+>
+> 	[[alternative HTML version deleted]]
+
+
+Do note that Rhelp is a plain text mailing list. And further note that 
+the proper mailing list (also plain text) would have been R-SIG-debian.
+
+
+-- 
+
+David.
+
+>
+> ______________________________________________
+> R-help at r-project.org  mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guidehttp://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Tue Nov 15 00:58:22 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Mon, 14 Nov 2022 15:58:22 -0800
+Subject: [R] ubuntu 22
+In-Reply-To: <PAXP194MB1502217BBC0B17AC3EDF9297B3059@PAXP194MB1502.EURP194.PROD.OUTLOOK.COM>
+References: <PAXP194MB1502217BBC0B17AC3EDF9297B3059@PAXP194MB1502.EURP194.PROD.OUTLOOK.COM>
+Message-ID: <930ECF3E-940B-4A9B-B4BB-147E2DFDB63E@dcn.davis.ca.us>
+
+Seems like a problem with your system package manager repository configuration. Maybe better pursued on the R-sig-debian mailing list (Ubuntu is derived from Debian). Be sure to describe exactly what you did (e.g. which web page instructions did you follow).
+
+On November 14, 2022 3:22:51 PM PST, "Ragia ." <ragia11 at hotmail.com> wrote:
+>
+>  dear group ,
+>cant install r base into ubuntu 22.
+>the msg is
+>The following packages have unmet dependencies:
+> r-base-core : Depends: libicu70 (>= 70.1-1~) but it is not installable
+>               Recommends: r-recommended but it is not going to be installed
+>               Recommends: r-doc-html but it is not going to be installed
+>E: Unable to correct problems, you have held broken packages.
+>thanks in advance
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
