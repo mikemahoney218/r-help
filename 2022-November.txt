@@ -11751,3 +11751,86 @@ and provide commented, minimal, self-contained, reproducible code.
 	[[alternative HTML version deleted]]
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Nov 16 11:30:49 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 16 Nov 2022 13:30:49 +0300
+Subject: [R] Axis scaling for PCA biplot
+In-Reply-To: <70ffd30e-7ad8-f1c4-142a-65a6b89bbf91@unibo.it>
+References: <70ffd30e-7ad8-f1c4-142a-65a6b89bbf91@unibo.it>
+Message-ID: <20221116133049.7c67880f@arachnoid>
+
+? Tue, 15 Nov 2022 12:53:30 +0100
+Christian Hennig <christian.hennig at unibo.it> ?????:
+
+> The default value of scale seems to be 1, but then (1-scale) is zero
+> so I'd assume data to be unscaled, but that should have reproduced
+> the "plot" scale, shouldn't it?
+
+I think this might be a documentation error. What actually happens
+inside biplot.princomp is a bit different [1]:
+
+   lam <- x$sdev[choices]
+   n <- x$n.obs %||% 1
+   lam <- lam * sqrt(n)
+   
+   if(scale != 0) lam <- lam^scale else lam <- 1
+   
+   biplot.default(t(t(scores[, choices]) / lam),
+		   t(t(x$loadings[, choices]) * lam), ...)
+
+Every score is divided by standard deviations (square roots of the
+eigenvalues of the covariance matrix) and the square root of the number
+of samples to the power of `scale`, while the loadings are multiplied
+by the same numbers.
+
+I am not sure why the singular values have to be multiplied by sqrt(n)
+(the same thing happens in biplot.prcomp), but other than that, I think
+that the documentation should say "the observations are scaled by
+|lambda ^ -scale|", not (1-scale).
+
+Passing scale = 0, on the other hand, should reproduce the "plot" scale.
+
+-- 
+Best regards,
+Ivan
+
+[1]:
+https://github.com/r-devel/r-svn/blob/c5f16db96ad76504893a1070d3b46b4093bb49c4/src/library/stats/R/biplot.R#L80-L95
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Nov 16 11:57:46 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 16 Nov 2022 13:57:46 +0300
+Subject: [R] picewiseSEM undefined columns selected
+In-Reply-To: <001d01d8f938$82c2d100$88487300$@gmx.ch>
+References: <001d01d8f938$82c2d100$88487300$@gmx.ch>
+Message-ID: <20221116135746.3145121f@arachnoid>
+
+Hello Michael and thank you for providing a small reproducible example!
+
+? Tue, 15 Nov 2022 22:23:30 +0100
+"Michael Eisenring" <michael.eisenring at gmx.ch> ?????:
+
+> model<-as.psem(modlist)#Error: Error in `[.data.frame`(x$data, ,
+> vars) : undefined columns selected
+
+If you set options(error = recover) before reproducing the error, you
+can use the debugger to see the values of both x$data and vars at the
+moment of crash. See ?recover, ?browser and the free book "R Inferno"
+for more information.
+
+I've taken a look, and I think that it's a bug in some of the functions
+called by the internal function piecewiseSEM:::formatpsem. The internal
+function GetData() returns a data.frame with column names of
+c("Stratum", "Drought", "Year", "cbind(branch_suck_Yes,
+branch_suck_No)",  "N_pc", "Tree.ID"), which gets stored in x$data,
+after which the function tries to extract variables named c("N_pc",
+"branch_suck_Yes,branch_suck_No") from x$data.
+
+I think you'll have to report this to the maintainer.
+
+-- 
+Best regards,
+Ivan
+
+
