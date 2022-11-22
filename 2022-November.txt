@@ -12191,3 +12191,1252 @@ Best,
 Martin
 
 
+From rk3199 @end|ng |rom co|umb|@@edu  Fri Nov 18 22:45:14 2022
+From: rk3199 @end|ng |rom co|umb|@@edu (Rob Kudyba)
+Date: Fri, 18 Nov 2022 16:45:14 -0500
+Subject: [R] make install libgfortran.so.5: cannot open shared object file:
+ No such file or directory;
+ conftest.c:1:10: fatal error: jni.h: No such file or directory
+Message-ID: <CAD6rq1WED=BsyCidHqBiTXpMvsAHKTfW+GddP5tMmrQXwtmozg@mail.gmail.com>
+
+On RHEL 8 with GCC 11.2.0 loaded as a module in a non-standard location I'm
+the below error with make install. libgfortran.so is definitely in
+$LD_LIBRARY_PATH, i.e., /path/to/gcc-11.2/lib64
+
+ls -l /path/to/gcc-11.2/lib64/*fortran.so*
+lrwxrwxrwx 1 rk3199 user        20 Mar 24  2022 libgfortran.so ->
+libgfortran.so.5.0.0
+lrwxrwxrwx 1 rk3199 user        20 Mar 24  2022 libgfortran.so.5 ->
+libgfortran.so.5.0.0
+-rwxr-xr-x 1 rk3199 user   8595744 Mar 24  2022 libgfortran.so.5.0.0
+Here is where the error occurs in make install:
+[...]
+installing packages ...
+  building HTML index ...
+/path/to/R-4.2.2/bin/exec/R: error while loading shared libraries:
+libgfortran.so.5: cannot open shared object file: No such file or directory
+make[2]: *** [install] Error 127
+make[2]: Leaving directory `/path/to/R-4.2.2/src/library'
+make[1]: *** [install] Error 1
+make[1]: Leaving directory `/path/to/rk3199/R-4.2.2/src'
+make: *** [install] Error 1
+
+
+During make I see this error with Java:
+configuring Java ...
+Java interpreter : /usr/bin/java
+Java version     : 1.8.0_161
+Java home path   :
+/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.161-2.b14.el7.x86_64/jre
+Java compiler    : not present
+Java headers gen.:
+Java archive tool:
+
+trying to compile and link a JNI program
+detected JNI cpp flags    :
+detected JNI linker flags : -L$(JAVA_HOME)/lib/amd64/server -ljvm
+make[2]: Entering directory `/tmp/Rjavareconf.3sImDz'
+gcc -I"/path/to/R-4.2.2/include" -DNDEBUG   -I/usr/local/include   -fpic
+ -O3 -march=native -c conftest.c -o conftest.o
+conftest.c:1:10: fatal error: jni.h: No such file or directory
+    1 | #include <jni.h>
+      |          ^~~~~~~
+compilation terminated.
+make[2]: *** [conftest.o] Error 1
+make[2]: Leaving directory `/tmp/Rjavareconf.3sImDz'
+Unable to compile a JNI program
+
+JAVA_HOME        :
+/usr/lib/jvm/java-1.8.0-openjdk-1.8.0.161-2.b14.el7.x86_64/jre
+Java library path:
+JNI cpp flags    :
+JNI linker flags :
+Updating Java configuration in /path/to/R-4.2.2
+Done.
+
+That seems a little more straight forward in that our Java 1.7.0 nor 1.8.0
+have a jni.h file. Looks like we'd need the devel package installed.
+
+Thanks for any suggestions for the former.
+
+	[[alternative HTML version deleted]]
+
+
+From gm@|om@ok|1980 @end|ng |rom gm@||@com  Sun Nov 20 16:01:41 2022
+From: gm@|om@ok|1980 @end|ng |rom gm@||@com (=?UTF-8?Q?G=C3=A1bor_Malomsoki?=)
+Date: Sun, 20 Nov 2022 16:01:41 +0100
+Subject: [R] test logistic regression model
+Message-ID: <CAEJRAFZPbW=eXYMXG1jL1N-vQ2UXuKNzYu9yA-cErdBU24yYCg@mail.gmail.com>
+
+Dear all,
+
+i have created a logistic regression model,
+ on the train df:
+mymodel1 <- glm(book_state ~ TG_KraftF5, data = train, family = "binomial")
+
+then i try to predict with the test df
+Predict<- predict(mymodel1, newdata = test, type = "response")
+then iget this error message:
+Error in model.frame.default(Terms, newdata, na.action = na.action, xlev =
+object$xlevels)
+Factor  "TG_KraftF5" has new levels
+
+i have tried different proposals from stackoverflow, but unfortunately they
+did not solved the problem.
+Do you have any idea how to test a logistic regression model when you have
+different levels in train and in test df?
+
+thank you in advance
+Regards,
+Gabor
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Nov 20 16:19:56 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 20 Nov 2022 07:19:56 -0800
+Subject: [R] test logistic regression model
+In-Reply-To: <CAEJRAFZPbW=eXYMXG1jL1N-vQ2UXuKNzYu9yA-cErdBU24yYCg@mail.gmail.com>
+References: <CAEJRAFZPbW=eXYMXG1jL1N-vQ2UXuKNzYu9yA-cErdBU24yYCg@mail.gmail.com>
+Message-ID: <CAGxFJbSvDckCW-gqVRs-7oDs63QZ_mRNZ1GHLZ2Z1q6kRjS1ag@mail.gmail.com>
+
+You can't predict results for categories that you've not seen before (think
+about it). You will need to remove those cases from your test set (or
+convert them to NA and predict them as NA).
+
+-- Bert
+
+On Sun, Nov 20, 2022 at 7:02 AM G?bor Malomsoki <gmalomsoki1980 at gmail.com>
+wrote:
+
+> Dear all,
+>
+> i have created a logistic regression model,
+>  on the train df:
+> mymodel1 <- glm(book_state ~ TG_KraftF5, data = train, family = "binomial")
+>
+> then i try to predict with the test df
+> Predict<- predict(mymodel1, newdata = test, type = "response")
+> then iget this error message:
+> Error in model.frame.default(Terms, newdata, na.action = na.action, xlev =
+> object$xlevels)
+> Factor  "TG_KraftF5" has new levels
+>
+> i have tried different proposals from stackoverflow, but unfortunately they
+> did not solved the problem.
+> Do you have any idea how to test a logistic regression model when you have
+> different levels in train and in test df?
+>
+> thank you in advance
+> Regards,
+> Gabor
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From gm@|om@ok|1980 @end|ng |rom gm@||@com  Sun Nov 20 16:29:30 2022
+From: gm@|om@ok|1980 @end|ng |rom gm@||@com (=?UTF-8?Q?G=C3=A1bor_Malomsoki?=)
+Date: Sun, 20 Nov 2022 16:29:30 +0100
+Subject: [R] test logistic regression model
+In-Reply-To: <CAGxFJbSvDckCW-gqVRs-7oDs63QZ_mRNZ1GHLZ2Z1q6kRjS1ag@mail.gmail.com>
+References: <CAEJRAFZPbW=eXYMXG1jL1N-vQ2UXuKNzYu9yA-cErdBU24yYCg@mail.gmail.com>
+ <CAGxFJbSvDckCW-gqVRs-7oDs63QZ_mRNZ1GHLZ2Z1q6kRjS1ag@mail.gmail.com>
+Message-ID: <CAEJRAFb67LfZWing6=ixo27Up2tuTTecciLmuWVN841qJEqEcA@mail.gmail.com>
+
+Dear Bert,
+
+Yes, was trying to fill the not existing categories with NAs, but the
+suggested solutions in stackoverflow.com unfortunately did not work.
+
+Best regards
+Gabor
+
+
+Bert Gunter <bgunter.4567 at gmail.com> schrieb am So., 20. Nov. 2022, 16:20:
+
+> You can't predict results for categories that you've not seen before
+> (think about it). You will need to remove those cases from your test set
+> (or convert them to NA and predict them as NA).
+>
+> -- Bert
+>
+> On Sun, Nov 20, 2022 at 7:02 AM G?bor Malomsoki <gmalomsoki1980 at gmail.com>
+> wrote:
+>
+>> Dear all,
+>>
+>> i have created a logistic regression model,
+>>  on the train df:
+>> mymodel1 <- glm(book_state ~ TG_KraftF5, data = train, family =
+>> "binomial")
+>>
+>> then i try to predict with the test df
+>> Predict<- predict(mymodel1, newdata = test, type = "response")
+>> then iget this error message:
+>> Error in model.frame.default(Terms, newdata, na.action = na.action, xlev =
+>> object$xlevels)
+>> Factor  "TG_KraftF5" has new levels
+>>
+>> i have tried different proposals from stackoverflow, but unfortunately
+>> they
+>> did not solved the problem.
+>> Do you have any idea how to test a logistic regression model when you have
+>> different levels in train and in test df?
+>>
+>> thank you in advance
+>> Regards,
+>> Gabor
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sun Nov 20 16:45:58 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sun, 20 Nov 2022 15:45:58 +0000
+Subject: [R] test logistic regression model
+In-Reply-To: <CAEJRAFb67LfZWing6=ixo27Up2tuTTecciLmuWVN841qJEqEcA@mail.gmail.com>
+References: <CAEJRAFZPbW=eXYMXG1jL1N-vQ2UXuKNzYu9yA-cErdBU24yYCg@mail.gmail.com>
+ <CAGxFJbSvDckCW-gqVRs-7oDs63QZ_mRNZ1GHLZ2Z1q6kRjS1ag@mail.gmail.com>
+ <CAEJRAFb67LfZWing6=ixo27Up2tuTTecciLmuWVN841qJEqEcA@mail.gmail.com>
+Message-ID: <ed065c3a-0191-71df-aa39-e50905bbf889@sapo.pt>
+
+?s 15:29 de 20/11/2022, G?bor Malomsoki escreveu:
+> Dear Bert,
+> 
+> Yes, was trying to fill the not existing categories with NAs, but the
+> suggested solutions in stackoverflow.com unfortunately did not work.
+> 
+> Best regards
+> Gabor
+> 
+> 
+> Bert Gunter <bgunter.4567 at gmail.com> schrieb am So., 20. Nov. 2022, 16:20:
+> 
+>> You can't predict results for categories that you've not seen before
+>> (think about it). You will need to remove those cases from your test set
+>> (or convert them to NA and predict them as NA).
+>>
+>> -- Bert
+>>
+>> On Sun, Nov 20, 2022 at 7:02 AM G?bor Malomsoki <gmalomsoki1980 at gmail.com>
+>> wrote:
+>>
+>>> Dear all,
+>>>
+>>> i have created a logistic regression model,
+>>>   on the train df:
+>>> mymodel1 <- glm(book_state ~ TG_KraftF5, data = train, family =
+>>> "binomial")
+>>>
+>>> then i try to predict with the test df
+>>> Predict<- predict(mymodel1, newdata = test, type = "response")
+>>> then iget this error message:
+>>> Error in model.frame.default(Terms, newdata, na.action = na.action, xlev =
+>>> object$xlevels)
+>>> Factor  "TG_KraftF5" has new levels
+>>>
+>>> i have tried different proposals from stackoverflow, but unfortunately
+>>> they
+>>> did not solved the problem.
+>>> Do you have any idea how to test a logistic regression model when you have
+>>> different levels in train and in test df?
+>>>
+>>> thank you in advance
+>>> Regards,
+>>> Gabor
+>>>
+>>>          [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+hello,
+
+What exactly didn't work? You say you have tried the solutions found in 
+stackoverflow but without a link, we don't know which answers to which 
+questions you are talking about.
+Like Bert said, if you assign NA to the new levels, present only in 
+test, it should work.
+
+Can you post links to what you have tried?
+
+Hope this helps,
+
+Rui Barradas
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Nov 20 17:40:39 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 20 Nov 2022 08:40:39 -0800
+Subject: [R] test logistic regression model
+In-Reply-To: <ed065c3a-0191-71df-aa39-e50905bbf889@sapo.pt>
+References: <CAEJRAFZPbW=eXYMXG1jL1N-vQ2UXuKNzYu9yA-cErdBU24yYCg@mail.gmail.com>
+ <CAGxFJbSvDckCW-gqVRs-7oDs63QZ_mRNZ1GHLZ2Z1q6kRjS1ag@mail.gmail.com>
+ <CAEJRAFb67LfZWing6=ixo27Up2tuTTecciLmuWVN841qJEqEcA@mail.gmail.com>
+ <ed065c3a-0191-71df-aa39-e50905bbf889@sapo.pt>
+Message-ID: <CAGxFJbRW3=RTGojmRyfJypXgzEyW=nUy+CkaRozPRNsEFFi0Gg@mail.gmail.com>
+
+small reprex:
+
+set.seed(5)
+dat <- data.frame(f = rep(c('r','g'),4), y = runif(8))
+newdat <- data.frame(f =rep(c('r','g','b'),2))
+## convert values in newdat not seen in dat to NA
+is.na(newdat$f) <-!( newdat$f %in% dat$f)
+lmfit <- lm(y~f, data = dat)
+
+##Result:
+> predict(lmfit,newdat)
+        1         2         3         4         5         6
+0.4374251 0.6196527        NA 0.4374251 0.6196527        NA
+
+If this does not suffice, as Rui said, we need details of what you did.
+(predict.glm works like predict.lm)
+
+
+-- Bert
+
+
+On Sun, Nov 20, 2022 at 7:46 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>
+> ?s 15:29 de 20/11/2022, G?bor Malomsoki escreveu:
+> > Dear Bert,
+> >
+> > Yes, was trying to fill the not existing categories with NAs, but the
+> > suggested solutions in stackoverflow.com unfortunately did not work.
+> >
+> > Best regards
+> > Gabor
+> >
+> >
+> > Bert Gunter <bgunter.4567 at gmail.com> schrieb am So., 20. Nov. 2022, 16:20:
+> >
+> >> You can't predict results for categories that you've not seen before
+> >> (think about it). You will need to remove those cases from your test set
+> >> (or convert them to NA and predict them as NA).
+> >>
+> >> -- Bert
+> >>
+> >> On Sun, Nov 20, 2022 at 7:02 AM G?bor Malomsoki <gmalomsoki1980 at gmail.com>
+> >> wrote:
+> >>
+> >>> Dear all,
+> >>>
+> >>> i have created a logistic regression model,
+> >>>   on the train df:
+> >>> mymodel1 <- glm(book_state ~ TG_KraftF5, data = train, family =
+> >>> "binomial")
+> >>>
+> >>> then i try to predict with the test df
+> >>> Predict<- predict(mymodel1, newdata = test, type = "response")
+> >>> then iget this error message:
+> >>> Error in model.frame.default(Terms, newdata, na.action = na.action, xlev =
+> >>> object$xlevels)
+> >>> Factor  "TG_KraftF5" has new levels
+> >>>
+> >>> i have tried different proposals from stackoverflow, but unfortunately
+> >>> they
+> >>> did not solved the problem.
+> >>> Do you have any idea how to test a logistic regression model when you have
+> >>> different levels in train and in test df?
+> >>>
+> >>> thank you in advance
+> >>> Regards,
+> >>> Gabor
+> >>>
+> >>>          [[alternative HTML version deleted]]
+> >>>
+> >>> ______________________________________________
+> >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>> PLEASE do read the posting guide
+> >>> http://www.R-project.org/posting-guide.html
+> >>> and provide commented, minimal, self-contained, reproducible code.
+> >>>
+> >>
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> hello,
+>
+> What exactly didn't work? You say you have tried the solutions found in
+> stackoverflow but without a link, we don't know which answers to which
+> questions you are talking about.
+> Like Bert said, if you assign NA to the new levels, present only in
+> test, it should work.
+>
+> Can you post links to what you have tried?
+>
+> Hope this helps,
+>
+> Rui Barradas
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Nov 20 18:37:45 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 20 Nov 2022 20:37:45 +0300
+Subject: [R] 
+ make install libgfortran.so.5: cannot open shared object file:
+ No such file or directory;
+ conftest.c:1:10: fatal error: jni.h: No such file or directory
+In-Reply-To: <CAD6rq1WED=BsyCidHqBiTXpMvsAHKTfW+GddP5tMmrQXwtmozg@mail.gmail.com>
+References: <CAD6rq1WED=BsyCidHqBiTXpMvsAHKTfW+GddP5tMmrQXwtmozg@mail.gmail.com>
+Message-ID: <20221120203745.1d429604@Tarkus>
+
+On Fri, 18 Nov 2022 16:45:14 -0500
+Rob Kudyba <rk3199 at columbia.edu> wrote:
+
+> Here is where the error occurs in make install:
+> [...]
+> installing packages ...
+>   building HTML index ...
+> /path/to/R-4.2.2/bin/exec/R: error while loading shared libraries:
+> libgfortran.so.5: cannot open shared object file: No such file or
+> directory make[2]: *** [install] Error 127
+> make[2]: Leaving directory `/path/to/R-4.2.2/src/library'
+> make[1]: *** [install] Error 1
+> make[1]: Leaving directory `/path/to/rk3199/R-4.2.2/src'
+> make: *** [install] Error 1
+
+It should be possible to run R without installing it, as
+/path/to/R-4.2.2/bin/R (strictly speaking, as bin/R under the build
+directory, if you're building R separately from the source tree). Does
+it work?
+
+Does /path/to/R-4.2.2/bin/R -d ldd give you any useful information? Can
+you use strace -f -e openat /path/to/R-4.2.2/bin/R to confirm that the
+dynamic library loader is looking in /path/to/gcc-11.2/lib64 for the
+shared objects?
+
+If /path/to/gcc-11.2/lib64 is missing from both /etc/ld.so.conf and the
+environment variable LD_LIBRARY_PATH and you don't want to set it
+manually every time, you can either edit /path/to/R-4.2.2/etc/ldpaths
+or pass the -Wl,-rpath=/path/to/gcc-11.2/lib64 flag to the linker.
+
+> During make I see this error with Java:
+
+This error is not fatal. rJava won't work, but the rest of R should be
+fine.
+
+-- 
+Best regards,
+Ivan
+
+
+From mm@|ten @end|ng |rom gm@||@com  Sun Nov 20 18:49:26 2022
+From: mm@|ten @end|ng |rom gm@||@com (Mitchell Maltenfort)
+Date: Sun, 20 Nov 2022 12:49:26 -0500
+Subject: [R] test logistic regression model
+In-Reply-To: <CAGxFJbRW3=RTGojmRyfJypXgzEyW=nUy+CkaRozPRNsEFFi0Gg@mail.gmail.com>
+References: <CAEJRAFZPbW=eXYMXG1jL1N-vQ2UXuKNzYu9yA-cErdBU24yYCg@mail.gmail.com>
+ <CAGxFJbSvDckCW-gqVRs-7oDs63QZ_mRNZ1GHLZ2Z1q6kRjS1ag@mail.gmail.com>
+ <CAEJRAFb67LfZWing6=ixo27Up2tuTTecciLmuWVN841qJEqEcA@mail.gmail.com>
+ <ed065c3a-0191-71df-aa39-e50905bbf889@sapo.pt>
+ <CAGxFJbRW3=RTGojmRyfJypXgzEyW=nUy+CkaRozPRNsEFFi0Gg@mail.gmail.com>
+Message-ID: <CANOgrHa5oUjtp7kZkN18crgexOj84C16739J+4=Gm_O8E+zfKg@mail.gmail.com>
+
+Two possible fixes occur to me
+
+1) Redo the test/training split but within levels of factor - so you have
+the same split within each level and each level accounted for in training
+and testing
+
+2) if you have a lot of levels, and perhaps sparse representation in a few,
+consider recoding levels to pool the rare ones into an ?other? category
+
+On Sun, Nov 20, 2022 at 11:41 AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> small reprex:
+>
+> set.seed(5)
+> dat <- data.frame(f = rep(c('r','g'),4), y = runif(8))
+> newdat <- data.frame(f =rep(c('r','g','b'),2))
+> ## convert values in newdat not seen in dat to NA
+> is.na(newdat$f) <-!( newdat$f %in% dat$f)
+> lmfit <- lm(y~f, data = dat)
+>
+> ##Result:
+> > predict(lmfit,newdat)
+>         1         2         3         4         5         6
+> 0.4374251 0.6196527        NA 0.4374251 0.6196527        NA
+>
+> If this does not suffice, as Rui said, we need details of what you did.
+> (predict.glm works like predict.lm)
+>
+>
+> -- Bert
+>
+>
+> On Sun, Nov 20, 2022 at 7:46 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+> >
+> > ?s 15:29 de 20/11/2022, G?bor Malomsoki escreveu:
+> > > Dear Bert,
+> > >
+> > > Yes, was trying to fill the not existing categories with NAs, but the
+> > > suggested solutions in stackoverflow.com unfortunately did not work.
+> > >
+> > > Best regards
+> > > Gabor
+> > >
+> > >
+> > > Bert Gunter <bgunter.4567 at gmail.com> schrieb am So., 20. Nov. 2022,
+> 16:20:
+> > >
+> > >> You can't predict results for categories that you've not seen before
+> > >> (think about it). You will need to remove those cases from your test
+> set
+> > >> (or convert them to NA and predict them as NA).
+> > >>
+> > >> -- Bert
+> > >>
+> > >> On Sun, Nov 20, 2022 at 7:02 AM G?bor Malomsoki <
+> gmalomsoki1980 at gmail.com>
+> > >> wrote:
+> > >>
+> > >>> Dear all,
+> > >>>
+> > >>> i have created a logistic regression model,
+> > >>>   on the train df:
+> > >>> mymodel1 <- glm(book_state ~ TG_KraftF5, data = train, family =
+> > >>> "binomial")
+> > >>>
+> > >>> then i try to predict with the test df
+> > >>> Predict<- predict(mymodel1, newdata = test, type = "response")
+> > >>> then iget this error message:
+> > >>> Error in model.frame.default(Terms, newdata, na.action = na.action,
+> xlev =
+> > >>> object$xlevels)
+> > >>> Factor  "TG_KraftF5" has new levels
+> > >>>
+> > >>> i have tried different proposals from stackoverflow, but
+> unfortunately
+> > >>> they
+> > >>> did not solved the problem.
+> > >>> Do you have any idea how to test a logistic regression model when
+> you have
+> > >>> different levels in train and in test df?
+> > >>>
+> > >>> thank you in advance
+> > >>> Regards,
+> > >>> Gabor
+> > >>>
+> > >>>          [[alternative HTML version deleted]]
+> > >>>
+> > >>> ______________________________________________
+> > >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > >>> https://stat.ethz.ch/mailman/listinfo/r-help
+> > >>> PLEASE do read the posting guide
+> > >>> http://www.R-project.org/posting-guide.html
+> > >>> and provide commented, minimal, self-contained, reproducible code.
+> > >>>
+> > >>
+> > >
+> > >       [[alternative HTML version deleted]]
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+> >
+> > hello,
+> >
+> > What exactly didn't work? You say you have tried the solutions found in
+> > stackoverflow but without a link, we don't know which answers to which
+> > questions you are talking about.
+> > Like Bert said, if you assign NA to the new levels, present only in
+> > test, it should work.
+> >
+> > Can you post links to what you have tried?
+> >
+> > Hope this helps,
+> >
+> > Rui Barradas
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+-- 
+Sent from Gmail Mobile
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Nov 20 19:06:09 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 20 Nov 2022 10:06:09 -0800
+Subject: [R] test logistic regression model
+In-Reply-To: <CANOgrHa5oUjtp7kZkN18crgexOj84C16739J+4=Gm_O8E+zfKg@mail.gmail.com>
+References: <CAEJRAFZPbW=eXYMXG1jL1N-vQ2UXuKNzYu9yA-cErdBU24yYCg@mail.gmail.com>
+ <CAGxFJbSvDckCW-gqVRs-7oDs63QZ_mRNZ1GHLZ2Z1q6kRjS1ag@mail.gmail.com>
+ <CAEJRAFb67LfZWing6=ixo27Up2tuTTecciLmuWVN841qJEqEcA@mail.gmail.com>
+ <ed065c3a-0191-71df-aa39-e50905bbf889@sapo.pt>
+ <CAGxFJbRW3=RTGojmRyfJypXgzEyW=nUy+CkaRozPRNsEFFi0Gg@mail.gmail.com>
+ <CANOgrHa5oUjtp7kZkN18crgexOj84C16739J+4=Gm_O8E+zfKg@mail.gmail.com>
+Message-ID: <CAGxFJbQ1WT0p2i_ZoFsJP92eLWMbjEB9poL3EX-sjhuOL1ttLw@mail.gmail.com>
+
+I think (2) might be a bad idea if one of the "sparse"categories has
+high predictive power. You'll lose it when you pool, will you not?
+Also, there is the problem of subjectively defining "sparse."
+
+However, 1) seems quite sensible to me. But IANAE.
+
+-- Bert
+
+On Sun, Nov 20, 2022 at 9:49 AM Mitchell Maltenfort <mmalten at gmail.com> wrote:
+>
+> Two possible fixes occur to me
+>
+> 1) Redo the test/training split but within levels of factor - so you have the same split within each level and each level accounted for in training and testing
+>
+> 2) if you have a lot of levels, and perhaps sparse representation in a few, consider recoding levels to pool the rare ones into an ?other? category
+>
+> On Sun, Nov 20, 2022 at 11:41 AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>>
+>> small reprex:
+>>
+>> set.seed(5)
+>> dat <- data.frame(f = rep(c('r','g'),4), y = runif(8))
+>> newdat <- data.frame(f =rep(c('r','g','b'),2))
+>> ## convert values in newdat not seen in dat to NA
+>> is.na(newdat$f) <-!( newdat$f %in% dat$f)
+>> lmfit <- lm(y~f, data = dat)
+>>
+>> ##Result:
+>> > predict(lmfit,newdat)
+>>         1         2         3         4         5         6
+>> 0.4374251 0.6196527        NA 0.4374251 0.6196527        NA
+>>
+>> If this does not suffice, as Rui said, we need details of what you did.
+>> (predict.glm works like predict.lm)
+>>
+>>
+>> -- Bert
+>>
+>>
+>> On Sun, Nov 20, 2022 at 7:46 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>> >
+>> > ?s 15:29 de 20/11/2022, G?bor Malomsoki escreveu:
+>> > > Dear Bert,
+>> > >
+>> > > Yes, was trying to fill the not existing categories with NAs, but the
+>> > > suggested solutions in stackoverflow.com unfortunately did not work.
+>> > >
+>> > > Best regards
+>> > > Gabor
+>> > >
+>> > >
+>> > > Bert Gunter <bgunter.4567 at gmail.com> schrieb am So., 20. Nov. 2022, 16:20:
+>> > >
+>> > >> You can't predict results for categories that you've not seen before
+>> > >> (think about it). You will need to remove those cases from your test set
+>> > >> (or convert them to NA and predict them as NA).
+>> > >>
+>> > >> -- Bert
+>> > >>
+>> > >> On Sun, Nov 20, 2022 at 7:02 AM G?bor Malomsoki <gmalomsoki1980 at gmail.com>
+>> > >> wrote:
+>> > >>
+>> > >>> Dear all,
+>> > >>>
+>> > >>> i have created a logistic regression model,
+>> > >>>   on the train df:
+>> > >>> mymodel1 <- glm(book_state ~ TG_KraftF5, data = train, family =
+>> > >>> "binomial")
+>> > >>>
+>> > >>> then i try to predict with the test df
+>> > >>> Predict<- predict(mymodel1, newdata = test, type = "response")
+>> > >>> then iget this error message:
+>> > >>> Error in model.frame.default(Terms, newdata, na.action = na.action, xlev =
+>> > >>> object$xlevels)
+>> > >>> Factor  "TG_KraftF5" has new levels
+>> > >>>
+>> > >>> i have tried different proposals from stackoverflow, but unfortunately
+>> > >>> they
+>> > >>> did not solved the problem.
+>> > >>> Do you have any idea how to test a logistic regression model when you have
+>> > >>> different levels in train and in test df?
+>> > >>>
+>> > >>> thank you in advance
+>> > >>> Regards,
+>> > >>> Gabor
+>> > >>>
+>> > >>>          [[alternative HTML version deleted]]
+>> > >>>
+>> > >>> ______________________________________________
+>> > >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > >>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> > >>> PLEASE do read the posting guide
+>> > >>> http://www.R-project.org/posting-guide.html
+>> > >>> and provide commented, minimal, self-contained, reproducible code.
+>> > >>>
+>> > >>
+>> > >
+>> > >       [[alternative HTML version deleted]]
+>> > >
+>> > > ______________________________________________
+>> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > > https://stat.ethz.ch/mailman/listinfo/r-help
+>> > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> > > and provide commented, minimal, self-contained, reproducible code.
+>> >
+>> > hello,
+>> >
+>> > What exactly didn't work? You say you have tried the solutions found in
+>> > stackoverflow but without a link, we don't know which answers to which
+>> > questions you are talking about.
+>> > Like Bert said, if you assign NA to the new levels, present only in
+>> > test, it should work.
+>> >
+>> > Can you post links to what you have tried?
+>> >
+>> > Hope this helps,
+>> >
+>> > Rui Barradas
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+> --
+> Sent from Gmail Mobile
+
+
+From tebert @end|ng |rom u||@edu  Sun Nov 20 19:30:16 2022
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Sun, 20 Nov 2022 18:30:16 +0000
+Subject: [R] test logistic regression model
+In-Reply-To: <CAGxFJbQ1WT0p2i_ZoFsJP92eLWMbjEB9poL3EX-sjhuOL1ttLw@mail.gmail.com>
+References: <CAEJRAFZPbW=eXYMXG1jL1N-vQ2UXuKNzYu9yA-cErdBU24yYCg@mail.gmail.com>
+ <CAGxFJbSvDckCW-gqVRs-7oDs63QZ_mRNZ1GHLZ2Z1q6kRjS1ag@mail.gmail.com>
+ <CAEJRAFb67LfZWing6=ixo27Up2tuTTecciLmuWVN841qJEqEcA@mail.gmail.com>
+ <ed065c3a-0191-71df-aa39-e50905bbf889@sapo.pt>
+ <CAGxFJbRW3=RTGojmRyfJypXgzEyW=nUy+CkaRozPRNsEFFi0Gg@mail.gmail.com>
+ <CANOgrHa5oUjtp7kZkN18crgexOj84C16739J+4=Gm_O8E+zfKg@mail.gmail.com>
+ <CAGxFJbQ1WT0p2i_ZoFsJP92eLWMbjEB9poL3EX-sjhuOL1ttLw@mail.gmail.com>
+Message-ID: <BN6PR2201MB15537BD9568788407EDF7123CF0B9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+I like option 1. Option 2 may cause problems if you are pooling groups that do not go together. This is especially a problem if you know that the data is missing some groups. I would consider dropping rare groups - or compare results between pooling and dropping options. If the answer is the same in both cases then use the approach that makes your life easier with reviewers/clients. If the answer is different then I would go with dropping rare categories, or present both and highlight the difference in outcome. A third option is to gather more data.
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Bert Gunter
+Sent: Sunday, November 20, 2022 1:06 PM
+To: Mitchell Maltenfort <mmalten at gmail.com>
+Cc: R-help <R-help at r-project.org>
+Subject: Re: [R] test logistic regression model
+
+[External Email]
+
+I think (2) might be a bad idea if one of the "sparse"categories has high predictive power. You'll lose it when you pool, will you not?
+Also, there is the problem of subjectively defining "sparse."
+
+However, 1) seems quite sensible to me. But IANAE.
+
+-- Bert
+
+On Sun, Nov 20, 2022 at 9:49 AM Mitchell Maltenfort <mmalten at gmail.com> wrote:
+>
+> Two possible fixes occur to me
+>
+> 1) Redo the test/training split but within levels of factor - so you 
+> have the same split within each level and each level accounted for in 
+> training and testing
+>
+> 2) if you have a lot of levels, and perhaps sparse representation in a 
+> few, consider recoding levels to pool the rare ones into an "other" 
+> category
+>
+> On Sun, Nov 20, 2022 at 11:41 AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>>
+>> small reprex:
+>>
+>> set.seed(5)
+>> dat <- data.frame(f = rep(c('r','g'),4), y = runif(8)) newdat <- 
+>> data.frame(f =rep(c('r','g','b'),2)) ## convert values in newdat not 
+>> seen in dat to NA
+>> is.na(newdat$f) <-!( newdat$f %in% dat$f) lmfit <- lm(y~f, data = 
+>> dat)
+>>
+>> ##Result:
+>> > predict(lmfit,newdat)
+>>         1         2         3         4         5         6
+>> 0.4374251 0.6196527        NA 0.4374251 0.6196527        NA
+>>
+>> If this does not suffice, as Rui said, we need details of what you did.
+>> (predict.glm works like predict.lm)
+>>
+>>
+>> -- Bert
+>>
+>>
+>> On Sun, Nov 20, 2022 at 7:46 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>> >
+>> > ?s 15:29 de 20/11/2022, G?bor Malomsoki escreveu:
+>> > > Dear Bert,
+>> > >
+>> > > Yes, was trying to fill the not existing categories with NAs, but 
+>> > > the suggested solutions in stackoverflow.com unfortunately did not work.
+>> > >
+>> > > Best regards
+>> > > Gabor
+>> > >
+>> > >
+>> > > Bert Gunter <bgunter.4567 at gmail.com> schrieb am So., 20. Nov. 2022, 16:20:
+>> > >
+>> > >> You can't predict results for categories that you've not seen 
+>> > >> before (think about it). You will need to remove those cases 
+>> > >> from your test set (or convert them to NA and predict them as NA).
+>> > >>
+>> > >> -- Bert
+>> > >>
+>> > >> On Sun, Nov 20, 2022 at 7:02 AM G?bor Malomsoki 
+>> > >> <gmalomsoki1980 at gmail.com>
+>> > >> wrote:
+>> > >>
+>> > >>> Dear all,
+>> > >>>
+>> > >>> i have created a logistic regression model,
+>> > >>>   on the train df:
+>> > >>> mymodel1 <- glm(book_state ~ TG_KraftF5, data = train, family =
+>> > >>> "binomial")
+>> > >>>
+>> > >>> then i try to predict with the test df
+>> > >>> Predict<- predict(mymodel1, newdata = test, type = "response") 
+>> > >>> then iget this error message:
+>> > >>> Error in model.frame.default(Terms, newdata, na.action = 
+>> > >>> na.action, xlev =
+>> > >>> object$xlevels)
+>> > >>> Factor  "TG_KraftF5" has new levels
+>> > >>>
+>> > >>> i have tried different proposals from stackoverflow, but 
+>> > >>> unfortunately they did not solved the problem.
+>> > >>> Do you have any idea how to test a logistic regression model 
+>> > >>> when you have different levels in train and in test df?
+>> > >>>
+>> > >>> thank you in advance
+>> > >>> Regards,
+>> > >>> Gabor
+>> > >>>
+>> > >>>          [[alternative HTML version deleted]]
+>> > >>>
+>> > >>> ______________________________________________
+>> > >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, 
+>> > >>> see
+>> > >>> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F
+>> > >>> %2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&amp;data=05%7C01%
+>> > >>> 7Ctebert%40ufl.edu%7C32b7b7b6a5d6428e728e08dacb21f524%7C0d4da0f
+>> > >>> 84a314d76ace60a62331e1b84%7C0%7C0%7C638045643951801851%7CUnknow
+>> > >>> n%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1
+>> > >>> haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=Ceyiq3LmFfHRlfnrw
+>> > >>> 87wzELUGTHLSv7qvuv1tyqGruU%3D&amp;reserved=0
+>> > >>> PLEASE do read the posting guide
+>> > >>> https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%
+>> > >>> 2Fwww.r-project.org%2Fposting-guide.html&amp;data=05%7C01%7Cteb
+>> > >>> ert%40ufl.edu%7C32b7b7b6a5d6428e728e08dacb21f524%7C0d4da0f84a31
+>> > >>> 4d76ace60a62331e1b84%7C0%7C0%7C638045643951958086%7CUnknown%7CT
+>> > >>> WFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwi
+>> > >>> LCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=swql970slrq8f9bAwP%2FE
+>> > >>> s7PbWm5EQvFHWNga2JwHWeY%3D&amp;reserved=0
+>> > >>> and provide commented, minimal, self-contained, reproducible code.
+>> > >>>
+>> > >>
+>> > >
+>> > >       [[alternative HTML version deleted]]
+>> > >
+>> > > ______________________________________________
+>> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > > https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2
+>> > > Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&amp;data=05%7C01%7Cte
+>> > > bert%40ufl.edu%7C32b7b7b6a5d6428e728e08dacb21f524%7C0d4da0f84a314
+>> > > d76ace60a62331e1b84%7C0%7C0%7C638045643951958086%7CUnknown%7CTWFp
+>> > > bGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXV
+>> > > CI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=N2g%2Fx2IMW4OL0HSmq6pP2pxymP0
+>> > > FUAQbciQXRPOe7KM%3D&amp;reserved=0
+>> > > PLEASE do read the posting guide 
+>> > > https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2F
+>> > > www.r-project.org%2Fposting-guide.html&amp;data=05%7C01%7Ctebert%
+>> > > 40ufl.edu%7C32b7b7b6a5d6428e728e08dacb21f524%7C0d4da0f84a314d76ac
+>> > > e60a62331e1b84%7C0%7C0%7C638045643951958086%7CUnknown%7CTWFpbGZsb
+>> > > 3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn
+>> > > 0%3D%7C3000%7C%7C%7C&amp;sdata=swql970slrq8f9bAwP%2FEs7PbWm5EQvFH
+>> > > WNga2JwHWeY%3D&amp;reserved=0 and provide commented, minimal, 
+>> > > self-contained, reproducible code.
+>> >
+>> > hello,
+>> >
+>> > What exactly didn't work? You say you have tried the solutions 
+>> > found in stackoverflow but without a link, we don't know which 
+>> > answers to which questions you are talking about.
+>> > Like Bert said, if you assign NA to the new levels, present only in 
+>> > test, it should work.
+>> >
+>> > Can you post links to what you have tried?
+>> >
+>> > Hope this helps,
+>> >
+>> > Rui Barradas
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fsta
+>> t.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&amp;data=05%7C01%7Ctebert%40u
+>> fl.edu%7C32b7b7b6a5d6428e728e08dacb21f524%7C0d4da0f84a314d76ace60a623
+>> 31e1b84%7C0%7C0%7C638045643951958086%7CUnknown%7CTWFpbGZsb3d8eyJWIjoi
+>> MC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%
+>> 7C%7C&amp;sdata=N2g%2Fx2IMW4OL0HSmq6pP2pxymP0FUAQbciQXRPOe7KM%3D&amp;
+>> reserved=0 PLEASE do read the posting guide 
+>> https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.
+>> r-project.org%2Fposting-guide.html&amp;data=05%7C01%7Ctebert%40ufl.ed
+>> u%7C32b7b7b6a5d6428e728e08dacb21f524%7C0d4da0f84a314d76ace60a62331e1b
+>> 84%7C0%7C0%7C638045643951958086%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wL
+>> jAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C
+>> &amp;sdata=swql970slrq8f9bAwP%2FEs7PbWm5EQvFHWNga2JwHWeY%3D&amp;reser
+>> ved=0 and provide commented, minimal, self-contained, reproducible 
+>> code.
+>
+> --
+> Sent from Gmail Mobile
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&amp;data=05%7C01%7Ctebert%40ufl.edu%7C32b7b7b6a5d6428e728e08dacb21f524%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638045643951958086%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=N2g%2Fx2IMW4OL0HSmq6pP2pxymP0FUAQbciQXRPOe7KM%3D&amp;reserved=0
+PLEASE do read the posting guide https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&amp;data=05%7C01%7Ctebert%40ufl.edu%7C32b7b7b6a5d6428e728e08dacb21f524%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638045643951958086%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=swql970slrq8f9bAwP%2FEs7PbWm5EQvFHWNga2JwHWeY%3D&amp;reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From mm@|ten @end|ng |rom gm@||@com  Sun Nov 20 19:38:18 2022
+From: mm@|ten @end|ng |rom gm@||@com (Mitchell Maltenfort)
+Date: Sun, 20 Nov 2022 13:38:18 -0500
+Subject: [R] test logistic regression model
+In-Reply-To: <BN6PR2201MB15537BD9568788407EDF7123CF0B9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <CAEJRAFZPbW=eXYMXG1jL1N-vQ2UXuKNzYu9yA-cErdBU24yYCg@mail.gmail.com>
+ <CAGxFJbSvDckCW-gqVRs-7oDs63QZ_mRNZ1GHLZ2Z1q6kRjS1ag@mail.gmail.com>
+ <CAEJRAFb67LfZWing6=ixo27Up2tuTTecciLmuWVN841qJEqEcA@mail.gmail.com>
+ <ed065c3a-0191-71df-aa39-e50905bbf889@sapo.pt>
+ <CAGxFJbRW3=RTGojmRyfJypXgzEyW=nUy+CkaRozPRNsEFFi0Gg@mail.gmail.com>
+ <CANOgrHa5oUjtp7kZkN18crgexOj84C16739J+4=Gm_O8E+zfKg@mail.gmail.com>
+ <CAGxFJbQ1WT0p2i_ZoFsJP92eLWMbjEB9poL3EX-sjhuOL1ttLw@mail.gmail.com>
+ <BN6PR2201MB15537BD9568788407EDF7123CF0B9@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <CANOgrHYD38W7TDr_jn6Parz5eboe2hsMG_-HWCxhxYrhCWi44w@mail.gmail.com>
+
+Agreed on the ranking of (1) vs (2)
+
+
+
+On Sun, Nov 20, 2022 at 1:30 PM Ebert,Timothy Aaron <tebert at ufl.edu> wrote:
+
+> I like option 1. Option 2 may cause problems if you are pooling groups
+> that do not go together. This is especially a problem if you know that the
+> data is missing some groups. I would consider dropping rare groups - or
+> compare results between pooling and dropping options. If the answer is the
+> same in both cases then use the approach that makes your life easier with
+> reviewers/clients. If the answer is different then I would go with dropping
+> rare categories, or present both and highlight the difference in outcome. A
+> third option is to gather more data.
+>
+> Tim
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Bert Gunter
+> Sent: Sunday, November 20, 2022 1:06 PM
+> To: Mitchell Maltenfort <mmalten at gmail.com>
+> Cc: R-help <R-help at r-project.org>
+> Subject: Re: [R] test logistic regression model
+>
+> [External Email]
+>
+> I think (2) might be a bad idea if one of the "sparse"categories has high
+> predictive power. You'll lose it when you pool, will you not?
+> Also, there is the problem of subjectively defining "sparse."
+>
+> However, 1) seems quite sensible to me. But IANAE.
+>
+> -- Bert
+>
+> On Sun, Nov 20, 2022 at 9:49 AM Mitchell Maltenfort <mmalten at gmail.com>
+> wrote:
+> >
+> > Two possible fixes occur to me
+> >
+> > 1) Redo the test/training split but within levels of factor - so you
+> > have the same split within each level and each level accounted for in
+> > training and testing
+> >
+> > 2) if you have a lot of levels, and perhaps sparse representation in a
+> > few, consider recoding levels to pool the rare ones into an "other"
+> > category
+> >
+> > On Sun, Nov 20, 2022 at 11:41 AM Bert Gunter <bgunter.4567 at gmail.com>
+> wrote:
+> >>
+> >> small reprex:
+> >>
+> >> set.seed(5)
+> >> dat <- data.frame(f = rep(c('r','g'),4), y = runif(8)) newdat <-
+> >> data.frame(f =rep(c('r','g','b'),2)) ## convert values in newdat not
+> >> seen in dat to NA
+> >> is.na(newdat$f) <-!( newdat$f %in% dat$f) lmfit <- lm(y~f, data =
+> >> dat)
+> >>
+> >> ##Result:
+> >> > predict(lmfit,newdat)
+> >>         1         2         3         4         5         6
+> >> 0.4374251 0.6196527        NA 0.4374251 0.6196527        NA
+> >>
+> >> If this does not suffice, as Rui said, we need details of what you did.
+> >> (predict.glm works like predict.lm)
+> >>
+> >>
+> >> -- Bert
+> >>
+> >>
+> >> On Sun, Nov 20, 2022 at 7:46 AM Rui Barradas <ruipbarradas at sapo.pt>
+> wrote:
+> >> >
+> >> > ?s 15:29 de 20/11/2022, G?bor Malomsoki escreveu:
+> >> > > Dear Bert,
+> >> > >
+> >> > > Yes, was trying to fill the not existing categories with NAs, but
+> >> > > the suggested solutions in stackoverflow.com unfortunately did not
+> work.
+> >> > >
+> >> > > Best regards
+> >> > > Gabor
+> >> > >
+> >> > >
+> >> > > Bert Gunter <bgunter.4567 at gmail.com> schrieb am So., 20. Nov.
+> 2022, 16:20:
+> >> > >
+> >> > >> You can't predict results for categories that you've not seen
+> >> > >> before (think about it). You will need to remove those cases
+> >> > >> from your test set (or convert them to NA and predict them as NA).
+> >> > >>
+> >> > >> -- Bert
+> >> > >>
+> >> > >> On Sun, Nov 20, 2022 at 7:02 AM G?bor Malomsoki
+> >> > >> <gmalomsoki1980 at gmail.com>
+> >> > >> wrote:
+> >> > >>
+> >> > >>> Dear all,
+> >> > >>>
+> >> > >>> i have created a logistic regression model,
+> >> > >>>   on the train df:
+> >> > >>> mymodel1 <- glm(book_state ~ TG_KraftF5, data = train, family =
+> >> > >>> "binomial")
+> >> > >>>
+> >> > >>> then i try to predict with the test df
+> >> > >>> Predict<- predict(mymodel1, newdata = test, type = "response")
+> >> > >>> then iget this error message:
+> >> > >>> Error in model.frame.default(Terms, newdata, na.action =
+> >> > >>> na.action, xlev =
+> >> > >>> object$xlevels)
+> >> > >>> Factor  "TG_KraftF5" has new levels
+> >> > >>>
+> >> > >>> i have tried different proposals from stackoverflow, but
+> >> > >>> unfortunately they did not solved the problem.
+> >> > >>> Do you have any idea how to test a logistic regression model
+> >> > >>> when you have different levels in train and in test df?
+> >> > >>>
+> >> > >>> thank you in advance
+> >> > >>> Regards,
+> >> > >>> Gabor
+> >> > >>>
+> >> > >>>          [[alternative HTML version deleted]]
+> >> > >>>
+> >> > >>> ______________________________________________
+> >> > >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more,
+> >> > >>> see
+> >> > >>> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F
+> >> > >>> %2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&amp;data=05%7C01%
+> >> > >>> 7Ctebert%40ufl.edu%7C32b7b7b6a5d6428e728e08dacb21f524%7C0d4da0f
+> >> > >>> 84a314d76ace60a62331e1b84%7C0%7C0%7C638045643951801851%7CUnknow
+> >> > >>> n%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1
+> >> > >>> haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=Ceyiq3LmFfHRlfnrw
+> >> > >>> 87wzELUGTHLSv7qvuv1tyqGruU%3D&amp;reserved=0
+> >> > >>> PLEASE do read the posting guide
+> >> > >>> https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%
+> >> > >>> 2Fwww.r-project.org%2Fposting-guide.html&amp;data=05%7C01%7Cteb
+> >> > >>> ert%40ufl.edu%7C32b7b7b6a5d6428e728e08dacb21f524%7C0d4da0f84a31
+> >> > >>> 4d76ace60a62331e1b84%7C0%7C0%7C638045643951958086%7CUnknown%7CT
+> >> > >>> WFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwi
+> >> > >>> LCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=swql970slrq8f9bAwP%2FE
+> >> > >>> s7PbWm5EQvFHWNga2JwHWeY%3D&amp;reserved=0
+> >> > >>> and provide commented, minimal, self-contained, reproducible code.
+> >> > >>>
+> >> > >>
+> >> > >
+> >> > >       [[alternative HTML version deleted]]
+> >> > >
+> >> > > ______________________________________________
+> >> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> > > https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2
+> >> > > Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&amp;data=05%7C01%7Cte
+> >> > > bert%40ufl.edu%7C32b7b7b6a5d6428e728e08dacb21f524%7C0d4da0f84a314
+> >> > > d76ace60a62331e1b84%7C0%7C0%7C638045643951958086%7CUnknown%7CTWFp
+> >> > > bGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXV
+> >> > > CI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=N2g%2Fx2IMW4OL0HSmq6pP2pxymP0
+> >> > > FUAQbciQXRPOe7KM%3D&amp;reserved=0
+> >> > > PLEASE do read the posting guide
+> >> > > https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2F
+> >> > > www.r-project.org%2Fposting-guide.html&amp;data=05%7C01%7Ctebert%
+> >> > > 40ufl.edu%7C32b7b7b6a5d6428e728e08dacb21f524%7C0d4da0f84a314d76ac
+> >> > > e60a62331e1b84%7C0%7C0%7C638045643951958086%7CUnknown%7CTWFpbGZsb
+> >> > > 3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn
+> >> > > 0%3D%7C3000%7C%7C%7C&amp;sdata=swql970slrq8f9bAwP%2FEs7PbWm5EQvFH
+> >> > > WNga2JwHWeY%3D&amp;reserved=0 and provide commented, minimal,
+> >> > > self-contained, reproducible code.
+> >> >
+> >> > hello,
+> >> >
+> >> > What exactly didn't work? You say you have tried the solutions
+> >> > found in stackoverflow but without a link, we don't know which
+> >> > answers to which questions you are talking about.
+> >> > Like Bert said, if you assign NA to the new levels, present only in
+> >> > test, it should work.
+> >> >
+> >> > Can you post links to what you have tried?
+> >> >
+> >> > Hope this helps,
+> >> >
+> >> > Rui Barradas
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fsta
+> >> t.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&amp;data=05%7C01%7Ctebert%40u
+> >> fl.edu%7C32b7b7b6a5d6428e728e08dacb21f524%7C0d4da0f84a314d76ace60a623
+> >> 31e1b84%7C0%7C0%7C638045643951958086%7CUnknown%7CTWFpbGZsb3d8eyJWIjoi
+> >> MC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%
+> >> 7C%7C&amp;sdata=N2g%2Fx2IMW4OL0HSmq6pP2pxymP0FUAQbciQXRPOe7KM%3D&amp;
+> >> reserved=0 PLEASE do read the posting guide
+> >> https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.
+> >> r-project.org%2Fposting-guide.html&amp;data=05%7C01%7Ctebert%40ufl.ed
+> >> u%7C32b7b7b6a5d6428e728e08dacb21f524%7C0d4da0f84a314d76ace60a62331e1b
+> >> 84%7C0%7C0%7C638045643951958086%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wL
+> >> jAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C
+> >> &amp;sdata=swql970slrq8f9bAwP%2FEs7PbWm5EQvFHWNga2JwHWeY%3D&amp;reser
+> >> ved=0 and provide commented, minimal, self-contained, reproducible
+> >> code.
+> >
+> > --
+> > Sent from Gmail Mobile
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>
+> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&amp;data=05%7C01%7Ctebert%40ufl.edu%7C32b7b7b6a5d6428e728e08dacb21f524%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638045643951958086%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=N2g%2Fx2IMW4OL0HSmq6pP2pxymP0FUAQbciQXRPOe7KM%3D&amp;reserved=0
+> PLEASE do read the posting guide
+> https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&amp;data=05%7C01%7Ctebert%40ufl.edu%7C32b7b7b6a5d6428e728e08dacb21f524%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638045643951958086%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&amp;sdata=swql970slrq8f9bAwP%2FEs7PbWm5EQvFHWNga2JwHWeY%3D&amp;reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+>
+-- 
+Sent from Gmail Mobile
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Nov 20 20:26:23 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 20 Nov 2022 22:26:23 +0300
+Subject: [R] 
+ make install libgfortran.so.5: cannot open shared object file:
+ No such file or directory;
+ conftest.c:1:10: fatal error: jni.h: No such file or directory
+In-Reply-To: <CAD6rq1VLQqS7XjeT9nEYXvWgMNqTBoiE4V9_DAS1ktNskvWoKQ@mail.gmail.com>
+References: <CAD6rq1WED=BsyCidHqBiTXpMvsAHKTfW+GddP5tMmrQXwtmozg@mail.gmail.com>
+ <20221120203745.1d429604@Tarkus>
+ <CAD6rq1VLQqS7XjeT9nEYXvWgMNqTBoiE4V9_DAS1ktNskvWoKQ@mail.gmail.com>
+Message-ID: <20221120222623.24c39285@Tarkus>
+
+On Sun, 20 Nov 2022 14:03:34 -0500
+Rob Kudyba <rk3199 at columbia.edu> wrote:
+
+> /path/to/gcc-11.2/lib is definitely in LD_LIBRARY_PATH when loading
+> the GCC 11.2 module.
+> 
+> If using the /path/to/R-4.2.2/etc/ldpaths where would I put the
+> correct path? I would've hoped the configure/make process would've
+> found this automatically.
+
+Interesting that bin/R works but calling bin/R from what amounts to
+`make -C src/library install` doesn't. I think that the failing step is
+the following command:
+
+@$(ECHO) "  building HTML index ..."
+@$(ECHO) "utils:::make.packages.html(.Library, verbose=FALSE,
+docdir=\"$(DESTDIR)${rdocdir}\")" | \
+ R_DEFAULT_PACKAGES=NULL LC_ALL=C ${R_EXE} >/dev/null
+
+I don't see a reason for Make to lose the LD_LIBRARY_PATH when
+launching R like this.
+
+Can you see the failing step in the `make -d install` output? There
+will be a lot of text, most of it unrelated, unfortunately.
+
+If something loses the LD_LIBRARY_PATH environment variable on the way
+from Make to R, hard-coding it in etc/ldpaths should work around the
+problem, but it may be hard to find out what went wrong.
+
+If you run `mkfifo /tmp/1` and insert `read foo </tmp/1` into
+etc/ldpaths, it should hang until you write something into /tmp/1.
+Using this, it should be possible to inspect /proc/${pid}/environ for
+the whole process tree from the parent Make process to the shell that's
+about to launch R. Can you find the first process that lacks the proper
+LD_LIBRARY_PATH environment variable?
+
+-- 
+Best regards,
+Ivan
+
+
