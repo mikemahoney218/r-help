@@ -16373,3 +16373,369 @@ On Mon, Nov 21, 2022 at 4:58 PM Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wro
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Tue Nov 22 04:28:07 2022
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Tue, 22 Nov 2022 05:28:07 +0200
+Subject: [R] Hidden Problems with Clustering Algorithms
+Message-ID: <500236d3-af3e-e851-2c6b-3d8ec246e22f@syonic.eu>
+
+Dear R-Users,
+
+Hidden Problems with Clustering Algorithms
+
+I stumbled recently upon a presentation about hierarchical clustering. 
+Unfortunately, it contains a hidden problem of clustering algorithms. 
+The problem is deeper and I think that it warrants a closer inspection 
+by the statistical community.
+
+The presentation is available online. Both the scaled & non-scaled 
+versions show the problem.
+
+de.NBI course - Advanced analysis of quantitative proteomics data using 
+R: 03b Clustering Part2
+[Note: it's more like introductory notes to basic statistics]
+https://www.youtube.com/watch?v=7e1uW_BhljA
+times:
+- at 6:15 - 6:28 & 6:29 - 7:10 [2 versions, both non-scaled]
+- at 5:51 - 6:10 [the scaled version]
+- same problem at 7:56;
+
+PROBLEM
+
+Non-Scaled Version: (e.g. the one at 6:15)
+- the upper 2 rows are split into various sub-clusters;
+- the top tree: a cluster is formed by the right-right sub-tree (some 17 
+"genes" or similar "activities" / "expressions");
+- the left-most 2 "genes" are actually over-expressed "genes" and 
+functionally really belong to the previous/right sub-cluster;
+
+Scaled-Version: (at 5:52)
+- the left-most 2 "genes" are over-expressed at the same time with the 
+right cluster, and not otherwise;
+
+Unfortunately, the 2 over-expressed (outliers or extreme-values) are 
+split off from the relevant cluster and inserted as a separate 
+main-branch in the top dendrogram. Switching only the main left & right 
+branches in the top tree would only mask this problem. The 2 
+pseudo-outliers are really the (probably) upper values in the larger 
+cluster of over-expressed "genes" (all the dark genes should belong to 
+the same cluster).
+
+The middle sub-cluster shows really NO activity (some 16 "genes"). The 
+main branches in the top tree should really split between this 
+*NO*-activity cluster and the cluster showing activity (including the 2 
+massively over-expressed genes). The problem is present in the scaled 
+version as well.
+
+The hierarchical clustering algorithm fails. I have not analysed the 
+data, but some problems may contribute to this:
+- "gene expression" or "activity" may not be linear, but exponential or 
+follow some power rule: a logarithmic transformation (or some other 
+transformation) may have been useful;
+- simple distances between clusters may be too inaccurate;
+- the variance in the low-activity (middle) cluster may be very low 
+(almost 0!), while the variance in the high-activity cluster may be much 
+higher: the Mahalanobis distance or joining the sub-clusters based on 
+some z/t-test taking into account the different variances may be more 
+robust;
+
+These questions should be addressed by more senior statisticians.
+
+I hope that the presentation remains on-line as is, as the clustering 
+problem is really easy to see and to analyse. It is impossible to detect 
+and visualise such anomalies in a heatmap with 1,000 gene-expressions or 
+with 10,000 genes, or with 500-1000 samples. It is very obvious on this 
+small heatmap.
+
+I do not know if there are any robust tools to validate the generated 
+trees. Inspecting by "eye" a dendrogram with > 1,000 genes and hundreds 
+of samples is really futile.
+
+Sincerely,
+
+Leonard
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue Nov 22 05:26:14 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Mon, 21 Nov 2022 20:26:14 -0800
+Subject: [R] Hidden Problems with Clustering Algorithms
+In-Reply-To: <500236d3-af3e-e851-2c6b-3d8ec246e22f@syonic.eu>
+References: <500236d3-af3e-e851-2c6b-3d8ec246e22f@syonic.eu>
+Message-ID: <CAGxFJbTfzSrtcujgYx_G=gtqVXtxrGu37mg2WH5HQcuJcweUWw@mail.gmail.com>
+
+Most clustering algorithms are just heuristic and exploratory, well known
+to be subject to the sorts of issues that you are concerned with. There are
+no universal fixes ... just tradeoffs. You need to choose that which is
+most appropriate for your situation and data,.
+
+Bert
+
+On Mon, Nov 21, 2022, 19:28 Leonard Mada via R-help <r-help at r-project.org>
+wrote:
+
+> Dear R-Users,
+>
+> Hidden Problems with Clustering Algorithms
+>
+> I stumbled recently upon a presentation about hierarchical clustering.
+> Unfortunately, it contains a hidden problem of clustering algorithms.
+> The problem is deeper and I think that it warrants a closer inspection
+> by the statistical community.
+>
+> The presentation is available online. Both the scaled & non-scaled
+> versions show the problem.
+>
+> de.NBI course - Advanced analysis of quantitative proteomics data using
+> R: 03b Clustering Part2
+> [Note: it's more like introductory notes to basic statistics]
+> https://www.youtube.com/watch?v=7e1uW_BhljA
+> times:
+> - at 6:15 - 6:28 & 6:29 - 7:10 [2 versions, both non-scaled]
+> - at 5:51 - 6:10 [the scaled version]
+> - same problem at 7:56;
+>
+> PROBLEM
+>
+> Non-Scaled Version: (e.g. the one at 6:15)
+> - the upper 2 rows are split into various sub-clusters;
+> - the top tree: a cluster is formed by the right-right sub-tree (some 17
+> "genes" or similar "activities" / "expressions");
+> - the left-most 2 "genes" are actually over-expressed "genes" and
+> functionally really belong to the previous/right sub-cluster;
+>
+> Scaled-Version: (at 5:52)
+> - the left-most 2 "genes" are over-expressed at the same time with the
+> right cluster, and not otherwise;
+>
+> Unfortunately, the 2 over-expressed (outliers or extreme-values) are
+> split off from the relevant cluster and inserted as a separate
+> main-branch in the top dendrogram. Switching only the main left & right
+> branches in the top tree would only mask this problem. The 2
+> pseudo-outliers are really the (probably) upper values in the larger
+> cluster of over-expressed "genes" (all the dark genes should belong to
+> the same cluster).
+>
+> The middle sub-cluster shows really NO activity (some 16 "genes"). The
+> main branches in the top tree should really split between this
+> *NO*-activity cluster and the cluster showing activity (including the 2
+> massively over-expressed genes). The problem is present in the scaled
+> version as well.
+>
+> The hierarchical clustering algorithm fails. I have not analysed the
+> data, but some problems may contribute to this:
+> - "gene expression" or "activity" may not be linear, but exponential or
+> follow some power rule: a logarithmic transformation (or some other
+> transformation) may have been useful;
+> - simple distances between clusters may be too inaccurate;
+> - the variance in the low-activity (middle) cluster may be very low
+> (almost 0!), while the variance in the high-activity cluster may be much
+> higher: the Mahalanobis distance or joining the sub-clusters based on
+> some z/t-test taking into account the different variances may be more
+> robust;
+>
+> These questions should be addressed by more senior statisticians.
+>
+> I hope that the presentation remains on-line as is, as the clustering
+> problem is really easy to see and to analyse. It is impossible to detect
+> and visualise such anomalies in a heatmap with 1,000 gene-expressions or
+> with 10,000 genes, or with 500-1000 samples. It is very obvious on this
+> small heatmap.
+>
+> I do not know if there are any robust tools to validate the generated
+> trees. Inspecting by "eye" a dendrogram with > 1,000 genes and hundreds
+> of samples is really futile.
+>
+> Sincerely,
+>
+> Leonard
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Nov 22 08:08:52 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 22 Nov 2022 10:08:52 +0300
+Subject: [R] Format printing with R
+In-Reply-To: <75813398-2ce9-60ce-d7a5-c1224b648425@ntu.edu.tw>
+References: <aa7ff442-3e7b-35b3-273a-569dfaa2cfae@ntu.edu.tw>
+ <CAPcHnpSSEe0=Gio0MqZV1LOmFG=22qxUZmtLxdZHQoVonfCPcQ@mail.gmail.com>
+ <75813398-2ce9-60ce-d7a5-c1224b648425@ntu.edu.tw>
+Message-ID: <20221122100852.7ae8c081@Tarkus>
+
+On Tue, 22 Nov 2022 08:15:57 +0800
+"Steven T. Yen" <styen at ntu.edu.tw> wrote:
+
+> Thanks to all, but no, signif() did not work:
+
+It worked, just didn't do what you wanted it to do. I think you want
+round(), not signif(). Some of your numbers (45.3185794) will be rounded
+to 4 significant digits and others (0.0969999) will be rounded to 1
+significant digit, but the number of decimal places will be 2.
+
+-- 
+Best regards,
+Ivan
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Nov 22 09:05:56 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 22 Nov 2022 11:05:56 +0300
+Subject: [R] 
+ make install libgfortran.so.5: cannot open shared object file:
+ No such file or directory;
+ conftest.c:1:10: fatal error: jni.h: No such file or directory
+In-Reply-To: <CAD6rq1W1CsPvfwnQaN_f83fhvf=mhCMfB1RrZj6=dhFHgAEm=A@mail.gmail.com>
+References: <CAD6rq1WED=BsyCidHqBiTXpMvsAHKTfW+GddP5tMmrQXwtmozg@mail.gmail.com>
+ <20221120203745.1d429604@Tarkus>
+ <CAD6rq1VLQqS7XjeT9nEYXvWgMNqTBoiE4V9_DAS1ktNskvWoKQ@mail.gmail.com>
+ <20221120222623.24c39285@Tarkus>
+ <CAD6rq1XW_=RBKbtcf0q1Qqf0Onhfdtjx+qyhoaD4CK7P3s8ceQ@mail.gmail.com>
+ <20221121191324.18fc3628@arachnoid>
+ <CAD6rq1W1CsPvfwnQaN_f83fhvf=mhCMfB1RrZj6=dhFHgAEm=A@mail.gmail.com>
+Message-ID: <20221122110556.48063d6f@Tarkus>
+
+On Mon, 21 Nov 2022 13:19:22 -0500
+Rob Kudyba <rk3199 at columbia.edu> wrote:
+
+> What would the ./configure options look like?
+
+./configure LDFLAGS="-L/path/to/gcc -L/path/to/pcre"
+
+Here's where LDFLAGS is interpreted and appended to LD_LIBRARY_PATH:
+https://github.com/r-devel/r-svn/blob/d6fc5e0a983eaa61439d67cfff4dc4097698c831/configure.ac#L821-L828
+
+-- 
+Best regards,
+Ivan
+
+
+From @tyen @end|ng |rom ntu@edu@tw  Tue Nov 22 11:24:15 2022
+From: @tyen @end|ng |rom ntu@edu@tw (Steven T. Yen)
+Date: Tue, 22 Nov 2022 18:24:15 +0800
+Subject: [R] Format printing with R
+In-Reply-To: <20221122100852.7ae8c081@Tarkus>
+References: <aa7ff442-3e7b-35b3-273a-569dfaa2cfae@ntu.edu.tw>
+ <CAPcHnpSSEe0=Gio0MqZV1LOmFG=22qxUZmtLxdZHQoVonfCPcQ@mail.gmail.com>
+ <75813398-2ce9-60ce-d7a5-c1224b648425@ntu.edu.tw>
+ <20221122100852.7ae8c081@Tarkus>
+Message-ID: <8f0d2e61-a3cd-a485-ba25-7ed68182cb57@ntu.edu.tw>
+
+Thanks to all. And yes, Ivan, round() did it:
+
+ > dput(head(Mean))
+c(afactfem = 0.310796641158209, afactblk = 0.188030178893171,
+age = 45.3185794338312, nodiscfem = 0.506637018185968, discfem = 
+0.493362981814032,
+notradgrol = 0.702915000493879)
+ > dput(head(Std.dev))
+c(afactfem = 0.462819715443265, afactblk = 0.390736267472797,
+age = 16.3136348021933, nodiscfem = 0.499955948049025, discfem = 
+0.499955948049025,
+notradgrol = 0.456974290933931)
+ > round(cbind(Mean,Std.dev),2)[1:10,]
+ ??????????? Mean Std.dev
+afactfem??? 0.31??? 0.46
+afactblk??? 0.19??? 0.39
+age??????? 45.32?? 16.31
+nodiscfem?? 0.51??? 0.50
+discfem???? 0.49??? 0.50
+notradgrol? 0.70??? 0.46
+tradgrol??? 0.30??? 0.46
+nofemnopol? 0.80??? 0.40
+femnopol??? 0.20??? 0.40
+nopreshurt? 0.66??? 0.47
+
+On 11/22/2022 3:08 PM, Ivan Krylov wrote:
+> On Tue, 22 Nov 2022 08:15:57 +0800
+> "Steven T. Yen" <styen at ntu.edu.tw> wrote:
+>
+>> Thanks to all, but no, signif() did not work:
+> It worked, just didn't do what you wanted it to do. I think you want
+> round(), not signif(). Some of your numbers (45.3185794) will be rounded
+> to 4 significant digits and others (0.0969999) will be rounded to 1
+> significant digit, but the number of decimal places will be 2.
+>
+
+
+From P|erre@Nede|ec @end|ng |rom uc@|@edu  Tue Nov 22 21:22:26 2022
+From: P|erre@Nede|ec @end|ng |rom uc@|@edu (Nedelec, Pierre)
+Date: Tue, 22 Nov 2022 20:22:26 +0000
+Subject: [R] Issue installing gamm4 for R v4.2.2
+In-Reply-To: <20221115180820.17d89bf5@arachnoid>
+References: <BY3PR05MB85633C9229319C71B0161E26F4059@BY3PR05MB8563.namprd05.prod.outlook.com>
+ <20221115180820.17d89bf5@arachnoid>
+Message-ID: <BY3PR05MB85637F689CB587A6E084AA03F40D9@BY3PR05MB8563.namprd05.prod.outlook.com>
+
+
+Hi All,
+
+Thank you for your help. It was an issue with Mac packages indeed. I found that thread and it resolved it in my case also.
+https://stackoverflow.com/questions/72409270/getting-error-while-installing-lme4-package-in-r-in-macosx-monterey
+
+Best,
+Pierre
+________________________________
+From: Ivan Krylov <krylov.r00t at gmail.com>
+Sent: Tuesday, November 15, 2022 07:08
+To: Nedelec, Pierre via R-help <r-help at r-project.org>
+Cc: Nedelec, Pierre <Pierre.Nedelec at ucsf.edu>
+Subject: Re: [R] Issue installing gamm4 for R v4.2.2
+
+Hello Pierre,
+
+Thank you for providing both sessionInfo() and the installation log,
+it's very helpful!
+
+? Mon, 14 Nov 2022 20:48:13 +0000
+"Nedelec, Pierre via R-help" <r-help at r-project.org> ?????:
+
+> /usr/local/opt/gcc/bin/gfortran -fno-optimize-sibling-calls  -fPIC
+> -g -O2  -c altmov.f -o altmov.o
+...
+> clang (LLVM option parsing): Unknown command line argument
+> '-x86-pad-for-align=false'.
+
+It looks like your Fortran compiler installation might be not fully
+functional. Can you compile and run a Fortran "Hello World"?
+
+program hello
+print *, 'Hello'
+end program
+
+The following command line should compile and run the program stored in
+a file named "hello.f90":
+/usr/local/opt/gcc/bin/gfortran -o hello hello.f90 && ./hello
+
+I see that you're using some libraries installed from Homebrew. Is your
+GNU Fortran installation from <https://urldefense.com/v3/__https://mac.r-project.org/tools/__;!!LQC6Cpwp!pHAM5QGrV-a4-JM_BIoO-odhgI2Fy_UOjXk9cScYP39CddwrOd2sfrJ6U-Dbo-biMwBrZePGo2tRHhFi5geVQBYNSQ$ > or
+from somewhere else? How did you install R itself?
+
+I don't have a Mac and may be unable to help you further, but your
+answers should be useful to other more experienced people. If you don't
+get an answer here soon, consider asking at r-sig-mac at r-project.org,
+because this looks like a Mac-specific problem.
+
+>        [[alternative HTML version deleted]]
+
+Your message reached us almost undamaged, but not all messages composed
+in HTML are so lucky:
+https://urldefense.com/v3/__https://stat.ethz.ch/pipermail/r-help/2022-November/476282.html__;!!LQC6Cpwp!pHAM5QGrV-a4-JM_BIoO-odhgI2Fy_UOjXk9cScYP39CddwrOd2sfrJ6U-Dbo-biMwBrZePGo2tRHhFi5gf4jYN04g$
+
+Please post to R mailing lists in plain text.
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
