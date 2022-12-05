@@ -269,3 +269,547 @@ On 2/12/2022 14:18, Evan Cooch wrote:
 >
 
 
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat Dec  3 05:01:44 2022
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Fri, 2 Dec 2022 23:01:44 -0500
+Subject: [R] interval between specific characters in a string...
+In-Reply-To: <4d5418e3-0c41-43c0-e124-d735dbd707a4@gmail.com>
+References: <4d5418e3-0c41-43c0-e124-d735dbd707a4@gmail.com>
+Message-ID: <00de01d906cb$f57abe10$e0703a30$@gmail.com>
+
+Evan, there are oodles of ways to do many things in R, and mcu of what the
+tidyverse supplies can often be done as easily, or easier, outside it.
+
+Before presenting a solution, I need to make sure I am answering the same
+question or problem you intend.
+
+Here is the string you have as an example:
+
+st <- "abaaabbaaaaabaaab"
+
+Is the string a string testing for single characters called "b" with any
+other characters being either just "a" or at least non-"b" and of any length
+but at least a few?
+
+If so, ONE METHOD is to convert the string to a vector for reasons that will
+become clear. For oddball reasons, this is a way to do it:
+
+> unlist(strsplit(st,""))
+[1] "a" "b" "a" "a" "a" "b" "b" "a" "a" "a" "a" "a" "b" "a" "a" "a" "b"
+
+The result is a vector you can examine to see if they are equal to "b" or
+not as a TRUE/FALSE vector:
+
+> unlist(strsplit(st,"")) == "b"
+[1] FALSE  TRUE FALSE FALSE FALSE  TRUE  TRUE FALSE FALSE FALSE FALSE FALSE
+TRUE FALSE FALSE FALSE
+[17]  TRUE
+
+Now you can ask for the indices which are TRUE, meaning at what offset from
+the beginning are there instances of the letter "b":
+
+> which(unlist(strsplit(st,"")) == "b")
+[1]  2  6  7 13 17
+
+This shows the second the integer offsets for the letter "b" are the second,
+sixth and so on to seventeenth. Again, if I understood you, you want a
+measure of how far apart instances of "b" are with adjacent ones being 1
+apart. Again, many methods but I chose one where I sort of slid over the
+above values by sliding in a zero from the front and removing the last
+entry. 
+
+So save that in a variable  first:
+
+indices <- which(unlist(strsplit(st,"")) == "b")
+indices_shifted <- c(0, head(indices, -1))
+
+The two contain:
+
+> indices
+[1]  2  6  7 13 17
+> indices_shifted
+[1]  0  2  6  7 13
+> indices - indices_shifted 
+[1] 2 4 1 6 4
+
+The above is the same as your intended result.
+
+If you want to be cautious, handle edge cases like not having any "b" or an
+empty string.
+
+Here is the consolidated code:
+
+st <- "abaaabbaaaaabaaab"
+indices <- which(unlist(strsplit(st,"")) == "b")
+indices_shifted <- c(0, head(indices, -1))
+result <- indices - indices_shifted
+
+There are many other ways to do this and of course some are more
+straightforward and some more complex.
+
+Consider a loop using a vector version of the string where each time you see
+a b", you remember the last index you saw it and put out the number
+representing the gap.
+
+Fairly low tech.
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Evan Cooch
+Sent: Friday, December 2, 2022 12:19 PM
+To: r-help at r-project.org
+Subject: [R] interval between specific characters in a string...
+
+Was wondering if there is an 'efficient/elegant' way to do the following
+(without tidyverse). Take a string
+
+abaaabbaaaaabaaab
+
+Its easy enough to count the number of times the character 'b' shows up in
+the string, but...what I'm looking for is outputing the 'intervals' 
+between occurrences of 'b' (starting the counter at the beginning of the
+string). So, for the preceding example, 'b' shows up in positions
+
+2, 6, 7, 13, 17
+
+So, the interval data would be: 2, 4, 1, 6, 4
+
+My main approach has been to simply output positions (say, something like
+unlist(gregexpr('b', target_string))), and 'do the math' between successive
+positions. Can anyone suggest a more elegant approach?
+
+Thanks in advance...
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sat Dec  3 09:48:36 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sat, 3 Dec 2022 08:48:36 +0000
+Subject: [R] interval between specific characters in a string...
+In-Reply-To: <4d5418e3-0c41-43c0-e124-d735dbd707a4@gmail.com>
+References: <4d5418e3-0c41-43c0-e124-d735dbd707a4@gmail.com>
+Message-ID: <ac1bb065-45bb-5bd7-f03a-32c62ca8c9b5@sapo.pt>
+
+?s 17:18 de 02/12/2022, Evan Cooch escreveu:
+> Was wondering if there is an 'efficient/elegant' way to do the following 
+> (without tidyverse). Take a string
+> 
+> abaaabbaaaaabaaab
+> 
+> Its easy enough to count the number of times the character 'b' shows up 
+> in the string, but...what I'm looking for is outputing the 'intervals' 
+> between occurrences of 'b' (starting the counter at the beginning of the 
+> string). So, for the preceding example, 'b' shows up in positions
+> 
+> 2, 6, 7, 13, 17
+> 
+> So, the interval data would be: 2, 4, 1, 6, 4
+> 
+> My main approach has been to simply output positions (say, something 
+> like unlist(gregexpr('b', target_string))), and 'do the math' between 
+> successive positions. Can anyone suggest a more elegant approach?
+> 
+> Thanks in advance...
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+I don't find your solution inelegant, it's even easy to write it as a 
+one-line function.
+
+
+char_interval <- function(x, s) {
+   lapply(gregexpr(x, s), \(y) c(head(y, 1), diff(y)))
+}
+
+target_string <-"abaaabbaaaaabaaab"
+char_interval('b', target_string)
+#> [[1]]
+#> [1] 2 4 1 6 4
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Dec  3 16:21:50 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 3 Dec 2022 07:21:50 -0800
+Subject: [R] interval between specific characters in a string...
+In-Reply-To: <ac1bb065-45bb-5bd7-f03a-32c62ca8c9b5@sapo.pt>
+References: <4d5418e3-0c41-43c0-e124-d735dbd707a4@gmail.com>
+ <ac1bb065-45bb-5bd7-f03a-32c62ca8c9b5@sapo.pt>
+Message-ID: <CAGxFJbQvd9FqWB6iAw=7d19APR+XO6sdphWqdWk9xoHh=WiBEg@mail.gmail.com>
+
+Perhaps it is worth pointing out that looping constructs like lapply() can
+be avoided and the procedure vectorized by mimicking Martin Morgan's
+solution:
+
+## s is the string to be searched.
+diff(c(0,grep('b',strsplit(s,'')[[1]])))
+
+However, Martin's solution is simpler and likely even faster as the regex
+engine is unneeded:
+
+diff(c(0, which(strsplit(s, "")[[1]] == "b"))) ## completely vectorized
+
+This seems much preferable to me.
+
+-- Bert
+
+
+
+
+
+On Sat, Dec 3, 2022 at 12:49 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+
+> ?s 17:18 de 02/12/2022, Evan Cooch escreveu:
+> > Was wondering if there is an 'efficient/elegant' way to do the following
+> > (without tidyverse). Take a string
+> >
+> > abaaabbaaaaabaaab
+> >
+> > Its easy enough to count the number of times the character 'b' shows up
+> > in the string, but...what I'm looking for is outputing the 'intervals'
+> > between occurrences of 'b' (starting the counter at the beginning of the
+> > string). So, for the preceding example, 'b' shows up in positions
+> >
+> > 2, 6, 7, 13, 17
+> >
+> > So, the interval data would be: 2, 4, 1, 6, 4
+> >
+> > My main approach has been to simply output positions (say, something
+> > like unlist(gregexpr('b', target_string))), and 'do the math' between
+> > successive positions. Can anyone suggest a more elegant approach?
+> >
+> > Thanks in advance...
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> > http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+>
+> I don't find your solution inelegant, it's even easy to write it as a
+> one-line function.
+>
+>
+> char_interval <- function(x, s) {
+>    lapply(gregexpr(x, s), \(y) c(head(y, 1), diff(y)))
+> }
+>
+> target_string <-"abaaabbaaaaabaaab"
+> char_interval('b', target_string)
+> #> [[1]]
+> #> [1] 2 4 1 6 4
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From hp@ge@@on@g|thub @end|ng |rom gm@||@com  Sun Dec  4 00:49:35 2022
+From: hp@ge@@on@g|thub @end|ng |rom gm@||@com (=?UTF-8?B?SGVydsOpIFBhZ8Oocw==?=)
+Date: Sat, 3 Dec 2022 15:49:35 -0800
+Subject: [R] interval between specific characters in a string...
+In-Reply-To: <CAGxFJbQvd9FqWB6iAw=7d19APR+XO6sdphWqdWk9xoHh=WiBEg@mail.gmail.com>
+References: <4d5418e3-0c41-43c0-e124-d735dbd707a4@gmail.com>
+ <ac1bb065-45bb-5bd7-f03a-32c62ca8c9b5@sapo.pt>
+ <CAGxFJbQvd9FqWB6iAw=7d19APR+XO6sdphWqdWk9xoHh=WiBEg@mail.gmail.com>
+Message-ID: <d0882e87-3920-1abb-0880-f00dea2411a2@gmail.com>
+
+On 03/12/2022 07:21, Bert Gunter wrote:
+> Perhaps it is worth pointing out that looping constructs like lapply() can
+> be avoided and the procedure vectorized by mimicking Martin Morgan's
+> solution:
+>
+> ## s is the string to be searched.
+> diff(c(0,grep('b',strsplit(s,'')[[1]])))
+>
+> However, Martin's solution is simpler and likely even faster as the regex
+> engine is unneeded:
+>
+> diff(c(0, which(strsplit(s, "")[[1]] == "b"))) ## completely vectorized
+>
+> This seems much preferable to me.
+
+Of all the proposed solutions, Andrew Hart's solution seems the most 
+efficient:
+
+ ? big_string <- strrep("abaaabbaaaaabaaabaaaaaaaaaaaaaaaaaaab", 500000)
+
+ ? system.time(nchar(strsplit(big_string, split="b", fixed=TRUE)[[1]]) + 1)
+ ? #? ? user? system elapsed
+ ? # ? 0.736?? 0.028?? 0.764
+
+ ? system.time(diff(c(0, which(strsplit(big_string, "", fixed=TRUE)[[1]] 
+== "b"))))
+ ? #? ? user? system elapsed
+ ? #? 2.100?? 0.356?? 2.455
+
+The bigger the string, the bigger the gap in performance.
+
+Also, the bigger the average gap between 2 successive b's, the bigger 
+the gap in performance.
+
+Finally: always use fixed=TRUE in strsplit() if you don't need to use 
+the regex engine.
+
+Cheers,
+
+H.
+
+
+> -- Bert
+>
+>
+>
+>
+>
+> On Sat, Dec 3, 2022 at 12:49 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>
+>> ?s 17:18 de 02/12/2022, Evan Cooch escreveu:
+>>> Was wondering if there is an 'efficient/elegant' way to do the following
+>>> (without tidyverse). Take a string
+>>>
+>>> abaaabbaaaaabaaab
+>>>
+>>> Its easy enough to count the number of times the character 'b' shows up
+>>> in the string, but...what I'm looking for is outputing the 'intervals'
+>>> between occurrences of 'b' (starting the counter at the beginning of the
+>>> string). So, for the preceding example, 'b' shows up in positions
+>>>
+>>> 2, 6, 7, 13, 17
+>>>
+>>> So, the interval data would be: 2, 4, 1, 6, 4
+>>>
+>>> My main approach has been to simply output positions (say, something
+>>> like unlist(gregexpr('b', target_string))), and 'do the math' between
+>>> successive positions. Can anyone suggest a more elegant approach?
+>>>
+>>> Thanks in advance...
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>> Hello,
+>>
+>> I don't find your solution inelegant, it's even easy to write it as a
+>> one-line function.
+>>
+>>
+>> char_interval <- function(x, s) {
+>>     lapply(gregexpr(x, s), \(y) c(head(y, 1), diff(y)))
+>> }
+>>
+>> target_string <-"abaaabbaaaaabaaab"
+>> char_interval('b', target_string)
+>> #> [[1]]
+>> #> [1] 2 4 1 6 4
+>>
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Herv? Pag?s
+
+Bioconductor Core Team
+hpages.on.github at gmail.com
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sun Dec  4 01:21:48 2022
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 3 Dec 2022 19:21:48 -0500
+Subject: [R] interval between specific characters in a string...
+In-Reply-To: <d0882e87-3920-1abb-0880-f00dea2411a2@gmail.com>
+References: <4d5418e3-0c41-43c0-e124-d735dbd707a4@gmail.com>
+ <ac1bb065-45bb-5bd7-f03a-32c62ca8c9b5@sapo.pt>
+ <CAGxFJbQvd9FqWB6iAw=7d19APR+XO6sdphWqdWk9xoHh=WiBEg@mail.gmail.com>
+ <d0882e87-3920-1abb-0880-f00dea2411a2@gmail.com>
+Message-ID: <01ca01d90776$666cc500$33464f00$@gmail.com>
+
+This may be a fairly dumb and often asked question about some functions like strsplit()  that return a list of things, often a list of ONE thing that be another list or a vector and needs to be made into something simpler..
+
+The examples shown below have used various methods to convert the result to a vector but why is this not a built-in option for such a function to simplify the result either when possible or always?
+
+Sure you can subset it with " [[1]]" or use unlist() or as.vector() to coerce it back to a vector. But when you have a very common idiom and a fact that many people waste lots of time figuring out they had a LIST containing a single vector and debug, maybe it would have made sense to have either a sister function like strsplit_v() that returns what is actually wanted or allow strsplit(whatever, output="vector") or something giving the same result.
+
+Yes, I understand that when there is a workaround, it just complicates the base, but there could be a package that consistently does things like this to make the use of such functions easier.
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Herv? Pag?s
+Sent: Saturday, December 3, 2022 6:50 PM
+To: Bert Gunter <bgunter.4567 at gmail.com>; Rui Barradas <ruipbarradas at sapo.pt>
+Cc: r-help at r-project.org; Evan Cooch <evan.cooch at gmail.com>
+Subject: Re: [R] interval between specific characters in a string...
+
+On 03/12/2022 07:21, Bert Gunter wrote:
+> Perhaps it is worth pointing out that looping constructs like lapply() 
+> can be avoided and the procedure vectorized by mimicking Martin 
+> Morgan's
+> solution:
+>
+> ## s is the string to be searched.
+> diff(c(0,grep('b',strsplit(s,'')[[1]])))
+>
+> However, Martin's solution is simpler and likely even faster as the 
+> regex engine is unneeded:
+>
+> diff(c(0, which(strsplit(s, "")[[1]] == "b"))) ## completely 
+> vectorized
+>
+> This seems much preferable to me.
+
+Of all the proposed solutions, Andrew Hart's solution seems the most
+efficient:
+
+   big_string <- strrep("abaaabbaaaaabaaabaaaaaaaaaaaaaaaaaaab", 500000)
+
+   system.time(nchar(strsplit(big_string, split="b", fixed=TRUE)[[1]]) + 1)
+   #    user  system elapsed
+   #   0.736   0.028   0.764
+
+   system.time(diff(c(0, which(strsplit(big_string, "", fixed=TRUE)[[1]] == "b"))))
+   #    user  system elapsed
+   #  2.100   0.356   2.455
+
+The bigger the string, the bigger the gap in performance.
+
+Also, the bigger the average gap between 2 successive b's, the bigger the gap in performance.
+
+Finally: always use fixed=TRUE in strsplit() if you don't need to use the regex engine.
+
+Cheers,
+
+H.
+
+
+> -- Bert
+>
+>
+>
+>
+>
+> On Sat, Dec 3, 2022 at 12:49 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>
+>> ?s 17:18 de 02/12/2022, Evan Cooch escreveu:
+>>> Was wondering if there is an 'efficient/elegant' way to do the 
+>>> following (without tidyverse). Take a string
+>>>
+>>> abaaabbaaaaabaaab
+>>>
+>>> Its easy enough to count the number of times the character 'b' shows 
+>>> up in the string, but...what I'm looking for is outputing the 'intervals'
+>>> between occurrences of 'b' (starting the counter at the beginning of 
+>>> the string). So, for the preceding example, 'b' shows up in 
+>>> positions
+>>>
+>>> 2, 6, 7, 13, 17
+>>>
+>>> So, the interval data would be: 2, 4, 1, 6, 4
+>>>
+>>> My main approach has been to simply output positions (say, something 
+>>> like unlist(gregexpr('b', target_string))), and 'do the math' 
+>>> between successive positions. Can anyone suggest a more elegant approach?
+>>>
+>>> Thanks in advance...
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>> Hello,
+>>
+>> I don't find your solution inelegant, it's even easy to write it as a 
+>> one-line function.
+>>
+>>
+>> char_interval <- function(x, s) {
+>>     lapply(gregexpr(x, s), \(y) c(head(y, 1), diff(y))) }
+>>
+>> target_string <-"abaaabbaaaaabaaab"
+>> char_interval('b', target_string)
+>> #> [[1]]
+>> #> [1] 2 4 1 6 4
+>>
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+--
+Herv? Pag?s
+
+Bioconductor Core Team
+hpages.on.github at gmail.com
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
