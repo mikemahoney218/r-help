@@ -813,3 +813,391 @@ PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Dec  4 03:33:05 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 3 Dec 2022 18:33:05 -0800
+Subject: [R] interval between specific characters in a string...
+In-Reply-To: <d0882e87-3920-1abb-0880-f00dea2411a2@gmail.com>
+References: <4d5418e3-0c41-43c0-e124-d735dbd707a4@gmail.com>
+ <ac1bb065-45bb-5bd7-f03a-32c62ca8c9b5@sapo.pt>
+ <CAGxFJbQvd9FqWB6iAw=7d19APR+XO6sdphWqdWk9xoHh=WiBEg@mail.gmail.com>
+ <d0882e87-3920-1abb-0880-f00dea2411a2@gmail.com>
+Message-ID: <CAGxFJbRnWC93Y5mGi5S1Q6F0BTAVbm3Rtihfz6-2f6-5=eJ_wA@mail.gmail.com>
+
+Thanks. Very informative.
+I certainly missed this.
+
+-- Bert
+
+On Sat, Dec 3, 2022 at 3:49 PM Herv? Pag?s <hpages.on.github at gmail.com>
+wrote:
+
+> On 03/12/2022 07:21, Bert Gunter wrote:
+> > Perhaps it is worth pointing out that looping constructs like lapply()
+> can
+> > be avoided and the procedure vectorized by mimicking Martin Morgan's
+> > solution:
+> >
+> > ## s is the string to be searched.
+> > diff(c(0,grep('b',strsplit(s,'')[[1]])))
+> >
+> > However, Martin's solution is simpler and likely even faster as the regex
+> > engine is unneeded:
+> >
+> > diff(c(0, which(strsplit(s, "")[[1]] == "b"))) ## completely vectorized
+> >
+> > This seems much preferable to me.
+>
+> Of all the proposed solutions, Andrew Hart's solution seems the most
+> efficient:
+>
+>    big_string <- strrep("abaaabbaaaaabaaabaaaaaaaaaaaaaaaaaaab", 500000)
+>
+>    system.time(nchar(strsplit(big_string, split="b", fixed=TRUE)[[1]]) + 1)
+>    #    user  system elapsed
+>    #   0.736   0.028   0.764
+>
+>    system.time(diff(c(0, which(strsplit(big_string, "", fixed=TRUE)[[1]]
+> == "b"))))
+>    #    user  system elapsed
+>    #  2.100   0.356   2.455
+>
+> The bigger the string, the bigger the gap in performance.
+>
+> Also, the bigger the average gap between 2 successive b's, the bigger
+> the gap in performance.
+>
+> Finally: always use fixed=TRUE in strsplit() if you don't need to use
+> the regex engine.
+>
+> Cheers,
+>
+> H.
+>
+>
+> > -- Bert
+> >
+> >
+> >
+> >
+> >
+> > On Sat, Dec 3, 2022 at 12:49 AM Rui Barradas <ruipbarradas at sapo.pt>
+> wrote:
+> >
+> >> ?s 17:18 de 02/12/2022, Evan Cooch escreveu:
+> >>> Was wondering if there is an 'efficient/elegant' way to do the
+> following
+> >>> (without tidyverse). Take a string
+> >>>
+> >>> abaaabbaaaaabaaab
+> >>>
+> >>> Its easy enough to count the number of times the character 'b' shows up
+> >>> in the string, but...what I'm looking for is outputing the 'intervals'
+> >>> between occurrences of 'b' (starting the counter at the beginning of
+> the
+> >>> string). So, for the preceding example, 'b' shows up in positions
+> >>>
+> >>> 2, 6, 7, 13, 17
+> >>>
+> >>> So, the interval data would be: 2, 4, 1, 6, 4
+> >>>
+> >>> My main approach has been to simply output positions (say, something
+> >>> like unlist(gregexpr('b', target_string))), and 'do the math' between
+> >>> successive positions. Can anyone suggest a more elegant approach?
+> >>>
+> >>> Thanks in advance...
+> >>>
+> >>> ______________________________________________
+> >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>> PLEASE do read the posting guide
+> >>> http://www.R-project.org/posting-guide.html
+> >>> and provide commented, minimal, self-contained, reproducible code.
+> >> Hello,
+> >>
+> >> I don't find your solution inelegant, it's even easy to write it as a
+> >> one-line function.
+> >>
+> >>
+> >> char_interval <- function(x, s) {
+> >>     lapply(gregexpr(x, s), \(y) c(head(y, 1), diff(y)))
+> >> }
+> >>
+> >> target_string <-"abaaabbaaaaabaaab"
+> >> char_interval('b', target_string)
+> >> #> [[1]]
+> >> #> [1] 2 4 1 6 4
+> >>
+> >>
+> >> Hope this helps,
+> >>
+> >> Rui Barradas
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide
+> >> http://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+> >>
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> --
+> Herv? Pag?s
+>
+> Bioconductor Core Team
+> hpages.on.github at gmail.com
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From h@w|ckh@m @end|ng |rom gm@||@com  Sun Dec  4 09:25:08 2022
+From: h@w|ckh@m @end|ng |rom gm@||@com (Hadley Wickham)
+Date: Sun, 4 Dec 2022 21:25:08 +1300
+Subject: [R] interval between specific characters in a string...
+In-Reply-To: <d0882e87-3920-1abb-0880-f00dea2411a2@gmail.com>
+References: <4d5418e3-0c41-43c0-e124-d735dbd707a4@gmail.com>
+ <ac1bb065-45bb-5bd7-f03a-32c62ca8c9b5@sapo.pt>
+ <CAGxFJbQvd9FqWB6iAw=7d19APR+XO6sdphWqdWk9xoHh=WiBEg@mail.gmail.com>
+ <d0882e87-3920-1abb-0880-f00dea2411a2@gmail.com>
+Message-ID: <CABdHhvGz22ma5CgcBpJSVLL0NomqjONyz2jGxrQRSRO02iyZ3g@mail.gmail.com>
+
+On Sun, Dec 4, 2022 at 12:50 PM Herv? Pag?s <hpages.on.github at gmail.com> wrote:
+>
+> On 03/12/2022 07:21, Bert Gunter wrote:
+> > Perhaps it is worth pointing out that looping constructs like lapply() can
+> > be avoided and the procedure vectorized by mimicking Martin Morgan's
+> > solution:
+> >
+> > ## s is the string to be searched.
+> > diff(c(0,grep('b',strsplit(s,'')[[1]])))
+> >
+> > However, Martin's solution is simpler and likely even faster as the regex
+> > engine is unneeded:
+> >
+> > diff(c(0, which(strsplit(s, "")[[1]] == "b"))) ## completely vectorized
+> >
+> > This seems much preferable to me.
+>
+> Of all the proposed solutions, Andrew Hart's solution seems the most
+> efficient:
+>
+>    big_string <- strrep("abaaabbaaaaabaaabaaaaaaaaaaaaaaaaaaab", 500000)
+>
+>    system.time(nchar(strsplit(big_string, split="b", fixed=TRUE)[[1]]) + 1)
+>    #    user  system elapsed
+>    #   0.736   0.028   0.764
+>
+>    system.time(diff(c(0, which(strsplit(big_string, "", fixed=TRUE)[[1]]
+> == "b"))))
+>    #    user  system elapsed
+>    #  2.100   0.356   2.455
+>
+> The bigger the string, the bigger the gap in performance.
+>
+> Also, the bigger the average gap between 2 successive b's, the bigger
+> the gap in performance.
+>
+> Finally: always use fixed=TRUE in strsplit() if you don't need to use
+> the regex engine.
+
+You can do a bit better if you are willing to use stringr:
+
+library(stringr)
+big_string <- strrep("abaaabbaaaaabaaabaaaaaaaaaaaaaaaaaaab", 500000)
+
+system.time(nchar(strsplit(big_string, split="b", fixed=TRUE)[[1]]) + 1)
+#>    user  system elapsed
+#>   0.126   0.002   0.128
+
+system.time(str_length(str_split(big_string, fixed("b"))[[1]]))
+#>    user  system elapsed
+#>   0.103   0.004   0.107
+
+(And my timings also suggest that it's time for Herv? to get a new computer :P)
+
+It feels like an approach that uses locations should be faster since
+you wouldn't have to construct all the intermediate strings.
+
+system.time(pos <- str_locate_all(big_string, fixed("b"))[[1]][,1])
+#>    user  system elapsed
+#>   0.075   0.004   0.080
+# I suspect this could be optimised with a little thought making this approach
+# faster overall
+system.time(c(0, diff(pos))
+#>    user  system elapsed
+#>   0.022   0.006   0.027
+
+Hadley
+
+-- 
+http://hadley.nz
+
+
+From h@w|ckh@m @end|ng |rom gm@||@com  Sun Dec  4 09:25:46 2022
+From: h@w|ckh@m @end|ng |rom gm@||@com (Hadley Wickham)
+Date: Sun, 4 Dec 2022 21:25:46 +1300
+Subject: [R] interval between specific characters in a string...
+In-Reply-To: <01ca01d90776$666cc500$33464f00$@gmail.com>
+References: <4d5418e3-0c41-43c0-e124-d735dbd707a4@gmail.com>
+ <ac1bb065-45bb-5bd7-f03a-32c62ca8c9b5@sapo.pt>
+ <CAGxFJbQvd9FqWB6iAw=7d19APR+XO6sdphWqdWk9xoHh=WiBEg@mail.gmail.com>
+ <d0882e87-3920-1abb-0880-f00dea2411a2@gmail.com>
+ <01ca01d90776$666cc500$33464f00$@gmail.com>
+Message-ID: <CABdHhvH5w1k_t5rXnWywFmPoFDD5wF3FSqt2p1c9L7nWubea7w@mail.gmail.com>
+
+On Sun, Dec 4, 2022 at 1:22 PM <avi.e.gross at gmail.com> wrote:
+>
+> This may be a fairly dumb and often asked question about some functions like strsplit()  that return a list of things, often a list of ONE thing that be another list or a vector and needs to be made into something simpler..
+>
+> The examples shown below have used various methods to convert the result to a vector but why is this not a built-in option for such a function to simplify the result either when possible or always?
+>
+> Sure you can subset it with " [[1]]" or use unlist() or as.vector() to coerce it back to a vector. But when you have a very common idiom and a fact that many people waste lots of time figuring out they had a LIST containing a single vector and debug, maybe it would have made sense to have either a sister function like strsplit_v() that returns what is actually wanted or allow strsplit(whatever, output="vector") or something giving the same result.
+>
+> Yes, I understand that when there is a workaround, it just complicates the base, but there could be a package that consistently does things like this to make the use of such functions easier.
+
+The next version of stringr (currently being processed by CRAN)
+provides str_split_1() for exactly this purpose.
+
+Hadley
+
+-- 
+http://hadley.nz
+
+
+From t@v|b@r @end|ng |rom gm@||@com  Sun Dec  4 10:38:56 2022
+From: t@v|b@r @end|ng |rom gm@||@com (Micha Silver)
+Date: Sun, 4 Dec 2022 11:38:56 +0200
+Subject: [R] interval between specific characters in a string...
+In-Reply-To: <CABdHhvH5w1k_t5rXnWywFmPoFDD5wF3FSqt2p1c9L7nWubea7w@mail.gmail.com>
+References: <4d5418e3-0c41-43c0-e124-d735dbd707a4@gmail.com>
+ <ac1bb065-45bb-5bd7-f03a-32c62ca8c9b5@sapo.pt>
+ <CAGxFJbQvd9FqWB6iAw=7d19APR+XO6sdphWqdWk9xoHh=WiBEg@mail.gmail.com>
+ <d0882e87-3920-1abb-0880-f00dea2411a2@gmail.com>
+ <01ca01d90776$666cc500$33464f00$@gmail.com>
+ <CABdHhvH5w1k_t5rXnWywFmPoFDD5wF3FSqt2p1c9L7nWubea7w@mail.gmail.com>
+Message-ID: <0b8dde95-2279-71f6-c3d5-8ff59be943f9@gmail.com>
+
+
+On 04/12/2022 10:25, Hadley Wickham wrote:
+> On Sun, Dec 4, 2022 at 1:22 PM <avi.e.gross at gmail.com> wrote:
+>> This may be a fairly dumb and often asked question about some functions like strsplit()  that return a list of things, often a list of ONE thing that be another list or a vector and needs to be made into something simpler..
+>>
+>> The examples shown below have used various methods to convert the result to a vector but why is this not a built-in option for such a function to simplify the result either when possible or always?
+>>
+>> Sure you can subset it with " [[1]]" or use unlist() or as.vector() to coerce it back to a vector. But when you have a very common idiom and a fact that many people waste lots of time figuring out they had a LIST containing a single vector and debug, maybe it would have made sense to have either a sister function like strsplit_v() that returns what is actually wanted or allow strsplit(whatever, output="vector") or something giving the same result.
+>>
+>> Yes, I understand that when there is a workaround, it just complicates the base, but there could be a package that consistently does things like this to make the use of such functions easier.
+> The next version of stringr (currently being processed by CRAN)
+> provides str_split_1() for exactly this purpose.
+
+
+Thanks!
+
+Well appreciated...
+
+
+>
+> Hadley
+>
+-- 
+Micha Silver
+Ben Gurion Univ.
+Sde Boker, Remote Sensing Lab
+cell: +972-523-665918
+
+
+From hp@ge@@on@g|thub @end|ng |rom gm@||@com  Sun Dec  4 22:42:13 2022
+From: hp@ge@@on@g|thub @end|ng |rom gm@||@com (=?UTF-8?B?SGVydsOpIFBhZ8Oocw==?=)
+Date: Sun, 4 Dec 2022 13:42:13 -0800
+Subject: [R] interval between specific characters in a string...
+In-Reply-To: <CABdHhvGz22ma5CgcBpJSVLL0NomqjONyz2jGxrQRSRO02iyZ3g@mail.gmail.com>
+References: <4d5418e3-0c41-43c0-e124-d735dbd707a4@gmail.com>
+ <ac1bb065-45bb-5bd7-f03a-32c62ca8c9b5@sapo.pt>
+ <CAGxFJbQvd9FqWB6iAw=7d19APR+XO6sdphWqdWk9xoHh=WiBEg@mail.gmail.com>
+ <d0882e87-3920-1abb-0880-f00dea2411a2@gmail.com>
+ <CABdHhvGz22ma5CgcBpJSVLL0NomqjONyz2jGxrQRSRO02iyZ3g@mail.gmail.com>
+Message-ID: <7a2b3d38-4697-26a0-eca7-f6ec95f96c66@gmail.com>
+
+
+On 04/12/2022 00:25, Hadley Wickham wrote:
+> On Sun, Dec 4, 2022 at 12:50 PM Herv? Pag?s <hpages.on.github at gmail.com> wrote:
+>> On 03/12/2022 07:21, Bert Gunter wrote:
+>>> Perhaps it is worth pointing out that looping constructs like lapply() can
+>>> be avoided and the procedure vectorized by mimicking Martin Morgan's
+>>> solution:
+>>>
+>>> ## s is the string to be searched.
+>>> diff(c(0,grep('b',strsplit(s,'')[[1]])))
+>>>
+>>> However, Martin's solution is simpler and likely even faster as the regex
+>>> engine is unneeded:
+>>>
+>>> diff(c(0, which(strsplit(s, "")[[1]] == "b"))) ## completely vectorized
+>>>
+>>> This seems much preferable to me.
+>> Of all the proposed solutions, Andrew Hart's solution seems the most
+>> efficient:
+>>
+>>     big_string <- strrep("abaaabbaaaaabaaabaaaaaaaaaaaaaaaaaaab", 500000)
+>>
+>>     system.time(nchar(strsplit(big_string, split="b", fixed=TRUE)[[1]]) + 1)
+>>     #    user  system elapsed
+>>     #   0.736   0.028   0.764
+>>
+>>     system.time(diff(c(0, which(strsplit(big_string, "", fixed=TRUE)[[1]]
+>> == "b"))))
+>>     #    user  system elapsed
+>>     #  2.100   0.356   2.455
+>>
+>> The bigger the string, the bigger the gap in performance.
+>>
+>> Also, the bigger the average gap between 2 successive b's, the bigger
+>> the gap in performance.
+>>
+>> Finally: always use fixed=TRUE in strsplit() if you don't need to use
+>> the regex engine.
+> You can do a bit better if you are willing to use stringr:
+>
+> library(stringr)
+> big_string <- strrep("abaaabbaaaaabaaabaaaaaaaaaaaaaaaaaaab", 500000)
+>
+> system.time(nchar(strsplit(big_string, split="b", fixed=TRUE)[[1]]) + 1)
+> #>    user  system elapsed
+> #>   0.126   0.002   0.128
+>
+> system.time(str_length(str_split(big_string, fixed("b"))[[1]]))
+> #>    user  system elapsed
+> #>   0.103   0.004   0.107
+>
+> (And my timings also suggest that it's time for Herv? to get a new computer :P)
+
+LOL
+
+Actually my timings were for
+
+   big_string <- strrep("abaaabbaaaaabaaabaaaaaaaaaaaaaaaaaaab", 1500000)
+
+but I mixed up things when I copy-pasted them in my email.
+
+Even though I still need a new laptop and I'm in the process of getting 
+a new one ;-)
+
+H.
+
+-- 
+Herv? Pag?s
+
+Bioconductor Core Team
+hpages.on.github at gmail.com
+
+
