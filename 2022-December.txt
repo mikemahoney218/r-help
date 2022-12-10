@@ -2758,3 +2758,353 @@ Sent from my phone. Please excuse my brevity.
 	[[alternative HTML version deleted]]
 
 
+From r@oknz @end|ng |rom gm@||@com  Thu Dec  8 06:15:36 2022
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Thu, 8 Dec 2022 18:15:36 +1300
+Subject: [R] Preexisting Work on Data- and Control-Flow Analysis
+In-Reply-To: <2d07c25f-e0da-bc87-a030-f3c24efdf677@uni-ulm.de>
+References: <2d07c25f-e0da-bc87-a030-f3c24efdf677@uni-ulm.de>
+Message-ID: <CABcYAdLMNkiODjdeBgyN1+v6tXuzjsyBRdUJwdZbdhySaFfcjg@mail.gmail.com>
+
+You should probably look at the compiler.
+One issue with data and control flow analysis in R is that
+   f <- function (x, y) x + y
+   f(ping, pong)
+may invoke an S3 (see ?S3groupGeneric, Ops) or S4 (see ?Arith)
+method, which might not have existed when f was analysed.
+Indeed,
+   f <- function (x, y) { foo(x); bar(y); x + y }
+may change the method(s) bound to + in foo and/or bar, so the
+bindings may change while f is running.
+
+Then there's the whole "imperative programming with lazy
+function argument evaluation" thing, which is definitely going
+to make analysis a wee bit challenging.
+
+And then there's this little gem:
+> x <- 17
+> f <- function () {
++   cat(x, "\n")
++   x <- 42
++   cat(x, "\n")
++ }
+> f()
+The first occurrence of x in f and the last occurrence of
+x in f refer to *different* variables.  The last occurrence
+of x refers to a local variable, but that local variable
+did not exist until it was assigned to.  (Yep, the set of
+local variables of a function is *dynamic*.)
+
+While there are oh so many ways that R can make life horrible
+for analysis, even R programmers don't go out of their way to
+make life difficult for themselves.  It will probably be good
+enough to define a "sane" subset of R, and a tool that reports
+that an R function is outside that subset will be useful in its
+own right because most of the time it won't be intentional.
+
+I set out to write an R compiler 20+ years ago.  I filled
+several exercise books with issues.  I suggest you start by
+considering the question "what variables are in the environment
+at this control point."  Start with ?get, ?assign, ?exists, ?rm.
+
+On Wed, 7 Dec 2022 at 05:20, Florian Sihler <florian.sihler at uni-ulm.de>
+wrote:
+
+> Hello R-Help Mailinglist,
+>
+> I hope I've found the correct mailing list for my question (if not,
+> please point me to the correct one).
+> For my master's thesis I plan on creating and implementing a
+> program-slicing algorithm for R-Programs using (probably only static)
+> data- and control-flow analysis.
+> While researching the problem I was unable to find any preexisting work
+> on the matter.
+> Does anyone here know of any preexisting work on data- and control-flow
+> analysis (or even program slicing) in the context of R-Programs?
+> I would be really glad for any pointer in the right direction (or
+> reasons for why doing that would be a stupid idea).
+>
+> Regarding my background: I am a computer science student and usually
+> program in C++, Java, TypeScript, and Haskell.
+> Although I've worked with R for roughly a year now (mostly in my spare
+> time), I am still getting used to some constructs.
+>
+> Thank you,
+> Florian
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bog@@o@chr|@to|er @end|ng |rom gm@||@com  Thu Dec  8 16:26:12 2022
+From: bog@@o@chr|@to|er @end|ng |rom gm@||@com (Christofer Bogaso)
+Date: Thu, 8 Dec 2022 20:56:12 +0530
+Subject: [R] How to access source code
+Message-ID: <CA+dpOJnRSPy8asE+U4S3m7NzpWw9vBUVkrCNnz263AS9FLwMnQ@mail.gmail.com>
+
+Hi,
+
+I am trying to access the source code from package GCPM, where I am
+interested to look into the source code of one function called LGD. So
+I did below
+
+> LGD
+
+standardGeneric for "LGD" defined from package "GCPM"
+
+
+function (this)
+
+standardGeneric("LGD")
+
+<bytecode: 0x7f9016a683a8>
+
+<environment: 0x7f9016a91390>
+
+Methods may be defined for arguments: this
+
+Use  showMethods(LGD)  for currently available ones.
+
+> showMethods(LGD)
+
+Function: LGD (package GCPM)
+
+this="GCPM"
+
+However I still could not find the source code using above approach.
+
+It would be very helpful if you can help to find the complete source
+code of this function.
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Dec  8 17:22:21 2022
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 8 Dec 2022 19:22:21 +0300
+Subject: [R] How to access source code
+In-Reply-To: <CA+dpOJnRSPy8asE+U4S3m7NzpWw9vBUVkrCNnz263AS9FLwMnQ@mail.gmail.com>
+References: <CA+dpOJnRSPy8asE+U4S3m7NzpWw9vBUVkrCNnz263AS9FLwMnQ@mail.gmail.com>
+Message-ID: <20221208192221.63ff12c2@arachnoid>
+
+? Thu, 8 Dec 2022 20:56:12 +0530
+Christofer Bogaso <bogaso.christofer at gmail.com> ?????:
+
+> > showMethods(LGD)  
+> 
+> Function: LGD (package GCPM)
+> 
+> this="GCPM"
+
+Almost there! Try getMethod(LGD, signature = 'GCPM').
+
+Not sure if this is going to work as written, but if you need to see an
+S4 method definition, getMethod is the way.
+
+-- 
+Best regards,
+Ivan
+
+
+From mtmorg@n@b|oc @end|ng |rom gm@||@com  Thu Dec  8 17:26:29 2022
+From: mtmorg@n@b|oc @end|ng |rom gm@||@com (Martin Morgan)
+Date: Thu, 8 Dec 2022 16:26:29 +0000
+Subject: [R] How to access source code
+In-Reply-To: <20221208192221.63ff12c2@arachnoid>
+References: <CA+dpOJnRSPy8asE+U4S3m7NzpWw9vBUVkrCNnz263AS9FLwMnQ@mail.gmail.com>
+ <20221208192221.63ff12c2@arachnoid>
+Message-ID: <BY5PR04MB66278B96C55512BDC106E0A3F91D9@BY5PR04MB6627.namprd04.prod.outlook.com>
+
+showMethods(LGD, includeDef = TRUE) shows the implementation of all methods on the LGD generic, and can be a useful fast track to getting an overview of what is going on.
+
+Martin Morgan
+
+From: R-help <r-help-bounces at r-project.org> on behalf of Ivan Krylov <krylov.r00t at gmail.com>
+Date: Thursday, December 8, 2022 at 11:23 AM
+To: Christofer Bogaso <bogaso.christofer at gmail.com>
+Cc: r-help <r-help at r-project.org>
+Subject: Re: [R] How to access source code
+? Thu, 8 Dec 2022 20:56:12 +0530
+Christofer Bogaso <bogaso.christofer at gmail.com> ?????:
+
+> > showMethods(LGD)
+>
+> Function: LGD (package GCPM)
+>
+> this="GCPM"
+
+Almost there! Try getMethod(LGD, signature = 'GCPM').
+
+Not sure if this is going to work as written, but if you need to see an
+S4 method definition, getMethod is the way.
+
+--
+Best regards,
+Ivan
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Fri Dec  9 02:05:47 2022
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Fri, 9 Dec 2022 01:05:47 +0000
+Subject: [R] Plot a line using ggplot2
+Message-ID: <MW4PR03MB63636F4BFB3EA690622689A2E21C9@MW4PR03MB6363.namprd03.prod.outlook.com>
+
+Colleagues,
+
+I am trying to plot a simple line using ggplot2. I get the axes, but I don't get the line. Please let me know what my error I am making.
+Thank you,
+John
+
+# Define x and y values
+PointEstx <- Estx+1.96*SE
+PointEsty  <- 1
+
+row2 <- cbind(PointEstx,PointEsty)
+linedata<- data_frame(rbind(row1,row2))
+linedata
+# make sure we have a data frame
+class(linedata)
+
+#plot the data
+ggplot(linedata,aes(x=PointEstx, y=PointEsty), geom_line())
+
+
+
+
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Fri Dec  9 02:17:09 2022
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Fri, 9 Dec 2022 02:17:09 +0100
+Subject: [R] How to access source code
+In-Reply-To: <BY5PR04MB66278B96C55512BDC106E0A3F91D9@BY5PR04MB6627.namprd04.prod.outlook.com>
+References: <CA+dpOJnRSPy8asE+U4S3m7NzpWw9vBUVkrCNnz263AS9FLwMnQ@mail.gmail.com>
+ <20221208192221.63ff12c2@arachnoid>
+ <BY5PR04MB66278B96C55512BDC106E0A3F91D9@BY5PR04MB6627.namprd04.prod.outlook.com>
+Message-ID: <1f5b622f-51be-1325-0014-cc4b54e021ea@statistik.tu-dortmund.de>
+
+Or simply get and unpack the package sources.
+Here you will also find the comments that are typically stripped out 
+otherwise.
+
+Best,
+Uwe Ligges
+
+On 08.12.2022 17:26, Martin Morgan wrote:
+> showMethods(LGD, includeDef = TRUE) shows the implementation of all methods on the LGD generic, and can be a useful fast track to getting an overview of what is going on.
+> 
+> Martin Morgan
+> 
+> From: R-help <r-help-bounces at r-project.org> on behalf of Ivan Krylov <krylov.r00t at gmail.com>
+> Date: Thursday, December 8, 2022 at 11:23 AM
+> To: Christofer Bogaso <bogaso.christofer at gmail.com>
+> Cc: r-help <r-help at r-project.org>
+> Subject: Re: [R] How to access source code
+> ? Thu, 8 Dec 2022 20:56:12 +0530
+> Christofer Bogaso <bogaso.christofer at gmail.com> ?????:
+> 
+>>> showMethods(LGD)
+>>
+>> Function: LGD (package GCPM)
+>>
+>> this="GCPM"
+> 
+> Almost there! Try getMethod(LGD, signature = 'GCPM').
+> 
+> Not sure if this is going to work as written, but if you need to see an
+> S4 method definition, getMethod is the way.
+> 
+> --
+> Best regards,
+> Ivan
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Fri Dec  9 02:18:12 2022
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Thu, 08 Dec 2022 17:18:12 -0800
+Subject: [R] Plot a line using ggplot2
+In-Reply-To: <MW4PR03MB63636F4BFB3EA690622689A2E21C9@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <MW4PR03MB63636F4BFB3EA690622689A2E21C9@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <111FCC4A-D817-41BE-90A1-65DB194070E8@dcn.davis.ca.us>
+
+Please run your code before you send it. Your example is not reproducible.
+
+library(ggplot2)
+
+linedata<- data.frame(
+  PointEstx = c( 1, 2 )
+, PointEsty = c( 1, 1.5 )
+)
+# make sure we have a data frame
+str(linedata)
+
+#plot the data
+ggplot(
+  linedata
+, aes( x = PointEstx
+     , y = PointEsty
+     )
+) + geom_line()
+
+On December 8, 2022 5:05:47 PM PST, "Sorkin, John" <jsorkin at som.umaryland.edu> wrote:
+>Colleagues,
+>
+>I am trying to plot a simple line using ggplot2. I get the axes, but I don't get the line. Please let me know what my error I am making.
+>Thank you,
+>John
+>
+># Define x and y values
+>PointEstx <- Estx+1.96*SE
+>PointEsty  <- 1
+>
+>row2 <- cbind(PointEstx,PointEsty)
+>linedata<- data_frame(rbind(row1,row2))
+>linedata
+># make sure we have a data frame
+>class(linedata)
+>
+>#plot the data
+>ggplot(linedata,aes(x=PointEstx, y=PointEsty), geom_line())
+>
+>
+>
+>
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
