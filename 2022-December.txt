@@ -3356,3 +3356,519 @@ On Fri, Dec 9, 2022 at 2:36 PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
 >> and provide commented, minimal, self-contained, reproducible code.
 
 
+From L@urentRHe|p @end|ng |rom |ree@|r  Sat Dec 10 15:15:56 2022
+From: L@urentRHe|p @end|ng |rom |ree@|r (Laurent Rhelp)
+Date: Sat, 10 Dec 2022 15:15:56 +0100
+Subject: [R] lattice: how to use a log scale on the x-axis with the bwplot
+ function
+Message-ID: <b430486e-3ef3-48bd-beae-a2e528aa6950@free.fr>
+
+Dear R-Help list,
+
+ ?? I would like to use bwplot from the lattice package with a log scale 
+both on
+the x-axis and the y-axis but I do not know how to do that because I do 
+not know
+how to change the factor x-axis in a numeric x-axis.
+
+ ?Here is my example:
+
+
+library(lattice)
+
+# the mock data
+y <- runif(100000,min=0, max=500)
+x <- seq(0,500,length=length(y))
+# I cut the x variable to create a factor variable in order to calculate 
+the boxes
+groups <- cut(x,10,ordered_result = TRUE)
+# creating the dataframe for the lattice functions
+DF <- data.frame( x= x , y = y, groups = groups)
+
+
+## ok for xyplot
+xyplot(?? y ~ x
+ ????????? , data=DF
+ ????????? , scales = list(
+ ??????????? y = list(log=T)
+ ??????????? , x = list(log=T)
+
+ ????????? )
+)
+
+## ok for bwplot with the log scale for the y-axis
+bwplot( y ~ groups
+ ????????? , data=DF
+ ????????? , scales = list(
+ ??????????? y = list(log=T)
+ ??????????? #???? , x = list(log=T)
+
+ ????????? )
+)
+
+
+
+## Non ok for bwplot with the log scale for the x-axis
+bwplot( y ~ groups
+ ??????? , data=DF
+ ??????? , scales = list(
+ ????????????? y = list(log=T)
+ ??????????? , x = list(log=T)
+
+ ??????? )
+)
+which gives an error because the x-axis is a factor, I would like to 
+replace it
+for the display by the meddle of every class for example and put a log 
+scale on the x-axis.
+
+Thank you for your help
+Best regards
+Laurent
+
+
+
+-- 
+Cet e-mail a ?t? v?rifi? par le logiciel antivirus d'Avast.
+www.avast.com
+
+
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Sat Dec 10 17:02:10 2022
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Sat, 10 Dec 2022 21:32:10 +0530
+Subject: [R] 
+ lattice: how to use a log scale on the x-axis with the bwplot
+ function
+In-Reply-To: <b430486e-3ef3-48bd-beae-a2e528aa6950@free.fr>
+References: <b430486e-3ef3-48bd-beae-a2e528aa6950@free.fr>
+Message-ID: <CADfFDC5e6zR44HjAG_sV90jkyH2=LkuwogyHFQVHOZqknYn0wQ@mail.gmail.com>
+
+Log-scales for the "factor" variable in bwplot() is not allowed.
+
+You could, however, use the panel function panel.bwplot() with
+xyplot(num ~ num). The potential problem with that is the box widths,
+which panel.bwplot() will not know how to compute.
+
+See if the following gives you a reasonable starting point:
+
+DF <- within(DF, m <- tapply(y, groups, mean))
+xyplot(y ~ m, DF, scales = list(log = TRUE),
+       panel = panel.bwplot, horizontal = FALSE,
+       box.width = .0001)
+
+Best,
+-Deepayan
+
+On Sat, Dec 10, 2022 at 7:46 PM Laurent Rhelp <LaurentRHelp at free.fr> wrote:
+>
+> Dear R-Help list,
+>
+>     I would like to use bwplot from the lattice package with a log scale
+> both on
+> the x-axis and the y-axis but I do not know how to do that because I do
+> not know
+> how to change the factor x-axis in a numeric x-axis.
+>
+>   Here is my example:
+>
+>
+> library(lattice)
+>
+> # the mock data
+> y <- runif(100000,min=0, max=500)
+> x <- seq(0,500,length=length(y))
+> # I cut the x variable to create a factor variable in order to calculate
+> the boxes
+> groups <- cut(x,10,ordered_result = TRUE)
+> # creating the dataframe for the lattice functions
+> DF <- data.frame( x= x , y = y, groups = groups)
+>
+>
+> ## ok for xyplot
+> xyplot(   y ~ x
+>            , data=DF
+>            , scales = list(
+>              y = list(log=T)
+>              , x = list(log=T)
+>
+>            )
+> )
+>
+> ## ok for bwplot with the log scale for the y-axis
+> bwplot( y ~ groups
+>            , data=DF
+>            , scales = list(
+>              y = list(log=T)
+>              #     , x = list(log=T)
+>
+>            )
+> )
+>
+>
+>
+> ## Non ok for bwplot with the log scale for the x-axis
+> bwplot( y ~ groups
+>          , data=DF
+>          , scales = list(
+>                y = list(log=T)
+>              , x = list(log=T)
+>
+>          )
+> )
+> which gives an error because the x-axis is a factor, I would like to
+> replace it
+> for the display by the meddle of every class for example and put a log
+> scale on the x-axis.
+>
+> Thank you for your help
+> Best regards
+> Laurent
+>
+>
+>
+> --
+> Cet e-mail a ?t? v?rifi? par le logiciel antivirus d'Avast.
+> www.avast.com
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Dec 10 19:20:37 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 10 Dec 2022 10:20:37 -0800
+Subject: [R] 
+ lattice: how to use a log scale on the x-axis with the bwplot
+ function
+In-Reply-To: <CADfFDC5e6zR44HjAG_sV90jkyH2=LkuwogyHFQVHOZqknYn0wQ@mail.gmail.com>
+References: <b430486e-3ef3-48bd-beae-a2e528aa6950@free.fr>
+ <CADfFDC5e6zR44HjAG_sV90jkyH2=LkuwogyHFQVHOZqknYn0wQ@mail.gmail.com>
+Message-ID: <CAGxFJbSf8O-+96rOY6sqq2UMgg50Evnu3DtAc9VaJZDGAKQ+SA@mail.gmail.com>
+
+If Deepayan's suggestion does not suit and especially *if* I understand
+what you want to do correctly, then it seems to me that it is
+straightforward to create the groups and group labels manually:
+
+## in verbose detail to hopefully improve clarity
+set.seed(123)  ## for reprex
+y <- runif(40,min=0, max= 10)  ##*small* reprex
+## cut y into 5 equally spaced groups labeled by log10 of the center
+## of the intervals
+yrng <- range(y)
+eps <- .0001*c(-1,1)*diff(yrng) ## see ?cut
+yrng <-yrng + eps
+delta <- diff(yrng)/5 # 5 = number of intervals
+brks <- seq(yrng[1], yrng[2],length.out =6)
+labs <- round(log10(brks[-1] - delta/2), 2) ## log10 (centers)
+groups <- cut(y,breaks = brks,
+              labels = paste0('10^',labs))
+# creating the dataframe for the lattice functions
+DF <- data.frame( y = y, groups = groups)
+
+bwplot( y ~ groups
+        , data=DF
+        , scales = list(
+           y = list(log=T)
+        ),
+)
+
+## Of course, ignore if I have misunderstood.
+
+Cheers,
+Bert
+
+On Sat, Dec 10, 2022 at 8:03 AM Deepayan Sarkar <deepayan.sarkar at gmail.com>
+wrote:
+
+> Log-scales for the "factor" variable in bwplot() is not allowed.
+>
+> You could, however, use the panel function panel.bwplot() with
+> xyplot(num ~ num). The potential problem with that is the box widths,
+> which panel.bwplot() will not know how to compute.
+>
+> See if the following gives you a reasonable starting point:
+>
+> DF <- within(DF, m <- tapply(y, groups, mean))
+> xyplot(y ~ m, DF, scales = list(log = TRUE),
+>        panel = panel.bwplot, horizontal = FALSE,
+>        box.width = .0001)
+>
+> Best,
+> -Deepayan
+>
+> On Sat, Dec 10, 2022 at 7:46 PM Laurent Rhelp <LaurentRHelp at free.fr>
+> wrote:
+> >
+> > Dear R-Help list,
+> >
+> >     I would like to use bwplot from the lattice package with a log scale
+> > both on
+> > the x-axis and the y-axis but I do not know how to do that because I do
+> > not know
+> > how to change the factor x-axis in a numeric x-axis.
+> >
+> >   Here is my example:
+> >
+> >
+> > library(lattice)
+> >
+> > # the mock data
+> > y <- runif(100000,min=0, max=500)
+> > x <- seq(0,500,length=length(y))
+> > # I cut the x variable to create a factor variable in order to calculate
+> > the boxes
+> > groups <- cut(x,10,ordered_result = TRUE)
+> > # creating the dataframe for the lattice functions
+> > DF <- data.frame( x= x , y = y, groups = groups)
+> >
+> >
+> > ## ok for xyplot
+> > xyplot(   y ~ x
+> >            , data=DF
+> >            , scales = list(
+> >              y = list(log=T)
+> >              , x = list(log=T)
+> >
+> >            )
+> > )
+> >
+> > ## ok for bwplot with the log scale for the y-axis
+> > bwplot( y ~ groups
+> >            , data=DF
+> >            , scales = list(
+> >              y = list(log=T)
+> >              #     , x = list(log=T)
+> >
+> >            )
+> > )
+> >
+> >
+> >
+> > ## Non ok for bwplot with the log scale for the x-axis
+> > bwplot( y ~ groups
+> >          , data=DF
+> >          , scales = list(
+> >                y = list(log=T)
+> >              , x = list(log=T)
+> >
+> >          )
+> > )
+> > which gives an error because the x-axis is a factor, I would like to
+> > replace it
+> > for the display by the meddle of every class for example and put a log
+> > scale on the x-axis.
+> >
+> > Thank you for your help
+> > Best regards
+> > Laurent
+> >
+> >
+> >
+> > --
+> > Cet e-mail a ?t? v?rifi? par le logiciel antivirus d'Avast.
+> > www.avast.com
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Dec 10 22:36:18 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 10 Dec 2022 13:36:18 -0800
+Subject: [R] 
+ lattice: how to use a log scale on the x-axis with the bwplot
+ function
+In-Reply-To: <CAGxFJbSf8O-+96rOY6sqq2UMgg50Evnu3DtAc9VaJZDGAKQ+SA@mail.gmail.com>
+References: <b430486e-3ef3-48bd-beae-a2e528aa6950@free.fr>
+ <CADfFDC5e6zR44HjAG_sV90jkyH2=LkuwogyHFQVHOZqknYn0wQ@mail.gmail.com>
+ <CAGxFJbSf8O-+96rOY6sqq2UMgg50Evnu3DtAc9VaJZDGAKQ+SA@mail.gmail.com>
+Message-ID: <CAGxFJbR5XS3h4gAqFdOxczMaS9tBsNmB2wk9Cbgtg=zMYzGnEQ@mail.gmail.com>
+
+... and here's a version where the x variable is different than y. It's
+basically the same.
+
+
+set.seed(123)
+y <- runif(40,min=0, max= 10)
+x <- seq(0,10, length = 40)
+## 5 equally spaced groups labeled by log10 of the center
+## of the intervals
+xrng <- range(x)
+eps <- .0001*c(-1,1)*diff(xrng) ## see ?cut
+xrng <-xrng + eps
+delta <- diff(xrng)/5 # 5 = number of intervals
+brks <- seq(xrng[1], xrng[2],length.out =6)
+labs <- round(log10(brks[-1] - delta/2), 2) ## log10 (centers)
+groups <- cut(x,breaks = brks, ordered_result = TRUE,
+              labels = paste0('10^',labs))
+# creating the dataframe for the lattice functions
+DF <- data.frame( y = y, groups = groups)
+
+bwplot( y ~ groups
+        , data=DF
+        , scales = list(
+           y = list(log=T)
+        ),
+)
+
+On Sat, Dec 10, 2022 at 10:20 AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> If Deepayan's suggestion does not suit and especially *if* I understand
+> what you want to do correctly, then it seems to me that it is
+> straightforward to create the groups and group labels manually:
+>
+> ## in verbose detail to hopefully improve clarity
+> set.seed(123)  ## for reprex
+> y <- runif(40,min=0, max= 10)  ##*small* reprex
+> ## cut y into 5 equally spaced groups labeled by log10 of the center
+> ## of the intervals
+> yrng <- range(y)
+> eps <- .0001*c(-1,1)*diff(yrng) ## see ?cut
+> yrng <-yrng + eps
+> delta <- diff(yrng)/5 # 5 = number of intervals
+> brks <- seq(yrng[1], yrng[2],length.out =6)
+> labs <- round(log10(brks[-1] - delta/2), 2) ## log10 (centers)
+> groups <- cut(y,breaks = brks,
+>               labels = paste0('10^',labs))
+> # creating the dataframe for the lattice functions
+> DF <- data.frame( y = y, groups = groups)
+>
+> bwplot( y ~ groups
+>         , data=DF
+>         , scales = list(
+>            y = list(log=T)
+>         ),
+> )
+>
+> ## Of course, ignore if I have misunderstood.
+>
+> Cheers,
+> Bert
+>
+> On Sat, Dec 10, 2022 at 8:03 AM Deepayan Sarkar <deepayan.sarkar at gmail.com>
+> wrote:
+>
+>> Log-scales for the "factor" variable in bwplot() is not allowed.
+>>
+>> You could, however, use the panel function panel.bwplot() with
+>> xyplot(num ~ num). The potential problem with that is the box widths,
+>> which panel.bwplot() will not know how to compute.
+>>
+>> See if the following gives you a reasonable starting point:
+>>
+>> DF <- within(DF, m <- tapply(y, groups, mean))
+>> xyplot(y ~ m, DF, scales = list(log = TRUE),
+>>        panel = panel.bwplot, horizontal = FALSE,
+>>        box.width = .0001)
+>>
+>> Best,
+>> -Deepayan
+>>
+>> On Sat, Dec 10, 2022 at 7:46 PM Laurent Rhelp <LaurentRHelp at free.fr>
+>> wrote:
+>> >
+>> > Dear R-Help list,
+>> >
+>> >     I would like to use bwplot from the lattice package with a log scale
+>> > both on
+>> > the x-axis and the y-axis but I do not know how to do that because I do
+>> > not know
+>> > how to change the factor x-axis in a numeric x-axis.
+>> >
+>> >   Here is my example:
+>> >
+>> >
+>> > library(lattice)
+>> >
+>> > # the mock data
+>> > y <- runif(100000,min=0, max=500)
+>> > x <- seq(0,500,length=length(y))
+>> > # I cut the x variable to create a factor variable in order to calculate
+>> > the boxes
+>> > groups <- cut(x,10,ordered_result = TRUE)
+>> > # creating the dataframe for the lattice functions
+>> > DF <- data.frame( x= x , y = y, groups = groups)
+>> >
+>> >
+>> > ## ok for xyplot
+>> > xyplot(   y ~ x
+>> >            , data=DF
+>> >            , scales = list(
+>> >              y = list(log=T)
+>> >              , x = list(log=T)
+>> >
+>> >            )
+>> > )
+>> >
+>> > ## ok for bwplot with the log scale for the y-axis
+>> > bwplot( y ~ groups
+>> >            , data=DF
+>> >            , scales = list(
+>> >              y = list(log=T)
+>> >              #     , x = list(log=T)
+>> >
+>> >            )
+>> > )
+>> >
+>> >
+>> >
+>> > ## Non ok for bwplot with the log scale for the x-axis
+>> > bwplot( y ~ groups
+>> >          , data=DF
+>> >          , scales = list(
+>> >                y = list(log=T)
+>> >              , x = list(log=T)
+>> >
+>> >          )
+>> > )
+>> > which gives an error because the x-axis is a factor, I would like to
+>> > replace it
+>> > for the display by the meddle of every class for example and put a log
+>> > scale on the x-axis.
+>> >
+>> > Thank you for your help
+>> > Best regards
+>> > Laurent
+>> >
+>> >
+>> >
+>> > --
+>> > Cet e-mail a ?t? v?rifi? par le logiciel antivirus d'Avast.
+>> > www.avast.com
+>> >
+>> > ______________________________________________
+>> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > https://stat.ethz.ch/mailman/listinfo/r-help
+>> > PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> > and provide commented, minimal, self-contained, reproducible code.
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
