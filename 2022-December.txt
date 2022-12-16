@@ -6853,3 +6853,173 @@ On 13.12.2022 14:59, Derek Ogle wrote:
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From v@|ent|n @end|ng |rom petze|@@t  Tue Dec 13 17:58:02 2022
+From: v@|ent|n @end|ng |rom petze|@@t (Valentin Petzel)
+Date: Tue, 13 Dec 2022 17:58:02 +0100
+Subject: [R] Enabling s3 methods by attaching environment
+Message-ID: <8161072.T7Z3S40VBb@archbox>
+
+Hello everyone!
+
+if we define some S3 method in some environment like this
+
+E <- new.env() 
+evalq({ 
+  test <- function(x) UseMethod("test") 
+  test.character <- function(x) 1 
+}, envir = E)
+
+this works
+
+evalq(test("a"), envir = E) 
+but this doesn?t:
+
+attach(E) 
+test("a")
+According to some remarks this now requires the use of .S3method to register the 
+method to a method data base. This does work, but if we create two different 
+environments with different implementations of the same S3 method this will always 
+default to the last defined method (as the method data base is only updated on 
+declaration).
+
+This makes a workflow where we use environments to enable and disable certain functions 
+impossible.
+
+So I want to ask if there is currently any way to use S3 methods in a currently attached 
+environment while allowing to switch the method by attaching a different environment?
+
+Kind Regards,
+Valentin
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: signature.asc
+Type: application/pgp-signature
+Size: 833 bytes
+Desc: This is a digitally signed message part.
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20221213/1bc984b5/attachment.sig>
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Wed Dec 14 09:37:50 2022
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Wed, 14 Dec 2022 09:37:50 +0100
+Subject: [R] bgroup not rendering properly
+In-Reply-To: <2e613a6e-af0d-1668-3b87-fc11a8692347@statistik.tu-dortmund.de>
+References: <CAKKtRk8q+oMHjFaFib-BZmASJ+fimRwq5uvg+i79DJgnptzkDw@mail.gmail.com>
+ <6fa3a345-473d-53b2-d74a-5a1b4f5b5657@yeah.net>
+ <25496.19887.320573.266495@stat.math.ethz.ch>
+ <b0fddc23-b7a9-b56c-ac89-5ae2d4ec80b7@yeah.net>
+ <CAKKtRk-XxMm+OmOTr8FRfhjZaE_cQ2w_ZogmEu6fSLkQ9S=FJg@mail.gmail.com>
+ <2e613a6e-af0d-1668-3b87-fc11a8692347@statistik.tu-dortmund.de>
+Message-ID: <d8ef7bbc-7369-a7e4-642f-54f586cb6711@statistik.tu-dortmund.de>
+
+And this has been fixed by Tomas Kalibera on Dec 12 in R-devel already. 
+Shortly to be ported to R-patched.
+
+Best,
+Uwe Ligges
+
+
+On 13.12.2022 16:38, Uwe Ligges wrote:
+> Fascinating: I see it with R-4.2.2? and R-patched? with the windows() 
+> device. But all works well with R-4.2.1 and R-devel.
+> 
+> I'll try to investigate.
+> 
+> Best,
+> Uwe Ligges
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> On 13.12.2022 14:59, Derek Ogle wrote:
+>> Thank you all for your help. I am using Windows. I ran the following both
+>> in R 4.2.2 using RStudio and not using RStudio (but using the R GUI). In
+>> both runs, plots within the GUI/RStudio and in the PNG output 
+>> exhibited the
+>> same issue that I reported originally., whereas plots in the PDF output
+>> were perfect (no issue).
+>>
+>> As asked, the first dev.cur() or .Device says "null device" whereas the
+>> second says "Windows" when using the R GUI and "RStudioGD" when using
+>> RStudio.
+>>
+>> It sounds like this is likely a windows-related bug that will be fixed in
+>> the next version. I can wait for that.
+>>
+>> ----
+>> dev.cur()
+>> .Device
+>> plot(0,xlim=c(0,1),ylim=c(0,1))
+>> text(0.5,0.5,expression(bgroup('(',atop(x,y),')')))
+>>
+>> png("bgroup_R422.png")
+>> plot(0,xlim=c(0,1),ylim=c(0,1))
+>> text(0.5,0.5,expression(bgroup('(',atop(x,y),')')))
+>> dev.off()
+>>
+>> pdf("bgroup_R422.pdf")
+>> plot(0,xlim=c(0,1),ylim=c(0,1))
+>> text(0.5,0.5,expression(bgroup('(',atop(x,y),')')))
+>> dev.off()
+>>
+>> dev.cur()
+>> .Device
+>> plot(0,xlim=c(0,1),ylim=c(0,1))
+>> text(0.5,0.5,expression(bgroup('(',atop(x,y),')')))
+>>
+>>
+>> On Tue, Dec 13, 2022 at 5:48 AM Jinsong Zhao <jszhao at yeah.net> wrote:
+>>
+>>>
+>>>
+>>> On 2022/12/13 18:02, Martin Maechler wrote:
+>>>>>>>>> Jinsong Zhao
+>>>>>>>>> ????? on Tue, 13 Dec 2022 17:07:00 +0800 writes:
+>>>> ????? > I don
+>>>>
+>>>> ????? >? On 2022/12/13 10:13, Derek Ogle wrote:
+>>>> ????? >> bgroup() from plotmath does not render properly for
+>>>> ????? >> me. For example
+>>>> ????? >>
+>>>> ????? >> plot(0,xlim=c(0,1),ylim=c(0,1))
+>>>> ????? >> text(0.3,0.5,expression(bgroup('(',atop(x,y),')')))
+>>>> ????? >> text(0.7,0.5,expression(group('(',atop(x,y),')')))
+>>>>
+>>>> Almost surely a? Windows-only problem i.e. bug,
+>>>> See also the bug fixed yesterday, PR#18440,
+>>>> https://bugs.r-project.org/show_bug.cgi?id=18440
+>>>>
+>>>>
+>>> I do not observe the problem in that bug report. All works fine.
+>>>
+>>> Best,
+>>> Jinsong
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+>> ????[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
