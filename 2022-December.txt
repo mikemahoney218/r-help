@@ -12609,3 +12609,1008 @@ PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From r@oknz @end|ng |rom gm@||@com  Wed Dec 21 04:44:51 2022
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Wed, 21 Dec 2022 16:44:51 +1300
+Subject: [R] Integer division
+In-Reply-To: <bc3ab4e3-55e9-fdeb-e9a2-db79e93f7383@ehar.se>
+References: <82303402-5045-d7e7-c4f5-84bb1e3d1487@ehar.se>
+ <CABcYAdKU2_eiTarmSn6yvtt3bsPE4hM8-dOY24_PgtACLifA3A@mail.gmail.com>
+ <bc3ab4e3-55e9-fdeb-e9a2-db79e93f7383@ehar.se>
+Message-ID: <CABcYAd+sC-C8sDVuEmPNE2C-f+rwf0fKejF2scWgwcEA=pOqRg@mail.gmail.com>
+
+Lack of consensus:
+  I should mention Python's // operator, which does
+  flooring division.
+  I should mention Common Lisp, where (floor - -),
+  (ceiling - -), (round - -), and (truncate - -)
+  all return a quotient and appropriate remainder.
+  I should mention Smalltalk, where // and \\ are
+  flooring quotient and remainder and quo: and rem:
+  are truncating quotient and remainder.
+  I should give dishonourable mention to certain
+  programming languages where the quotient and remainder
+  operators do not actually fit together.
+
+Why the lack of consensus:
+  It starts with the fact that there wasn't an agreed
+  *mathematical* definition.  Number theorists, as a
+  rule, don't care about negative numbers all that much.
+  To the extent that they do care, x mod y has to go
+  around in neat cycles, which flooring division does
+  satisfy and truncating division does not.
+
+  It then goes on to early computers which used sign-and-
+  magnitude or ones-complement representation.  In those
+  computers, truncating division was the *obvious* thing
+  to do.  It also had the nice property that
+  n / (2**k) was the same thing as an arithmetic right
+  shift by k bits.  And then twos-complement became
+  popular.  And not only is the twos-complement range
+  asymmetric (so that x might be representable but -x not)
+  but arithmetic right shifts aren't the same as truncating
+  division any more.  Whoops!
+
+  And then, although flooring division still made sense for
+  twos-complement but truncating division didn't really,
+  new programming languages kept on specifying truncating
+  division because the programming languages of the 1960s
+  for the hardware of the 1960s did so.  So new hardware
+  designers supported the new programming languages without
+  supporting the *reasons* why truncating division had been
+  used.
+
+> (-8:7)%%4
+ [1] 0 1 2 3 0 1 2 3 0 1 2 3 0 1 2 3
+
+Think about for example histogramming a collection of
+integers by their remainders and what would happen with
+truncating remainder.
+
+On Tue, 20 Dec 2022 at 19:53, G?ran Brostr?m <gb at ehar.se> wrote:
+
+> Thanks Richard,
+>
+> the "rounding claim" was my mistake (as I replied to Martin), I should
+> said "truncates toward zero" as you explain.
+>
+> However, my point was that these two mathematical functions should be
+> defined in the documentation, as you also say. And I was surprised that
+> there is no consensus regarding the definition of such elementary
+> functions.
+>
+> G?ran
+>
+> On 2022-12-20 03:01, Richard O'Keefe wrote:
+> > The Fortran '08 standard says <<
+> > One operand of type integer may be divided by another operand of type
+> > integer. Although the mathematical
+> > quotient of two integers is not necessarily an integer, Table 7.2
+> > specifies that an expression involving the division
+> > operator with two operands of type integer is interpreted as an
+> > expression of type integer. The result of such an
+> > operation is the integer closest to the mathematical quotient and
+> > between zero and the mathematical quotient
+> > inclusively. >>
+> > Another way to say this is that integer division in
+> > Fortran TRUNCATES towards zero.  It does not round and
+> > never has.
+> >
+> > C carefully left the behaviour of integer division (/)
+> > unspecified, but introduced the div(,) function with the
+> > same effect as Fortran (/).  Later versions of the C
+> > standard tightened this up, and the C17 standard reads <<
+> > The result of the / operator is the quotient from the division of the
+> > first operand by the second; the
+> > result of the % operator is the remainder. In both operations, if the
+> > value of the second operand is
+> > zero, the behavior is undefined.
+> > When integers are divided, the result of the / operator is the algebraic
+> > quotient with any fractional
+> > part discarded. 107) If the quotient a/b is representable, the
+> > expression (a/b)*b + a%b shall equal a ;
+> > otherwise, the behavior of both a/b and a%b is undefined.>>
+> >
+> > That is, C17 TRUNCATES the result of division towards
+> > zero.  I don't know of any C compiler that rounds,
+> > certainly gcc does not.
+> >
+> >
+> > The Java 15 Language Specification says
+> > << Integer division rounds toward 0. >>
+> > which also specified truncating division.
+> >
+> >
+> > The help for ?"%/%" does not say what the result is.
+> > Or if it does, I can't find it.  Either way, this is
+> > a defect in the documentation.  It needs to be spelled
+> > out very clearly.
+> > R version 4.2.2 Patched (2022-11-10 r83330) -- "Innocent and Trusting"
+> >  > c(-8,8) %/% 3
+> > [1] -3  2
+> > so we deduce that R *neither* rounds *not* truncates,
+> > but returns the floor of the quotient.
+> > It is widely argued that flooring division is more
+> > generally useful than rounding or truncating division,
+> > but it is admittedly surprising.
+> >
+> > On Tue, 20 Dec 2022 at 02:51, G?ran Brostr?m <gb at ehar.se
+> > <mailto:gb at ehar.se>> wrote:
+> >
+> >     I have a long vector x with five-digit codes where the first digit of
+> >     each is of special interest, so I extracted them through
+> >
+> >       > y <- x %/% 10000
+> >
+> >     but to my surprise y contained the value -1 in some places. It turned
+> >     out that x contains -1 as a symbol for 'missing value' so in effect I
+> >     found that
+> >
+> >       > -1 %/% 10000 == -1
+> >
+> >     Had to check the help page for "%/%", and the first relevant comment
+> I
+> >     found was:
+> >
+> >     "Users are sometimes surprised by the value returned".
+> >
+> >     No surprise there. Further down:
+> >
+> >     ?%%? indicates ?x mod y? (?x modulo y?) and ?%/%? indicates
+> >            integer division.  It is guaranteed that
+> >
+> >            ? x == (x %% y) + y * (x %/% y) ? (up to rounding error)
+> >
+> >     I did expect  (a %/% b) to return round(a / b), like gfortran and
+> gcc,
+> >     but instead I get floor(a / b) in R. What is the reason for these
+> >     different definitions? And shouldn't R's definition be documented?
+> >
+> >     Thanks, G?ran
+> >
+> >     ______________________________________________
+> >     R-help at r-project.org <mailto:R-help at r-project.org> mailing list --
+> >     To UNSUBSCRIBE and more, see
+> >     https://stat.ethz.ch/mailman/listinfo/r-help
+> >     <https://stat.ethz.ch/mailman/listinfo/r-help>
+> >     PLEASE do read the posting guide
+> >     http://www.R-project.org/posting-guide.html
+> >     <http://www.R-project.org/posting-guide.html>
+> >     and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Dec 21 09:51:54 2022
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 21 Dec 2022 09:51:54 +0100
+Subject: [R] Integer division
+In-Reply-To: <CABcYAd+sC-C8sDVuEmPNE2C-f+rwf0fKejF2scWgwcEA=pOqRg@mail.gmail.com>
+References: <82303402-5045-d7e7-c4f5-84bb1e3d1487@ehar.se>
+ <CABcYAdKU2_eiTarmSn6yvtt3bsPE4hM8-dOY24_PgtACLifA3A@mail.gmail.com>
+ <bc3ab4e3-55e9-fdeb-e9a2-db79e93f7383@ehar.se>
+ <CABcYAd+sC-C8sDVuEmPNE2C-f+rwf0fKejF2scWgwcEA=pOqRg@mail.gmail.com>
+Message-ID: <25506.51498.515884.179110@stat.math.ethz.ch>
+
+>>>>> Richard O'Keefe 
+>>>>>     on Wed, 21 Dec 2022 16:44:51 +1300 writes:
+
+    > Lack of consensus: I should mention Python's // operator,
+    > which does flooring division.  I should mention Common
+    > Lisp, where (floor - -), (ceiling - -), (round - -), and
+    > (truncate - -) all return a quotient and appropriate
+    > remainder.  I should mention Smalltalk, where // and \\
+    > are flooring quotient and remainder and quo: and rem: are
+    > truncating quotient and remainder.  I should give
+    > dishonourable mention to certain programming languages
+    > where the quotient and remainder operators do not actually
+    > fit together.
+
+    > Why the lack of consensus: It starts with the fact that
+    > there wasn't an agreed *mathematical* definition.  Number
+    > theorists, as a rule, don't care about negative numbers
+    > all that much.  To the extent that they do care, x mod y
+    > has to go around in neat cycles, which flooring division
+    > does satisfy and truncating division does not.
+
+    >   It then goes on to early computers which used sign-and-
+    > magnitude or ones-complement representation.  In those
+    > computers, truncating division was the *obvious* thing to
+    > do.  It also had the nice property that n / (2**k) was the
+    > same thing as an arithmetic right shift by k bits.  And
+    > then twos-complement became popular.  And not only is the
+    > twos-complement range asymmetric (so that x might be
+    > representable but -x not) but arithmetic right shifts
+    > aren't the same as truncating division any more.  Whoops!
+
+    >   And then, although flooring division still made sense
+    > for twos-complement but truncating division didn't really,
+    > new programming languages kept on specifying truncating
+    > division because the programming languages of the 1960s
+    > for the hardware of the 1960s did so.  So new hardware
+    > designers supported the new programming languages without
+    > supporting the *reasons* why truncating division had been
+    > used.
+
+    >> (-8:7)%%4
+    >  [1] 0 1 2 3 0 1 2 3 0 1 2 3 0 1 2 3
+
+    > Think about for example histogramming a collection of
+    > integers by their remainders and what would happen with
+    > truncating remainder.
+
+    > On Tue, 20 Dec 2022 at 19:53, G?ran Brostr?m <gb at ehar.se>
+    > wrote:
+
+    >> Thanks Richard,
+    >> 
+    >> the "rounding claim" was my mistake (as I replied to
+    >> Martin), I should said "truncates toward zero" as you
+    >> explain.
+    >> 
+    >> However, my point was that these two mathematical
+    >> functions should be defined in the documentation, as you
+    >> also say. And I was surprised that there is no consensus
+    >> regarding the definition of such elementary functions.
+    >> 
+    >> G?ran
+
+    [...........]
+
+Thank you all for your contributions, notably Richard's last one
+providing really interesting historical context (of "why this mess?").
+
+Note that the Wikipedia page
+  https://en.m.wikipedia.org/wiki/Modulo_operation
+
+also does mention "Euclidean division" which does have possibly
+even nicer mathematical properties than the floored division
+R (and quite a few other good softwares) use.
+
+Still, be assured that we won't change R here.  Mathematical
+(Algebra) related R packages can easily introduce corresponding
+versions of div() and mod() functions, I'd say,  and I'd guess
+these would already exist somewhere.
+
+Yesterday, I've updated the  ?Arithmetic help page which now
+does mention (more clearly if it was really already derivable
+from the previous doc) what happens, also mentioning Knuth and
+the Wikipedia page.
+
+--> https://stat.ethz.ch/R-manual/R-devel/library/base/html/Arithmetic.html
+
+(search for  "R-devel R-manual ETH" in your browser, then
+ -> 'Packages' -> 'base' ..)
+
+Martin
+
+--
+Martin Maechler
+ETH Zurich  and  R Core team
+
+
+From M@|te@F|ender @end|ng |rom w@go@com  Wed Dec 21 08:59:40 2022
+From: M@|te@F|ender @end|ng |rom w@go@com (Flender, Malte)
+Date: Wed, 21 Dec 2022 07:59:40 +0000
+Subject: [R] traceback performs differently in "interactive-mode" then in
+ "script-mode"
+Message-ID: <PAXPR08MB71553AFAFDFB00015C2B77B386EB9@PAXPR08MB7155.eurprd08.prod.outlook.com>
+
+Hello,
+
+a few days ago I encountered a strange behavior of base R.
+I'm not really sure if it is a bug or not.
+Thus I am somewhat hesitant to write a bug report.
+Instead I write to R-Help to ask you if this behavior can be considered a bug or not.
+I started with a question at stackoverflow (https://stackoverflow.com/questions/74796994/r-traceback-performs-differently-in-interactive-mode-then-in-script-mode), but got no response there.
+
+The strange behavior of base R lies in how it acts differently in an interactive R-Session then the execution of an R-Script.
+As you see in the MWE below the traceback()-function returns NULL in script mode (first call) and an actual traceback in interactive mode (second call).
+
+Can you reproduce this behavior?
+
+Here is MWE, which contains a small test-script and the calls to it in an interactive and script mode:
+
+user at server:~/folder> cat test.r
+
+options(error = NULL)
+
+onexit <- function() {
+    error.msg <- geterrmessage()
+    traceback <- traceback()
+
+    print(paste("error.msg: ", nchar(error.msg), sep = ""))
+    print(paste("traceback: ", is.null(traceback), " : ", traceback, sep = ""))
+
+    if (nchar(error.msg) != 0 && !is.null(traceback)) {
+          print("Uncaught Error")
+    } else if (nchar(error.msg) != 0 && is.null(traceback)) {
+         print("Caught Error")
+    } else if (nchar(error.msg) == 0 && is.null(traceback)) {
+         print("No Error")
+    } else {
+        stop("ERROR in on.exit: bad traceback error.msg combination")
+    }
+}
+
+fail <- function() {
+          on.exit(
+              onexit(),
+              add = TRUE,
+              after = TRUE)
+
+  print("SOMETHING")
+  stop("BAD")
+}
+
+fail()
+
+user at server:~/folder> docker run -it --rm -v /home/user/folder/:/data/R/ r-base:4.2.2 R -e 'source("/data/R/test.r")'
+
+R version 4.2.2 (2022-10-31) -- "Innocent and Trusting"
+Copyright (C) 2022 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> source("/data/R/test.r")
+[1] "SOMETHING"
+Error in fail() : BAD
+Calls: source -> withVisible -> eval -> eval -> fail
+No traceback available
+[1] "error.msg: 75"
+[1] "traceback: TRUE : "
+[1] "Caught Error"
+Execution halted
+user at server:~/folder> docker run -it --rm -v /home/user/folder/:/data/R/ r-base:4.2.2 R
+
+R version 4.2.2 (2022-10-31) -- "Innocent and Trusting"
+Copyright (C) 2022 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> source("/data/R/test.r")
+[1] "SOMETHING"
+Error in fail() : BAD
+6: stop("BAD") at test.r#30
+5: fail() at test.r#33
+4: eval(ei, envir)
+3: eval(ei, envir)
+2: withVisible(eval(ei, envir))
+1: source("/data/R/test.r")
+[1] "error.msg: 22"
+[1] "traceback: FALSE : stop(\"BAD\")"
+[2] "traceback: FALSE : fail()"
+[3] "traceback: FALSE : eval(ei, envir)"
+[4] "traceback: FALSE : eval(ei, envir)"
+[5] "traceback: FALSE : withVisible(eval(ei, envir))"
+[6] "traceback: FALSE : source(\"/data/R/test.r\")"
+[1] "Uncaught Error"
+>
+
+
+Mit freundlichem Gru? / Best regards
+WAGO GmbH & Co. KG
+
+Malte Flender
+Komplexit?tsmanagement / Data Science
+phone: +49 571 887-49779
+fax: +49 571 887-849779
+mailto: Malte.Flender at wago.com
+
+WAGO GmbH & Co.KG
+Hansastra?e 27
+32423 Minden
+Deutschland
+http://www.wago.com<http://www.wago.com/>
+
+
+
+Internal
+
+
+
+ 
+
+ Diese E-Mail einschlie?lich ihrer Anh?nge ist vertraulich und daher allein f?r den Gebrauch durch den vorgesehenen Empf?nger bestimmt. Dritten ist das Lesen, Verteilen oder Weiterleiten dieser E-Mail sowie jedwedes Vertrauen auf deren Inhalt untersagt. Wir bitten, eine fehlgeleitete E-Mail unverz?glich vollst?ndig zu l?schen und uns eine Nachricht zukommen zu lassen.
+This email may contain material that is confidential and/or privileged for the sole use of the intended recipient. Any review, reliance or distribution by others or forwarding without express permission is strictly prohibited. If you are not the intended recipient, please contact the sender and delete all copies. 
+ WAGO GmbH & Co. KG - Sitz: Minden - Amtsgericht Bad Oeynhausen HRA 6218
+Komplement?rin: WAGO Beteiligungs GmbH ? Sitz: Brunn am Gebirge (?sterreich) - Landesgericht Wiener Neustadt, FN 553907w - Niederlassung Minden - Amtsgericht Bad Oeynhausen, HRB 17863
+Gesch?ftsf?hrung: Axel B?rner, Kathrin Fricke, Dr. Heiner Lang, Christian Sallach, J?rgen Sch?fer, Dr. Karsten Stoll, Yannick Weber
+WAGO ist eine eingetragene Marke der WAGO Verwaltungsgesellschaft mbH  
+
+
+	[[alternative HTML version deleted]]
+
+
+From b@row||ng@on @end|ng |rom |@nc@@ter@@c@uk  Wed Dec 21 14:50:45 2022
+From: b@row||ng@on @end|ng |rom |@nc@@ter@@c@uk (Barry Rowlingson)
+Date: Wed, 21 Dec 2022 13:50:45 +0000
+Subject: [R] [External]  Amazing AI
+In-Reply-To: <693f9741fc304769b4b419a6aca29bdb@LO2P265MB3344.GBRP265.PROD.OUTLOOK.COM>
+References: <693f9741fc304769b4b419a6aca29bdb@LO2P265MB3344.GBRP265.PROD.OUTLOOK.COM>
+Message-ID: <CANVKczMVS3Cbyi_XT5kfBzk4XBaZEMr3hH2ZgpX_r1iU5KWJfA@mail.gmail.com>
+
+Next year one of my R programming assigments will read like this:
+
+"Here is some R code written by a multi-million dollar AI system to
+compute [something]. It doesn't work. Fix the bugs, then ask the AI to
+write a letter to its creators apologising for how rubbish it is at
+coding. Collect one million dollars."
+
+
+On Sun, Dec 18, 2022 at 7:01 PM Boris Steipe <boris.steipe at utoronto.ca> wrote:
+>
+> This email originated outside the University. Check before clicking links or attachments.
+>
+> Technically not a help question. But crucial to be aware of, especially for those of us in academia, or otherwise teaching R. I am not aware of a suitable alternate forum. If this does not interest you, please simply ignore - I already know that this may be somewhat OT.
+>
+> Thanks.
+> ------------------------------------------------------
+>
+> You very likely have heard of ChatGPT, the conversation interface on top of the GPT-3 large language model and that it can generate code. I thought it doesn't do R - I was wrong. Here is a little experiment:
+>
+> MY PROMPT:
+> ==========
+> Please write me some R code that will read a tsv file, remove all rows that have duplicates in the column "names", and store the median values of the remaining rows in a variable called "Medians". Of course, that calculation should only be done with columns that are numeric. Print the last variable in order from largest to smallest.
+>
+>
+> AI RESPONSE:
+> ============
+>
+> Here is some R code that should accomplish what you've described:
+>
+> (Note: the code is formatted in a little terminal window, complete with a button to "copy code" at the top.)
+>
+> ----
+> # Read the tsv file
+> data <- read.table("file.tsv", header = TRUE, sep = "\t")
+>
+> # Remove rows with duplicates in the "names" column
+> data <- data[!duplicated(data$names), ]
+>
+> # Select only the numeric columns
+> num_columns <- sapply(data, is.numeric)
+> numeric_data <- data[, num_columns]
+>
+> # Calculate the medians for each column
+> Medians <- apply(numeric_data, 1, median)
+>
+> # Sort Medians in descending order
+> Medians <- sort(Medians, decreasing = TRUE)
+>
+> # Print Medians
+> print(Medians)
+> ----
+>
+> This code assumes that the tsv file is called "file.tsv" and is stored in the current working directory. It also assumes that the first row of the file contains the column names.
+>
+>
+>
+> MY PROMPT:
+> ==========
+> Can you provide me with a bit of sample data that I can use to test this code?
+>
+> AI RESPONSE:
+> ============
+> Certainly! Here is some sample data that you can use to test the code I provided:
+>
+> ----
+> name    age     height  weight
+> Alice   23      5.6     120
+> Bob     32      6.2     180
+> Charlie 29      5.9     160
+> Alice   23      5.6     120
+> David   25      5.8     140
+> Eve     27      5.5     110
+> ----
+>
+> You can save this data as a tsv file and use it to test the code.
+>
+>
+> ------------------------------------------------------
+>
+> Notes:
+> 1) The code, as written does not work with the test data. The reason is that the test data specifies a column "name", but the code assumes "names" (which I specified in the instructions). Once this is fixed in the test data, the code executes.
+>
+> 2) The instructions are not accurately translated: I had asked for row means. But changing the margin in the apply() statement from 2 to 1 does the correct thing.
+>
+> 3) Note that the test data contains both numeric and non-numeric columns. Also, the name "Alice" is duplicated in the test data, which is subtle, and the right thing to do.
+>
+>
+> ------------------------------------------------------
+>
+> A similar experiment, run on the beta-site of OpenAI's Codex code-completion tool gives the following code (complete with the comments.):
+>
+> ----
+> # Read in the data
+> data <- read.table("mydata.tsv", sep = "\t", header = TRUE)
+>
+> # Remove all rows that have duplicates in the column "names"
+> unique_names <- unique(data$names)
+> data_unique <- data[data$names %in% unique_names,]
+>
+> # Calculate medians
+> Medians <- sapply(data_unique[, sapply(data_unique, is.numeric)], median, na.rm = TRUE)
+>
+> # Print last variable in order form largest to smallest
+> rev(sort(Medians[length(Medians)]))
+> ----
+>
+> Note that the strategy is quite different (e.g using %in%, not duplicated() ), the interpretation of "last variable" is technically correct but not what I had in mind (ChatGPT got that right though).
+>
+>
+> Changing my prompts slightly resulted it going for a dplyr solution instead, complete with %>% idioms etc ... again, syntactically correct but not giving me the fully correct results.
+>
+> ------------------------------------------------------
+>
+> Bottom line: The AI's ability to translate natural language instructions into code is astounding. Errors the AI makes are subtle and probably not easy to fix if you don't already know what you are doing. But the way that this can be "confidently incorrect" and plausible makes it nearly impossible to detect unless you actually run the code (you may have noticed that when you read the code).
+>
+> Will our students use it? Absolutely.
+>
+> Will they successfully cheat with it? That depends on the assignment. We probably need to _encourage_ them to use it rather than sanction - but require them to attribute the AI, document prompts, and identify their own, additional contributions.
+>
+> Will it help them learn? When you are aware of the issues, it may be quite useful. It may be especially useful to teach them to specify their code carefully and completely, and to ask questions in the right way. Test cases are crucial.
+>
+> How will it affect what we do as instructors? I don't know. Really.
+>
+> And the future? I am not pleased to extrapolate to a job market in which they compete with knowledge workers who work 24/7 without benefits, vacation pay, or even a salary. They'll need to rethink the value of their investment in an academic education. We'll need to rethink what we do to provide value above and beyond what AI's can do. (Nb. all of the arguments I hear about why humans will always be better etc. are easily debunked, but that's even more OT :-)
+>
+> --------------------------------------------------------
+>
+> If you have thoughts to share how your institution is thinking about academic integrity in this situation, or creative ideas how to integrate this into teaching, I'd love to hear from you.
+>
+>
+> All the best!
+> Boris
+>
+>
+> --
+> Boris Steipe MD, PhD
+> University of Toronto
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Wed Dec 21 15:20:44 2022
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Wed, 21 Dec 2022 08:20:44 -0600
+Subject: [R] [External] Amazing AI
+In-Reply-To: <CANVKczMVS3Cbyi_XT5kfBzk4XBaZEMr3hH2ZgpX_r1iU5KWJfA@mail.gmail.com>
+References: <693f9741fc304769b4b419a6aca29bdb@LO2P265MB3344.GBRP265.PROD.OUTLOOK.COM>
+ <CANVKczMVS3Cbyi_XT5kfBzk4XBaZEMr3hH2ZgpX_r1iU5KWJfA@mail.gmail.com>
+Message-ID: <9974992d-ba12-6ae8-03c5-378064a82210@effectivedefense.org>
+
+
+
+On 12/21/22 7:50 AM, Barry Rowlingson wrote:
+> Next year one of my R programming assigments will read like this:
+> 
+> "Here is some R code written by a multi-million dollar AI system to
+> compute [something]. It doesn't work. Fix the bugs, then ask the AI to
+> write a letter to its creators apologising for how rubbish it is at
+> coding. Collect one million dollars."
+
+
+You might want to be careful about such a promise.  Kahneman, Sibony, 
+and Sunstein (2021) Noise:  A flaw in human judgment (Little, Brown and 
+Company) claim that genuine expertise is acquired by learning from 
+frequent, rapid, high-quality feedback on the quality of their 
+decisions.  Few people have access to such feedback.  They call leaders 
+in fields without such feedback "respect-experts", and note that 
+respect-experts have only the illusion of competence.
+
+
+	  1.  They further say that most respect-experts can be beaten by 
+simple heuristics developed by intelligent lay people.
+
+
+	  2.  Moreover, with a modest amount of data, ordinary least squares 
+can beat most such heuristics.
+
+
+	  3.  And if lots of data are available, AI can beat the simple 
+heuristics.
+
+
+	  They provide substantial quantities of research to support those 
+claims.
+
+
+	  Regarding your million dollars, it should not be hard to write an R 
+interface to existing AI code cited by Kahneman et al.
+
+
+	  Do you really want one of your students initiating a legal procedure 
+to try to collect your million dollars?
+
+
+	  A quarter century ago, my friend Soren Bisgaard told me about a 
+colleague who had raved about AI.  Soren thought, "You prefer artificial 
+intelligence to real intelligence?"
+
+
+	  I perceive a role for AI in identifying subtle phenomena missed by 
+more understandable modeling techniques.  Let's use the best 
+understandable model, and apply AI to the residuals from that.  Then 
+identify the variables that make the largest contributions to a useful 
+AI model, and see if they can be added to the other model.
+
+
+	  Spencer Graves
+> 
+> 
+> On Sun, Dec 18, 2022 at 7:01 PM Boris Steipe <boris.steipe at utoronto.ca> wrote:
+>>
+>> This email originated outside the University. Check before clicking links or attachments.
+>>
+>> Technically not a help question. But crucial to be aware of, especially for those of us in academia, or otherwise teaching R. I am not aware of a suitable alternate forum. If this does not interest you, please simply ignore - I already know that this may be somewhat OT.
+>>
+>> Thanks.
+>> ------------------------------------------------------
+>>
+>> You very likely have heard of ChatGPT, the conversation interface on top of the GPT-3 large language model and that it can generate code. I thought it doesn't do R - I was wrong. Here is a little experiment:
+>>
+>> MY PROMPT:
+>> ==========
+>> Please write me some R code that will read a tsv file, remove all rows that have duplicates in the column "names", and store the median values of the remaining rows in a variable called "Medians". Of course, that calculation should only be done with columns that are numeric. Print the last variable in order from largest to smallest.
+>>
+>>
+>> AI RESPONSE:
+>> ============
+>>
+>> Here is some R code that should accomplish what you've described:
+>>
+>> (Note: the code is formatted in a little terminal window, complete with a button to "copy code" at the top.)
+>>
+>> ----
+>> # Read the tsv file
+>> data <- read.table("file.tsv", header = TRUE, sep = "\t")
+>>
+>> # Remove rows with duplicates in the "names" column
+>> data <- data[!duplicated(data$names), ]
+>>
+>> # Select only the numeric columns
+>> num_columns <- sapply(data, is.numeric)
+>> numeric_data <- data[, num_columns]
+>>
+>> # Calculate the medians for each column
+>> Medians <- apply(numeric_data, 1, median)
+>>
+>> # Sort Medians in descending order
+>> Medians <- sort(Medians, decreasing = TRUE)
+>>
+>> # Print Medians
+>> print(Medians)
+>> ----
+>>
+>> This code assumes that the tsv file is called "file.tsv" and is stored in the current working directory. It also assumes that the first row of the file contains the column names.
+>>
+>>
+>>
+>> MY PROMPT:
+>> ==========
+>> Can you provide me with a bit of sample data that I can use to test this code?
+>>
+>> AI RESPONSE:
+>> ============
+>> Certainly! Here is some sample data that you can use to test the code I provided:
+>>
+>> ----
+>> name    age     height  weight
+>> Alice   23      5.6     120
+>> Bob     32      6.2     180
+>> Charlie 29      5.9     160
+>> Alice   23      5.6     120
+>> David   25      5.8     140
+>> Eve     27      5.5     110
+>> ----
+>>
+>> You can save this data as a tsv file and use it to test the code.
+>>
+>>
+>> ------------------------------------------------------
+>>
+>> Notes:
+>> 1) The code, as written does not work with the test data. The reason is that the test data specifies a column "name", but the code assumes "names" (which I specified in the instructions). Once this is fixed in the test data, the code executes.
+>>
+>> 2) The instructions are not accurately translated: I had asked for row means. But changing the margin in the apply() statement from 2 to 1 does the correct thing.
+>>
+>> 3) Note that the test data contains both numeric and non-numeric columns. Also, the name "Alice" is duplicated in the test data, which is subtle, and the right thing to do.
+>>
+>>
+>> ------------------------------------------------------
+>>
+>> A similar experiment, run on the beta-site of OpenAI's Codex code-completion tool gives the following code (complete with the comments.):
+>>
+>> ----
+>> # Read in the data
+>> data <- read.table("mydata.tsv", sep = "\t", header = TRUE)
+>>
+>> # Remove all rows that have duplicates in the column "names"
+>> unique_names <- unique(data$names)
+>> data_unique <- data[data$names %in% unique_names,]
+>>
+>> # Calculate medians
+>> Medians <- sapply(data_unique[, sapply(data_unique, is.numeric)], median, na.rm = TRUE)
+>>
+>> # Print last variable in order form largest to smallest
+>> rev(sort(Medians[length(Medians)]))
+>> ----
+>>
+>> Note that the strategy is quite different (e.g using %in%, not duplicated() ), the interpretation of "last variable" is technically correct but not what I had in mind (ChatGPT got that right though).
+>>
+>>
+>> Changing my prompts slightly resulted it going for a dplyr solution instead, complete with %>% idioms etc ... again, syntactically correct but not giving me the fully correct results.
+>>
+>> ------------------------------------------------------
+>>
+>> Bottom line: The AI's ability to translate natural language instructions into code is astounding. Errors the AI makes are subtle and probably not easy to fix if you don't already know what you are doing. But the way that this can be "confidently incorrect" and plausible makes it nearly impossible to detect unless you actually run the code (you may have noticed that when you read the code).
+>>
+>> Will our students use it? Absolutely.
+>>
+>> Will they successfully cheat with it? That depends on the assignment. We probably need to _encourage_ them to use it rather than sanction - but require them to attribute the AI, document prompts, and identify their own, additional contributions.
+>>
+>> Will it help them learn? When you are aware of the issues, it may be quite useful. It may be especially useful to teach them to specify their code carefully and completely, and to ask questions in the right way. Test cases are crucial.
+>>
+>> How will it affect what we do as instructors? I don't know. Really.
+>>
+>> And the future? I am not pleased to extrapolate to a job market in which they compete with knowledge workers who work 24/7 without benefits, vacation pay, or even a salary. They'll need to rethink the value of their investment in an academic education. We'll need to rethink what we do to provide value above and beyond what AI's can do. (Nb. all of the arguments I hear about why humans will always be better etc. are easily debunked, but that's even more OT :-)
+>>
+>> --------------------------------------------------------
+>>
+>> If you have thoughts to share how your institution is thinking about academic integrity in this situation, or creative ideas how to integrate this into teaching, I'd love to hear from you.
+>>
+>>
+>> All the best!
+>> Boris
+>>
+>>
+>> --
+>> Boris Steipe MD, PhD
+>> University of Toronto
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From x|e @end|ng |rom y|hu|@n@me  Wed Dec 21 20:17:27 2022
+From: x|e @end|ng |rom y|hu|@n@me (Yihui Xie)
+Date: Wed, 21 Dec 2022 13:17:27 -0600
+Subject: [R] 
+ traceback performs differently in "interactive-mode" then in
+ "script-mode"
+In-Reply-To: <PAXPR08MB71553AFAFDFB00015C2B77B386EB9@PAXPR08MB7155.eurprd08.prod.outlook.com>
+References: <PAXPR08MB71553AFAFDFB00015C2B77B386EB9@PAXPR08MB7155.eurprd08.prod.outlook.com>
+Message-ID: <CANROs4fFJK1VZ3-PH9s54JYFbsstRsycyJipENPppBtRLB2frg@mail.gmail.com>
+
+Hi Malte,
+
+I think I asked the same question on Stack Overflow ten years ago:
+https://stackoverflow.com/q/13116099/559676 I hope you'll find the answer
+helpful there.
+
+Regards,
+Yihui
+--
+https://yihui.org
+
+
+On Wed, Dec 21, 2022 at 6:19 AM Flender, Malte <Malte.Flender at wago.com>
+wrote:
+
+> Hello,
+>
+> a few days ago I encountered a strange behavior of base R.
+> I'm not really sure if it is a bug or not.
+> Thus I am somewhat hesitant to write a bug report.
+> Instead I write to R-Help to ask you if this behavior can be considered a
+> bug or not.
+> I started with a question at stackoverflow (
+> https://stackoverflow.com/questions/74796994/r-traceback-performs-differently-in-interactive-mode-then-in-script-mode),
+> but got no response there.
+>
+> The strange behavior of base R lies in how it acts differently in an
+> interactive R-Session then the execution of an R-Script.
+> As you see in the MWE below the traceback()-function returns NULL in
+> script mode (first call) and an actual traceback in interactive mode
+> (second call).
+>
+> Can you reproduce this behavior?
+>
+> Here is MWE, which contains a small test-script and the calls to it in an
+> interactive and script mode:
+>
+> user at server:~/folder> cat test.r
+>
+> options(error = NULL)
+>
+> onexit <- function() {
+>     error.msg <- geterrmessage()
+>     traceback <- traceback()
+>
+>     print(paste("error.msg: ", nchar(error.msg), sep = ""))
+>     print(paste("traceback: ", is.null(traceback), " : ", traceback, sep =
+> ""))
+>
+>     if (nchar(error.msg) != 0 && !is.null(traceback)) {
+>           print("Uncaught Error")
+>     } else if (nchar(error.msg) != 0 && is.null(traceback)) {
+>          print("Caught Error")
+>     } else if (nchar(error.msg) == 0 && is.null(traceback)) {
+>          print("No Error")
+>     } else {
+>         stop("ERROR in on.exit: bad traceback error.msg combination")
+>     }
+> }
+>
+> fail <- function() {
+>           on.exit(
+>               onexit(),
+>               add = TRUE,
+>               after = TRUE)
+>
+>   print("SOMETHING")
+>   stop("BAD")
+> }
+>
+> fail()
+>
+> user at server:~/folder> docker run -it --rm -v /home/user/folder/:/data/R/
+> r-base:4.2.2 R -e 'source("/data/R/test.r")'
+>
+> R version 4.2.2 (2022-10-31) -- "Innocent and Trusting"
+> Copyright (C) 2022 The R Foundation for Statistical Computing
+> Platform: x86_64-pc-linux-gnu (64-bit)
+>
+> R is free software and comes with ABSOLUTELY NO WARRANTY.
+> You are welcome to redistribute it under certain conditions.
+> Type 'license()' or 'licence()' for distribution details.
+>
+>   Natural language support but running in an English locale
+>
+> R is a collaborative project with many contributors.
+> Type 'contributors()' for more information and
+> 'citation()' on how to cite R or R packages in publications.
+>
+> Type 'demo()' for some demos, 'help()' for on-line help, or
+> 'help.start()' for an HTML browser interface to help.
+> Type 'q()' to quit R.
+>
+> > source("/data/R/test.r")
+> [1] "SOMETHING"
+> Error in fail() : BAD
+> Calls: source -> withVisible -> eval -> eval -> fail
+> No traceback available
+> [1] "error.msg: 75"
+> [1] "traceback: TRUE : "
+> [1] "Caught Error"
+> Execution halted
+> user at server:~/folder> docker run -it --rm -v /home/user/folder/:/data/R/
+> r-base:4.2.2 R
+>
+> R version 4.2.2 (2022-10-31) -- "Innocent and Trusting"
+> Copyright (C) 2022 The R Foundation for Statistical Computing
+> Platform: x86_64-pc-linux-gnu (64-bit)
+>
+> R is free software and comes with ABSOLUTELY NO WARRANTY.
+> You are welcome to redistribute it under certain conditions.
+> Type 'license()' or 'licence()' for distribution details.
+>
+>   Natural language support but running in an English locale
+>
+> R is a collaborative project with many contributors.
+> Type 'contributors()' for more information and
+> 'citation()' on how to cite R or R packages in publications.
+>
+> Type 'demo()' for some demos, 'help()' for on-line help, or
+> 'help.start()' for an HTML browser interface to help.
+> Type 'q()' to quit R.
+>
+> > source("/data/R/test.r")
+> [1] "SOMETHING"
+> Error in fail() : BAD
+> 6: stop("BAD") at test.r#30
+> 5: fail() at test.r#33
+> 4: eval(ei, envir)
+> 3: eval(ei, envir)
+> 2: withVisible(eval(ei, envir))
+> 1: source("/data/R/test.r")
+> [1] "error.msg: 22"
+> [1] "traceback: FALSE : stop(\"BAD\")"
+> [2] "traceback: FALSE : fail()"
+> [3] "traceback: FALSE : eval(ei, envir)"
+> [4] "traceback: FALSE : eval(ei, envir)"
+> [5] "traceback: FALSE : withVisible(eval(ei, envir))"
+> [6] "traceback: FALSE : source(\"/data/R/test.r\")"
+> [1] "Uncaught Error"
+> >
+>
+>
+> Mit freundlichem Gru? / Best regards
+> WAGO GmbH & Co. KG
+>
+> Malte Flender
+> Komplexit?tsmanagement / Data Science
+> phone: +49 571 887-49779
+> fax: +49 571 887-849779
+> mailto: Malte.Flender at wago.com
+>
+> WAGO GmbH & Co.KG
+> Hansastra?e 27
+> 32423 Minden
+> Deutschland
+> http://www.wago.com<http://www.wago.com/>
+>
+>
+>
+> Internal
+>
+>
+>
+>
+>
+>  Diese E-Mail einschlie?lich ihrer Anh?nge ist vertraulich und daher
+> allein f?r den Gebrauch durch den vorgesehenen Empf?nger bestimmt. Dritten
+> ist das Lesen, Verteilen oder Weiterleiten dieser E-Mail sowie jedwedes
+> Vertrauen auf deren Inhalt untersagt. Wir bitten, eine fehlgeleitete E-Mail
+> unverz?glich vollst?ndig zu l?schen und uns eine Nachricht zukommen zu
+> lassen.
+> This email may contain material that is confidential and/or privileged for
+> the sole use of the intended recipient. Any review, reliance or
+> distribution by others or forwarding without express permission is strictly
+> prohibited. If you are not the intended recipient, please contact the
+> sender and delete all copies.
+>  WAGO GmbH & Co. KG - Sitz: Minden - Amtsgericht Bad Oeynhausen HRA 6218
+> Komplement?rin: WAGO Beteiligungs GmbH ? Sitz: Brunn am Gebirge
+> (?sterreich) - Landesgericht Wiener Neustadt, FN 553907w - Niederlassung
+> Minden - Amtsgericht Bad Oeynhausen, HRB 17863
+> Gesch?ftsf?hrung: Axel B?rner, Kathrin Fricke, Dr. Heiner Lang, Christian
+> Sallach, J?rgen Sch?fer, Dr. Karsten Stoll, Yannick Weber
+> WAGO ist eine eingetragene Marke der WAGO Verwaltungsgesellschaft mbH
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
