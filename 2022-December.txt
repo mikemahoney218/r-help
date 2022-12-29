@@ -14857,3 +14857,1316 @@ On Mon, Dec 26, 2022 at 7:59 PM Eric Berger <ericjberger at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From therne@u @end|ng |rom m@yo@edu  Tue Dec 27 18:06:04 2022
+From: therne@u @end|ng |rom m@yo@edu (Therneau, Terry M., Ph.D.)
+Date: Tue, 27 Dec 2022 11:06:04 -0600
+Subject: [R] extract from a list of lists
+Message-ID: <d35801$j8t8qb@ironport10.mayo.edu>
+
+I not uncommonly have the following paradym
+ ?? fits <- lapply(argument, function)
+
+resulting in a list of function results.?? Often, the outer call is to mclapply, and the 
+function encodes some long calculation, e.g. multiple chains in an MCMC.
+Assume for illustration that each function returns a list with elements?? beta, loglik,? iter.
+
+Then? sapply(fits,? function(x) x$iter)
+will give me a vector, with the number of iterations used by each instance.
+
+I've often been suspicious that there is some simple shorthand for the "grab all the 
+elements named iter" that skips the explicit x$iter function.?? Am I indeed overlooking 
+something???? I don't expect a speed increase, just cleaner code.
+
+Terry T.
+
+-- 
+Terry M Therneau, PhD
+Department of Quantitative Health Sciences
+Mayo Clinic
+therneau at mayo.edu
+
+"TERR-ree THUR-noh"
+
+	[[alternative HTML version deleted]]
+
+
+From 538280 @end|ng |rom gm@||@com  Tue Dec 27 18:24:53 2022
+From: 538280 @end|ng |rom gm@||@com (Greg Snow)
+Date: Tue, 27 Dec 2022 10:24:53 -0700
+Subject: [R] extract from a list of lists
+In-Reply-To: <d35801$j8t8qb@ironport10.mayo.edu>
+References: <d35801$j8t8qb@ironport10.mayo.edu>
+Message-ID: <CAFEqCdzV3OaEhpPJm6HN6+EaXUvGwaEmPKvXJAs3MSa71f5hMQ@mail.gmail.com>
+
+Terry,
+
+I don't know if it is much cleaner or not, but you can use:
+
+sapply(fits, `[[`, 'iter')
+
+This calls the `[[` function (to extract list elements) on each
+element of the top list, with the extra argument of `iter` to say
+which element.
+
+
+On Tue, Dec 27, 2022 at 10:16 AM Therneau, Terry M., Ph.D. via R-help
+<r-help at r-project.org> wrote:
+>
+> I not uncommonly have the following paradym
+>     fits <- lapply(argument, function)
+>
+> resulting in a list of function results.   Often, the outer call is to mclapply, and the
+> function encodes some long calculation, e.g. multiple chains in an MCMC.
+> Assume for illustration that each function returns a list with elements   beta, loglik,  iter.
+>
+> Then  sapply(fits,  function(x) x$iter)
+> will give me a vector, with the number of iterations used by each instance.
+>
+> I've often been suspicious that there is some simple shorthand for the "grab all the
+> elements named iter" that skips the explicit x$iter function.   Am I indeed overlooking
+> something?    I don't expect a speed increase, just cleaner code.
+>
+> Terry T.
+>
+> --
+> Terry M Therneau, PhD
+> Department of Quantitative Health Sciences
+> Mayo Clinic
+> therneau at mayo.edu
+>
+> "TERR-ree THUR-noh"
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Gregory (Greg) L. Snow Ph.D.
+538280 at gmail.com
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Tue Dec 27 18:30:06 2022
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Tue, 27 Dec 2022 17:30:06 +0000
+Subject: [R] error in exists.....
+Message-ID: <PU4P216MB15680590FF577F4927C5690CC8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear members,
+                             I have the following code:
+>  E <- new.env()
+>  E$L <- list()
+>  i <- 1
+>   E$L[[i]]$T1A1 <- Sys.time()
+> exists("T1A1", where = E$L[[i]])
+Error in list2env(list(1, T1A1 = 1672161002.38743), NULL, <environment>) :
+  attempt to use zero-length variable name
+
+I want the output of the exists() function to be TRUE. In any case:
+
+> E$L[[1]]$T1A1
+[1] "2022-12-27 22:40:02 IST"
+
+Please help me solve this conundrum....
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+
+	[[alternative HTML version deleted]]
+
+
+From 538280 @end|ng |rom gm@||@com  Tue Dec 27 18:45:31 2022
+From: 538280 @end|ng |rom gm@||@com (Greg Snow)
+Date: Tue, 27 Dec 2022 10:45:31 -0700
+Subject: [R] extract from a list of lists
+In-Reply-To: <d35801$j8t8qb@ironport10.mayo.edu>
+References: <d35801$j8t8qb@ironport10.mayo.edu>
+Message-ID: <CAFEqCdxPDSqpr9LoXi_-LG4dyOCJRv14vqD35c3wJOTDEL4=wQ@mail.gmail.com>
+
+Another option is the map family of functions in the purrr package
+(yes, this depends on another package being loaded, which may affect
+things if you are including this in your own package, creating a
+dependency).
+
+In map and friends, if the "function" is a string or integer, then it
+is taken as the piece to be extracted, so you should be able to do
+something like:
+
+library(purrr)
+map(fits, 'iter')
+# or
+map_int(fits, 'iter')
+# or
+map_dbl(fits, 'iter')
+
+which of the last 2 to use depends on how `iter` is stored.
+
+On Tue, Dec 27, 2022 at 10:16 AM Therneau, Terry M., Ph.D. via R-help
+<r-help at r-project.org> wrote:
+>
+> I not uncommonly have the following paradym
+>     fits <- lapply(argument, function)
+>
+> resulting in a list of function results.   Often, the outer call is to mclapply, and the
+> function encodes some long calculation, e.g. multiple chains in an MCMC.
+> Assume for illustration that each function returns a list with elements   beta, loglik,  iter.
+>
+> Then  sapply(fits,  function(x) x$iter)
+> will give me a vector, with the number of iterations used by each instance.
+>
+> I've often been suspicious that there is some simple shorthand for the "grab all the
+> elements named iter" that skips the explicit x$iter function.   Am I indeed overlooking
+> something?    I don't expect a speed increase, just cleaner code.
+>
+> Terry T.
+>
+> --
+> Terry M Therneau, PhD
+> Department of Quantitative Health Sciences
+> Mayo Clinic
+> therneau at mayo.edu
+>
+> "TERR-ree THUR-noh"
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Gregory (Greg) L. Snow Ph.D.
+538280 at gmail.com
+
+
+From @kw@|mmo @end|ng |rom gm@||@com  Tue Dec 27 18:48:44 2022
+From: @kw@|mmo @end|ng |rom gm@||@com (Andrew Simmons)
+Date: Tue, 27 Dec 2022 12:48:44 -0500
+Subject: [R] error in exists.....
+In-Reply-To: <PU4P216MB15680590FF577F4927C5690CC8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB15680590FF577F4927C5690CC8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <CAPcHnpQszCPxj-BO4_8WefLz-g7Hxbnzs8bEk4oMgiU2BXyzNw@mail.gmail.com>
+
+exists() is for bindings in an environment, not for names in a list. try
+
+"T1A1" %in% names(E$L[[i]])
+
+instead
+
+
+On Tue, Dec 27, 2022, 12:36 akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+
+> Dear members,
+>                              I have the following code:
+> >  E <- new.env()
+> >  E$L <- list()
+> >  i <- 1
+> >   E$L[[i]]$T1A1 <- Sys.time()
+> > exists("T1A1", where = E$L[[i]])
+> Error in list2env(list(1, T1A1 = 1672161002.38743), NULL, <environment>) :
+>   attempt to use zero-length variable name
+>
+> I want the output of the exists() function to be TRUE. In any case:
+>
+> > E$L[[1]]$T1A1
+> [1] "2022-12-27 22:40:02 IST"
+>
+> Please help me solve this conundrum....
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @@r@h@go@|ee @end|ng |rom gm@||@com  Tue Dec 27 18:50:30 2022
+From: @@r@h@go@|ee @end|ng |rom gm@||@com (Sarah Goslee)
+Date: Tue, 27 Dec 2022 12:50:30 -0500
+Subject: [R] error in exists.....
+In-Reply-To: <PU4P216MB15680590FF577F4927C5690CC8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB15680590FF577F4927C5690CC8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <CAM_vjunG=FmBLEXcwWT=i1FZL61r2mpEa9wzU6y+C-60D5pobA@mail.gmail.com>
+
+Hi,
+
+I can't create the desired object using the code you provided, but if
+I create it in two steps so that E$L[[i]]$T1A1 does exist, exist()
+returns TRUE.
+
+E <- new.env()
+E$L <- list()
+i <- 1
+E$L[[i]]$T1A1 <- Sys.time()
+
+# returns: Error in `*tmp*`[[i]] : subscript out of bounds
+
+E$L[[i]] <- list()
+E$L[[i]]$T1A1 <- Sys.time()
+
+
+exists("T1A1", where = E$L[[i]])
+# returns: [1] TRUE
+
+
+> str(E$L)
+List of 1
+ $ :List of 1
+  ..$ T1A1: POSIXct[1:1], format: "2022-12-27 12:47:26"
+
+Sarah
+
+On Tue, Dec 27, 2022 at 12:36 PM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>
+> Dear members,
+>                              I have the following code:
+> >  E <- new.env()
+> >  E$L <- list()
+> >  i <- 1
+> >   E$L[[i]]$T1A1 <- Sys.time()
+> > exists("T1A1", where = E$L[[i]])
+> Error in list2env(list(1, T1A1 = 1672161002.38743), NULL, <environment>) :
+>   attempt to use zero-length variable name
+>
+> I want the output of the exists() function to be TRUE. In any case:
+>
+> > E$L[[1]]$T1A1
+> [1] "2022-12-27 22:40:02 IST"
+>
+> Please help me solve this conundrum....
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Sarah Goslee (she/her)
+http://www.numberwright.com
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Tue Dec 27 18:56:51 2022
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Tue, 27 Dec 2022 17:56:51 +0000
+Subject: [R] error in exists.....
+In-Reply-To: <CAM_vjunG=FmBLEXcwWT=i1FZL61r2mpEa9wzU6y+C-60D5pobA@mail.gmail.com>
+References: <PU4P216MB15680590FF577F4927C5690CC8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAM_vjunG=FmBLEXcwWT=i1FZL61r2mpEa9wzU6y+C-60D5pobA@mail.gmail.com>
+Message-ID: <PU4P216MB1568C6B561D6436E387BA883C8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Sarah,
+                     I had this also before the assignment of Sys.time():
+
+>     E$L[[i]] <- i
+
+After assignment of Sys.time():
+
+> E$L
+[[1]]
+[[1]][[1]]
+[1] 1
+
+[[1]]$T1A1
+[1] "2022-12-27 22:40:02 IST"
+
+regrets for not sharing this ......Can you reproduce it now?
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Sarah Goslee <sarah.goslee at gmail.com>
+Sent: Tuesday, December 27, 2022 11:20 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] error in exists.....
+
+Hi,
+
+I can't create the desired object using the code you provided, but if
+I create it in two steps so that E$L[[i]]$T1A1 does exist, exist()
+returns TRUE.
+
+E <- new.env()
+E$L <- list()
+i <- 1
+E$L[[i]]$T1A1 <- Sys.time()
+
+# returns: Error in `*tmp*`[[i]] : subscript out of bounds
+
+E$L[[i]] <- list()
+E$L[[i]]$T1A1 <- Sys.time()
+
+
+exists("T1A1", where = E$L[[i]])
+# returns: [1] TRUE
+
+
+> str(E$L)
+List of 1
+ $ :List of 1
+  ..$ T1A1: POSIXct[1:1], format: "2022-12-27 12:47:26"
+
+Sarah
+
+On Tue, Dec 27, 2022 at 12:36 PM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>
+> Dear members,
+>                              I have the following code:
+> >  E <- new.env()
+> >  E$L <- list()
+> >  i <- 1
+> >   E$L[[i]]$T1A1 <- Sys.time()
+> > exists("T1A1", where = E$L[[i]])
+> Error in list2env(list(1, T1A1 = 1672161002.38743), NULL, <environment>) :
+>   attempt to use zero-length variable name
+>
+> I want the output of the exists() function to be TRUE. In any case:
+>
+> > E$L[[1]]$T1A1
+> [1] "2022-12-27 22:40:02 IST"
+>
+> Please help me solve this conundrum....
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+--
+Sarah Goslee (she/her)
+http://www.numberwright.com
+
+	[[alternative HTML version deleted]]
+
+
+From 538280 @end|ng |rom gm@||@com  Tue Dec 27 19:07:18 2022
+From: 538280 @end|ng |rom gm@||@com (Greg Snow)
+Date: Tue, 27 Dec 2022 11:07:18 -0700
+Subject: [R] error in exists.....
+In-Reply-To: <PU4P216MB15680590FF577F4927C5690CC8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB15680590FF577F4927C5690CC8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <CAFEqCdwYqAXDrNBm4ErKv0iQACRJ1m0s9zeqzNY54COgsgqSVQ@mail.gmail.com>
+
+You might try `hasName` instead of `exists` since `exists` is designed
+for environments and `hasName` for objects (like lists).  Note that
+the order of the arguments is switched between the 2 functions.
+This does the same thing as Andrew Simmons' answer, but is a little bit shorter.
+
+On Tue, Dec 27, 2022 at 10:36 AM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>
+> Dear members,
+>                              I have the following code:
+> >  E <- new.env()
+> >  E$L <- list()
+> >  i <- 1
+> >   E$L[[i]]$T1A1 <- Sys.time()
+> > exists("T1A1", where = E$L[[i]])
+> Error in list2env(list(1, T1A1 = 1672161002.38743), NULL, <environment>) :
+>   attempt to use zero-length variable name
+>
+> I want the output of the exists() function to be TRUE. In any case:
+>
+> > E$L[[1]]$T1A1
+> [1] "2022-12-27 22:40:02 IST"
+>
+> Please help me solve this conundrum....
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Gregory (Greg) L. Snow Ph.D.
+538280 at gmail.com
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue Dec 27 19:09:48 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 27 Dec 2022 10:09:48 -0800
+Subject: [R] error in exists.....
+In-Reply-To: <PU4P216MB1568C6B561D6436E387BA883C8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB15680590FF577F4927C5690CC8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAM_vjunG=FmBLEXcwWT=i1FZL61r2mpEa9wzU6y+C-60D5pobA@mail.gmail.com>
+ <PU4P216MB1568C6B561D6436E387BA883C8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <CAGxFJbTtAtYjR3b96XKji6h+cy07M+uhQ4yo-ZJcFhvw78WESg@mail.gmail.com>
+
+You are confused about the list hierarchy. Perhaps this will explain:
+> i <- 1
+>  E <- new.env()
+>   E$L <- list()  ## L is an empty list in E
+>   i <- 1
+>    E$L[[i]]$T1A1 <- Sys.time()
+Error in `*tmp*`[[i]] : subscript out of bounds
+## L is empty, so L[[1]] does not exist; is not a list;
+## cannot have a value assigned to a component
+## The following works:
+## Create an empty list as a sublist of L
+>  E$L[[1]] <- list()
+## Now create and assign to a component of the empty list
+>  E$L[[i]]$T1A1 <- Sys.time()
+> E$L ## a list
+[[1]]  ## whose first component is a list
+[[1]]$T1A1 ## T1A1 named component of L[[1]]
+[1] "2022-12-27 10:00:10 PST"
+
+ergo, no conundra... (assuming I've understood you correctly)
+
+Cheers,
+Bert
+
+On Tue, Dec 27, 2022 at 9:57 AM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>
+> Dear Sarah,
+>                      I had this also before the assignment of Sys.time():
+>
+> >     E$L[[i]] <- i
+>
+> After assignment of Sys.time():
+>
+> > E$L
+> [[1]]
+> [[1]][[1]]
+> [1] 1
+>
+> [[1]]$T1A1
+> [1] "2022-12-27 22:40:02 IST"
+>
+> regrets for not sharing this ......Can you reproduce it now?
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+> ________________________________
+> From: Sarah Goslee <sarah.goslee at gmail.com>
+> Sent: Tuesday, December 27, 2022 11:20 PM
+> To: akshay kulkarni <akshay_e4 at hotmail.com>
+> Cc: R help Mailing list <r-help at r-project.org>
+> Subject: Re: [R] error in exists.....
+>
+> Hi,
+>
+> I can't create the desired object using the code you provided, but if
+> I create it in two steps so that E$L[[i]]$T1A1 does exist, exist()
+> returns TRUE.
+>
+> E <- new.env()
+> E$L <- list()
+> i <- 1
+> E$L[[i]]$T1A1 <- Sys.time()
+>
+> # returns: Error in `*tmp*`[[i]] : subscript out of bounds
+>
+> E$L[[i]] <- list()
+> E$L[[i]]$T1A1 <- Sys.time()
+>
+>
+> exists("T1A1", where = E$L[[i]])
+> # returns: [1] TRUE
+>
+>
+> > str(E$L)
+> List of 1
+>  $ :List of 1
+>   ..$ T1A1: POSIXct[1:1], format: "2022-12-27 12:47:26"
+>
+> Sarah
+>
+> On Tue, Dec 27, 2022 at 12:36 PM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+> >
+> > Dear members,
+> >                              I have the following code:
+> > >  E <- new.env()
+> > >  E$L <- list()
+> > >  i <- 1
+> > >   E$L[[i]]$T1A1 <- Sys.time()
+> > > exists("T1A1", where = E$L[[i]])
+> > Error in list2env(list(1, T1A1 = 1672161002.38743), NULL, <environment>) :
+> >   attempt to use zero-length variable name
+> >
+> > I want the output of the exists() function to be TRUE. In any case:
+> >
+> > > E$L[[1]]$T1A1
+> > [1] "2022-12-27 22:40:02 IST"
+> >
+> > Please help me solve this conundrum....
+> >
+> > Thanking you,
+> > Yours sincerely,
+> > AKSHAY M KULKARNI
+> >
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+>
+>
+> --
+> Sarah Goslee (she/her)
+> http://www.numberwright.com
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Tue Dec 27 19:22:09 2022
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Tue, 27 Dec 2022 18:22:09 +0000
+Subject: [R] error in exists.....
+In-Reply-To: <CAGxFJbTtAtYjR3b96XKji6h+cy07M+uhQ4yo-ZJcFhvw78WESg@mail.gmail.com>
+References: <PU4P216MB15680590FF577F4927C5690CC8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAM_vjunG=FmBLEXcwWT=i1FZL61r2mpEa9wzU6y+C-60D5pobA@mail.gmail.com>
+ <PU4P216MB1568C6B561D6436E387BA883C8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAGxFJbTtAtYjR3b96XKji6h+cy07M+uhQ4yo-ZJcFhvw78WESg@mail.gmail.com>
+Message-ID: <PU4P216MB1568E05BB848EBCCD28C7F51C8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Bert,
+                   Yeah, it's working....Sometimes (only sometimes) I feel that I am troubling this list with very simple questions the answer to which I always happen to find myself a little after...any solutions for that (you seem to be an omniscient person)!?
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Bert Gunter <bgunter.4567 at gmail.com>
+Sent: Tuesday, December 27, 2022 11:39 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: Sarah Goslee <sarah.goslee at gmail.com>; R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] error in exists.....
+
+You are confused about the list hierarchy. Perhaps this will explain:
+> i <- 1
+>  E <- new.env()
+>   E$L <- list()  ## L is an empty list in E
+>   i <- 1
+>    E$L[[i]]$T1A1 <- Sys.time()
+Error in `*tmp*`[[i]] : subscript out of bounds
+## L is empty, so L[[1]] does not exist; is not a list;
+## cannot have a value assigned to a component
+## The following works:
+## Create an empty list as a sublist of L
+>  E$L[[1]] <- list()
+## Now create and assign to a component of the empty list
+>  E$L[[i]]$T1A1 <- Sys.time()
+> E$L ## a list
+[[1]]  ## whose first component is a list
+[[1]]$T1A1 ## T1A1 named component of L[[1]]
+[1] "2022-12-27 10:00:10 PST"
+
+ergo, no conundra... (assuming I've understood you correctly)
+
+Cheers,
+Bert
+
+On Tue, Dec 27, 2022 at 9:57 AM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>
+> Dear Sarah,
+>                      I had this also before the assignment of Sys.time():
+>
+> >     E$L[[i]] <- i
+>
+> After assignment of Sys.time():
+>
+> > E$L
+> [[1]]
+> [[1]][[1]]
+> [1] 1
+>
+> [[1]]$T1A1
+> [1] "2022-12-27 22:40:02 IST"
+>
+> regrets for not sharing this ......Can you reproduce it now?
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+> ________________________________
+> From: Sarah Goslee <sarah.goslee at gmail.com>
+> Sent: Tuesday, December 27, 2022 11:20 PM
+> To: akshay kulkarni <akshay_e4 at hotmail.com>
+> Cc: R help Mailing list <r-help at r-project.org>
+> Subject: Re: [R] error in exists.....
+>
+> Hi,
+>
+> I can't create the desired object using the code you provided, but if
+> I create it in two steps so that E$L[[i]]$T1A1 does exist, exist()
+> returns TRUE.
+>
+> E <- new.env()
+> E$L <- list()
+> i <- 1
+> E$L[[i]]$T1A1 <- Sys.time()
+>
+> # returns: Error in `*tmp*`[[i]] : subscript out of bounds
+>
+> E$L[[i]] <- list()
+> E$L[[i]]$T1A1 <- Sys.time()
+>
+>
+> exists("T1A1", where = E$L[[i]])
+> # returns: [1] TRUE
+>
+>
+> > str(E$L)
+> List of 1
+>  $ :List of 1
+>   ..$ T1A1: POSIXct[1:1], format: "2022-12-27 12:47:26"
+>
+> Sarah
+>
+> On Tue, Dec 27, 2022 at 12:36 PM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+> >
+> > Dear members,
+> >                              I have the following code:
+> > >  E <- new.env()
+> > >  E$L <- list()
+> > >  i <- 1
+> > >   E$L[[i]]$T1A1 <- Sys.time()
+> > > exists("T1A1", where = E$L[[i]])
+> > Error in list2env(list(1, T1A1 = 1672161002.38743), NULL, <environment>) :
+> >   attempt to use zero-length variable name
+> >
+> > I want the output of the exists() function to be TRUE. In any case:
+> >
+> > > E$L[[1]]$T1A1
+> > [1] "2022-12-27 22:40:02 IST"
+> >
+> > Please help me solve this conundrum....
+> >
+> > Thanking you,
+> > Yours sincerely,
+> > AKSHAY M KULKARNI
+> >
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+>
+>
+> --
+> Sarah Goslee (she/her)
+> http://www.numberwright.com
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue Dec 27 19:58:56 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 27 Dec 2022 10:58:56 -0800
+Subject: [R] error in exists.....
+In-Reply-To: <PU4P216MB1568E05BB848EBCCD28C7F51C8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB15680590FF577F4927C5690CC8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAM_vjunG=FmBLEXcwWT=i1FZL61r2mpEa9wzU6y+C-60D5pobA@mail.gmail.com>
+ <PU4P216MB1568C6B561D6436E387BA883C8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAGxFJbTtAtYjR3b96XKji6h+cy07M+uhQ4yo-ZJcFhvw78WESg@mail.gmail.com>
+ <PU4P216MB1568E05BB848EBCCD28C7F51C8ED9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <CAGxFJbTG_BPB=SO-jiqe9Keru1XsOpiKTzAQ3SFhPMB0bFdCKA@mail.gmail.com>
+
+There is no substitute for experience/knowledge; nor any universally
+optimal strategy for debugging. But using the debugging tools that R
+provides -- ?debug, ?traceback, ?recover (e.g. in the form of
+options(error = utils::recover) ) -- should always be the first goto
+(or maybe the second after carefully re-reading relevant Help docs).
+However, the debugging tools would not have helped here afaics.
+
+-- Bert
+
+On Tue, Dec 27, 2022 at 10:22 AM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>
+> Dear Bert,
+>                    Yeah, it's working....Sometimes (only sometimes) I feel that I am troubling this list with very simple questions the answer to which I always happen to find myself a little after...any solutions for that (you seem to be an omniscient person)!?
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+> ________________________________
+> From: Bert Gunter <bgunter.4567 at gmail.com>
+> Sent: Tuesday, December 27, 2022 11:39 PM
+> To: akshay kulkarni <akshay_e4 at hotmail.com>
+> Cc: Sarah Goslee <sarah.goslee at gmail.com>; R help Mailing list <r-help at r-project.org>
+> Subject: Re: [R] error in exists.....
+>
+> You are confused about the list hierarchy. Perhaps this will explain:
+> > i <- 1
+> >  E <- new.env()
+> >   E$L <- list()  ## L is an empty list in E
+> >   i <- 1
+> >    E$L[[i]]$T1A1 <- Sys.time()
+> Error in `*tmp*`[[i]] : subscript out of bounds
+> ## L is empty, so L[[1]] does not exist; is not a list;
+> ## cannot have a value assigned to a component
+> ## The following works:
+> ## Create an empty list as a sublist of L
+> >  E$L[[1]] <- list()
+> ## Now create and assign to a component of the empty list
+> >  E$L[[i]]$T1A1 <- Sys.time()
+> > E$L ## a list
+> [[1]]  ## whose first component is a list
+> [[1]]$T1A1 ## T1A1 named component of L[[1]]
+> [1] "2022-12-27 10:00:10 PST"
+>
+> ergo, no conundra... (assuming I've understood you correctly)
+>
+> Cheers,
+> Bert
+>
+> On Tue, Dec 27, 2022 at 9:57 AM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+> >
+> > Dear Sarah,
+> >                      I had this also before the assignment of Sys.time():
+> >
+> > >     E$L[[i]] <- i
+> >
+> > After assignment of Sys.time():
+> >
+> > > E$L
+> > [[1]]
+> > [[1]][[1]]
+> > [1] 1
+> >
+> > [[1]]$T1A1
+> > [1] "2022-12-27 22:40:02 IST"
+> >
+> > regrets for not sharing this ......Can you reproduce it now?
+> >
+> > Thanking you,
+> > Yours sincerely,
+> > AKSHAY M KULKARNI
+> > ________________________________
+> > From: Sarah Goslee <sarah.goslee at gmail.com>
+> > Sent: Tuesday, December 27, 2022 11:20 PM
+> > To: akshay kulkarni <akshay_e4 at hotmail.com>
+> > Cc: R help Mailing list <r-help at r-project.org>
+> > Subject: Re: [R] error in exists.....
+> >
+> > Hi,
+> >
+> > I can't create the desired object using the code you provided, but if
+> > I create it in two steps so that E$L[[i]]$T1A1 does exist, exist()
+> > returns TRUE.
+> >
+> > E <- new.env()
+> > E$L <- list()
+> > i <- 1
+> > E$L[[i]]$T1A1 <- Sys.time()
+> >
+> > # returns: Error in `*tmp*`[[i]] : subscript out of bounds
+> >
+> > E$L[[i]] <- list()
+> > E$L[[i]]$T1A1 <- Sys.time()
+> >
+> >
+> > exists("T1A1", where = E$L[[i]])
+> > # returns: [1] TRUE
+> >
+> >
+> > > str(E$L)
+> > List of 1
+> >  $ :List of 1
+> >   ..$ T1A1: POSIXct[1:1], format: "2022-12-27 12:47:26"
+> >
+> > Sarah
+> >
+> > On Tue, Dec 27, 2022 at 12:36 PM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+> > >
+> > > Dear members,
+> > >                              I have the following code:
+> > > >  E <- new.env()
+> > > >  E$L <- list()
+> > > >  i <- 1
+> > > >   E$L[[i]]$T1A1 <- Sys.time()
+> > > > exists("T1A1", where = E$L[[i]])
+> > > Error in list2env(list(1, T1A1 = 1672161002.38743), NULL, <environment>) :
+> > >   attempt to use zero-length variable name
+> > >
+> > > I want the output of the exists() function to be TRUE. In any case:
+> > >
+> > > > E$L[[1]]$T1A1
+> > > [1] "2022-12-27 22:40:02 IST"
+> > >
+> > > Please help me solve this conundrum....
+> > >
+> > > Thanking you,
+> > > Yours sincerely,
+> > > AKSHAY M KULKARNI
+> > >
+> > >
+> > >         [[alternative HTML version deleted]]
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+> >
+> >
+> >
+> > --
+> > Sarah Goslee (she/her)
+> > http://www.numberwright.com
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+
+From therne@u @end|ng |rom m@yo@edu  Tue Dec 27 21:32:14 2022
+From: therne@u @end|ng |rom m@yo@edu (Therneau, Terry M., Ph.D.)
+Date: Tue, 27 Dec 2022 14:32:14 -0600
+Subject: [R] MCMC tools
+Message-ID: <d35801$j8uqfh@ironport10.mayo.edu>
+
+Is there a convenient package that computes standard covergence summaries for and MCMC 
+run???? This is something that I likely knew once and have now forgotton.
+
+ ?More detail:? I'm trying to understand the MCMC done by a particular model called 
+Subtype and Stage Inference (SuStaIn), suffice it to say that I am cautious of some 
+details.??? The model doesn't fit into the standard packages, so I've set it up and run my 
+own Metropolis chains.?? I don't want to expend energy also creating R-hat, ESS, and other 
+sensible summaries; even more so to find the inevitable programming mistakes I'll make if 
+I create them myself.
+
+ ?For the truly curious.?? I have measurments of tau depostion for 86 brain regions (43 * 
+left/right) of interest from 1925 scans. One hypothesis in dementia research is that tau 
+deposition occurs over time, in a pattern;? there is likely more than one pattern.??? The 
+algorithm is looking a permutations of the 86 regions, in search of a small collection 
+that best fits all the subjects.??? There is a general background of statistical work that 
+has shown that ranking is a hard problem, in the sense of having a small variance for 
+individual ranks.?? SuStaIn tends to give small variances.
+
+Terry T.
+
+-- 
+Terry M Therneau, PhD
+Department of Quantitative Health Sciences
+Mayo Clinic
+therneau at mayo.edu
+
+"TERR-ree THUR-noh"
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue Dec 27 21:38:05 2022
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 27 Dec 2022 12:38:05 -0800
+Subject: [R] extract from a list of lists
+In-Reply-To: <CAFEqCdxPDSqpr9LoXi_-LG4dyOCJRv14vqD35c3wJOTDEL4=wQ@mail.gmail.com>
+References: <d35801$j8t8qb@ironport10.mayo.edu>
+ <CAFEqCdxPDSqpr9LoXi_-LG4dyOCJRv14vqD35c3wJOTDEL4=wQ@mail.gmail.com>
+Message-ID: <CAGxFJbTJusWuKxv8UoW3Ruk1punMY=oeUoUU=iOfA7jcBWyRiw@mail.gmail.com>
+
+Well, I prefer Greg's approach, but if you want to avoid calls to $ or
+`[[` then you could do:
+
+unlist(fits)[ rep(names(fits[[1]]) == 'iter', length(fits))]
+
+
+Cheers,
+Bert
+
+On Tue, Dec 27, 2022 at 9:46 AM Greg Snow <538280 at gmail.com> wrote:
+>
+> Another option is the map family of functions in the purrr package
+> (yes, this depends on another package being loaded, which may affect
+> things if you are including this in your own package, creating a
+> dependency).
+>
+> In map and friends, if the "function" is a string or integer, then it
+> is taken as the piece to be extracted, so you should be able to do
+> something like:
+>
+> library(purrr)
+> map(fits, 'iter')
+> # or
+> map_int(fits, 'iter')
+> # or
+> map_dbl(fits, 'iter')
+>
+> which of the last 2 to use depends on how `iter` is stored.
+>
+> On Tue, Dec 27, 2022 at 10:16 AM Therneau, Terry M., Ph.D. via R-help
+> <r-help at r-project.org> wrote:
+> >
+> > I not uncommonly have the following paradym
+> >     fits <- lapply(argument, function)
+> >
+> > resulting in a list of function results.   Often, the outer call is to mclapply, and the
+> > function encodes some long calculation, e.g. multiple chains in an MCMC.
+> > Assume for illustration that each function returns a list with elements   beta, loglik,  iter.
+> >
+> > Then  sapply(fits,  function(x) x$iter)
+> > will give me a vector, with the number of iterations used by each instance.
+> >
+> > I've often been suspicious that there is some simple shorthand for the "grab all the
+> > elements named iter" that skips the explicit x$iter function.   Am I indeed overlooking
+> > something?    I don't expect a speed increase, just cleaner code.
+> >
+> > Terry T.
+> >
+> > --
+> > Terry M Therneau, PhD
+> > Department of Quantitative Health Sciences
+> > Mayo Clinic
+> > therneau at mayo.edu
+> >
+> > "TERR-ree THUR-noh"
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+>
+>
+> --
+> Gregory (Greg) L. Snow Ph.D.
+> 538280 at gmail.com
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From therne@u @end|ng |rom m@yo@edu  Tue Dec 27 22:10:07 2022
+From: therne@u @end|ng |rom m@yo@edu (Therneau, Terry M., Ph.D.)
+Date: Tue, 27 Dec 2022 15:10:07 -0600
+Subject: [R] extract from a list of lists
+In-Reply-To: <CAGxFJbTJusWuKxv8UoW3Ruk1punMY=oeUoUU=iOfA7jcBWyRiw@mail.gmail.com>
+References: <d35801$j8t8qb@ironport10.mayo.edu>
+ <CAFEqCdxPDSqpr9LoXi_-LG4dyOCJRv14vqD35c3wJOTDEL4=wQ@mail.gmail.com>
+ <CAGxFJbTJusWuKxv8UoW3Ruk1punMY=oeUoUU=iOfA7jcBWyRiw@mail.gmail.com>
+Message-ID: <d35801$j8v1f3@ironport10.mayo.edu>
+
+Thanks everyone for prodding my gray matter, which seems to be getting stiffer as I 
+approach 70 (< 90 days).
+
+ ?--? I'll continue to use the $ or [[ forms.?? That will suffice.
+
+--? I thought there might be a base R variant, e.g. something like? extract( list, 
+element-name); probably cross talk in my brain from the rstan library
+
+-- Gregg's note shows such a function in purr.? But I rather like having as few 
+dependencies as possible in a package, one usage is normally not enough, at least for 
+something this simple.
+
+Terry T.
+
+On 12/27/22 14:38, Bert Gunter wrote:
+> Well, I prefer Greg's approach, but if you want to avoid calls to $ or
+> `[[` then you could do:
+>
+> unlist(fits)[ rep(names(fits[[1]]) == 'iter', length(fits))]
+>
+>
+> Cheers,
+> Bert
+>
+> On Tue, Dec 27, 2022 at 9:46 AM Greg Snow<538280 at gmail.com>  wrote:
+>> Another option is the map family of functions in the purrr package
+>> (yes, this depends on another package being loaded, which may affect
+>> things if you are including this in your own package, creating a
+>> dependency).
+>>
+>> In map and friends, if the "function" is a string or integer, then it
+>> is taken as the piece to be extracted, so you should be able to do
+>> something like:
+>>
+>> library(purrr)
+>> map(fits, 'iter')
+>> # or
+>> map_int(fits, 'iter')
+>> # or
+>> map_dbl(fits, 'iter')
+>>
+>> which of the last 2 to use depends on how `iter` is stored.
+>>
+>> On Tue, Dec 27, 2022 at 10:16 AM Therneau, Terry M., Ph.D. via R-help
+>> <r-help at r-project.org>  wrote:
+>>> I not uncommonly have the following paradym
+>>>      fits <- lapply(argument, function)
+>>>
+>>> resulting in a list of function results.   Often, the outer call is to mclapply, and the
+>>> function encodes some long calculation, e.g. multiple chains in an MCMC.
+>>> Assume for illustration that each function returns a list with elements   beta, loglik,  iter.
+>>>
+>>> Then  sapply(fits,  function(x) x$iter)
+>>> will give me a vector, with the number of iterations used by each instance.
+>>>
+>>> I've often been suspicious that there is some simple shorthand for the "grab all the
+>>> elements named iter" that skips the explicit x$iter function.   Am I indeed overlooking
+>>> something?    I don't expect a speed increase, just cleaner code.
+>>>
+>>> Terry T.
+>>>
+>>> --
+>>> Terry M Therneau, PhD
+>>> Department of Quantitative Health Sciences
+>>> Mayo Clinic
+>>> therneau at mayo.edu
+>>>
+>>> "TERR-ree THUR-noh"
+>>>
+>>>          [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org  mailing list -- To UNSUBSCRIBE and more, see
+>>> https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Ctherneau%40mayo.edu%7Cebbda887f4b94223376608dae84a58ae%7Ca25fff9c3f634fb29a8ad9bdd0321f9a%7C0%7C0%7C638077703266213025%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=wksTglkeQKmMSWWKHLsUijH5A25cH%2FuwxSNBOeNr9Sg%3D&reserved=0
+>>> PLEASE do read the posting guidehttps://nam12.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7Ctherneau%40mayo.edu%7Cebbda887f4b94223376608dae84a58ae%7Ca25fff9c3f634fb29a8ad9bdd0321f9a%7C0%7C0%7C638077703266213025%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=9GASHCZVgnzNqAUrWimS7UphiqjYLOf50M1qWv6jeN0%3D&reserved=0
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>>
+>> --
+>> Gregory (Greg) L. Snow Ph.D.
+>> 538280 at gmail.com
+>>
+>> ______________________________________________
+>> R-help at r-project.org  mailing list -- To UNSUBSCRIBE and more, see
+>> https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Ctherneau%40mayo.edu%7Cebbda887f4b94223376608dae84a58ae%7Ca25fff9c3f634fb29a8ad9bdd0321f9a%7C0%7C0%7C638077703266213025%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=wksTglkeQKmMSWWKHLsUijH5A25cH%2FuwxSNBOeNr9Sg%3D&reserved=0
+>> PLEASE do read the posting guidehttps://nam12.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7Ctherneau%40mayo.edu%7Cebbda887f4b94223376608dae84a58ae%7Ca25fff9c3f634fb29a8ad9bdd0321f9a%7C0%7C0%7C638077703266213025%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=9GASHCZVgnzNqAUrWimS7UphiqjYLOf50M1qWv6jeN0%3D&reserved=0
+>> and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Tue Dec 27 23:27:03 2022
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Tue, 27 Dec 2022 14:27:03 -0800
+Subject: [R] extract from a list of lists
+In-Reply-To: <d35801$j8v1f3@ironport10.mayo.edu>
+References: <d35801$j8t8qb@ironport10.mayo.edu>
+ <CAFEqCdxPDSqpr9LoXi_-LG4dyOCJRv14vqD35c3wJOTDEL4=wQ@mail.gmail.com>
+ <CAGxFJbTJusWuKxv8UoW3Ruk1punMY=oeUoUU=iOfA7jcBWyRiw@mail.gmail.com>
+ <d35801$j8v1f3@ironport10.mayo.edu>
+Message-ID: <CAHqSRuTWe3_km19FiWmrypgz7Wnr=R058Ou3uB5ETKeSErakDw@mail.gmail.com>
+
+I find your original sapply(List, function(element)element$name) easy to
+understand.  However replacing sapply with vapply makes for more robust
+code.  vapply requires you to supply the expected mode (type) and length of
+element$name and if any of the elements don't comply with that, vapply
+gives an error (sapply returns a list in this case).  Also, for lists of
+length zero, it returns a 0-long result of the mode you specified (instead
+of sapply's list()).  In the usual happy case it returns what sapply does.
+ It happens to be a bit faster than sapply and uses less memory, but I
+think the checks that it does make it worth using instead of sapply.
+
+E.g.,
+> L <- list(list(A=1, B=c(TRUE,FALSE)), list(A=2, B=c(FALSE,FALSE)),
+list(A=3))
+> vapply(L, function(el)el$A, FUN.VALUE=numeric(1))
+[1] 1 2 3
+> vapply(L, function(el)el$B, FUN.VALUE=logical(2))
+Error in vapply(L, function(el) el$B, FUN.VALUE = logical(2)) :
+  values must be length 2,
+ but FUN(X[[3]]) result is length 0
+> vapply(L, function(el){ z <- el$B; if (is.null(z)) rep(NA,2) else z},
+FUN.VALUE=logical(2))
+      [,1]  [,2] [,3]
+[1,]  TRUE FALSE   NA
+[2,] FALSE FALSE   NA
+
+-Bill
+
+On Tue, Dec 27, 2022 at 1:10 PM Therneau, Terry M., Ph.D. via R-help <
+r-help at r-project.org> wrote:
+
+> Thanks everyone for prodding my gray matter, which seems to be getting
+> stiffer as I
+> approach 70 (< 90 days).
+>
+>   --  I'll continue to use the $ or [[ forms.   That will suffice.
+>
+> --  I thought there might be a base R variant, e.g. something like
+> extract( list,
+> element-name); probably cross talk in my brain from the rstan library
+>
+> -- Gregg's note shows such a function in purr.  But I rather like having
+> as few
+> dependencies as possible in a package, one usage is normally not enough,
+> at least for
+> something this simple.
+>
+> Terry T.
+>
+> On 12/27/22 14:38, Bert Gunter wrote:
+> > Well, I prefer Greg's approach, but if you want to avoid calls to $ or
+> > `[[` then you could do:
+> >
+> > unlist(fits)[ rep(names(fits[[1]]) == 'iter', length(fits))]
+> >
+> >
+> > Cheers,
+> > Bert
+> >
+> > On Tue, Dec 27, 2022 at 9:46 AM Greg Snow<538280 at gmail.com>  wrote:
+> >> Another option is the map family of functions in the purrr package
+> >> (yes, this depends on another package being loaded, which may affect
+> >> things if you are including this in your own package, creating a
+> >> dependency).
+> >>
+> >> In map and friends, if the "function" is a string or integer, then it
+> >> is taken as the piece to be extracted, so you should be able to do
+> >> something like:
+> >>
+> >> library(purrr)
+> >> map(fits, 'iter')
+> >> # or
+> >> map_int(fits, 'iter')
+> >> # or
+> >> map_dbl(fits, 'iter')
+> >>
+> >> which of the last 2 to use depends on how `iter` is stored.
+> >>
+> >> On Tue, Dec 27, 2022 at 10:16 AM Therneau, Terry M., Ph.D. via R-help
+> >> <r-help at r-project.org>  wrote:
+> >>> I not uncommonly have the following paradym
+> >>>      fits <- lapply(argument, function)
+> >>>
+> >>> resulting in a list of function results.   Often, the outer call is to
+> mclapply, and the
+> >>> function encodes some long calculation, e.g. multiple chains in an
+> MCMC.
+> >>> Assume for illustration that each function returns a list with
+> elements   beta, loglik,  iter.
+> >>>
+> >>> Then  sapply(fits,  function(x) x$iter)
+> >>> will give me a vector, with the number of iterations used by each
+> instance.
+> >>>
+> >>> I've often been suspicious that there is some simple shorthand for the
+> "grab all the
+> >>> elements named iter" that skips the explicit x$iter function.   Am I
+> indeed overlooking
+> >>> something?    I don't expect a speed increase, just cleaner code.
+> >>>
+> >>> Terry T.
+> >>>
+> >>> --
+> >>> Terry M Therneau, PhD
+> >>> Department of Quantitative Health Sciences
+> >>> Mayo Clinic
+> >>> therneau at mayo.edu
+> >>>
+> >>> "TERR-ree THUR-noh"
+> >>>
+> >>>          [[alternative HTML version deleted]]
+> >>>
+> >>> ______________________________________________
+> >>> R-help at r-project.org  mailing list -- To UNSUBSCRIBE and more, see
+> >>>
+> https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Ctherneau%40mayo.edu%7Cebbda887f4b94223376608dae84a58ae%7Ca25fff9c3f634fb29a8ad9bdd0321f9a%7C0%7C0%7C638077703266213025%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=wksTglkeQKmMSWWKHLsUijH5A25cH%2FuwxSNBOeNr9Sg%3D&reserved=0
+> >>> PLEASE do read the posting guidehttps://
+> nam12.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7Ctherneau%40mayo.edu%7Cebbda887f4b94223376608dae84a58ae%7Ca25fff9c3f634fb29a8ad9bdd0321f9a%7C0%7C0%7C638077703266213025%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=9GASHCZVgnzNqAUrWimS7UphiqjYLOf50M1qWv6jeN0%3D&reserved=0
+> >>> and provide commented, minimal, self-contained, reproducible code.
+> >>
+> >>
+> >> --
+> >> Gregory (Greg) L. Snow Ph.D.
+> >> 538280 at gmail.com
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org  mailing list -- To UNSUBSCRIBE and more, see
+> >>
+> https://nam12.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Ctherneau%40mayo.edu%7Cebbda887f4b94223376608dae84a58ae%7Ca25fff9c3f634fb29a8ad9bdd0321f9a%7C0%7C0%7C638077703266213025%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=wksTglkeQKmMSWWKHLsUijH5A25cH%2FuwxSNBOeNr9Sg%3D&reserved=0
+> >> PLEASE do read the posting guidehttps://
+> nam12.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7Ctherneau%40mayo.edu%7Cebbda887f4b94223376608dae84a58ae%7Ca25fff9c3f634fb29a8ad9bdd0321f9a%7C0%7C0%7C638077703266213025%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=9GASHCZVgnzNqAUrWimS7UphiqjYLOf50M1qWv6jeN0%3D&reserved=0
+> >> and provide commented, minimal, self-contained, reproducible code.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
