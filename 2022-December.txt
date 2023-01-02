@@ -16447,3 +16447,284 @@ Sincerely,
 Leonard
 
 
+From m|ke|@ch @end|ng |rom @@@@upenn@edu  Sat Dec 31 07:50:50 2022
+From: m|ke|@ch @end|ng |rom @@@@upenn@edu (Michael Lachanski)
+Date: Fri, 30 Dec 2022 22:50:50 -0800
+Subject: [R] Functional Programming Problem Using purr and R's data.table
+ shift function
+Message-ID: <CAJKr4LMDHwqpJ5_pOswEfdKKQrU+wx+kcwHWq2T0pAjLcebDFA@mail.gmail.com>
+
+Hello,
+
+I am trying to make a habit of "functionalizing" all of my code as
+recommended by Hadley Wickham. I have found it surprisingly difficult to do
+so because several intermediate features from data.table break or give
+unexpected results using purrr and its data.table adaptation, tidytable.
+Here is the a minimal working example of what has stumped me most recently:
+
+===
+
+library(data.table); library(tidytable)
+
+minimal_failing_function <- function(A){
+  DT <- data.table(A)
+  DT[ , A:= shift(A, fill = NA, type = "lag", n = 1)] %>% `[`
+  return(DT)}
+# works
+minimal_failing_function(c(1,2))
+# fails
+tidytable::pmap_dfr(.l = list(c(1,2)),
+                    .f = minimal_failing_function)
+
+
+===
+These should ideally give the same output, but do not. This also fails
+using purrr::pmap_dfr rather than tidytable. I am using R 4.2.2 and I am on
+Mac OS Ventura 13.1.
+
+Thank you for any help you can provide or general guidance.
+
+
+==
+Michael Lachanski
+PhD Student in Demography and Sociology
+MA Candidate in Statistics
+University of Pennsylvania
+mikelach at sas.upenn.edu
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sat Dec 31 13:39:44 2022
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sat, 31 Dec 2022 12:39:44 +0000
+Subject: [R] 
+ Functional Programming Problem Using purr and R's data.table
+ shift function
+In-Reply-To: <CAJKr4LMDHwqpJ5_pOswEfdKKQrU+wx+kcwHWq2T0pAjLcebDFA@mail.gmail.com>
+References: <CAJKr4LMDHwqpJ5_pOswEfdKKQrU+wx+kcwHWq2T0pAjLcebDFA@mail.gmail.com>
+Message-ID: <2374d4d9-f2f2-1736-6814-bc606c41d4ad@sapo.pt>
+
+?s 06:50 de 31/12/2022, Michael Lachanski escreveu:
+> Hello,
+> 
+> I am trying to make a habit of "functionalizing" all of my code as
+> recommended by Hadley Wickham. I have found it surprisingly difficult to do
+> so because several intermediate features from data.table break or give
+> unexpected results using purrr and its data.table adaptation, tidytable.
+> Here is the a minimal working example of what has stumped me most recently:
+> 
+> ===
+> 
+> library(data.table); library(tidytable)
+> 
+> minimal_failing_function <- function(A){
+>    DT <- data.table(A)
+>    DT[ , A:= shift(A, fill = NA, type = "lag", n = 1)] %>% `[`
+>    return(DT)}
+> # works
+> minimal_failing_function(c(1,2))
+> # fails
+> tidytable::pmap_dfr(.l = list(c(1,2)),
+>                      .f = minimal_failing_function)
+> 
+> 
+> ===
+> These should ideally give the same output, but do not. This also fails
+> using purrr::pmap_dfr rather than tidytable. I am using R 4.2.2 and I am on
+> Mac OS Ventura 13.1.
+> 
+> Thank you for any help you can provide or general guidance.
+> 
+> 
+> ==
+> Michael Lachanski
+> PhD Student in Demography and Sociology
+> MA Candidate in Statistics
+> University of Pennsylvania
+> mikelach at sas.upenn.edu
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Use map_dfr instead of pmap_dfr.
+
+
+library(data.table)
+library(tidytable)
+
+minimal_failing_function <- function(A) {
+   DT <- data.table(A)
+   DT[ , A:= shift(A, fill = NA, type = "lag", n = 1)] %>% `[`
+   return(DT)
+}
+
+# works
+tidytable::map_dfr(.x = list(c(1,2)),
+                    .f = minimal_failing_function)
+#> # A tidytable: 2 ? 1
+#>       A
+#>   <dbl>
+#> 1    NA
+#> 2     1
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+From toth@dene@ @end|ng |rom kogentum@hu  Sat Dec 31 15:22:29 2022
+From: toth@dene@ @end|ng |rom kogentum@hu (=?UTF-8?B?RMOpbmVzIFTDs3Ro?=)
+Date: Sat, 31 Dec 2022 15:22:29 +0100
+Subject: [R] 
+ Functional Programming Problem Using purr and R's data.table
+ shift function
+In-Reply-To: <2374d4d9-f2f2-1736-6814-bc606c41d4ad@sapo.pt>
+References: <CAJKr4LMDHwqpJ5_pOswEfdKKQrU+wx+kcwHWq2T0pAjLcebDFA@mail.gmail.com>
+ <2374d4d9-f2f2-1736-6814-bc606c41d4ad@sapo.pt>
+Message-ID: <a8139e35-06d6-36fa-a732-c097f7c03f19@kogentum.hu>
+
+Hi Michael,
+
+Note that you have to be very careful when using by-reference operations 
+in data.table (see `?data.table::set`), especially in a functional 
+programming approach. In your function, you avoid this problem by 
+calling `data.table(A)` which makes a copy of A even if it is already a 
+data.table. However, for large data.table-s, copying can be a very 
+expensive operation (esp. in terms of RAM usage), which can be totally 
+eliminated by using data.tables in the data.table-way (e.g., joining, 
+grouping, and aggregating in the same step by performing these 
+operations within `[`, see `?data.table`).
+
+So instead of blindly functionalizing all your code, try to be 
+pragmatic. Functional programming is not about using pure functions in 
+*every* part of your code base, because it is unfeasible in 99.9% of 
+real-world problems. Even Haskell has `IO` and `do`; the point is that 
+the  imperative and functional parts of the code are clearly separated 
+and imperative components are (tried to be) as top-level as possible.
+
+So when using data.table, a good strategy is to use pure functions for 
+performing within-data.table operations, e.g., `DT[, lapply(.SD, mean), 
+.SDcols = is.numeric]`, and when these operations alter `DT` by 
+reference, invoke the chains of these operations in "pure" wrappers - 
+e.g., calling `A <- copy(A)` on the top and then modifying `A` directly.
+
+Cheers,
+Denes
+
+Side note: You do not need to use `DT[ , A:= shift(A, fill = NA, type = 
+"lag", n = 1)] %>% `[`(return(DT))`. `[.data.table` returns the result 
+(the modified DT) invisibly. If you want to let auto-print work, you can 
+just use `DT[ , A:= shift(A, fill = NA, type = "lag", n = 1)][]`.
+
+Note that this also means you usually you do not need to use magrittr's 
+or base-R pipe when transforming data.table-s. You can do this instead:
+```
+DT[
+   ## filter rows where 'x' column equals "a"
+   x == "a"
+][
+   ## calculate the mean of `z` for each gender and assign it to `y`
+   , y := mean(z), by = "gender"
+][
+   ## do whatever you want
+   ...
+]
+```
+
+
+On 12/31/22 13:39, Rui Barradas wrote:
+> ?s 06:50 de 31/12/2022, Michael Lachanski escreveu:
+>> Hello,
+>>
+>> I am trying to make a habit of "functionalizing" all of my code as
+>> recommended by Hadley Wickham. I have found it surprisingly difficult 
+>> to do
+>> so because several intermediate features from data.table break or give
+>> unexpected results using purrr and its data.table adaptation, tidytable.
+>> Here is the a minimal working example of what has stumped me most 
+>> recently:
+>>
+>> ===
+>>
+>> library(data.table); library(tidytable)
+>>
+>> minimal_failing_function <- function(A){
+>> ?? DT <- data.table(A)
+>> ?? DT[ , A:= shift(A, fill = NA, type = "lag", n = 1)] %>% `[`
+>> ?? return(DT)}
+>> # works
+>> minimal_failing_function(c(1,2))
+>> # fails
+>> tidytable::pmap_dfr(.l = list(c(1,2)),
+>> ???????????????????? .f = minimal_failing_function)
+>>
+>>
+>> ===
+>> These should ideally give the same output, but do not. This also fails
+>> using purrr::pmap_dfr rather than tidytable. I am using R 4.2.2 and I 
+>> am on
+>> Mac OS Ventura 13.1.
+>>
+>> Thank you for any help you can provide or general guidance.
+>>
+>>
+>> ==
+>> Michael Lachanski
+>> PhD Student in Demography and Sociology
+>> MA Candidate in Statistics
+>> University of Pennsylvania
+>> mikelach at sas.upenn.edu
+>>
+>> ????[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+> 
+> Use map_dfr instead of pmap_dfr.
+> 
+> 
+> library(data.table)
+> library(tidytable)
+> 
+> minimal_failing_function <- function(A) {
+>  ? DT <- data.table(A)
+>  ? DT[ , A:= shift(A, fill = NA, type = "lag", n = 1)] %>% `[`
+>  ? return(DT)
+> }
+> 
+> # works
+> tidytable::map_dfr(.x = list(c(1,2)),
+>  ?????????????????? .f = minimal_failing_function)
+> #> # A tidytable: 2 ? 1
+> #>?????? A
+> #>?? <dbl>
+> #> 1??? NA
+> #> 2???? 1
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
