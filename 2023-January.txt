@@ -996,3 +996,2709 @@ Kingston ON Canada
 	[[alternative HTML version deleted]]
 
 
+From m|ke|@ch @end|ng |rom @@@@upenn@edu  Mon Jan  2 18:59:21 2023
+From: m|ke|@ch @end|ng |rom @@@@upenn@edu (Michael Lachanski)
+Date: Mon, 2 Jan 2023 12:59:21 -0500
+Subject: [R] 
+ Functional Programming Problem Using purr and R's data.table
+ shift function
+In-Reply-To: <a8139e35-06d6-36fa-a732-c097f7c03f19@kogentum.hu>
+References: <CAJKr4LMDHwqpJ5_pOswEfdKKQrU+wx+kcwHWq2T0pAjLcebDFA@mail.gmail.com>
+ <2374d4d9-f2f2-1736-6814-bc606c41d4ad@sapo.pt>
+ <a8139e35-06d6-36fa-a732-c097f7c03f19@kogentum.hu>
+Message-ID: <CAJKr4LP6XA0h+Pz2cfNVcQREeT1yS2LOQ6iPpM94BKZFqZGmow@mail.gmail.com>
+
+D?nes, thank you for the guidance - which is well-taken.
+
+Your side note raises an interesting question: I find the piping %>%
+operator readable. Is there any downside to it? Or is the side note meant
+to tell me to drop the last: "%>% `[`"?
+
+Thank you,
+
+
+==
+Michael Lachanski
+PhD Student in Demography and Sociology
+MA Candidate in Statistics
+University of Pennsylvania
+mikelach at sas.upenn.edu
+
+
+On Sat, Dec 31, 2022 at 9:22 AM D?nes T?th <toth.denes at kogentum.hu> wrote:
+
+> Hi Michael,
+>
+> Note that you have to be very careful when using by-reference operations
+> in data.table (see `?data.table::set`), especially in a functional
+> programming approach. In your function, you avoid this problem by
+> calling `data.table(A)` which makes a copy of A even if it is already a
+> data.table. However, for large data.table-s, copying can be a very
+> expensive operation (esp. in terms of RAM usage), which can be totally
+> eliminated by using data.tables in the data.table-way (e.g., joining,
+> grouping, and aggregating in the same step by performing these
+> operations within `[`, see `?data.table`).
+>
+> So instead of blindly functionalizing all your code, try to be
+> pragmatic. Functional programming is not about using pure functions in
+> *every* part of your code base, because it is unfeasible in 99.9% of
+> real-world problems. Even Haskell has `IO` and `do`; the point is that
+> the  imperative and functional parts of the code are clearly separated
+> and imperative components are (tried to be) as top-level as possible.
+>
+> So when using data.table, a good strategy is to use pure functions for
+> performing within-data.table operations, e.g., `DT[, lapply(.SD, mean),
+> .SDcols = is.numeric]`, and when these operations alter `DT` by
+> reference, invoke the chains of these operations in "pure" wrappers -
+> e.g., calling `A <- copy(A)` on the top and then modifying `A` directly.
+>
+> Cheers,
+> Denes
+>
+> Side note: You do not need to use `DT[ , A:= shift(A, fill = NA, type =
+> "lag", n = 1)] %>% `[`(return(DT))`. `[.data.table` returns the result
+> (the modified DT) invisibly. If you want to let auto-print work, you can
+> just use `DT[ , A:= shift(A, fill = NA, type = "lag", n = 1)][]`.
+>
+> Note that this also means you usually you do not need to use magrittr's
+> or base-R pipe when transforming data.table-s. You can do this instead:
+> ```
+> DT[
+>    ## filter rows where 'x' column equals "a"
+>    x == "a"
+> ][
+>    ## calculate the mean of `z` for each gender and assign it to `y`
+>    , y := mean(z), by = "gender"
+> ][
+>    ## do whatever you want
+>    ...
+> ]
+> ```
+>
+>
+> On 12/31/22 13:39, Rui Barradas wrote:
+> > ?s 06:50 de 31/12/2022, Michael Lachanski escreveu:
+> >> Hello,
+> >>
+> >> I am trying to make a habit of "functionalizing" all of my code as
+> >> recommended by Hadley Wickham. I have found it surprisingly difficult
+> >> to do
+> >> so because several intermediate features from data.table break or give
+> >> unexpected results using purrr and its data.table adaptation, tidytable.
+> >> Here is the a minimal working example of what has stumped me most
+> >> recently:
+> >>
+> >> ===
+> >>
+> >> library(data.table); library(tidytable)
+> >>
+> >> minimal_failing_function <- function(A){
+> >>    DT <- data.table(A)
+> >>    DT[ , A:= shift(A, fill = NA, type = "lag", n = 1)] %>% `[`
+> >>    return(DT)}
+> >> # works
+> >> minimal_failing_function(c(1,2))
+> >> # fails
+> >> tidytable::pmap_dfr(.l = list(c(1,2)),
+> >>                      .f = minimal_failing_function)
+> >>
+> >>
+> >> ===
+> >> These should ideally give the same output, but do not. This also fails
+> >> using purrr::pmap_dfr rather than tidytable. I am using R 4.2.2 and I
+> >> am on
+> >> Mac OS Ventura 13.1.
+> >>
+> >> Thank you for any help you can provide or general guidance.
+> >>
+> >>
+> >> ==
+> >> Michael Lachanski
+> >> PhD Student in Demography and Sociology
+> >> MA Candidate in Statistics
+> >> University of Pennsylvania
+> >> mikelach at sas.upenn.edu
+> >>
+> >>     [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>
+> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!IBzWLUs!VdfzdJ15GLScUok_hiqL3DvTJ20Ce8JMBkQ1NosBfyOvu68iuQkh9nsPZuUBbB9BtrsZBh86OjGyyj3lAB2g_xXCvB6t$
+> >> PLEASE do read the posting guide
+> >>
+> https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!IBzWLUs!VdfzdJ15GLScUok_hiqL3DvTJ20Ce8JMBkQ1NosBfyOvu68iuQkh9nsPZuUBbB9BtrsZBh86OjGyyj3lAB2g_3rS2yQK$
+> >> and provide commented, minimal, self-contained, reproducible code.
+> > Hello,
+> >
+> > Use map_dfr instead of pmap_dfr.
+> >
+> >
+> > library(data.table)
+> > library(tidytable)
+> >
+> > minimal_failing_function <- function(A) {
+> >    DT <- data.table(A)
+> >    DT[ , A:= shift(A, fill = NA, type = "lag", n = 1)] %>% `[`
+> >    return(DT)
+> > }
+> >
+> > # works
+> > tidytable::map_dfr(.x = list(c(1,2)),
+> >                     .f = minimal_failing_function)
+> > #> # A tidytable: 2 ? 1
+> > #>       A
+> > #>   <dbl>
+> > #> 1    NA
+> > #> 2     1
+> >
+> >
+> > Hope this helps,
+> >
+> > Rui Barradas
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >
+> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!IBzWLUs!VdfzdJ15GLScUok_hiqL3DvTJ20Ce8JMBkQ1NosBfyOvu68iuQkh9nsPZuUBbB9BtrsZBh86OjGyyj3lAB2g_xXCvB6t$
+> > PLEASE do read the posting guide
+> >
+> https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!IBzWLUs!VdfzdJ15GLScUok_hiqL3DvTJ20Ce8JMBkQ1NosBfyOvu68iuQkh9nsPZuUBbB9BtrsZBh86OjGyyj3lAB2g_3rS2yQK$
+> > and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Jan  3 11:20:50 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 3 Jan 2023 13:20:50 +0300
+Subject: [R] Stepmax in Neuralnet
+In-Reply-To: <CAEJRAFY2V_DhAuhAXuGXE8ZkmhK8tC+9C8yJjAAoqXP10pp=pw@mail.gmail.com>
+References: <CAEJRAFY2V_DhAuhAXuGXE8ZkmhK8tC+9C8yJjAAoqXP10pp=pw@mail.gmail.com>
+Message-ID: <20230103132050.14c53878@Tarkus>
+
+On Mon, 2 Jan 2023 17:50:09 +0100
+G?bor Malomsoki <gmalomsoki1980 at gmail.com> wrote:
+
+> if i set the stepmax parameter higher then i increase the performance
+> of the neuralnet?
+> Would be my prediction more accurate?
+
+Unfortunately, it's very hard to give a good answer to this question as
+stated. If the model is underfitted, giving it more iterations might
+result in performance increase. If the model is not underfitted, giving
+it more iterations may improve its training set performance while
+worsening its ability to predict non-training samples.
+
+Have you tried it yourself?
+
+-- 
+Best regards,
+Ivan
+
+
+From gm@|om@ok|1980 @end|ng |rom gm@||@com  Tue Jan  3 11:41:18 2023
+From: gm@|om@ok|1980 @end|ng |rom gm@||@com (=?UTF-8?Q?G=C3=A1bor_Malomsoki?=)
+Date: Tue, 3 Jan 2023 11:41:18 +0100
+Subject: [R] Stepmax in Neuralnet
+In-Reply-To: <20230103132050.14c53878@Tarkus>
+References: <CAEJRAFY2V_DhAuhAXuGXE8ZkmhK8tC+9C8yJjAAoqXP10pp=pw@mail.gmail.com>
+ <20230103132050.14c53878@Tarkus>
+Message-ID: <CAEJRAFb92UZEGXumcwQqRMq5N=LMFeMqm=Gy==zSq2K4A57Eww@mail.gmail.com>
+
+thanks,
+i have not tried yet, because the memory of my computer is too small, and i
+have to wait for the result ca 1 day.
+
+
+
+Am Di., 3. Jan. 2023 um 11:21 Uhr schrieb Ivan Krylov <krylov.r00t at gmail.com
+>:
+
+> On Mon, 2 Jan 2023 17:50:09 +0100
+> G?bor Malomsoki <gmalomsoki1980 at gmail.com> wrote:
+>
+> > if i set the stepmax parameter higher then i increase the performance
+> > of the neuralnet?
+> > Would be my prediction more accurate?
+>
+> Unfortunately, it's very hard to give a good answer to this question as
+> stated. If the model is underfitted, giving it more iterations might
+> result in performance increase. If the model is not underfitted, giving
+> it more iterations may improve its training set performance while
+> worsening its ability to predict non-training samples.
+>
+> Have you tried it yourself?
+>
+> --
+> Best regards,
+> Ivan
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From toth@dene@ @end|ng |rom kogentum@hu  Tue Jan  3 11:48:54 2023
+From: toth@dene@ @end|ng |rom kogentum@hu (=?UTF-8?B?RMOpbmVzIFTDs3Ro?=)
+Date: Tue, 3 Jan 2023 11:48:54 +0100
+Subject: [R] 
+ Functional Programming Problem Using purr and R's data.table
+ shift function
+In-Reply-To: <CAJKr4LP6XA0h+Pz2cfNVcQREeT1yS2LOQ6iPpM94BKZFqZGmow@mail.gmail.com>
+References: <CAJKr4LMDHwqpJ5_pOswEfdKKQrU+wx+kcwHWq2T0pAjLcebDFA@mail.gmail.com>
+ <2374d4d9-f2f2-1736-6814-bc606c41d4ad@sapo.pt>
+ <a8139e35-06d6-36fa-a732-c097f7c03f19@kogentum.hu>
+ <CAJKr4LP6XA0h+Pz2cfNVcQREeT1yS2LOQ6iPpM94BKZFqZGmow@mail.gmail.com>
+Message-ID: <b5bb833d-18c8-a2f8-eef9-ddb69bdf3bbc@kogentum.hu>
+
+Hi Michael,
+
+R returns the result of the last evaluated expression by default:
+```
+add_2 <- function(x) {
+   x + 2L
+}
+```
+
+is the same as and preferred over
+```
+add_2_return <- function(x) {
+   out <- x + 2L
+   return(out)
+}
+```
+
+In the idiomatic use of R, one uses explicit `return` when one wants to 
+break the control flow, e.g.:
+```
+add_2_if_number <- function(x) {
+   ## early return if x is not numeric
+   if (!is.numeric(x)) {
+     return(x)
+   }
+   ## process otherwise (usually more complicated steps)
+   ## note: this part will not be reached for non-numeric x
+   x + 2L
+}
+```
+
+So yes, you should drop the last "%>% `[`" altogether as `[.data.table` 
+already returns the whole (modified) data.table when `:=` is used.
+
+Side note:: If you use >=R4.1.0 and you do not use special features of 
+`%>%`, try the native `|>` operator first (see `?pipeOp`). 1) You do not 
+depend an a user-contributed package, and 2) it works at the parser level.
+
+Cheers,
+Denes
+
+On 1/2/23 18:59, Michael Lachanski wrote:
+> D?nes, thank you for the guidance - which is well-taken.
+> 
+> Your side note raises an interesting question: I find the piping %>% 
+> operator readable. Is there any downside to it? Or is the side note 
+> meant to tell me to drop the last: "%>% `[`"?
+> 
+> Thank you,
+> 
+> 
+> ==
+> Michael Lachanski
+> PhD Student in Demography and Sociology
+> MA Candidate in Statistics
+> University of Pennsylvania
+> mikelach at sas.upenn.edu <mailto:mikelach at sas.upenn.edu>
+> 
+> 
+> On Sat, Dec 31, 2022 at 9:22 AM D?nes T?th <toth.denes at kogentum.hu 
+> <mailto:toth.denes at kogentum.hu>> wrote:
+> 
+>     Hi Michael,
+> 
+>     Note that you have to be very careful when using by-reference
+>     operations
+>     in data.table (see `?data.table::set`), especially in a functional
+>     programming approach. In your function, you avoid this problem by
+>     calling `data.table(A)` which makes a copy of A even if it is already a
+>     data.table. However, for large data.table-s, copying can be a very
+>     expensive operation (esp. in terms of RAM usage), which can be totally
+>     eliminated by using data.tables in the data.table-way (e.g., joining,
+>     grouping, and aggregating in the same step by performing these
+>     operations within `[`, see `?data.table`).
+> 
+>     So instead of blindly functionalizing all your code, try to be
+>     pragmatic. Functional programming is not about using pure functions in
+>     *every* part of your code base, because it is unfeasible in 99.9% of
+>     real-world problems. Even Haskell has `IO` and `do`; the point is that
+>     the? imperative and functional parts of the code are clearly separated
+>     and imperative components are (tried to be) as top-level as possible.
+> 
+>     So when using data.table, a good strategy is to use pure functions for
+>     performing within-data.table operations, e.g., `DT[, lapply(.SD, mean),
+>     .SDcols = is.numeric]`, and when these operations alter `DT` by
+>     reference, invoke the chains of these operations in "pure" wrappers -
+>     e.g., calling `A <- copy(A)` on the top and then modifying `A` directly.
+> 
+>     Cheers,
+>     Denes
+> 
+>     Side note: You do not need to use `DT[ , A:= shift(A, fill = NA, type =
+>     "lag", n = 1)] %>% `[`(return(DT))`. `[.data.table` returns the result
+>     (the modified DT) invisibly. If you want to let auto-print work, you
+>     can
+>     just use `DT[ , A:= shift(A, fill = NA, type = "lag", n = 1)][]`.
+> 
+>     Note that this also means you usually you do not need to use magrittr's
+>     or base-R pipe when transforming data.table-s. You can do this instead:
+>     ```
+>     DT[
+>      ? ?## filter rows where 'x' column equals "a"
+>      ? ?x == "a"
+>     ][
+>      ? ?## calculate the mean of `z` for each gender and assign it to `y`
+>      ? ?, y := mean(z), by = "gender"
+>     ][
+>      ? ?## do whatever you want
+>      ? ?...
+>     ]
+>     ```
+> 
+> 
+>     On 12/31/22 13:39, Rui Barradas wrote:
+>      > ?s 06:50 de 31/12/2022, Michael Lachanski escreveu:
+>      >> Hello,
+>      >>
+>      >> I am trying to make a habit of "functionalizing" all of my code as
+>      >> recommended by Hadley Wickham. I have found it surprisingly
+>     difficult
+>      >> to do
+>      >> so because several intermediate features from data.table break
+>     or give
+>      >> unexpected results using purrr and its data.table adaptation,
+>     tidytable.
+>      >> Here is the a minimal working example of what has stumped me most
+>      >> recently:
+>      >>
+>      >> ===
+>      >>
+>      >> library(data.table); library(tidytable)
+>      >>
+>      >> minimal_failing_function <- function(A){
+>      >> ?? DT <- data.table(A)
+>      >> ?? DT[ , A:= shift(A, fill = NA, type = "lag", n = 1)] %>% `[`
+>      >> ?? return(DT)}
+>      >> # works
+>      >> minimal_failing_function(c(1,2))
+>      >> # fails
+>      >> tidytable::pmap_dfr(.l = list(c(1,2)),
+>      >> ???????????????????? .f = minimal_failing_function)
+>      >>
+>      >>
+>      >> ===
+>      >> These should ideally give the same output, but do not. This also
+>     fails
+>      >> using purrr::pmap_dfr rather than tidytable. I am using R 4.2.2
+>     and I
+>      >> am on
+>      >> Mac OS Ventura 13.1.
+>      >>
+>      >> Thank you for any help you can provide or general guidance.
+>      >>
+>      >>
+>      >> ==
+>      >> Michael Lachanski
+>      >> PhD Student in Demography and Sociology
+>      >> MA Candidate in Statistics
+>      >> University of Pennsylvania
+>      >> mikelach at sas.upenn.edu <mailto:mikelach at sas.upenn.edu>
+>      >>
+>      >> ????[[alternative HTML version deleted]]
+>      >>
+>      >> ______________________________________________
+>      >> R-help at r-project.org <mailto:R-help at r-project.org> mailing list
+>     -- To UNSUBSCRIBE and more, see
+>      >>
+>     https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!IBzWLUs!VdfzdJ15GLScUok_hiqL3DvTJ20Ce8JMBkQ1NosBfyOvu68iuQkh9nsPZuUBbB9BtrsZBh86OjGyyj3lAB2g_xXCvB6t$ <https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!IBzWLUs!VdfzdJ15GLScUok_hiqL3DvTJ20Ce8JMBkQ1NosBfyOvu68iuQkh9nsPZuUBbB9BtrsZBh86OjGyyj3lAB2g_xXCvB6t$>
+>      >> PLEASE do read the posting guide
+>      >>
+>     https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!IBzWLUs!VdfzdJ15GLScUok_hiqL3DvTJ20Ce8JMBkQ1NosBfyOvu68iuQkh9nsPZuUBbB9BtrsZBh86OjGyyj3lAB2g_3rS2yQK$ <https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!IBzWLUs!VdfzdJ15GLScUok_hiqL3DvTJ20Ce8JMBkQ1NosBfyOvu68iuQkh9nsPZuUBbB9BtrsZBh86OjGyyj3lAB2g_3rS2yQK$>
+>      >> and provide commented, minimal, self-contained, reproducible code.
+>      > Hello,
+>      >
+>      > Use map_dfr instead of pmap_dfr.
+>      >
+>      >
+>      > library(data.table)
+>      > library(tidytable)
+>      >
+>      > minimal_failing_function <- function(A) {
+>      >? ? DT <- data.table(A)
+>      >? ? DT[ , A:= shift(A, fill = NA, type = "lag", n = 1)] %>% `[`
+>      >? ? return(DT)
+>      > }
+>      >
+>      > # works
+>      > tidytable::map_dfr(.x = list(c(1,2)),
+>      >? ?????????????????? .f = minimal_failing_function)
+>      > #> # A tidytable: 2 ? 1
+>      > #>?????? A
+>      > #>?? <dbl>
+>      > #> 1??? NA
+>      > #> 2???? 1
+>      >
+>      >
+>      > Hope this helps,
+>      >
+>      > Rui Barradas
+>      >
+>      > ______________________________________________
+>      > R-help at r-project.org <mailto:R-help at r-project.org> mailing list
+>     -- To UNSUBSCRIBE and more, see
+>      >
+>     https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!IBzWLUs!VdfzdJ15GLScUok_hiqL3DvTJ20Ce8JMBkQ1NosBfyOvu68iuQkh9nsPZuUBbB9BtrsZBh86OjGyyj3lAB2g_xXCvB6t$ <https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!IBzWLUs!VdfzdJ15GLScUok_hiqL3DvTJ20Ce8JMBkQ1NosBfyOvu68iuQkh9nsPZuUBbB9BtrsZBh86OjGyyj3lAB2g_xXCvB6t$>
+>      > PLEASE do read the posting guide
+>      >
+>     https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!IBzWLUs!VdfzdJ15GLScUok_hiqL3DvTJ20Ce8JMBkQ1NosBfyOvu68iuQkh9nsPZuUBbB9BtrsZBh86OjGyyj3lAB2g_3rS2yQK$ <https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!IBzWLUs!VdfzdJ15GLScUok_hiqL3DvTJ20Ce8JMBkQ1NosBfyOvu68iuQkh9nsPZuUBbB9BtrsZBh86OjGyyj3lAB2g_3rS2yQK$>
+>      > and provide commented, minimal, self-contained, reproducible code.
+>      >
+>
+
+
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Tue Jan  3 17:48:30 2023
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Tue, 3 Jan 2023 16:48:30 +0000
+Subject: [R] Pipe operator
+In-Reply-To: <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+Message-ID: <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+
+I am trying to understand the reason for existence of the pipe operator, %>%, and when one should use it. It is my understanding that the operator sends the file to the left of the operator to the function immediately to the right of the operator:
+
+c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the result one obtains using the mean function directly, viz. mean(c(1:10)). What is the reason for having two syntactically different but semantically identical ways to call a function? Is one more efficient than the other? Does one use less memory than the other? 
+
+P.S. Please forgive what might seem to be a question with an obvious answer. I am a programmer dinosaur. I have been programming for more than 50 years. When I started programming in the 1960s the only pipe one spoke about was a bong.  
+
+John
+
+
+From cry@n @end|ng |rom b|ngh@mton@edu  Tue Jan  3 17:57:24 2023
+From: cry@n @end|ng |rom b|ngh@mton@edu (Christopher Ryan)
+Date: Tue, 3 Jan 2023 11:57:24 -0500
+Subject: [R] [External Email]  Pipe operator
+In-Reply-To: <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <CAM+rpYm5GaG+0Ed04meDaWNhihJGXTHZqgPUKnD8avODQt=J2A@mail.gmail.com>
+
+I think there are probably a number of purposes for (advantages to?)
+the pipe operator. One is that it can avoid nested operations:
+
+plot(mean(sqrt(c(1:10))))  ## this is my silly example code
+
+which can get difficult to read.  This is arguably easier to read and
+understand:
+
+c(1:10) %>% sqrt() %>% mean() %>% plot()
+
+As the chain of operations become longer, and as each "link" in the
+chain becomes more complex, the value of the pipe approach, compared
+to deep nesting in parentheses, increases, in my view.
+
+--Chris Ryan
+
+On Tue, Jan 3, 2023 at 11:48 AM Sorkin, John <jsorkin at som.umaryland.edu> wrote:
+>
+> I am trying to understand the reason for existence of the pipe operator, %>%, and when one should use it. It is my understanding that the operator sends the file to the left of the operator to the function immediately to the right of the operator:
+>
+> c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the result one obtains using the mean function directly, viz. mean(c(1:10)). What is the reason for having two syntactically different but semantically identical ways to call a function? Is one more efficient than the other? Does one use less memory than the other?
+>
+> P.S. Please forgive what might seem to be a question with an obvious answer. I am a programmer dinosaur. I have been programming for more than 50 years. When I started programming in the 1960s the only pipe one spoke about was a bong.
+>
+> John
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From tebert @end|ng |rom u||@edu  Tue Jan  3 18:07:52 2023
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Tue, 3 Jan 2023 17:07:52 +0000
+Subject: [R] Pipe operator
+In-Reply-To: <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <BN6PR2201MB1553BE35AD212F0C0E07874ACFF49@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+The pipe shortens code and results in fewer variables because you do not have to save intermediate steps. Once you get used to the idea it is useful. Note that there is also the |> pipe that is part of base R. As far as I know it does the same thing as %>%, or at my level of programing I have not encountered a difference.
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+Sent: Tuesday, January 3, 2023 11:49 AM
+To: 'R-help Mailing List' <r-help at r-project.org>
+Subject: [R] Pipe operator
+
+[External Email]
+
+I am trying to understand the reason for existence of the pipe operator, %>%, and when one should use it. It is my understanding that the operator sends the file to the left of the operator to the function immediately to the right of the operator:
+
+c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the result one obtains using the mean function directly, viz. mean(c(1:10)). What is the reason for having two syntactically different but semantically identical ways to call a function? Is one more efficient than the other? Does one use less memory than the other?
+
+P.S. Please forgive what might seem to be a question with an obvious answer. I am a programmer dinosaur. I have been programming for more than 50 years. When I started programming in the 1960s the only pipe one spoke about was a bong.
+
+John
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Ctebert%40ufl.edu%7C73edce5d4e084253a39008daedaa653f%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638083613362415015%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=fV9Ca3OAleDX%2BwuPJIONYStrAdaQhXTsq61jh2pLtDY%3D&reserved=0
+PLEASE do read the posting guide https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7Ctebert%40ufl.edu%7C73edce5d4e084253a39008daedaa653f%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638083613362415015%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=YUnV9kE1RcbB3BwM5gKwKwc3qNKhIVNFtxOxKmpbGrQ%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Tue Jan  3 18:13:22 2023
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Tue, 3 Jan 2023 17:13:22 +0000
+Subject: [R] Pipe operator
+In-Reply-To: <BN6PR2201MB1553BE35AD212F0C0E07874ACFF49@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <BN6PR2201MB1553BE35AD212F0C0E07874ACFF49@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <MW4PR03MB63630F7F3EA776AB218EFD2AE2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+
+Tim,
+
+Thank you for your reply. I did not know about the |> operator. Do both %>% and |> work in base R?
+
+You suggested that the pipe operator can produce code with fewer variables. May I ask you to send a short example in which the pipe operator saves variables. Does said saving of variables speed up processing or result in less memory usage?
+
+Thank you,
+John
+
+________________________________________
+From: Ebert,Timothy Aaron <tebert at ufl.edu>
+Sent: Tuesday, January 3, 2023 12:07 PM
+To: Sorkin, John; 'R-help Mailing List'
+Subject: RE: Pipe operator
+
+The pipe shortens code and results in fewer variables because you do not have to save intermediate steps. Once you get used to the idea it is useful. Note that there is also the |> pipe that is part of base R. As far as I know it does the same thing as %>%, or at my level of programing I have not encountered a difference.
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+Sent: Tuesday, January 3, 2023 11:49 AM
+To: 'R-help Mailing List' <r-help at r-project.org>
+Subject: [R] Pipe operator
+
+[External Email]
+
+I am trying to understand the reason for existence of the pipe operator, %>%, and when one should use it. It is my understanding that the operator sends the file to the left of the operator to the function immediately to the right of the operator:
+
+c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the result one obtains using the mean function directly, viz. mean(c(1:10)). What is the reason for having two syntactically different but semantically identical ways to call a function? Is one more efficient than the other? Does one use less memory than the other?
+
+P.S. Please forgive what might seem to be a question with an obvious answer. I am a programmer dinosaur. I have been programming for more than 50 years. When I started programming in the 1960s the only pipe one spoke about was a bong.
+
+John
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Cjsorkin%40som.umaryland.edu%7Cdc0d677272114cf6ba2808daedad0ec5%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638083624783034240%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=7dDMSg%2FmPQ5xXP6zu6MWLmARdtdlrYWb3mXPZQj0La0%3D&reserved=0
+PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7Cjsorkin%40som.umaryland.edu%7Cdc0d677272114cf6ba2808daedad0ec5%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638083624783034240%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=l5BZyjup%2Bho%2FijE1zQMxb5JE3F5VfKBZpUKHYW4k4Fg%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From tebert @end|ng |rom u||@edu  Tue Jan  3 18:34:37 2023
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Tue, 3 Jan 2023 17:34:37 +0000
+Subject: [R] Pipe operator
+In-Reply-To: <MW4PR03MB63630F7F3EA776AB218EFD2AE2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <BN6PR2201MB1553BE35AD212F0C0E07874ACFF49@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <MW4PR03MB63630F7F3EA776AB218EFD2AE2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <BN6PR2201MB155378D68586F7781F2EEA60CFF49@BN6PR2201MB1553.namprd22.prod.outlook.com>
+
+Christopher Ryan sent this example
+c(1:10) %>% sqrt() %>% mean() %>% plot()
+I could code this as
+
+A <- c(1:10)
+B <- sqrt(A)
+C<- mean(B)
+plot(C)
+
+I can then clean up by removing variables that I have no further use for.
+rm(A, B, C)
+
+The %>% operator is from the magriter package. It can be installed directly, or it is also installed if you use the tidyverse package (and possibly many others). The |> is base R, but it was added in R version 4.1.0.
+
+I do not know if it increases processing speed.
+It can save memory usage, especially if one is a messy programmer and does not tidy up after each task.
+If you wanted to test execution times for bits of code there is the microbenchmark package.
+
+Tim
+
+-----Original Message-----
+From: Sorkin, John <jsorkin at som.umaryland.edu> 
+Sent: Tuesday, January 3, 2023 12:13 PM
+To: Ebert,Timothy Aaron <tebert at ufl.edu>; 'R-help Mailing List' <r-help at r-project.org>
+Subject: Re: Pipe operator
+
+[External Email]
+
+Tim,
+
+Thank you for your reply. I did not know about the |> operator. Do both %>% and |> work in base R?
+
+You suggested that the pipe operator can produce code with fewer variables. May I ask you to send a short example in which the pipe operator saves variables. Does said saving of variables speed up processing or result in less memory usage?
+
+Thank you,
+John
+
+________________________________________
+From: Ebert,Timothy Aaron <tebert at ufl.edu>
+Sent: Tuesday, January 3, 2023 12:07 PM
+To: Sorkin, John; 'R-help Mailing List'
+Subject: RE: Pipe operator
+
+The pipe shortens code and results in fewer variables because you do not have to save intermediate steps. Once you get used to the idea it is useful. Note that there is also the |> pipe that is part of base R. As far as I know it does the same thing as %>%, or at my level of programing I have not encountered a difference.
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+Sent: Tuesday, January 3, 2023 11:49 AM
+To: 'R-help Mailing List' <r-help at r-project.org>
+Subject: [R] Pipe operator
+
+[External Email]
+
+I am trying to understand the reason for existence of the pipe operator, %>%, and when one should use it. It is my understanding that the operator sends the file to the left of the operator to the function immediately to the right of the operator:
+
+c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the result one obtains using the mean function directly, viz. mean(c(1:10)). What is the reason for having two syntactically different but semantically identical ways to call a function? Is one more efficient than the other? Does one use less memory than the other?
+
+P.S. Please forgive what might seem to be a question with an obvious answer. I am a programmer dinosaur. I have been programming for more than 50 years. When I started programming in the 1960s the only pipe one spoke about was a bong.
+
+John
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Ctebert%40ufl.edu%7Cfa39e74a28354e3b3f6c08daedadd2ab%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638083628073049849%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=qCK4H%2BtClknwzT9sQpQAUeei9I6dFz7vP904X0n39cw%3D&reserved=0
+PLEASE do read the posting guide https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7Ctebert%40ufl.edu%7Cfa39e74a28354e3b3f6c08daedadd2ab%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638083628073049849%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=%2F75VhIpUPDD1VjEHWJ5HBKcQO6cYciTJSMPJ9nETmMQ%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From 538280 @end|ng |rom gm@||@com  Tue Jan  3 18:35:29 2023
+From: 538280 @end|ng |rom gm@||@com (Greg Snow)
+Date: Tue, 3 Jan 2023 10:35:29 -0700
+Subject: [R] Pipe operator
+In-Reply-To: <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <CAFEqCdzdZmy2WrCFDKbh018rhTuODzav27TRJpOm3DwTdLe7bA@mail.gmail.com>
+
+To expand a little on Christopher's answer.
+
+The short answer is that having the different syntaxes can lead to
+more readable code (when used properly).
+
+Note that there are now 2 different (but somewhat similar) pipes
+available in R (there could be more in some package(s) that I don't
+know about, but will just talk about the main 2).
+
+The %>% pipe comes from the magrittr package, but many other packages
+now import that package.  But you need to load the magrittr package,
+either directly or indirectly, before you can use that pipe.  The
+magrittr pipe is a function call, so there is small increase in time
+and memory for using it, but it is a small fraction of a second and a
+few bytes of memory, so you probably will not notice the increased
+usage.
+
+The core R language now has a built in pipe |> which is handled by the
+parser, so no extra function calls and you do not need to load any
+extra packages (though you need a somewhat recent version of R, within
+the last year or so).
+
+The built-in |> pipe is a little pickier, you need to include the
+parentheses in a function call, e.g. 1:10 |> mean() where the magrittr
+pipe can work with that call or the function without parentheses, e.g.
+1:10 %>% mean or 1:10 %>% mean(), this makes %>% a little easier to
+work with anonymous functions.  If the previous return needs to be
+passed to an argument other than the first, then %>% uses "." and |>
+uses "_".
+
+The magrittr package has additional versions of the pipe and some
+functions that wrap around common operators to make it easier to use
+them with pipes, so there are still advantages to loading that package
+if any of those are helpful.
+
+For a simple case like your example, the pipe probably does not help
+with readability much, but as we string more function calls together.
+For example, here are 3 ways to compute the geometric mean of the data
+in a vector "x":
+
+exp(mean(log(x)))
+
+logx <- log(x)
+mlx <- mean(logx)
+exp(mtx)
+
+x |>
+   log() |>
+   mean() |>
+   exp()
+
+These all do the same thing, but the first option is read from the
+middle outward (which can be tricky) and is even more complicated if
+you use additional arguments to any of the functions.
+The second option reads top down, but requires creating intermediate
+variables.  The last reads similar to the second, but without the
+extra variables.  Spreading the series of function calls across
+multiple rows makes it easier to read and easily lets you insert a
+line like `print() |>` for debugging or checking intermediate results,
+and single lines can easily be commented out to skip that step.
+
+I have found myself using code like the following to compute a table,
+print it, and compute the proportions all in one step:
+
+table(f, g) |>
+  print() |>
+  prop.table()
+
+The pipes also work very well with the tidyverse, or even the tidy
+data ideas without those packages where we use a single function for
+each change, e.g. start with a data frame, select a subset of the
+columns, filter to a subset of the rows, mutate a column, join to
+another data frame, then pass the final result to a modeling function
+like `lm` (and then pass that result to a summary function).  This is
+nicely readable when each step is its own line.
+
+On Tue, Jan 3, 2023 at 9:49 AM Sorkin, John <jsorkin at som.umaryland.edu> wrote:
+>
+> I am trying to understand the reason for existence of the pipe operator, %>%, and when one should use it. It is my understanding that the operator sends the file to the left of the operator to the function immediately to the right of the operator:
+>
+> c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the result one obtains using the mean function directly, viz. mean(c(1:10)). What is the reason for having two syntactically different but semantically identical ways to call a function? Is one more efficient than the other? Does one use less memory than the other?
+>
+> P.S. Please forgive what might seem to be a question with an obvious answer. I am a programmer dinosaur. I have been programming for more than 50 years. When I started programming in the 1960s the only pipe one spoke about was a bong.
+>
+> John
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Gregory (Greg) L. Snow Ph.D.
+538280 at gmail.com
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Tue Jan  3 18:40:44 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Tue, 3 Jan 2023 12:40:44 -0500
+Subject: [R] Pipe operator
+In-Reply-To: <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <004b01d91f9a$822dbb00$86893100$@gmail.com>
+
+John,
+
+The topic has indeed been discussed here endlessly but new people still
+stumble upon it.
+
+Until recently, the formal R language did not have a built-in pipe
+functionality. It was widely used through an assortment of packages and
+there are quite a few variations on the theme including different
+implementations.
+
+Most existing code does use the operator %>% but there is now a built-in |>
+operator that is generally faster but is not as easy to use in a few cases.
+
+Please forget the use of the word FILE here. Pipes are a form of syntactic
+sugar that generally is about the FIRST argument to a function. They are NOT
+meant to be used just for the trivial case you mention where indeed there is
+an easy way to do things. Yes, they work in such situations. But consider a
+deeply nested expression like this:
+
+Result <- round(max(cos(x), 3.14159/4), 3)
+
+There are MANY deeper nested expressions like this commonly used. The above
+can be written linearly as in
+
+Temp1 <- cos(x)
+Temp2 <- max(Temp1, 3.14159/4)
+Result <- round(Temp2, 3)
+
+Translation, for some variable x, calculate the cosine and take the maximum
+value of it as compared to pi/4 and round the result to three decimal
+places. Not an uncommon kind of thing to do and sometimes you can nest such
+things many layers deep and get hopelessly confused if not done somewhat
+linearly.
+
+What pipes allow is to write this closer to the second way while not seeing
+or keeping any temporary variables around. The goal is to replace the FIRST
+argument to a function with whatever resulted as the value of the previous
+expression. That is often a vector or data.frame or list or any kind of
+object but can also be fairly complex as in a list of lists of matrices.
+
+So you can still start with cos(x) OR you can write this where the x is
+removed from within and leaves cos() empty:
+
+x %>% cos
+or
+x |> cos()
+
+In the previous version of pipes the parentheses after cos() are optional if
+there are no additional arguments but the new pipe requires them.
+
+So continuing the above, using multiple lines, the pipe looks like:
+
+Result <-
+  x %>%
+  cos() %>%
+  max(3.14159/4) %>%
+  round(3)
+
+This gives the same result but is arguably easier for some to read and
+follow. Nobody forces you to use it and for simple cases, most people don't.
+
+There is a grouping of packages called the tidyverse that makes heavy use of
+pipes routine as they made most or all their functions such that the first
+argument is the one normally piped to and it can be very handy to write code
+that says, read in your data into a variable (a data.frame or tibble often)
+and PIPE IT to a function that renames some columns and PIPE the resulting
+modified object to a function that retains only selected rows and pipe that
+to a function that drops some of the columns and pipe that to a function
+that groups the items or sorts them and pipe that to a function that does a
+join with another object or generates a report or so many other things.
+
+So the real answer is that piping is another WAY of doing things from a
+programmers perspective. Underneath it all, it is mostly syntactic sugar and
+the interpreter rearranges your code and performs the steps in what seems
+like a different order at times. Generally, you do not need to care.
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+Sent: Tuesday, January 3, 2023 11:49 AM
+To: 'R-help Mailing List' <r-help at r-project.org>
+Subject: [R] Pipe operator
+
+I am trying to understand the reason for existence of the pipe operator,
+%>%, and when one should use it. It is my understanding that the operator
+sends the file to the left of the operator to the function immediately to
+the right of the operator:
+
+c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the
+result one obtains using the mean function directly, viz. mean(c(1:10)).
+What is the reason for having two syntactically different but semantically
+identical ways to call a function? Is one more efficient than the other?
+Does one use less memory than the other? 
+
+P.S. Please forgive what might seem to be a question with an obvious answer.
+I am a programmer dinosaur. I have been programming for more than 50 years.
+When I started programming in the 1960s the only pipe one spoke about was a
+bong.  
+
+John
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Tue Jan  3 19:34:25 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Tue, 3 Jan 2023 13:34:25 -0500
+Subject: [R] Pipe operator
+In-Reply-To: <BN6PR2201MB1553BE35AD212F0C0E07874ACFF49@BN6PR2201MB1553.namprd22.prod.outlook.com>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <BN6PR2201MB1553BE35AD212F0C0E07874ACFF49@BN6PR2201MB1553.namprd22.prod.outlook.com>
+Message-ID: <004d01d91fa2$01931640$04b942c0$@gmail.com>
+
+Tim,
+
+There are differences and this one can be huge.
+
+The other pipe operators let you pass the current object to a later argument
+instead of the first by using a period to represent where to put it. The new
+one has a harder albeit flexible method by creating an anonymous function.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Ebert,Timothy Aaron
+Sent: Tuesday, January 3, 2023 12:08 PM
+To: Sorkin, John <jsorkin at som.umaryland.edu>; 'R-help Mailing List'
+<r-help at r-project.org>
+Subject: Re: [R] Pipe operator
+
+The pipe shortens code and results in fewer variables because you do not
+have to save intermediate steps. Once you get used to the idea it is useful.
+Note that there is also the |> pipe that is part of base R. As far as I know
+it does the same thing as %>%, or at my level of programing I have not
+encountered a difference.
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+Sent: Tuesday, January 3, 2023 11:49 AM
+To: 'R-help Mailing List' <r-help at r-project.org>
+Subject: [R] Pipe operator
+
+[External Email]
+
+I am trying to understand the reason for existence of the pipe operator,
+%>%, and when one should use it. It is my understanding that the operator
+sends the file to the left of the operator to the function immediately to
+the right of the operator:
+
+c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the
+result one obtains using the mean function directly, viz. mean(c(1:10)).
+What is the reason for having two syntactically different but semantically
+identical ways to call a function? Is one more efficient than the other?
+Does one use less memory than the other?
+
+P.S. Please forgive what might seem to be a question with an obvious answer.
+I am a programmer dinosaur. I have been programming for more than 50 years.
+When I started programming in the 1960s the only pipe one spoke about was a
+bong.
+
+John
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.
+ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Ctebert%40ufl.edu%7C73edce5d4
+e084253a39008daedaa653f%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C6380836
+13362415015%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJB
+TiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=fV9Ca3OAleDX%2BwuPJIONYStrA
+daQhXTsq61jh2pLtDY%3D&reserved=0
+PLEASE do read the posting guide
+https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-proje
+ct.org%2Fposting-guide.html&data=05%7C01%7Ctebert%40ufl.edu%7C73edce5d4e0842
+53a39008daedaa653f%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638083613362
+415015%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6I
+k1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=YUnV9kE1RcbB3BwM5gKwKwc3qNKhIVNF
+txOxKmpbGrQ%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From bor|@@@te|pe @end|ng |rom utoronto@c@  Tue Jan  3 20:00:46 2023
+From: bor|@@@te|pe @end|ng |rom utoronto@c@ (Boris Steipe)
+Date: Tue, 3 Jan 2023 19:00:46 +0000
+Subject: [R] Pipe operator
+In-Reply-To: <004b01d91f9a$822dbb00$86893100$@gmail.com>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <004b01d91f9a$822dbb00$86893100$@gmail.com>
+Message-ID: <8E39C1BA-5CCE-4C36-A64E-C6BF6CBA1967@utoronto.ca>
+
+Working off Avi's example - would:
+
+  x |> cos() |> max(pi/4) |> round(3) |> assign("x", value = _)
+
+...be even more intuitive to read? Or are there hidden problems with that?
+
+
+
+Cheers,
+Boris
+
+
+> On 2023-01-03, at 12:40, avi.e.gross at gmail.com wrote:
+> 
+> John,
+> 
+> The topic has indeed been discussed here endlessly but new people still
+> stumble upon it.
+> 
+> Until recently, the formal R language did not have a built-in pipe
+> functionality. It was widely used through an assortment of packages and
+> there are quite a few variations on the theme including different
+> implementations.
+> 
+> Most existing code does use the operator %>% but there is now a built-in |>
+> operator that is generally faster but is not as easy to use in a few cases.
+> 
+> Please forget the use of the word FILE here. Pipes are a form of syntactic
+> sugar that generally is about the FIRST argument to a function. They are NOT
+> meant to be used just for the trivial case you mention where indeed there is
+> an easy way to do things. Yes, they work in such situations. But consider a
+> deeply nested expression like this:
+> 
+> Result <- round(max(cos(x), 3.14159/4), 3)
+> 
+> There are MANY deeper nested expressions like this commonly used. The above
+> can be written linearly as in
+> 
+> Temp1 <- cos(x)
+> Temp2 <- max(Temp1, 3.14159/4)
+> Result <- round(Temp2, 3)
+> 
+> Translation, for some variable x, calculate the cosine and take the maximum
+> value of it as compared to pi/4 and round the result to three decimal
+> places. Not an uncommon kind of thing to do and sometimes you can nest such
+> things many layers deep and get hopelessly confused if not done somewhat
+> linearly.
+> 
+> What pipes allow is to write this closer to the second way while not seeing
+> or keeping any temporary variables around. The goal is to replace the FIRST
+> argument to a function with whatever resulted as the value of the previous
+> expression. That is often a vector or data.frame or list or any kind of
+> object but can also be fairly complex as in a list of lists of matrices.
+> 
+> So you can still start with cos(x) OR you can write this where the x is
+> removed from within and leaves cos() empty:
+> 
+> x %>% cos
+> or
+> x |> cos()
+> 
+> In the previous version of pipes the parentheses after cos() are optional if
+> there are no additional arguments but the new pipe requires them.
+> 
+> So continuing the above, using multiple lines, the pipe looks like:
+> 
+> Result <-
+>  x %>%
+>  cos() %>%
+>  max(3.14159/4) %>%
+>  round(3)
+> 
+> This gives the same result but is arguably easier for some to read and
+> follow. Nobody forces you to use it and for simple cases, most people don't.
+> 
+> There is a grouping of packages called the tidyverse that makes heavy use of
+> pipes routine as they made most or all their functions such that the first
+> argument is the one normally piped to and it can be very handy to write code
+> that says, read in your data into a variable (a data.frame or tibble often)
+> and PIPE IT to a function that renames some columns and PIPE the resulting
+> modified object to a function that retains only selected rows and pipe that
+> to a function that drops some of the columns and pipe that to a function
+> that groups the items or sorts them and pipe that to a function that does a
+> join with another object or generates a report or so many other things.
+> 
+> So the real answer is that piping is another WAY of doing things from a
+> programmers perspective. Underneath it all, it is mostly syntactic sugar and
+> the interpreter rearranges your code and performs the steps in what seems
+> like a different order at times. Generally, you do not need to care.
+> 
+> 
+> 
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+> Sent: Tuesday, January 3, 2023 11:49 AM
+> To: 'R-help Mailing List' <r-help at r-project.org>
+> Subject: [R] Pipe operator
+> 
+> I am trying to understand the reason for existence of the pipe operator,
+> %>%, and when one should use it. It is my understanding that the operator
+> sends the file to the left of the operator to the function immediately to
+> the right of the operator:
+> 
+> c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the
+> result one obtains using the mean function directly, viz. mean(c(1:10)).
+> What is the reason for having two syntactically different but semantically
+> identical ways to call a function? Is one more efficient than the other?
+> Does one use less memory than the other? 
+> 
+> P.S. Please forgive what might seem to be a question with an obvious answer.
+> I am a programmer dinosaur. I have been programming for more than 50 years.
+> When I started programming in the 1960s the only pipe one spoke about was a
+> bong.  
+> 
+> John
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+--
+Boris Steipe MD, PhD
+
+Professor em.
+Department of Biochemistry 
+Temerty Faculty of Medicine
+University of Toronto
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Tue Jan  3 20:07:35 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 03 Jan 2023 11:07:35 -0800
+Subject: [R] Pipe operator
+In-Reply-To: <MW4PR03MB63630F7F3EA776AB218EFD2AE2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <BN6PR2201MB1553BE35AD212F0C0E07874ACFF49@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <MW4PR03MB63630F7F3EA776AB218EFD2AE2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <C57F1CA3-8A75-4929-AAAB-B09229D86B60@dcn.davis.ca.us>
+
+The other responses here have been very good, but I felt it necessary to point out that the concept of a pipe originated around when you started programming [1] (text based). It did take awhile for it to migrate into programming languages such as OCaml, but Powershell makes extensive use of (object-based) pipes.
+
+Re memory use: not so much. Variables are small... it is the data they point to that is large, and it is not possible to analyze data without storing it somewhere. But when the variables are numerous they can interfere with our ability to understand the program... using pipes lets us focus on results obtained after several steps so fewer intermediate values clutter the variable space.
+
+Re speed: the magrittr pipe (%>%) is much slower than the built-in pipe at coordinating the transfer of data from left to right, but that is not usually significant compared to the computation speed on the actual data in the functions.
+
+ [1] https://en.m.wikipedia.org/wiki/Pipeline_(Unix)#:~:text=The%20concept%20of%20pipelines%20was,Ritchie%20%26%20Thompson%2C%201974).
+
+On January 3, 2023 9:13:22 AM PST, "Sorkin, John" <jsorkin at som.umaryland.edu> wrote:
+>Tim,
+>
+>Thank you for your reply. I did not know about the |> operator. Do both %>% and |> work in base R?
+>
+>You suggested that the pipe operator can produce code with fewer variables. May I ask you to send a short example in which the pipe operator saves variables. Does said saving of variables speed up processing or result in less memory usage?
+>
+>Thank you,
+>John
+>
+>________________________________________
+>From: Ebert,Timothy Aaron <tebert at ufl.edu>
+>Sent: Tuesday, January 3, 2023 12:07 PM
+>To: Sorkin, John; 'R-help Mailing List'
+>Subject: RE: Pipe operator
+>
+>The pipe shortens code and results in fewer variables because you do not have to save intermediate steps. Once you get used to the idea it is useful. Note that there is also the |> pipe that is part of base R. As far as I know it does the same thing as %>%, or at my level of programing I have not encountered a difference.
+>
+>Tim
+>
+>-----Original Message-----
+>From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+>Sent: Tuesday, January 3, 2023 11:49 AM
+>To: 'R-help Mailing List' <r-help at r-project.org>
+>Subject: [R] Pipe operator
+>
+>[External Email]
+>
+>I am trying to understand the reason for existence of the pipe operator, %>%, and when one should use it. It is my understanding that the operator sends the file to the left of the operator to the function immediately to the right of the operator:
+>
+>c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the result one obtains using the mean function directly, viz. mean(c(1:10)). What is the reason for having two syntactically different but semantically identical ways to call a function? Is one more efficient than the other? Does one use less memory than the other?
+>
+>P.S. Please forgive what might seem to be a question with an obvious answer. I am a programmer dinosaur. I have been programming for more than 50 years. When I started programming in the 1960s the only pipe one spoke about was a bong.
+>
+>John
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Cjsorkin%40som.umaryland.edu%7Cdc0d677272114cf6ba2808daedad0ec5%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638083624783034240%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=7dDMSg%2FmPQ5xXP6zu6MWLmARdtdlrYWb3mXPZQj0La0%3D&reserved=0
+>PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7Cjsorkin%40som.umaryland.edu%7Cdc0d677272114cf6ba2808daedad0ec5%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638083624783034240%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=l5BZyjup%2Bho%2FijE1zQMxb5JE3F5VfKBZpUKHYW4k4Fg%3D&reserved=0
+>and provide commented, minimal, self-contained, reproducible code.
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Tue Jan  3 20:14:49 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 3 Jan 2023 19:14:49 +0000
+Subject: [R] Pipe operator
+In-Reply-To: <CAFEqCdzdZmy2WrCFDKbh018rhTuODzav27TRJpOm3DwTdLe7bA@mail.gmail.com>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <CAFEqCdzdZmy2WrCFDKbh018rhTuODzav27TRJpOm3DwTdLe7bA@mail.gmail.com>
+Message-ID: <e1d6c5fb-6885-f9ce-8bf4-5c64d0a0e8e7@sapo.pt>
+
+?s 17:35 de 03/01/2023, Greg Snow escreveu:
+> To expand a little on Christopher's answer.
+> 
+> The short answer is that having the different syntaxes can lead to
+> more readable code (when used properly).
+> 
+> Note that there are now 2 different (but somewhat similar) pipes
+> available in R (there could be more in some package(s) that I don't
+> know about, but will just talk about the main 2).
+> 
+> The %>% pipe comes from the magrittr package, but many other packages
+> now import that package.  But you need to load the magrittr package,
+> either directly or indirectly, before you can use that pipe.  The
+> magrittr pipe is a function call, so there is small increase in time
+> and memory for using it, but it is a small fraction of a second and a
+> few bytes of memory, so you probably will not notice the increased
+> usage.
+> 
+> The core R language now has a built in pipe |> which is handled by the
+> parser, so no extra function calls and you do not need to load any
+> extra packages (though you need a somewhat recent version of R, within
+> the last year or so).
+> 
+> The built-in |> pipe is a little pickier, you need to include the
+> parentheses in a function call, e.g. 1:10 |> mean() where the magrittr
+> pipe can work with that call or the function without parentheses, e.g.
+> 1:10 %>% mean or 1:10 %>% mean(), this makes %>% a little easier to
+> work with anonymous functions.  If the previous return needs to be
+> passed to an argument other than the first, then %>% uses "." and |>
+> uses "_".
+> 
+> The magrittr package has additional versions of the pipe and some
+> functions that wrap around common operators to make it easier to use
+> them with pipes, so there are still advantages to loading that package
+> if any of those are helpful.
+> 
+> For a simple case like your example, the pipe probably does not help
+> with readability much, but as we string more function calls together.
+> For example, here are 3 ways to compute the geometric mean of the data
+> in a vector "x":
+> 
+> exp(mean(log(x)))
+> 
+> logx <- log(x)
+> mlx <- mean(logx)
+> exp(mtx)
+> 
+> x |>
+>     log() |>
+>     mean() |>
+>     exp()
+> 
+> These all do the same thing, but the first option is read from the
+> middle outward (which can be tricky) and is even more complicated if
+> you use additional arguments to any of the functions.
+> The second option reads top down, but requires creating intermediate
+> variables.  The last reads similar to the second, but without the
+> extra variables.  Spreading the series of function calls across
+> multiple rows makes it easier to read and easily lets you insert a
+> line like `print() |>` for debugging or checking intermediate results,
+> and single lines can easily be commented out to skip that step.
+> 
+> I have found myself using code like the following to compute a table,
+> print it, and compute the proportions all in one step:
+> 
+> table(f, g) |>
+>    print() |>
+>    prop.table()
+> 
+> The pipes also work very well with the tidyverse, or even the tidy
+> data ideas without those packages where we use a single function for
+> each change, e.g. start with a data frame, select a subset of the
+> columns, filter to a subset of the rows, mutate a column, join to
+> another data frame, then pass the final result to a modeling function
+> like `lm` (and then pass that result to a summary function).  This is
+> nicely readable when each step is its own line.
+> 
+> On Tue, Jan 3, 2023 at 9:49 AM Sorkin, John <jsorkin at som.umaryland.edu> wrote:
+>>
+>> I am trying to understand the reason for existence of the pipe operator, %>%, and when one should use it. It is my understanding that the operator sends the file to the left of the operator to the function immediately to the right of the operator:
+>>
+>> c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the result one obtains using the mean function directly, viz. mean(c(1:10)). What is the reason for having two syntactically different but semantically identical ways to call a function? Is one more efficient than the other? Does one use less memory than the other?
+>>
+>> P.S. Please forgive what might seem to be a question with an obvious answer. I am a programmer dinosaur. I have been programming for more than 50 years. When I started programming in the 1960s the only pipe one spoke about was a bong.
+>>
+>> John
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> 
+> 
+
+Hello,
+
+Not a long time ago, there was (very) relevant post to r-devel [1] by 
+Paul Murrell linking to a YouTube video [2].
+
+[1] https://stat.ethz.ch/pipermail/r-devel/2022-September/081959.html
+[2] https://youtu.be/IMpXB30MP48
+
+Hope this helps,
+
+Rui Barradas
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Tue Jan  3 20:15:11 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 03 Jan 2023 11:15:11 -0800
+Subject: [R] Pipe operator
+In-Reply-To: <8E39C1BA-5CCE-4C36-A64E-C6BF6CBA1967@utoronto.ca>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <004b01d91f9a$822dbb00$86893100$@gmail.com>
+ <8E39C1BA-5CCE-4C36-A64E-C6BF6CBA1967@utoronto.ca>
+Message-ID: <C1BDF935-9594-45D4-BB57-2E1DA7EC6FA8@dcn.davis.ca.us>
+
+Ick.
+
+Some people like
+
+x |> cos() |> max(pi/4) |> round(3) -> x
+
+but I much prefer
+
+x <- x |> cos() |> max(pi/4) |> round(3)
+
+On January 3, 2023 11:00:46 AM PST, Boris Steipe <boris.steipe at utoronto.ca> wrote:
+>Working off Avi's example - would:
+>
+>  x |> cos() |> max(pi/4) |> round(3) |> assign("x", value = _)
+>
+>...be even more intuitive to read? Or are there hidden problems with that?
+>
+>
+>
+>Cheers,
+>Boris
+>
+>
+>> On 2023-01-03, at 12:40, avi.e.gross at gmail.com wrote:
+>> 
+>> John,
+>> 
+>> The topic has indeed been discussed here endlessly but new people still
+>> stumble upon it.
+>> 
+>> Until recently, the formal R language did not have a built-in pipe
+>> functionality. It was widely used through an assortment of packages and
+>> there are quite a few variations on the theme including different
+>> implementations.
+>> 
+>> Most existing code does use the operator %>% but there is now a built-in |>
+>> operator that is generally faster but is not as easy to use in a few cases.
+>> 
+>> Please forget the use of the word FILE here. Pipes are a form of syntactic
+>> sugar that generally is about the FIRST argument to a function. They are NOT
+>> meant to be used just for the trivial case you mention where indeed there is
+>> an easy way to do things. Yes, they work in such situations. But consider a
+>> deeply nested expression like this:
+>> 
+>> Result <- round(max(cos(x), 3.14159/4), 3)
+>> 
+>> There are MANY deeper nested expressions like this commonly used. The above
+>> can be written linearly as in
+>> 
+>> Temp1 <- cos(x)
+>> Temp2 <- max(Temp1, 3.14159/4)
+>> Result <- round(Temp2, 3)
+>> 
+>> Translation, for some variable x, calculate the cosine and take the maximum
+>> value of it as compared to pi/4 and round the result to three decimal
+>> places. Not an uncommon kind of thing to do and sometimes you can nest such
+>> things many layers deep and get hopelessly confused if not done somewhat
+>> linearly.
+>> 
+>> What pipes allow is to write this closer to the second way while not seeing
+>> or keeping any temporary variables around. The goal is to replace the FIRST
+>> argument to a function with whatever resulted as the value of the previous
+>> expression. That is often a vector or data.frame or list or any kind of
+>> object but can also be fairly complex as in a list of lists of matrices.
+>> 
+>> So you can still start with cos(x) OR you can write this where the x is
+>> removed from within and leaves cos() empty:
+>> 
+>> x %>% cos
+>> or
+>> x |> cos()
+>> 
+>> In the previous version of pipes the parentheses after cos() are optional if
+>> there are no additional arguments but the new pipe requires them.
+>> 
+>> So continuing the above, using multiple lines, the pipe looks like:
+>> 
+>> Result <-
+>>  x %>%
+>>  cos() %>%
+>>  max(3.14159/4) %>%
+>>  round(3)
+>> 
+>> This gives the same result but is arguably easier for some to read and
+>> follow. Nobody forces you to use it and for simple cases, most people don't.
+>> 
+>> There is a grouping of packages called the tidyverse that makes heavy use of
+>> pipes routine as they made most or all their functions such that the first
+>> argument is the one normally piped to and it can be very handy to write code
+>> that says, read in your data into a variable (a data.frame or tibble often)
+>> and PIPE IT to a function that renames some columns and PIPE the resulting
+>> modified object to a function that retains only selected rows and pipe that
+>> to a function that drops some of the columns and pipe that to a function
+>> that groups the items or sorts them and pipe that to a function that does a
+>> join with another object or generates a report or so many other things.
+>> 
+>> So the real answer is that piping is another WAY of doing things from a
+>> programmers perspective. Underneath it all, it is mostly syntactic sugar and
+>> the interpreter rearranges your code and performs the steps in what seems
+>> like a different order at times. Generally, you do not need to care.
+>> 
+>> 
+>> 
+>> -----Original Message-----
+>> From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+>> Sent: Tuesday, January 3, 2023 11:49 AM
+>> To: 'R-help Mailing List' <r-help at r-project.org>
+>> Subject: [R] Pipe operator
+>> 
+>> I am trying to understand the reason for existence of the pipe operator,
+>> %>%, and when one should use it. It is my understanding that the operator
+>> sends the file to the left of the operator to the function immediately to
+>> the right of the operator:
+>> 
+>> c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the
+>> result one obtains using the mean function directly, viz. mean(c(1:10)).
+>> What is the reason for having two syntactically different but semantically
+>> identical ways to call a function? Is one more efficient than the other?
+>> Does one use less memory than the other? 
+>> 
+>> P.S. Please forgive what might seem to be a question with an obvious answer.
+>> I am a programmer dinosaur. I have been programming for more than 50 years.
+>> When I started programming in the 1960s the only pipe one spoke about was a
+>> bong.  
+>> 
+>> John
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+>
+>--
+>Boris Steipe MD, PhD
+>
+>Professor em.
+>Department of Biochemistry 
+>Temerty Faculty of Medicine
+>University of Toronto
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Tue Jan  3 20:22:36 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 3 Jan 2023 19:22:36 +0000
+Subject: [R] Pipe operator
+In-Reply-To: <e1d6c5fb-6885-f9ce-8bf4-5c64d0a0e8e7@sapo.pt>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <CAFEqCdzdZmy2WrCFDKbh018rhTuODzav27TRJpOm3DwTdLe7bA@mail.gmail.com>
+ <e1d6c5fb-6885-f9ce-8bf4-5c64d0a0e8e7@sapo.pt>
+Message-ID: <12a40452-f736-ad88-5bd3-c673aafbf2d7@sapo.pt>
+
+?s 19:14 de 03/01/2023, Rui Barradas escreveu:
+> ?s 17:35 de 03/01/2023, Greg Snow escreveu:
+>> To expand a little on Christopher's answer.
+>>
+>> The short answer is that having the different syntaxes can lead to
+>> more readable code (when used properly).
+>>
+>> Note that there are now 2 different (but somewhat similar) pipes
+>> available in R (there could be more in some package(s) that I don't
+>> know about, but will just talk about the main 2).
+>>
+>> The %>% pipe comes from the magrittr package, but many other packages
+>> now import that package.? But you need to load the magrittr package,
+>> either directly or indirectly, before you can use that pipe.? The
+>> magrittr pipe is a function call, so there is small increase in time
+>> and memory for using it, but it is a small fraction of a second and a
+>> few bytes of memory, so you probably will not notice the increased
+>> usage.
+>>
+>> The core R language now has a built in pipe |> which is handled by the
+>> parser, so no extra function calls and you do not need to load any
+>> extra packages (though you need a somewhat recent version of R, within
+>> the last year or so).
+>>
+>> The built-in |> pipe is a little pickier, you need to include the
+>> parentheses in a function call, e.g. 1:10 |> mean() where the magrittr
+>> pipe can work with that call or the function without parentheses, e.g.
+>> 1:10 %>% mean or 1:10 %>% mean(), this makes %>% a little easier to
+>> work with anonymous functions.? If the previous return needs to be
+>> passed to an argument other than the first, then %>% uses "." and |>
+>> uses "_".
+>>
+>> The magrittr package has additional versions of the pipe and some
+>> functions that wrap around common operators to make it easier to use
+>> them with pipes, so there are still advantages to loading that package
+>> if any of those are helpful.
+>>
+>> For a simple case like your example, the pipe probably does not help
+>> with readability much, but as we string more function calls together.
+>> For example, here are 3 ways to compute the geometric mean of the data
+>> in a vector "x":
+>>
+>> exp(mean(log(x)))
+>>
+>> logx <- log(x)
+>> mlx <- mean(logx)
+>> exp(mtx)
+>>
+>> x |>
+>> ??? log() |>
+>> ??? mean() |>
+>> ??? exp()
+>>
+>> These all do the same thing, but the first option is read from the
+>> middle outward (which can be tricky) and is even more complicated if
+>> you use additional arguments to any of the functions.
+>> The second option reads top down, but requires creating intermediate
+>> variables.? The last reads similar to the second, but without the
+>> extra variables.? Spreading the series of function calls across
+>> multiple rows makes it easier to read and easily lets you insert a
+>> line like `print() |>` for debugging or checking intermediate results,
+>> and single lines can easily be commented out to skip that step.
+>>
+>> I have found myself using code like the following to compute a table,
+>> print it, and compute the proportions all in one step:
+>>
+>> table(f, g) |>
+>> ?? print() |>
+>> ?? prop.table()
+>>
+>> The pipes also work very well with the tidyverse, or even the tidy
+>> data ideas without those packages where we use a single function for
+>> each change, e.g. start with a data frame, select a subset of the
+>> columns, filter to a subset of the rows, mutate a column, join to
+>> another data frame, then pass the final result to a modeling function
+>> like `lm` (and then pass that result to a summary function).? This is
+>> nicely readable when each step is its own line.
+>>
+>> On Tue, Jan 3, 2023 at 9:49 AM Sorkin, John 
+>> <jsorkin at som.umaryland.edu> wrote:
+>>>
+>>> I am trying to understand the reason for existence of the pipe 
+>>> operator, %>%, and when one should use it. It is my understanding 
+>>> that the operator sends the file to the left of the operator to the 
+>>> function immediately to the right of the operator:
+>>>
+>>> c(1:10) %>% mean results in a value of 5.5 which is exactly the same 
+>>> as the result one obtains using the mean function directly, viz. 
+>>> mean(c(1:10)). What is the reason for having two syntactically 
+>>> different but semantically identical ways to call a function? Is one 
+>>> more efficient than the other? Does one use less memory than the other?
+>>>
+>>> P.S. Please forgive what might seem to be a question with an obvious 
+>>> answer. I am a programmer dinosaur. I have been programming for more 
+>>> than 50 years. When I started programming in the 1960s the only pipe 
+>>> one spoke about was a bong.
+>>>
+>>> John
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide 
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>>
+>>
+> 
+> Hello,
+> 
+> Not a long time ago, there was (very) relevant post to r-devel [1] by 
+> Paul Murrell linking to a YouTube video [2].
+> 
+> [1] https://stat.ethz.ch/pipermail/r-devel/2022-September/081959.html
+> [2] https://youtu.be/IMpXB30MP48
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Sorry, I forgot the link to the beginning of that r-devel thread.
+
+https://stat.ethz.ch/pipermail/r-devel/2022-April/081636.html
+
+Rui Barradas
+
+
+From @h@rt @end|ng |rom d|m@uch||e@c|  Tue Jan  3 20:21:37 2023
+From: @h@rt @end|ng |rom d|m@uch||e@c| (Andrew Hart)
+Date: Tue, 3 Jan 2023 16:21:37 -0300
+Subject: [R] Pipe operator
+In-Reply-To: <8E39C1BA-5CCE-4C36-A64E-C6BF6CBA1967@utoronto.ca>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <004b01d91f9a$822dbb00$86893100$@gmail.com>
+ <8E39C1BA-5CCE-4C36-A64E-C6BF6CBA1967@utoronto.ca>
+Message-ID: <7c96c95f-35e3-0fc5-2853-3f3c5db8f291@dim.uchile.cl>
+
+Keep in mind that in thie example you're processing x and placing the 
+result back in x (so x must already exist). You can write this a bit 
+more cleanly using the -> variant of the assignment operator as follows:
+
+   x |> cos() |> max(pi/4) |> round(3) -> x
+
+Hth,
+Andrew.
+
+On 3/01/2023 16:00, Boris Steipe wrote:
+> Working off Avi's example - would:
+> 
+>    x |> cos() |> max(pi/4) |> round(3) |> assign("x", value = _)
+> 
+> ...be even more intuitive to read? Or are there hidden problems with that?
+> 
+> 
+> 
+> Cheers,
+> Boris
+> 
+> 
+>> On 2023-01-03, at 12:40, avi.e.gross at gmail.com wrote:
+>>
+>> John,
+>>
+>> The topic has indeed been discussed here endlessly but new people still
+>> stumble upon it.
+>>
+>> Until recently, the formal R language did not have a built-in pipe
+>> functionality. It was widely used through an assortment of packages and
+>> there are quite a few variations on the theme including different
+>> implementations.
+>>
+>> Most existing code does use the operator %>% but there is now a built-in |>
+>> operator that is generally faster but is not as easy to use in a few cases.
+>>
+>> Please forget the use of the word FILE here. Pipes are a form of syntactic
+>> sugar that generally is about the FIRST argument to a function. They are NOT
+>> meant to be used just for the trivial case you mention where indeed there is
+>> an easy way to do things. Yes, they work in such situations. But consider a
+>> deeply nested expression like this:
+>>
+>> Result <- round(max(cos(x), 3.14159/4), 3)
+>>
+>> There are MANY deeper nested expressions like this commonly used. The above
+>> can be written linearly as in
+>>
+>> Temp1 <- cos(x)
+>> Temp2 <- max(Temp1, 3.14159/4)
+>> Result <- round(Temp2, 3)
+>>
+>> Translation, for some variable x, calculate the cosine and take the maximum
+>> value of it as compared to pi/4 and round the result to three decimal
+>> places. Not an uncommon kind of thing to do and sometimes you can nest such
+>> things many layers deep and get hopelessly confused if not done somewhat
+>> linearly.
+>>
+>> What pipes allow is to write this closer to the second way while not seeing
+>> or keeping any temporary variables around. The goal is to replace the FIRST
+>> argument to a function with whatever resulted as the value of the previous
+>> expression. That is often a vector or data.frame or list or any kind of
+>> object but can also be fairly complex as in a list of lists of matrices.
+>>
+>> So you can still start with cos(x) OR you can write this where the x is
+>> removed from within and leaves cos() empty:
+>>
+>> x %>% cos
+>> or
+>> x |> cos()
+>>
+>> In the previous version of pipes the parentheses after cos() are optional if
+>> there are no additional arguments but the new pipe requires them.
+>>
+>> So continuing the above, using multiple lines, the pipe looks like:
+>>
+>> Result <-
+>>   x %>%
+>>   cos() %>%
+>>   max(3.14159/4) %>%
+>>   round(3)
+>>
+>> This gives the same result but is arguably easier for some to read and
+>> follow. Nobody forces you to use it and for simple cases, most people don't.
+>>
+>> There is a grouping of packages called the tidyverse that makes heavy use of
+>> pipes routine as they made most or all their functions such that the first
+>> argument is the one normally piped to and it can be very handy to write code
+>> that says, read in your data into a variable (a data.frame or tibble often)
+>> and PIPE IT to a function that renames some columns and PIPE the resulting
+>> modified object to a function that retains only selected rows and pipe that
+>> to a function that drops some of the columns and pipe that to a function
+>> that groups the items or sorts them and pipe that to a function that does a
+>> join with another object or generates a report or so many other things.
+>>
+>> So the real answer is that piping is another WAY of doing things from a
+>> programmers perspective. Underneath it all, it is mostly syntactic sugar and
+>> the interpreter rearranges your code and performs the steps in what seems
+>> like a different order at times. Generally, you do not need to care.
+>>
+>>
+>>
+>> -----Original Message-----
+>> From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+>> Sent: Tuesday, January 3, 2023 11:49 AM
+>> To: 'R-help Mailing List' <r-help at r-project.org>
+>> Subject: [R] Pipe operator
+>>
+>> I am trying to understand the reason for existence of the pipe operator,
+>> %>%, and when one should use it. It is my understanding that the operator
+>> sends the file to the left of the operator to the function immediately to
+>> the right of the operator:
+>>
+>> c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the
+>> result one obtains using the mean function directly, viz. mean(c(1:10)).
+>> What is the reason for having two syntactically different but semantically
+>> identical ways to call a function? Is one more efficient than the other?
+>> Does one use less memory than the other?
+>>
+>> P.S. Please forgive what might seem to be a question with an obvious answer.
+>> I am a programmer dinosaur. I have been programming for more than 50 years.
+>> When I started programming in the 1960s the only pipe one spoke about was a
+>> bong.
+>>
+>> John
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> 
+> --
+> Boris Steipe MD, PhD
+> 
+> Professor em.
+> Department of Biochemistry
+> Temerty Faculty of Medicine
+> University of Toronto
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From |v@n@c@|@ndr@ @end|ng |rom |e|z@@de  Tue Jan  3 17:58:56 2023
+From: |v@n@c@|@ndr@ @end|ng |rom |e|z@@de (Ivan Calandra)
+Date: Tue, 3 Jan 2023 17:58:56 +0100
+Subject: [R] Pipe operator
+In-Reply-To: <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <0a7e860f-5f8b-53eb-8ecf-9378960e4e78@leiza.de>
+
+Dear John,
+
+some more experienced users might give you a different and more helpful 
+answer, but I was not really convinced by the pipe operator until I 
+tried it out, for the same reasons as you.
+
+In my opinion, the pipe operator is there only to improve the 
+readability of your code. Think about e.g. format()ing or round()ing the 
+example you gave: you start having a lot of imbricated functions and it 
+becomes difficult to read (because of lots of brackets, commas and so 
+on, and it gets worse when adding arguments). The pipe operator makes it 
+clearer.
+An alternative to the pipe operator with good readability is creating 
+intermediary objects, but you create a lot of useless objects. Depending 
+on the size of the objects, it could become problematic.
+
+Somehow, I just ended up paraphrasing Wickham & Grolemund 
+(https://r4ds.had.co.nz/pipes.html); they explain the advantages much 
+better than I can.
+
+In any case, once I started using it, I realized that all the pros for 
+the pipe operator are real and now I like using it!
+
+Best,
+Ivan
+
+
+
+
+	*LEIBNIZ-ZENTRUM*
+*F?R ARCH?OLOGIE*
+
+*Dr. Ivan CALANDRA*
+**Imaging Lab
+
+MONREPOS Archaeological Research Centre, Schloss Monrepos
+56567 Neuwied, Germany
+
+T: +49 2631 9772 243
+T: +49 6131 8885 543
+ivan.calandra at leiza.de
+
+leiza.de <http://www.leiza.de/>
+<http://www.leiza.de/>
+ORCID <https://orcid.org/0000-0003-3816-6359>
+ResearchGate
+<https://www.researchgate.net/profile/Ivan_Calandra>
+
+LEIZA is a foundation under public law of the State of 
+Rhineland-Palatinate and the City of Mainz. Its headquarters are in 
+Mainz. Supervision is carried out by the Ministry of Science and Health 
+of the State of Rhineland-Palatinate. LEIZA is a research museum of the 
+Leibniz Association.
+
+On 03/01/2023 17:48, Sorkin, John wrote:
+> I am trying to understand the reason for existence of the pipe operator, %>%, and when one should use it. It is my understanding that the operator sends the file to the left of the operator to the function immediately to the right of the operator:
+>
+> c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the result one obtains using the mean function directly, viz. mean(c(1:10)). What is the reason for having two syntactically different but semantically identical ways to call a function? Is one more efficient than the other? Does one use less memory than the other?
+>
+> P.S. Please forgive what might seem to be a question with an obvious answer. I am a programmer dinosaur. I have been programming for more than 50 years. When I started programming in the 1960s the only pipe one spoke about was a bong.
+>
+> John
+>
+> ______________________________________________
+> R-help at r-project.org  mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guidehttp://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Tue Jan  3 23:32:17 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Tue, 3 Jan 2023 23:32:17 +0100
+Subject: [R] Pipe operator
+In-Reply-To: <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <ad6cd2c2-8dcb-9863-c5c9-93d20e6f42a3@statistik.tu-dortmund.de>
+
+R is a functional language, hence the pipe operator is not needed.
+Also it makes the code unreadable as it is less obvious how a call stack 
+looks like and what the arguments to the function calls are.
+
+It is relevant for a shell for piping text streams.
+
+If people cannot live without the pipe operator (and I wonder why you 
+want to add a level of complexity, as it is more obfuscated what the 
+actual function calls are), please use R's internal one, as it is known 
+by the parser and hence debugging etc is better integrated.
+
+Best,
+Uwe Ligges
+
+
+
+On 03.01.2023 17:48, Sorkin, John wrote:
+> I am trying to understand the reason for existence of the pipe operator, %>%, and when one should use it. It is my understanding that the operator sends the file to the left of the operator to the function immediately to the right of the operator:
+> 
+> c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the result one obtains using the mean function directly, viz. mean(c(1:10)). What is the reason for having two syntactically different but semantically identical ways to call a function? Is one more efficient than the other? Does one use less memory than the other?
+> 
+> P.S. Please forgive what might seem to be a question with an obvious answer. I am a programmer dinosaur. I have been programming for more than 50 years. When I started programming in the 1960s the only pipe one spoke about was a bong.
+> 
+> John
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Jan  4 00:10:50 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 03 Jan 2023 15:10:50 -0800
+Subject: [R] Pipe operator
+In-Reply-To: <ad6cd2c2-8dcb-9863-c5c9-93d20e6f42a3@statistik.tu-dortmund.de>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <ad6cd2c2-8dcb-9863-c5c9-93d20e6f42a3@statistik.tu-dortmund.de>
+Message-ID: <E9FB3D00-2347-4826-841E-5FACBBE7C063@dcn.davis.ca.us>
+
+> R is a functional language, hence the pipe operator is not needed.
+
+Not factual... just opinion. Please be conscious of your biases and preface opinion with a disclaimer.
+
+I heard identical complaints from embedded assembly language programmers when C became all the rage... "don't need another way to say the same thing."
+
+>Also it makes the code unreadable as it is less obvious how a call stack looks like and what the arguments to the function calls are.
+
+How can it make the code unreadable if there is a 1:1 mapping between nested function calls and a pipe?
+
+If _you_ don't like pipes, that is your opinion, but that statement is factually incorrect... both the parser equivalence and the popularity of the syntax prove you wrong. Many people find it more readable than nested prefix notation.
+
+>It is relevant for a shell for piping text streams.
+
+So you are willing to allow that it makes sense in shell script but not in R script? This is not a self-consistent position. The same expressive principles can apply in both shell and in R.
+
+On January 3, 2023 2:32:17 PM PST, Uwe Ligges <ligges at statistik.tu-dortmund.de> wrote:
+>R is a functional language, hence the pipe operator is not needed.
+>Also it makes the code unreadable as it is less obvious how a call stack looks like and what the arguments to the function calls are.
+>
+>It is relevant for a shell for piping text streams.
+>
+>If people cannot live without the pipe operator (and I wonder why you want to add a level of complexity, as it is more obfuscated what the actual function calls are), please use R's internal one, as it is known by the parser and hence debugging etc is better integrated.
+>
+>Best,
+>Uwe Ligges
+>
+>
+>
+>On 03.01.2023 17:48, Sorkin, John wrote:
+>> I am trying to understand the reason for existence of the pipe operator, %>%, and when one should use it. It is my understanding that the operator sends the file to the left of the operator to the function immediately to the right of the operator:
+>> 
+>> c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the result one obtains using the mean function directly, viz. mean(c(1:10)). What is the reason for having two syntactically different but semantically identical ways to call a function? Is one more efficient than the other? Does one use less memory than the other?
+>> 
+>> P.S. Please forgive what might seem to be a question with an obvious answer. I am a programmer dinosaur. I have been programming for more than 50 years. When I started programming in the 1960s the only pipe one spoke about was a bong.
+>> 
+>> John
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Wed Jan  4 01:05:01 2023
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Wed, 4 Jan 2023 00:05:01 +0000
+Subject: [R] Pipe operator
+In-Reply-To: <C57F1CA3-8A75-4929-AAAB-B09229D86B60@dcn.davis.ca.us>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <BN6PR2201MB1553BE35AD212F0C0E07874ACFF49@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <MW4PR03MB63630F7F3EA776AB218EFD2AE2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <C57F1CA3-8A75-4929-AAAB-B09229D86B60@dcn.davis.ca.us>
+Message-ID: <MW4PR03MB636330816A139BCED751CD7CE2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+
+Jeff,
+Thank you for contributing important information to this thread. 
+
+________________________________________
+From: Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+Sent: Tuesday, January 3, 2023 2:07 PM
+To: r-help at r-project.org; Sorkin, John; Ebert,Timothy Aaron; 'R-help Mailing List'
+Subject: Re: [R] Pipe operator
+
+The other responses here have been very good, but I felt it necessary to point out that the concept of a pipe originated around when you started programming [1] (text based). It did take awhile for it to migrate into programming languages such as OCaml, but Powershell makes extensive use of (object-based) pipes.
+
+Re memory use: not so much. Variables are small... it is the data they point to that is large, and it is not possible to analyze data without storing it somewhere. But when the variables are numerous they can interfere with our ability to understand the program... using pipes lets us focus on results obtained after several steps so fewer intermediate values clutter the variable space.
+
+Re speed: the magrittr pipe (%>%) is much slower than the built-in pipe at coordinating the transfer of data from left to right, but that is not usually significant compared to the computation speed on the actual data in the functions.
+
+ [1] https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fen.m.wikipedia.org%2Fwiki%2FPipeline_&data=05%7C01%7Cjsorkin%40som.umaryland.edu%7C94e1ec7b93c642286aae08daedbdc79f%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638083696601759531%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=gdooVKcK8iDNN0X6ZaYmDNk9pQ1Pe%2BgQiUGioPGB%2Fps%3D&reserved=0(Unix)#:~:text=The%20concept%20of%20pipelines%20was,Ritchie%20%26%20Thompson%2C%201974).
+
+On January 3, 2023 9:13:22 AM PST, "Sorkin, John" <jsorkin at som.umaryland.edu> wrote:
+>Tim,
+>
+>Thank you for your reply. I did not know about the |> operator. Do both %>% and |> work in base R?
+>
+>You suggested that the pipe operator can produce code with fewer variables. May I ask you to send a short example in which the pipe operator saves variables. Does said saving of variables speed up processing or result in less memory usage?
+>
+>Thank you,
+>John
+>
+>________________________________________
+>From: Ebert,Timothy Aaron <tebert at ufl.edu>
+>Sent: Tuesday, January 3, 2023 12:07 PM
+>To: Sorkin, John; 'R-help Mailing List'
+>Subject: RE: Pipe operator
+>
+>The pipe shortens code and results in fewer variables because you do not have to save intermediate steps. Once you get used to the idea it is useful. Note that there is also the |> pipe that is part of base R. As far as I know it does the same thing as %>%, or at my level of programing I have not encountered a difference.
+>
+>Tim
+>
+>-----Original Message-----
+>From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+>Sent: Tuesday, January 3, 2023 11:49 AM
+>To: 'R-help Mailing List' <r-help at r-project.org>
+>Subject: [R] Pipe operator
+>
+>[External Email]
+>
+>I am trying to understand the reason for existence of the pipe operator, %>%, and when one should use it. It is my understanding that the operator sends the file to the left of the operator to the function immediately to the right of the operator:
+>
+>c(1:10) %>% mean results in a value of 5.5 which is exactly the same as the result one obtains using the mean function directly, viz. mean(c(1:10)). What is the reason for having two syntactically different but semantically identical ways to call a function? Is one more efficient than the other? Does one use less memory than the other?
+>
+>P.S. Please forgive what might seem to be a question with an obvious answer. I am a programmer dinosaur. I have been programming for more than 50 years. When I started programming in the 1960s the only pipe one spoke about was a bong.
+>
+>John
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Cjsorkin%40som.umaryland.edu%7C94e1ec7b93c642286aae08daedbdc79f%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638083696601759531%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=jQx8iLm1i%2BQky6NTJ05AmhH6Fb6gJScFuafmEEFs2nM%3D&reserved=0
+>PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7Cjsorkin%40som.umaryland.edu%7C94e1ec7b93c642286aae08daedbdc79f%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638083696601759531%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=jHwquXRkVY6hOIB7dKo4jcEiuA%2F5lz%2FiFeAle2CrBbY%3D&reserved=0
+>and provide commented, minimal, self-contained, reproducible code.
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Cjsorkin%40som.umaryland.edu%7C94e1ec7b93c642286aae08daedbdc79f%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638083696601759531%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=jQx8iLm1i%2BQky6NTJ05AmhH6Fb6gJScFuafmEEFs2nM%3D&reserved=0
+>PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7Cjsorkin%40som.umaryland.edu%7C94e1ec7b93c642286aae08daedbdc79f%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638083696601759531%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=jHwquXRkVY6hOIB7dKo4jcEiuA%2F5lz%2FiFeAle2CrBbY%3D&reserved=0
+>and provide commented, minimal, self-contained, reproducible code.
+
+--
+Sent from my phone. Please excuse my brevity.
+
+
+From r@oknz @end|ng |rom gm@||@com  Wed Jan  4 01:37:46 2023
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Wed, 4 Jan 2023 13:37:46 +1300
+Subject: [R] Pipe operator
+In-Reply-To: <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <CABcYAdKCwViTa2+kdw-rOcXLWCtx_iydo4P9jyfH4OMdFB-XEQ@mail.gmail.com>
+
+The simplest and best answer is "fashion".
+In FSharp,
+> (|>);;
+val it: ('a -> ('a -> 'b) -> 'b)
+The ability to turn f x y into y |> f x
+makes perfect sense in a programming language
+where Currying (representing a function of n
+arguments as a function of 1 argument that
+returns a function of n-1 arguments, similarly
+represented) is a way of life.  It can result
+in code that is more readable.  And it is
+pretty much unavoidable:
+let x |> f = f x
+is definable in the language.
+
+In programming languages like Erlang and R,
+where Currying is *not* a way of life, the
+matter is otherwise.
+
+Really, it's all about whether you talk like Luke
+or like Yoda talk, it's not about what you say or
+efficiency or anything but perceived readability.
+
+
+On Wed, 4 Jan 2023 at 05:49, Sorkin, John <jsorkin at som.umaryland.edu> wrote:
+
+> I am trying to understand the reason for existence of the pipe operator,
+> %>%, and when one should use it. It is my understanding that the operator
+> sends the file to the left of the operator to the function immediately to
+> the right of the operator:
+>
+> c(1:10) %>% mean results in a value of 5.5 which is exactly the same as
+> the result one obtains using the mean function directly, viz.
+> mean(c(1:10)). What is the reason for having two syntactically different
+> but semantically identical ways to call a function? Is one more efficient
+> than the other? Does one use less memory than the other?
+>
+> P.S. Please forgive what might seem to be a question with an obvious
+> answer. I am a programmer dinosaur. I have been programming for more than
+> 50 years. When I started programming in the 1960s the only pipe one spoke
+> about was a bong.
+>
+> John
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Wed Jan  4 01:44:46 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Tue, 3 Jan 2023 19:44:46 -0500
+Subject: [R] Pipe operator
+In-Reply-To: <8E39C1BA-5CCE-4C36-A64E-C6BF6CBA1967@utoronto.ca>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <004b01d91f9a$822dbb00$86893100$@gmail.com>
+ <8E39C1BA-5CCE-4C36-A64E-C6BF6CBA1967@utoronto.ca>
+Message-ID: <006f01d91fd5$be848030$3b8d8090$@gmail.com>
+
+Boris,
+
+There are MANY variations possible and yours does not seem that common or
+useful albeit perfectly useful.
+
+I am not talking about making it a one-liner, albeit I find the multi-line
+version more useful.
+
+The pipeline concept seems sort of atomic in the following sense. R allows
+several in-line variants of assignment besides something like:
+
+    Assign("string", value)
+
+And, variations on the above that are more useful when making multiple
+assignments in a loop or using other environments.
+
+What is more common is:
+
+    Name <- Expression
+
+And of course occasionally:
+
+    Expression -> Name
+
+So back to pipelines, you have two perfectly valid ways to do a pipeline and
+assign the result. I showed a version like:
+
+Name <-
+    Variable |>
+    Pipeline.item(...) |>
+    ... |>
+    Pipeline.item(...)
+
+
+But you can equally well assign it at the end:
+
+    Variable |>
+    Pipeline.item(...) |>
+    ... |>
+    Pipeline.item(...) -> Name
+
+
+I think a more valid use of assign is in mid-pipeline as one way to save an
+intermediate result in a variable or perhaps in another environment, such as
+may be useful when debugging:
+
+Name <-
+    Variable |>
+    Pipeline.item(...) |>
+    assign("temp1", _) |>
+    ... |>
+    Pipeline.item(...)
+
+This works because assign(), like print() also returns a copy of the
+argument that can be passed along the pipeline and thus captured for a side
+effect. When done debugging, removing some lines makes it continue working
+seamlessly.
+
+BTW, your example does something I am not sure you intended:
+
+  x |> cos() |> max(pi/4) |> round(3) |> assign("x", value = _)
+
+I prefer showing it like this:
+
+     x |> 
+    cos() |> 
+    max(pi/4) |> 
+    round(3) |> 
+    assign("x", value = _)
+
+Did you notice you changed "x" by assigning a new value to the one you
+started with? That is perfectly legal but may not have been intended.
+
+And, yes, for completeness, there are two more assignment operators I
+generally have no use for of <<- and ->> that work in a global sense.
+
+And for even more completeness you can also use the operators above like
+this:
+
+> z = `<-`("x", 7)
+> z
+[1] 7
+> x
+[1] 7
+
+For even more completeness, the example we are using can use the above
+notation with a silly twist. Placing the results in z instead, I find the
+new pipe INSISTS _ can only be used with a named argument. Duh, `<-` does
+not have named arguments, just positional. So I see any valid name is just
+ignored and the following works!
+
+x |> cos() |> max(pi/4) |> round(3) |> `<-`("z", any.identifier = _)
+
+And, frankly, many functions that need the pipe to feed a second or later
+position can easily be changed to use the first argument. If you feel the
+need to use "assign" make this function before using the pipeline:
+
+assignyx <- function(x, y) assign(y, x)
+
+Then your code can save a variable without an underscore and keyword:
+
+x |> cos() |> max(pi/4) |> round(3) |> assignyx("x")
+
+Or use the new lambda function somewhat designed for this case use which I
+find a bit ugly but it is a matter of taste.
+
+But to end this, there is no reason to make things complex in situations
+like this. Just use a simple assignment pre or post as meets your needs.
+
+
+
+
+
+-----Original Message-----
+From: Boris Steipe <boris.steipe at utoronto.ca> 
+Sent: Tuesday, January 3, 2023 2:01 PM
+To: R-help Mailing List <r-help at r-project.org>
+Cc: avi.e.gross at gmail.com
+Subject: Re: [R] Pipe operator
+
+Working off Avi's example - would:
+
+  x |> cos() |> max(pi/4) |> round(3) |> assign("x", value = _)
+
+...be even more intuitive to read? Or are there hidden problems with that?
+
+
+
+Cheers,
+Boris
+
+
+> On 2023-01-03, at 12:40, avi.e.gross at gmail.com wrote:
+> 
+> John,
+> 
+> The topic has indeed been discussed here endlessly but new people 
+> still stumble upon it.
+> 
+> Until recently, the formal R language did not have a built-in pipe 
+> functionality. It was widely used through an assortment of packages 
+> and there are quite a few variations on the theme including different 
+> implementations.
+> 
+> Most existing code does use the operator %>% but there is now a 
+> built-in |> operator that is generally faster but is not as easy to use in
+a few cases.
+> 
+> Please forget the use of the word FILE here. Pipes are a form of 
+> syntactic sugar that generally is about the FIRST argument to a 
+> function. They are NOT meant to be used just for the trivial case you 
+> mention where indeed there is an easy way to do things. Yes, they work 
+> in such situations. But consider a deeply nested expression like this:
+> 
+> Result <- round(max(cos(x), 3.14159/4), 3)
+> 
+> There are MANY deeper nested expressions like this commonly used. The 
+> above can be written linearly as in
+> 
+> Temp1 <- cos(x)
+> Temp2 <- max(Temp1, 3.14159/4)
+> Result <- round(Temp2, 3)
+> 
+> Translation, for some variable x, calculate the cosine and take the 
+> maximum value of it as compared to pi/4 and round the result to three 
+> decimal places. Not an uncommon kind of thing to do and sometimes you 
+> can nest such things many layers deep and get hopelessly confused if 
+> not done somewhat linearly.
+> 
+> What pipes allow is to write this closer to the second way while not 
+> seeing or keeping any temporary variables around. The goal is to 
+> replace the FIRST argument to a function with whatever resulted as the 
+> value of the previous expression. That is often a vector or data.frame 
+> or list or any kind of object but can also be fairly complex as in a list
+of lists of matrices.
+> 
+> So you can still start with cos(x) OR you can write this where the x 
+> is removed from within and leaves cos() empty:
+> 
+> x %>% cos
+> or
+> x |> cos()
+> 
+> In the previous version of pipes the parentheses after cos() are 
+> optional if there are no additional arguments but the new pipe requires
+them.
+> 
+> So continuing the above, using multiple lines, the pipe looks like:
+> 
+> Result <-
+>  x %>%
+>  cos() %>%
+>  max(3.14159/4) %>%
+>  round(3)
+> 
+> This gives the same result but is arguably easier for some to read and 
+> follow. Nobody forces you to use it and for simple cases, most people
+don't.
+> 
+> There is a grouping of packages called the tidyverse that makes heavy 
+> use of pipes routine as they made most or all their functions such 
+> that the first argument is the one normally piped to and it can be 
+> very handy to write code that says, read in your data into a variable 
+> (a data.frame or tibble often) and PIPE IT to a function that renames 
+> some columns and PIPE the resulting modified object to a function that 
+> retains only selected rows and pipe that to a function that drops some 
+> of the columns and pipe that to a function that groups the items or 
+> sorts them and pipe that to a function that does a join with another
+object or generates a report or so many other things.
+> 
+> So the real answer is that piping is another WAY of doing things from 
+> a programmers perspective. Underneath it all, it is mostly syntactic 
+> sugar and the interpreter rearranges your code and performs the steps 
+> in what seems like a different order at times. Generally, you do not need
+to care.
+> 
+> 
+> 
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+> Sent: Tuesday, January 3, 2023 11:49 AM
+> To: 'R-help Mailing List' <r-help at r-project.org>
+> Subject: [R] Pipe operator
+> 
+> I am trying to understand the reason for existence of the pipe 
+> operator, %>%, and when one should use it. It is my understanding that 
+> the operator sends the file to the left of the operator to the 
+> function immediately to the right of the operator:
+> 
+> c(1:10) %>% mean results in a value of 5.5 which is exactly the same 
+> as the result one obtains using the mean function directly, viz.
+mean(c(1:10)).
+> What is the reason for having two syntactically different but 
+> semantically identical ways to call a function? Is one more efficient than
+the other?
+> Does one use less memory than the other? 
+> 
+> P.S. Please forgive what might seem to be a question with an obvious
+answer.
+> I am a programmer dinosaur. I have been programming for more than 50
+years.
+> When I started programming in the 1960s the only pipe one spoke about 
+> was a bong.
+> 
+> John
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+--
+Boris Steipe MD, PhD
+
+Professor em.
+Department of Biochemistry
+Temerty Faculty of Medicine
+University of Toronto
+
+
+From r@oknz @end|ng |rom gm@||@com  Wed Jan  4 01:50:11 2023
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Wed, 4 Jan 2023 13:50:11 +1300
+Subject: [R] Pipe operator
+In-Reply-To: <MW4PR03MB63630F7F3EA776AB218EFD2AE2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <02b901d91c6c$6759e2d0$360da870$.ref@yahoo.com>
+ <02b901d91c6c$6759e2d0$360da870$@yahoo.com>
+ <4B42882F-8DBA-4D3F-8B5E-DF33772052D9@dcn.davis.ca.us>
+ <023f01d91ea2$4b1e6a40$e15b3ec0$@yahoo.com>
+ <7bf767b8da4744f8932de0d16dfc787b@SRVEXCHCM1302.precheza.cz>
+ <026301d91eac$99e5e950$cdb1bbf0$@yahoo.com>
+ <CAKZQJMDpo2-GDTxJULgmkJ7Cd3RTr26k+rg20WwWEbYZL+krYQ@mail.gmail.com>
+ <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>
+ <MW4PR03MB63630F75F8C75E3448161E00E2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <BN6PR2201MB1553BE35AD212F0C0E07874ACFF49@BN6PR2201MB1553.namprd22.prod.outlook.com>
+ <MW4PR03MB63630F7F3EA776AB218EFD2AE2F49@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <CABcYAdLiqbfTJzZrDerjh2X18unwCf1fSYYdV01qguY91_X5zw@mail.gmail.com>
+
+"Does saving of variables speed up processing" no
+"or save memory" no.
+The manual is quite explicit:
+> ?"|>"
+...
+Currently, pipe operations are implemented as syntax
+transformations.  So an expression written as 'x |> f(y)' is
+parsed as 'f(x, y)'.
+
+Strictly speaking, using |> *doesn't* save any variables.
+x |> f(y) |> g() |> h(1,z)
+simply is h(g(f(x,y)),1,z) in which precisely the same
+variables appear.  All that changes is the order in which
+you write the function names; the order in which things are
+evaluated does not change (the manual is explicit about
+that too).
+
+I personally find |> in R extremely confusing because
+in x |> f(y) |> g() |> h(1,z)
+it LOOKS as if there are calls to f(f), to g(), and to
+h(1,z) and in Haskell or F# that would be true, but in
+R the expressions f(y), g(), and h(1,z) are NOT
+evaluated.  |> is and has to be special syntax with a
+very restricted right-hand side.
+
+Eliminating well-chosen variables can of course make
+code much less readable.  It's funny how my code seems
+prettier using |> but other people's code seems hopelessly
+obscure...
+
+
+On Wed, 4 Jan 2023 at 06:19, Sorkin, John <jsorkin at som.umaryland.edu> wrote:
+
+> Tim,
+>
+> Thank you for your reply. I did not know about the |> operator. Do both
+> %>% and |> work in base R?
+>
+> You suggested that the pipe operator can produce code with fewer
+> variables. May I ask you to send a short example in which the pipe operator
+> saves variables. Does said saving of variables speed up processing or
+> result in less memory usage?
+>
+> Thank you,
+> John
+>
+> ________________________________________
+> From: Ebert,Timothy Aaron <tebert at ufl.edu>
+> Sent: Tuesday, January 3, 2023 12:07 PM
+> To: Sorkin, John; 'R-help Mailing List'
+> Subject: RE: Pipe operator
+>
+> The pipe shortens code and results in fewer variables because you do not
+> have to save intermediate steps. Once you get used to the idea it is
+> useful. Note that there is also the |> pipe that is part of base R. As far
+> as I know it does the same thing as %>%, or at my level of programing I
+> have not encountered a difference.
+>
+> Tim
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+> Sent: Tuesday, January 3, 2023 11:49 AM
+> To: 'R-help Mailing List' <r-help at r-project.org>
+> Subject: [R] Pipe operator
+>
+> [External Email]
+>
+> I am trying to understand the reason for existence of the pipe operator,
+> %>%, and when one should use it. It is my understanding that the operator
+> sends the file to the left of the operator to the function immediately to
+> the right of the operator:
+>
+> c(1:10) %>% mean results in a value of 5.5 which is exactly the same as
+> the result one obtains using the mean function directly, viz.
+> mean(c(1:10)). What is the reason for having two syntactically different
+> but semantically identical ways to call a function? Is one more efficient
+> than the other? Does one use less memory than the other?
+>
+> P.S. Please forgive what might seem to be a question with an obvious
+> answer. I am a programmer dinosaur. I have been programming for more than
+> 50 years. When I started programming in the 1960s the only pipe one spoke
+> about was a bong.
+>
+> John
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>
+> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Cjsorkin%40som.umaryland.edu%7Cdc0d677272114cf6ba2808daedad0ec5%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638083624783034240%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=7dDMSg%2FmPQ5xXP6zu6MWLmARdtdlrYWb3mXPZQj0La0%3D&reserved=0
+> PLEASE do read the posting guide
+> https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7Cjsorkin%40som.umaryland.edu%7Cdc0d677272114cf6ba2808daedad0ec5%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638083624783034240%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=l5BZyjup%2Bho%2FijE1zQMxb5JE3F5VfKBZpUKHYW4k4Fg%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
