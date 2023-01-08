@@ -5557,3 +5557,236 @@ Best regards,
 Ivan
 
 
+From rremed|o @end|ng |rom hotm@||@com  Thu Jan  5 20:52:25 2023
+From: rremed|o @end|ng |rom hotm@||@com (=?UTF-8?Q?Rodrigo_Ribeiro_Rem=c3=a9dio?=)
+Date: Thu, 5 Jan 2023 16:52:25 -0300
+Subject: [R] R 'arima' discrepancies
+Message-ID: <CP4P284MB1650D7A2FB5FE08CB81E51B6C0FA9@CP4P284MB1650.BRAP284.PROD.OUTLOOK.COM>
+
+Rob J Hyndman gives great explanation here 
+(https://robjhyndman.com/hyndsight/estimation/) for reasons why results 
+from R's arima may differ from other softwares.
+
+@iacobus, to cite one, 'Major discrepancies between R and Stata for 
+ARIMA' 
+(https://stackoverflow.com/questions/22443395/major-discrepancies-between-r-and-stata-for-arima), 
+assign the, sometimes, big diferences from R and other softwares to 
+different optimization algorithms. However, I think this is overstate 
+the reason.
+
+I explain better. I fit arima models regularly using |forecast| or 
+|fable| packages, besides using Stata, Eviews and Gretl. All these 
+packages, except for R, give very consistent results with each other. 
+I'll give one example using R, Eviews and Gretl. I'll use "BFGS" 
+algorithm and observed hessian based standard errors (in Gretl and in 
+Eviews).
+
+
+    |library(GetBCBData) library(lubridate) library(tsibble)
+    library(tsbox) library(forecast) library(tidyr) library(dplyr)
+    #============================================================# #Data
+    ---- #============================================================#
+    #Brazilian CPI and analytical components ipca <-
+    gbcbd_get_series(c(433, 4449, 10844, 11428, 27863, 27864),
+    first.date = dmy("01/01/2004")) ipca <- ipca %>% mutate(series.name
+    = case_when(id.num == 433 ~ "ipca", id.num == 4449 ~
+    "administrados", id.num == 10844 ~ "servicos", id.num == 11428 ~
+    "livres", id.num == 27863 ~ "industriais", id.num == 27864 ~
+    "alimentos", TRUE ~ series.name)) ipca <- ipca %>% select(data =
+    ref.date, valor = value, series.name) %>% pivot_wider(names_from =
+    "series.name", values_from = "valor") ipca_tsb <- ipca %>%
+    mutate(data = yearmonth(data)) %>% arrange(data) %>% as_tsibble()
+    ipca_ts <- ipca_tsb %>% ts_ts() ##Eviews and Gretl can easily import
+    'dta' files ---- ipca %>% foreign::write.dta("ipca.dta")
+    #============================================================#
+    #Model ----
+    #============================================================#
+    #ARIMA(2,0,1)(2,0,2)[12] modelo <- ipca_ts %>% .[, "servicos"] %>%
+    Arima(order = c(2, 0, 1), seasonal = c(2, 0, 2), include.mean = T,
+    method = "ML", optim.method = "BFGS", optim.control = list(maxit =
+    1000)) #'fable' gives identical results: ipca_tsb%>%
+    model(ARIMA(servicos ~ 1 + pdq(2, 0, 1) + PDQ(2, 0, 2), method =
+    "ML", optim.method = "BFGS", optim.control = list(maxit = 1000)))
+    %>% report() summary(modelo) |*|Series: . ARIMA(2,0,1)(2,0,2)[12]
+    with non-zero mean Coefficients: ar1 ar2 ma1 sar1 sar2 sma1 sma2
+    mean 0.7534 0.0706 -0.5705 0.1759 0.7511 0.3533 -0.6283 0.5001 s.e.
+    NaN NaN 0.0011 NaN NaN NaN NaN 0.1996 sigma^2 = 0.05312: log
+    likelihood = 1.75 AIC=14.5 AICc=15.33 BIC=45.33 Training set error
+    measures: ME RMSE MAE MPE MAPE MASE ACF1 Training set -0.006082139
+    0.2263897 0.1678378 -33.39711 79.74708 0.7674419 0.01342733 Warning
+    message: In sqrt(diag(x$var.coef)) : NaNs produce|*
+
+
+|Gretl||output: 
+https://drive.google.com/file/d/1T_thtM0mRXvlJbPrgkwqlc_tLqCbsXYe/view?usp=sharing|
+
+|Eviews output: 
+https://drive.google.com/file/d/1Ta8b5vPwftRFhZpb3Pg95aVRfvhl01vO/view?usp=sharing|
+
+
+Coefficients comparisson: 
+https://docs.google.com/spreadsheets/d/1TfXmQaCEOtOX6e0foSHI9gTAHJ1vW6Ui/edit?usp=sharing&ouid=104001235447994085528&rtpof=true&sd=true
+
+
+Both Eviews and Gretl give results that differ after a few decimal 
+places, which is expected. R, by its turn, gives completlely different 
+results. Again, all of them used "BFGS" algorithm. Even the standard 
+erros, which I'm not questioning here, are very similar between Gretl 
+and Eviews. In this example, the major difference is in AR(1) coefficient.
+
+I know this is just only one example, but I see these kind of divergent 
+results everyday. Not to mention situations where including a single 
+observation messes up the entire result, or when R cannot calculate 
+standard errors ("In sqrt(diag(best$var.coef))").
+
+All that make me wonder: as results may differ greatly from other 
+software, is |arima| from R truly reliable? Is |optim| the problem or 
+other intricacies inside |arima| function and its methodology? Or are 
+all the other softwares making mistakes (converging when they shouldn't, 
+for example)?
+
+In a summary, the question is: is R's base |arima| (which |Arima|, from 
+'forecast', and |ARIMA| from 'fable' are based on) really reliable?
+
+
+Edit: Stata gives the same results as did Gretl and Eviews. Stata 
+output: 
+https://drive.google.com/file/d/1TeKfj59aJNjxaWx0Uslke4y8RJWqMxRl/view?usp=sharing
+
+
+Rodrigo Rem?dio
+
+rremedio at hotmail.com
+
+
+||*||*||
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Fri Jan  6 15:37:08 2023
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Fri, 6 Jan 2023 09:37:08 -0500
+Subject: [R] R 'arima' discrepancies
+In-Reply-To: <CP4P284MB1650D7A2FB5FE08CB81E51B6C0FA9@CP4P284MB1650.BRAP284.PROD.OUTLOOK.COM>
+References: <CP4P284MB1650D7A2FB5FE08CB81E51B6C0FA9@CP4P284MB1650.BRAP284.PROD.OUTLOOK.COM>
+Message-ID: <85c133f9-9d95-ff90-e2e4-944364bd21c0@gmail.com>
+
+As the original author of what became "BFGS" in optim(), I would point out that BFGS is a catch-all
+phrase that should be applied only to the formula used to update EITHER (my emphasis) the approximate
+Hessian or the INVERSE approximate Hessian. The starting approximation can vary as well, along with
+choices of the line search based on a search direction the approximate (inverse?) Hessian generates.
+
+The optim::BFGS starts with a unit matrix approximation to the inverse hessian and uses a backtrack
+line search. There are some choices of how fast to backtrack and the stopping criteria. Also optim::BFGS
+allows a relatively crude gradient approximation to be used.
+
+Rvmmin (now part of optimx) is an all-R implementation of the same ideas, but with some changes in local
+strategies. Even putting in what I believe are the same choices, I don't get identical iterates to
+optim::BFGS, likely due to some ways in which C works. The "vm" in the name is for the original
+"Variable Metric" algorithm of Fletcher (1970). I sat with Roger in Dundee in Jan. 1976 and we used a red
+pencil and simplified his Fortran code. I made just 1 more change when I returned to Ottawa -- my approach
+always tries a steepest descent (i.e., new unit inverse Hessian) before quitting.
+
+One choice I have made with Rvmmin is to insist on a gradient function. I've found approximations don't
+work so well, not for speed but for knowing that an answer has a nearly zero gradient.
+
+There is likely a useful but modest project to explore the differences Rodrigo has pointed out. It should not
+be too difficult to set up the optimization to try different optimizers. I'll be happy to collaborate in
+this. Note that Google Summer of Code is a possibility, but prospective students and mentors need to be
+starting now.
+
+Cheers,
+
+John Nash
+
+On 2023-01-05 14:52, Rodrigo Ribeiro Rem?dio wrote:
+> Rob J Hyndman gives great explanation here (https://robjhyndman.com/hyndsight/estimation/) for reasons why results from 
+> R's arima may differ from other softwares.
+> 
+> @iacobus, to cite one, 'Major discrepancies between R and Stata for ARIMA' 
+> (https://stackoverflow.com/questions/22443395/major-discrepancies-between-r-and-stata-for-arima), assign the, sometimes, 
+> big diferences from R and other softwares to different optimization algorithms. However, I think this is overstate the 
+> reason.
+> 
+> I explain better. I fit arima models regularly using |forecast| or |fable| packages, besides using Stata, Eviews and 
+> Gretl. All these packages, except for R, give very consistent results with each other. I'll give one example using R, 
+> Eviews and Gretl. I'll use "BFGS" algorithm and observed hessian based standard errors (in Gretl and in Eviews).
+> 
+> 
+>  ?? |library(GetBCBData) library(lubridate) library(tsibble)
+>  ?? library(tsbox) library(forecast) library(tidyr) library(dplyr)
+>  ?? #============================================================# #Data
+>  ?? ---- #============================================================#
+>  ?? #Brazilian CPI and analytical components ipca <-
+>  ?? gbcbd_get_series(c(433, 4449, 10844, 11428, 27863, 27864),
+>  ?? first.date = dmy("01/01/2004")) ipca <- ipca %>% mutate(series.name
+>  ?? = case_when(id.num == 433 ~ "ipca", id.num == 4449 ~
+>  ?? "administrados", id.num == 10844 ~ "servicos", id.num == 11428 ~
+>  ?? "livres", id.num == 27863 ~ "industriais", id.num == 27864 ~
+>  ?? "alimentos", TRUE ~ series.name)) ipca <- ipca %>% select(data =
+>  ?? ref.date, valor = value, series.name) %>% pivot_wider(names_from =
+>  ?? "series.name", values_from = "valor") ipca_tsb <- ipca %>%
+>  ?? mutate(data = yearmonth(data)) %>% arrange(data) %>% as_tsibble()
+>  ?? ipca_ts <- ipca_tsb %>% ts_ts() ##Eviews and Gretl can easily import
+>  ?? 'dta' files ---- ipca %>% foreign::write.dta("ipca.dta")
+>  ?? #============================================================#
+>  ?? #Model ----
+>  ?? #============================================================#
+>  ?? #ARIMA(2,0,1)(2,0,2)[12] modelo <- ipca_ts %>% .[, "servicos"] %>%
+>  ?? Arima(order = c(2, 0, 1), seasonal = c(2, 0, 2), include.mean = T,
+>  ?? method = "ML", optim.method = "BFGS", optim.control = list(maxit =
+>  ?? 1000)) #'fable' gives identical results: ipca_tsb%>%
+>  ?? model(ARIMA(servicos ~ 1 + pdq(2, 0, 1) + PDQ(2, 0, 2), method =
+>  ?? "ML", optim.method = "BFGS", optim.control = list(maxit = 1000)))
+>  ?? %>% report() summary(modelo) |*|Series: . ARIMA(2,0,1)(2,0,2)[12]
+>  ?? with non-zero mean Coefficients: ar1 ar2 ma1 sar1 sar2 sma1 sma2
+>  ?? mean 0.7534 0.0706 -0.5705 0.1759 0.7511 0.3533 -0.6283 0.5001 s.e.
+>  ?? NaN NaN 0.0011 NaN NaN NaN NaN 0.1996 sigma^2 = 0.05312: log
+>  ?? likelihood = 1.75 AIC=14.5 AICc=15.33 BIC=45.33 Training set error
+>  ?? measures: ME RMSE MAE MPE MAPE MASE ACF1 Training set -0.006082139
+>  ?? 0.2263897 0.1678378 -33.39711 79.74708 0.7674419 0.01342733 Warning
+>  ?? message: In sqrt(diag(x$var.coef)) : NaNs produce|*
+> 
+> 
+> |Gretl||output: https://drive.google.com/file/d/1T_thtM0mRXvlJbPrgkwqlc_tLqCbsXYe/view?usp=sharing|
+> 
+> |Eviews output: https://drive.google.com/file/d/1Ta8b5vPwftRFhZpb3Pg95aVRfvhl01vO/view?usp=sharing|
+> 
+> 
+> Coefficients comparisson: 
+> https://docs.google.com/spreadsheets/d/1TfXmQaCEOtOX6e0foSHI9gTAHJ1vW6Ui/edit?usp=sharing&ouid=104001235447994085528&rtpof=true&sd=true
+> 
+> 
+> Both Eviews and Gretl give results that differ after a few decimal places, which is expected. R, by its turn, gives 
+> completlely different results. Again, all of them used "BFGS" algorithm. Even the standard erros, which I'm not 
+> questioning here, are very similar between Gretl and Eviews. In this example, the major difference is in AR(1) coefficient.
+> 
+> I know this is just only one example, but I see these kind of divergent results everyday. Not to mention situations 
+> where including a single observation messes up the entire result, or when R cannot calculate standard errors ("In 
+> sqrt(diag(best$var.coef))").
+> 
+> All that make me wonder: as results may differ greatly from other software, is |arima| from R truly reliable? Is |optim| 
+> the problem or other intricacies inside |arima| function and its methodology? Or are all the other softwares making 
+> mistakes (converging when they shouldn't, for example)?
+> 
+> In a summary, the question is: is R's base |arima| (which |Arima|, from 'forecast', and |ARIMA| from 'fable' are based 
+> on) really reliable?
+> 
+> 
+> Edit: Stata gives the same results as did Gretl and Eviews. Stata output: 
+> https://drive.google.com/file/d/1TeKfj59aJNjxaWx0Uslke4y8RJWqMxRl/view?usp=sharing
+> 
+> 
+> Rodrigo Rem?dio
+> 
+> rremedio at hotmail.com
+> 
+> 
+> ||*||*||
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
