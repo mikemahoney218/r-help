@@ -5873,3 +5873,1071 @@ Best regards,
 Ivan
 
 
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Sun Jan  8 04:24:05 2023
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Sun, 8 Jan 2023 05:24:05 +0200
+Subject: [R] Problem with integrate(function(x) x^3 / sin(x), -pi/2, pi/2)
+Message-ID: <9b342177-ce55-b234-0b4f-699b4ca81b20@syonic.eu>
+
+Dear List-Members,
+
+I encounter a problem while trying to integrate the following function:
+
+integrate(function(x) x^3 / sin(x), -pi/2, pi/2)
+# Error in integrate(function(x) x^3/sin(x), -pi/2, pi/2) :
+#? non-finite function value
+
+# the value should be finite:
+curve(x^3 / sin(x), -pi/2, pi/2)
+integrate(function(x) x^3 / sin(x), -pi/2, 0)
+integrate(function(x) x^3 / sin(x), 0, pi/2)
+# but this does NOT work:
+integrate(function(x) x^3 / sin(x), -pi/2, pi/2, subdivisions=4096)
+integrate(function(x) x^3 / sin(x), -pi/2, pi/2, subdivisions=4097)
+# works:
+integrate(function(x) x^3 / sin(x), -pi/2, pi/2 + 1E-10)
+
+
+# Note: works directly with other packages
+
+pracma::integral(function(x) x^3 / sin(x), -pi/2, pi/2 )
+# 3.385985
+
+
+I hope that integrate() gets improved in base R as well.
+
+
+Sincerely,
+
+
+Leonard
+
+
+From @kw@|mmo @end|ng |rom gm@||@com  Sun Jan  8 04:32:25 2023
+From: @kw@|mmo @end|ng |rom gm@||@com (Andrew Simmons)
+Date: Sat, 7 Jan 2023 22:32:25 -0500
+Subject: [R] 
+ Problem with integrate(function(x) x^3 / sin(x), -pi/2, pi/2)
+In-Reply-To: <9b342177-ce55-b234-0b4f-699b4ca81b20@syonic.eu>
+References: <9b342177-ce55-b234-0b4f-699b4ca81b20@syonic.eu>
+Message-ID: <CAPcHnpS5eLjZ9UsB+H9PqD6PjoyVwN5=2T9JmM3BfdYg+qiBXQ@mail.gmail.com>
+
+You're dividing 0 by 0, giving you NaN, perhaps you should try
+
+function(x) ifelse(x == 0, 0, x^3/sin(x))
+
+On Sat, Jan 7, 2023, 22:24 Leonard Mada via R-help <r-help at r-project.org>
+wrote:
+
+> Dear List-Members,
+>
+> I encounter a problem while trying to integrate the following function:
+>
+> integrate(function(x) x^3 / sin(x), -pi/2, pi/2)
+> # Error in integrate(function(x) x^3/sin(x), -pi/2, pi/2) :
+> #  non-finite function value
+>
+> # the value should be finite:
+> curve(x^3 / sin(x), -pi/2, pi/2)
+> integrate(function(x) x^3 / sin(x), -pi/2, 0)
+> integrate(function(x) x^3 / sin(x), 0, pi/2)
+> # but this does NOT work:
+> integrate(function(x) x^3 / sin(x), -pi/2, pi/2, subdivisions=4096)
+> integrate(function(x) x^3 / sin(x), -pi/2, pi/2, subdivisions=4097)
+> # works:
+> integrate(function(x) x^3 / sin(x), -pi/2, pi/2 + 1E-10)
+>
+>
+> # Note: works directly with other packages
+>
+> pracma::integral(function(x) x^3 / sin(x), -pi/2, pi/2 )
+> # 3.385985
+>
+>
+> I hope that integrate() gets improved in base R as well.
+>
+>
+> Sincerely,
+>
+>
+> Leonard
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @kw@|mmo @end|ng |rom gm@||@com  Sun Jan  8 05:02:09 2023
+From: @kw@|mmo @end|ng |rom gm@||@com (Andrew Simmons)
+Date: Sat, 7 Jan 2023 23:02:09 -0500
+Subject: [R] 
+ Problem with integrate(function(x) x^3 / sin(x), -pi/2, pi/2)
+In-Reply-To: <8d1cba31-d670-c019-1700-60ceb64f2e2d@syonic.eu>
+References: <9b342177-ce55-b234-0b4f-699b4ca81b20@syonic.eu>
+ <CAPcHnpS5eLjZ9UsB+H9PqD6PjoyVwN5=2T9JmM3BfdYg+qiBXQ@mail.gmail.com>
+ <8d1cba31-d670-c019-1700-60ceb64f2e2d@syonic.eu>
+Message-ID: <CAPcHnpQGSk2oQ2xgZdMivoMsNNB9EeSWwVV0-0QZ3tKgn9WP-A@mail.gmail.com>
+
+`subdivisions` is the maximum number of subintervals. Looking here
+
+https://github.com/wch/r-source/blob/79298c499218846d14500255efd622b5021c10ec/src/appl/integrate.c#L1275
+
+I'm not surprised that changing `subdivisions` has no effect on the
+outcome. The integration method from {pracma} might work, maybe it
+never calculates the function at 0, maybe it's using some alternate
+method. Or maybe it did calculate f(0) and got NaN and just assumed
+that the limit converged. Maybe that's a fair assumption, and maybe
+it's not.
+
+However:
+
+integrate(function(x) ifelse(x == 0, 0, x^3/sin(x), -pi/2, pi/2)
+
+works perfectly fine and is a better function definition anyway.
+`integrate` in the {stats} package is unlikely to change, so use the
+alternate function definition or use {pracma}.
+
+On Sat, Jan 7, 2023 at 10:41 PM Leonard Mada <leo.mada at syonic.eu> wrote:
+>
+> Dear Andrew,
+>
+>
+> The limit when x approaches 0 is 0. I think most integration algorithms handle this situation.
+>
+>
+> This actually works, and it "includes" formally the point x = 0:
+>
+> integrate(function(x) x^3 / sin(x), -pi/2, pi/2 + 1E-10)
+>
+>
+> Trying to "bypass" the 0 using subdivisions unfortunately did not work:
+>
+> integrate(function(x) x^3 / sin(x), -pi/2, pi/2, subdivisions=4097) # or 4096
+>
+>
+> Sincerely,
+>
+>
+> Leonard
+>
+>
+> On 1/8/2023 5:32 AM, Andrew Simmons wrote:
+>
+> You're dividing 0 by 0, giving you NaN, perhaps you should try
+>
+> function(x) ifelse(x == 0, 0, x^3/sin(x))
+>
+> On Sat, Jan 7, 2023, 22:24 Leonard Mada via R-help <r-help at r-project.org> wrote:
+>>
+>> Dear List-Members,
+>>
+>> I encounter a problem while trying to integrate the following function:
+>>
+>> integrate(function(x) x^3 / sin(x), -pi/2, pi/2)
+>> # Error in integrate(function(x) x^3/sin(x), -pi/2, pi/2) :
+>> #  non-finite function value
+>>
+>> # the value should be finite:
+>> curve(x^3 / sin(x), -pi/2, pi/2)
+>> integrate(function(x) x^3 / sin(x), -pi/2, 0)
+>> integrate(function(x) x^3 / sin(x), 0, pi/2)
+>> # but this does NOT work:
+>> integrate(function(x) x^3 / sin(x), -pi/2, pi/2, subdivisions=4096)
+>> integrate(function(x) x^3 / sin(x), -pi/2, pi/2, subdivisions=4097)
+>> # works:
+>> integrate(function(x) x^3 / sin(x), -pi/2, pi/2 + 1E-10)
+>>
+>>
+>> # Note: works directly with other packages
+>>
+>> pracma::integral(function(x) x^3 / sin(x), -pi/2, pi/2 )
+>> # 3.385985
+>>
+>>
+>> I hope that integrate() gets improved in base R as well.
+>>
+>>
+>> Sincerely,
+>>
+>>
+>> Leonard
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Jan  8 08:27:05 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 8 Jan 2023 10:27:05 +0300
+Subject: [R] 
+ Problem with integrate(function(x) x^3 / sin(x), -pi/2, pi/2)
+In-Reply-To: <9b342177-ce55-b234-0b4f-699b4ca81b20@syonic.eu>
+References: <9b342177-ce55-b234-0b4f-699b4ca81b20@syonic.eu>
+Message-ID: <20230108102705.348ae5c4@Tarkus>
+
+On Sun, 8 Jan 2023 05:24:05 +0200
+Leonard Mada via R-help <r-help at r-project.org> wrote:
+
+> pracma::integral(function(x) x^3 / sin(x), -pi/2, pi/2 )
+> # 3.385985
+
+Note that at least one implementation used by pracma::integral has the
+same problem:
+
+pracma::integral(function(x) x^3/sin(x), -pi/2, pi/2, no_intervals=7)
+# [1] NaN
+# Warning:
+# In .gkadpt(f, a, b, tol = tol) : Infinite or NA function value
+# encountered.
+
+You just have to be less lucky to have it evaluate the function at 0.
+By default, the subdivision strategy used by pracma::integral combined
+with the default number of intervals leaves the special point on the
+edge of the interval, where the function happens not to be evaluated.
+
+-- 
+Best regards,
+Ivan
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sun Jan  8 09:59:58 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sun, 8 Jan 2023 08:59:58 +0000
+Subject: [R] extracting a table from pdf file....
+Message-ID: <PU4P216MB156880E6BD28FFC8405882F8C8F99@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+dear members,
+                            I am extracting a pdf table into a data frame from this URL:
+
+https://www.canmoney.in/pdf/INTRADAYLEVERAGE-20220531-latest.pdf
+
+I am using extract_table() from the tabulizer package (it is archived and have installed it from github)
+
+IDTpdf <- extract_tables("https://www.canmoney.in/pdf/INTRADAYLEVERAGE-20220531-latest.pdf",output="data.frame")
+
+But IDTpdf consists of four different dfs, and I want to collapse them into one. The dput of IDTpdf:
+
+list(structure(list(SCRIPS.AVAILABLE.FOR.INTRADAY.WITH.LEVERAGES.PROVIDED.ON.THEM = c("S.No.",
+"times)", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+"11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21",
+"22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32",
+"33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43",
+"44", "45", "46", "47", "48", "49", "50", "51", "52", "53"),
+    X = c("Scrip Name", "", "ALKEM LABORATORIES LTD.", "ATUL LTD",
+    "ABB INDIA LIMITED", "AARTI INDUSTRIES LTD", "ABBOTT INDIA LIMITED",
+    "ADITYA BIRLA CAPITAL LTD.", "ADITYA BIRLA FASHION & RT",
+    "ACC LIMITED", "ADANI ENTERPRISES LIMITED", "ADANI PORT & SEZ LTD",
+    "AMARA RAJA BATTERIES LTD.", "ASTRAL LIMITED", "AMBUJA CEMENTS LTD",
+    "ALEMBIC PHARMA LTD", "APOLLO HOSPITALS ENTER. L", "APOLLO TYRES LTD",
+    "ASHOK LEYLAND LTD", "ASIAN PAINTS LIMITED", "AU SMALL FINANCE BANK LTD",
+    "AUROBINDO PHARMA LTD", "AXIS BANK LIMITED", "BAJAJ AUTO LIMITED",
+    "BAJAJ FINSERV LTD.", "BAJAJ FINANCE LIMITED", "BALRAMPUR CHINI MILLS LTD",
+    "BANDHAN BANK LIMITED", "BANK OF BARODA", "BATA INDIA LTD",
+    "BHARAT ELECTRONICS LTD", "BERGER PAINTS (I) LTD", "BHARTI AIRTEL LIMITED",
+    "BHEL", "BIOCON LIMITED.", "BOSCH LIMITED", "BRITANNIA INDUSTRIES LTD",
+    "BIRLASOFT LIMITED", "ZYDUS LIFESCIENCES LTD", "CANARA BANK",
+    "CAN FIN HOMES LTD", "CHAMBAL FERTILIZERS LTD", "CHOLAMANDALAM IN & FIN CO",
+    "CIPLA LTD", "COAL INDIA LTD", "COFORGE LIMITED", "COLGATE PALMOLIVE LTD.",
+    "CONTAINER CORP OF IND LTD", "COROMANDEL INTERNTL. LTD",
+    "CROMPT GREA CON ELEC LTD", "CITY UNION BANK LTD", "CUMMINS INDIA LTD",
+    "DABUR INDIA LTD", "DEEPAK NITRITE LTD", "DELTA CORP LIMITED"
+    ), X.1 = c("Symbol Series", "", "ALKEM", "ATUL", "ABB", "AARTIIND",
+    "ABBOTINDIA", "ABCAPITAL", "ABFRL", "ACC", "ADANIENT", "ADANIPORTS",
+    "AMARAJABAT", "ASTRAL", "AMBUJACEM", "APLLTD", "APOLLOHOSP",
+    "APOLLOTYRE", "ASHOKLEY", "ASIANPAINT", "AUBANK", "AUROPHARMA",
+    "AXISBANK", "BAJAJ-AUTO", "BAJAJFINSV", "BAJFINANCE", "BALRAMCHIN",
+    "BANDHANBNK", "BANKBARODA", "BATAINDIA", "BEL", "BERGEPAINT",
+    "BHARTIARTL", "BHEL", "BIOCON", "BOSCHLTD", "BRITANNIA",
+    "BSOFT", "ZYDUSLIFE", "CANBK", "CANFINHOME", "CHAMBLFERT",
+    "CHOLAFIN", "CIPLA", "COALINDIA", "COFORGE", "COLPAL", "CONCOR",
+    "COROMANDEL", "CROMPTON", "CUB", "CUMMINSIND", "DABUR", "DEEPAKNTR",
+    "DELTACORP"), X.2 = c("Leverage (in", "", "4.5", "4.5", "4.5",
+    "4.5", "4.5", "4.5", "4.5", "4.5", "4", "4.5", "4.5", "4.5",
+    "4.5", "4.5", "4.5", "4.5", "4.5", "4.5", "4.5", "4.5", "4.5",
+    "4.5", "4.5", "4.5", "4", "4", "4.5", "4.5", "4.5", "4.5",
+    "4.5", "4", "4.5", "4.5", "4.5", "4", "4.5", "4", "4.5",
+    "4", "4", "4.5", "4.5", "4", "4.5", "4.5", "4.5", "4.5",
+    "4.5", "4.5", "4.5", "4.5", "4")), class = "data.frame", row.names = c(NA,
+-55L)), structure(list(X54 = 55:110, DIVI.S.LABORATORIES.LTD = c("DIXON TECHNO (INDIA) LTD",
+"DLF LIMITED", "DR. REDDY S LABORATORIES", "ESCORTS INDIA LTD",
+"EXIDE INDUSTRIES LTD", "FEDERAL BANK LTD", "FIRSTSOURCE SOLU. LTD.",
+"GAIL (INDIA) LTD", "GLENMARK PHARMACEUTICALS", "GMR INFRASTRUCTURE LTD.",
+"GUJ NAR VAL FER & CHEM L", "DALMIA BHARAT LIMITED", "GODREJ CONSUMER PRODUCTS",
+"GRANULES INDIA LIMITED", "GRASIM INDUSTRIES LTD", "GUJARAT STATE PETRO LTD",
+"GUJARAT GAS LIMITED", "HINDUSTAN AERONAUTICS LTD", "HAVELLS INDIA LIMITED",
+"HCL TECHNOLOGIES LTD", "HDFC LTD", "HDFC AMC LIMITED", "HDFC BANK LTD",
+"HDFC LIFE INS CO LTD", "HERO MOTOCORP LIMITED", "HINDALCO INDUSTRIES LTD",
+"HINDUSTAN COPPER LTD", "HONEYWELL AUTOMATION IND", "ICICI BANK LTD.",
+"ICICI LOMBARD GIC LIMITED", "ICICI PRU LIFE INS CO LTD", "IDFC LIMITED",
+"IDFC FIRST BANK LIMITED", "INDIAN ENERGY EXC LTD", "INDRAPRASTHA GAS LTD",
+"THE INDIAN HOTELS CO. LTD", "THE INDIA CEMENTS LIMITED", "INDIAMART INTERMESH LTD",
+"INTERGLOBE AVIATION LTD", "INDUSIND BANK LIMITED", "INDUS TOWERS LIMITED",
+"INFOSYS LIMITED", "INTELLECT DESIGN ARENA", "INDIAN OIL CORP LTD",
+"IPCA LABORATORIES LTD", "INDIAN RAIL TOUR CORP LTD", "ITC LTD",
+"JINDAL STEEL & POWER LTD", "JSW STEEL LIMITED", "JUBILANT FOODWORKS LTD",
+"KOTAK MAHINDRA BANK LTD", "L&T FINANCE HOLDINGS LTD", "DR. LAL PATH LABS LTD.",
+"LAURUS LABS LIMITED", "LIC HOUSING FINANCE LTD", "LARSEN & TOUBRO LTD."
+), DIVISLAB = c("DIXON", "DLF", "DRREDDY", "ESCORTS", "EXIDEIND",
+"FEDERALBNK", "FSL", "GAIL", "GLENMARK", "GMRINFRA", "GNFC",
+"DALBHARAT", "GODREJCP", "GRANULES", "GRASIM", "GSPL", "GUJGASLTD",
+"HAL", "HAVELLS", "HCLTECH", "HDFC", "HDFCAMC", "HDFCBANK", "HDFCLIFE",
+"HEROMOTOCO", "HINDALCO", "HINDCOPPER", "HONAUT", "ICICIBANK",
+"ICICIGI", "ICICIPRULI", "IDFC", "IDFCFIRSTB", "IEX", "IGL",
+"INDHOTEL", "INDIACEM", "INDIAMART", "INDIGO", "INDUSINDBK",
+"INDUSTOWER", "INFY", "INTELLECT", "IOC", "IPCALAB", "IRCTC",
+"ITC", "JINDALSTEL", "JSWSTEEL", "JUBLFOOD", "KOTAKBANK", "L&TFH",
+"LALPATHLAB", "LAURUSLABS", "LICHSGFIN", "LT"), X4.5 = c(4.5,
+4, 4.5, 4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4.5,
+4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4, 4.5,
+4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4.5, 4, 4, 4.5, 4, 4, 4.5, 4,
+4.5, 4.5, 4, 4.5, 4, 4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4.5)), class = "data.frame", row.names = c(NA,
+-56L)), structure(list(X111 = 112:167, L.T.INFOTECH.LIMITED = c("L&T TECHNOLOGY SER. LTD.",
+"LUPIN LIMITED", "MAHINDRA & MAHINDRA LTD", "M&M FIN. SERVICES LTD",
+"MANAPPURAM FINANCE LTD", "MARICO LIMITED", "MARUTI SUZUKI INDIA LTD.",
+"UNITED SPIRITS LIMITED", "MULTI COMMODITY EXCHANGE", "MAX FINANCIAL SERV LTD",
+"MAHANAGAR GAS LTD.", "MINDTREE LIMITED", "MOTHERSON SUMI SYSTEMS LT",
+"MPHASIS LIMITED", "MRF LTD", "MUTHOOT FINANCE LIMITED", "NATIONAL ALUMINIUM CO LTD",
+"INFO EDGE (I) LTD", "NAVIN FLUORINE INT. LTD", "NBCC (INDIA) LIMITED",
+"NMDC LTD.", "NTPC LTD", "OBEROI REALTY LIMITED", "ORACLE FIN SERV SOFT LTD.",
+"OIL AND NATURAL GAS CORP.", "PAGE INDUSTRIES LTD", "PIRAMAL ENTERPRISES LTD",
+"PERSISTENT SYSTEMS LTD", "PETRONET LNG LIMITED", "POWER FIN CORP LTD.",
+"PIDILITE INDUSTRIES LTD", "PI INDUSTRIES LTD", "PUNJAB NATIONAL BANK",
+"POLYCAB INDIA LIMITED", "POWER GRID CORP. LTD.", "PVR LIMITED",
+"RAIN INDUSTRIES LIMITED", "THE RAMCO CEMENTS LIMITED", "RBL BANK LIMITED",
+"REC LIMITED", "RELIANCE INDUSTRIES LTD", "STEEL AUTHORITY OF INDIA",
+"SBI CARDS & PAY SER LTD", "SBI LIFE INSURANCE CO LTD", "STATE BANK OF INDIA",
+"SHREE CEMENT LIMITED", "SIEMENS LTD", "SRF LTD", "SHRIRAM TRANSPORT FIN CO.",
+"STRIDES PHARMA SCI LTD", "SUN PHARMACEUTICAL IND L", "SUN TV NETWORK LIMITED",
+"SYNGENE INTERNATIONAL LTD", "TATA CHEMICALS LTD", "TATA COMMUNICATIONS LTD",
+"TATA CONSUMER PRODUCT LTD"), LTI = c("LTTS", "LUPIN", "M&M",
+"M&MFIN", "MANAPPURAM", "MARICO", "MARUTI", "MCDOWELL-N", "MCX",
+"MFSL", "MGL", "MINDTREE", "MOTHERSUMI", "MPHASIS", "MRF", "MUTHOOTFIN",
+"NATIONALUM", "NAUKRI", "NAVINFLUOR", "NBCC", "NMDC", "NTPC",
+"OBEROIRLTY", "OFSS", "ONGC", "PAGEIND", "PEL", "PERSISTENT",
+"PETRONET", "PFC", "PIDILITIND", "PIIND", "PNB", "POLYCAB", "POWERGRID",
+"PVR", "RAIN", "RAMCOCEM", "RBLBANK", "RECLTD", "RELIANCE", "SAIL",
+"SBICARD", "SBILIFE", "SBIN", "SHREECEM", "SIEMENS", "SRF", "SRTRANSFIN",
+"STAR", "SUNPHARMA", "SUNTV", "SYNGENE", "TATACHEM", "TATACOMM",
+"TATACONSUM"), X4.5 = c(4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5,
+4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4, 4.5,
+4.5, 4.5, 4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5,
+4.5, 4.5, 4, 4.5, 4, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5,
+4.5, 4, 4, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5)), class = "data.frame", row.names = c(NA,
+-56L)), structure(list(X168 = 169:198, TATA.MOTORS.LIMITED = c("TATA POWER CO LTD",
+"TATA STEEL LIMITED", "TATA CONSULTANCY SERV LT", "TECH MAHINDRA LIMITED",
+"TITAN COMPANY LIMITED", "TORRENT PHARMACEUTICALS L", "TORRENT POWER LTD",
+"TRENT LTD", "TVS MOTOR COMPANY  LTD", "UNITED BREWERIES LTD",
+"ULTRATECH CEMENT LIMITED", "UPL LIMITED", "VEDANTA LIMITED",
+"VOLTAS LTD", "WHIRLPOOL OF INDIA LTD", "WIPRO LTD", "ZEE ENTERTAINMENT ENT LTD",
+"BALKRISHNA IND. LTD", "BHARAT FORGE LTD", "BHARAT PETROLEUM CORP  LT",
+"EICHER MOTORS LTD", "GODREJ PROPERTIES LTD", "HINDUSTAN PETROLEUM CORP",
+"JK CEMENT LIMITED", "NESTLE INDIA LIMITED", "METROPOLIS HEALTHCARE LTD",
+"HINDUSTAN UNILEVER LTD.", "VODAFONE IDEA LIMITED", "NIPPON L I A M LTD",
+"INDIABULLS HSG FIN LTD"), TATAMOTORS = c("TATAPOWER", "TATASTEEL",
+"TCS", "TECHM", "TITAN", "TORNTPHARM", "TORNTPOWER", "TRENT",
+"TVSMOTOR", "UBL", "ULTRACEMCO", "UPL", "VEDL", "VOLTAS", "WHIRLPOOL",
+"WIPRO", "ZEEL", "BALKRISIND", "BHARATFORG", "BPCL", "EICHERMOT",
+"GODREJPROP", "HINDPETRO", "JKCEMENT", "NESTLEIND", "METROPOLIS",
+"HINDUNILVR", "IDEA", "NAM-INDIA", "IBULHSGFIN"), X4 = c(4.5,
+4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5,
+4.5, 4.5, 3, 4.5, 4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4.5, 4.5,
+4.5, 4.5, 3)), class = "data.frame", row.names = c(NA, -30L)))
+
+unlist(IDTpdf) is not working. It makes IDTpdf a lot messier...
+
+I want IDTpdf to be one data frame combining all the four pages in the above url...
+
+ANy help will be greatly appreciated...
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sun Jan  8 11:29:19 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sun, 08 Jan 2023 02:29:19 -0800
+Subject: [R] extracting a table from pdf file....
+In-Reply-To: <PU4P216MB156880E6BD28FFC8405882F8C8F99@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB156880E6BD28FFC8405882F8C8F99@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <E354499F-1297-4EA5-A35B-30E7139969A1@dcn.davis.ca.us>
+
+Here is a start for two of them... PDF files are actually programs written in the Postscript language... there are a lot of ways to write a program to put marks on a page, so this mess is actually not as bad a result as you might have encountered.
+
+str(IDTpdf)
+
+DF <- IDTpdf[[1]][ -(1:2), ]
+names( DF ) <- c( "SNo", "Scrip", "Symbol", "Leverage" )
+DF$SNo <- as.integer( DF$SNo )
+DF$Leverage <- as.numeric( DF$Leverage )
+IDTpdf[[ 1 ]] <- DF
+
+DF <- IDTpdf[[2]]
+names( DF ) <- c( "SNo", "Scrip", "Symbol", "Leverage" )
+DF <- rbind(
+  data.frame(
+    SNo = 54
+  , Symbol = "DIVISLAB"
+  , Scrip = "DIVIS LABORATORIES LTD"
+  , Leverage = 4.5
+  )
+, DF
+)
+IDTpdf[[ 2 ]] <- DF
+
+do.call( rbind, IDTpdf[ 1:2 ] )
+
+On January 8, 2023 12:59:58 AM PST, akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>dear members,
+>                            I am extracting a pdf table into a data frame from this URL:
+>
+>https://www.canmoney.in/pdf/INTRADAYLEVERAGE-20220531-latest.pdf
+>
+>I am using extract_table() from the tabulizer package (it is archived and have installed it from github)
+>
+>IDTpdf <- extract_tables("https://www.canmoney.in/pdf/INTRADAYLEVERAGE-20220531-latest.pdf",output="data.frame")
+>
+>But IDTpdf consists of four different dfs, and I want to collapse them into one. The dput of IDTpdf:
+>
+>list(structure(list(SCRIPS.AVAILABLE.FOR.INTRADAY.WITH.LEVERAGES.PROVIDED.ON.THEM = c("S.No.",
+>"times)", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+>"11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21",
+>"22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32",
+>"33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43",
+>"44", "45", "46", "47", "48", "49", "50", "51", "52", "53"),
+>    X = c("Scrip Name", "", "ALKEM LABORATORIES LTD.", "ATUL LTD",
+>    "ABB INDIA LIMITED", "AARTI INDUSTRIES LTD", "ABBOTT INDIA LIMITED",
+>    "ADITYA BIRLA CAPITAL LTD.", "ADITYA BIRLA FASHION & RT",
+>    "ACC LIMITED", "ADANI ENTERPRISES LIMITED", "ADANI PORT & SEZ LTD",
+>    "AMARA RAJA BATTERIES LTD.", "ASTRAL LIMITED", "AMBUJA CEMENTS LTD",
+>    "ALEMBIC PHARMA LTD", "APOLLO HOSPITALS ENTER. L", "APOLLO TYRES LTD",
+>    "ASHOK LEYLAND LTD", "ASIAN PAINTS LIMITED", "AU SMALL FINANCE BANK LTD",
+>    "AUROBINDO PHARMA LTD", "AXIS BANK LIMITED", "BAJAJ AUTO LIMITED",
+>    "BAJAJ FINSERV LTD.", "BAJAJ FINANCE LIMITED", "BALRAMPUR CHINI MILLS LTD",
+>    "BANDHAN BANK LIMITED", "BANK OF BARODA", "BATA INDIA LTD",
+>    "BHARAT ELECTRONICS LTD", "BERGER PAINTS (I) LTD", "BHARTI AIRTEL LIMITED",
+>    "BHEL", "BIOCON LIMITED.", "BOSCH LIMITED", "BRITANNIA INDUSTRIES LTD",
+>    "BIRLASOFT LIMITED", "ZYDUS LIFESCIENCES LTD", "CANARA BANK",
+>    "CAN FIN HOMES LTD", "CHAMBAL FERTILIZERS LTD", "CHOLAMANDALAM IN & FIN CO",
+>    "CIPLA LTD", "COAL INDIA LTD", "COFORGE LIMITED", "COLGATE PALMOLIVE LTD.",
+>    "CONTAINER CORP OF IND LTD", "COROMANDEL INTERNTL. LTD",
+>    "CROMPT GREA CON ELEC LTD", "CITY UNION BANK LTD", "CUMMINS INDIA LTD",
+>    "DABUR INDIA LTD", "DEEPAK NITRITE LTD", "DELTA CORP LIMITED"
+>    ), X.1 = c("Symbol Series", "", "ALKEM", "ATUL", "ABB", "AARTIIND",
+>    "ABBOTINDIA", "ABCAPITAL", "ABFRL", "ACC", "ADANIENT", "ADANIPORTS",
+>    "AMARAJABAT", "ASTRAL", "AMBUJACEM", "APLLTD", "APOLLOHOSP",
+>    "APOLLOTYRE", "ASHOKLEY", "ASIANPAINT", "AUBANK", "AUROPHARMA",
+>    "AXISBANK", "BAJAJ-AUTO", "BAJAJFINSV", "BAJFINANCE", "BALRAMCHIN",
+>    "BANDHANBNK", "BANKBARODA", "BATAINDIA", "BEL", "BERGEPAINT",
+>    "BHARTIARTL", "BHEL", "BIOCON", "BOSCHLTD", "BRITANNIA",
+>    "BSOFT", "ZYDUSLIFE", "CANBK", "CANFINHOME", "CHAMBLFERT",
+>    "CHOLAFIN", "CIPLA", "COALINDIA", "COFORGE", "COLPAL", "CONCOR",
+>    "COROMANDEL", "CROMPTON", "CUB", "CUMMINSIND", "DABUR", "DEEPAKNTR",
+>    "DELTACORP"), X.2 = c("Leverage (in", "", "4.5", "4.5", "4.5",
+>    "4.5", "4.5", "4.5", "4.5", "4.5", "4", "4.5", "4.5", "4.5",
+>    "4.5", "4.5", "4.5", "4.5", "4.5", "4.5", "4.5", "4.5", "4.5",
+>    "4.5", "4.5", "4.5", "4", "4", "4.5", "4.5", "4.5", "4.5",
+>    "4.5", "4", "4.5", "4.5", "4.5", "4", "4.5", "4", "4.5",
+>    "4", "4", "4.5", "4.5", "4", "4.5", "4.5", "4.5", "4.5",
+>    "4.5", "4.5", "4.5", "4.5", "4")), class = "data.frame", row.names = c(NA,
+>-55L)), structure(list(X54 = 55:110, DIVI.S.LABORATORIES.LTD = c("DIXON TECHNO (INDIA) LTD",
+>"DLF LIMITED", "DR. REDDY S LABORATORIES", "ESCORTS INDIA LTD",
+>"EXIDE INDUSTRIES LTD", "FEDERAL BANK LTD", "FIRSTSOURCE SOLU. LTD.",
+>"GAIL (INDIA) LTD", "GLENMARK PHARMACEUTICALS", "GMR INFRASTRUCTURE LTD.",
+>"GUJ NAR VAL FER & CHEM L", "DALMIA BHARAT LIMITED", "GODREJ CONSUMER PRODUCTS",
+>"GRANULES INDIA LIMITED", "GRASIM INDUSTRIES LTD", "GUJARAT STATE PETRO LTD",
+>"GUJARAT GAS LIMITED", "HINDUSTAN AERONAUTICS LTD", "HAVELLS INDIA LIMITED",
+>"HCL TECHNOLOGIES LTD", "HDFC LTD", "HDFC AMC LIMITED", "HDFC BANK LTD",
+>"HDFC LIFE INS CO LTD", "HERO MOTOCORP LIMITED", "HINDALCO INDUSTRIES LTD",
+>"HINDUSTAN COPPER LTD", "HONEYWELL AUTOMATION IND", "ICICI BANK LTD.",
+>"ICICI LOMBARD GIC LIMITED", "ICICI PRU LIFE INS CO LTD", "IDFC LIMITED",
+>"IDFC FIRST BANK LIMITED", "INDIAN ENERGY EXC LTD", "INDRAPRASTHA GAS LTD",
+>"THE INDIAN HOTELS CO. LTD", "THE INDIA CEMENTS LIMITED", "INDIAMART INTERMESH LTD",
+>"INTERGLOBE AVIATION LTD", "INDUSIND BANK LIMITED", "INDUS TOWERS LIMITED",
+>"INFOSYS LIMITED", "INTELLECT DESIGN ARENA", "INDIAN OIL CORP LTD",
+>"IPCA LABORATORIES LTD", "INDIAN RAIL TOUR CORP LTD", "ITC LTD",
+>"JINDAL STEEL & POWER LTD", "JSW STEEL LIMITED", "JUBILANT FOODWORKS LTD",
+>"KOTAK MAHINDRA BANK LTD", "L&T FINANCE HOLDINGS LTD", "DR. LAL PATH LABS LTD.",
+>"LAURUS LABS LIMITED", "LIC HOUSING FINANCE LTD", "LARSEN & TOUBRO LTD."
+>), DIVISLAB = c("DIXON", "DLF", "DRREDDY", "ESCORTS", "EXIDEIND",
+>"FEDERALBNK", "FSL", "GAIL", "GLENMARK", "GMRINFRA", "GNFC",
+>"DALBHARAT", "GODREJCP", "GRANULES", "GRASIM", "GSPL", "GUJGASLTD",
+>"HAL", "HAVELLS", "HCLTECH", "HDFC", "HDFCAMC", "HDFCBANK", "HDFCLIFE",
+>"HEROMOTOCO", "HINDALCO", "HINDCOPPER", "HONAUT", "ICICIBANK",
+>"ICICIGI", "ICICIPRULI", "IDFC", "IDFCFIRSTB", "IEX", "IGL",
+>"INDHOTEL", "INDIACEM", "INDIAMART", "INDIGO", "INDUSINDBK",
+>"INDUSTOWER", "INFY", "INTELLECT", "IOC", "IPCALAB", "IRCTC",
+>"ITC", "JINDALSTEL", "JSWSTEEL", "JUBLFOOD", "KOTAKBANK", "L&TFH",
+>"LALPATHLAB", "LAURUSLABS", "LICHSGFIN", "LT"), X4.5 = c(4.5,
+>4, 4.5, 4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4.5,
+>4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4, 4.5,
+>4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4.5, 4, 4, 4.5, 4, 4, 4.5, 4,
+>4.5, 4.5, 4, 4.5, 4, 4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4.5)), class = "data.frame", row.names = c(NA,
+>-56L)), structure(list(X111 = 112:167, L.T.INFOTECH.LIMITED = c("L&T TECHNOLOGY SER. LTD.",
+>"LUPIN LIMITED", "MAHINDRA & MAHINDRA LTD", "M&M FIN. SERVICES LTD",
+>"MANAPPURAM FINANCE LTD", "MARICO LIMITED", "MARUTI SUZUKI INDIA LTD.",
+>"UNITED SPIRITS LIMITED", "MULTI COMMODITY EXCHANGE", "MAX FINANCIAL SERV LTD",
+>"MAHANAGAR GAS LTD.", "MINDTREE LIMITED", "MOTHERSON SUMI SYSTEMS LT",
+>"MPHASIS LIMITED", "MRF LTD", "MUTHOOT FINANCE LIMITED", "NATIONAL ALUMINIUM CO LTD",
+>"INFO EDGE (I) LTD", "NAVIN FLUORINE INT. LTD", "NBCC (INDIA) LIMITED",
+>"NMDC LTD.", "NTPC LTD", "OBEROI REALTY LIMITED", "ORACLE FIN SERV SOFT LTD.",
+>"OIL AND NATURAL GAS CORP.", "PAGE INDUSTRIES LTD", "PIRAMAL ENTERPRISES LTD",
+>"PERSISTENT SYSTEMS LTD", "PETRONET LNG LIMITED", "POWER FIN CORP LTD.",
+>"PIDILITE INDUSTRIES LTD", "PI INDUSTRIES LTD", "PUNJAB NATIONAL BANK",
+>"POLYCAB INDIA LIMITED", "POWER GRID CORP. LTD.", "PVR LIMITED",
+>"RAIN INDUSTRIES LIMITED", "THE RAMCO CEMENTS LIMITED", "RBL BANK LIMITED",
+>"REC LIMITED", "RELIANCE INDUSTRIES LTD", "STEEL AUTHORITY OF INDIA",
+>"SBI CARDS & PAY SER LTD", "SBI LIFE INSURANCE CO LTD", "STATE BANK OF INDIA",
+>"SHREE CEMENT LIMITED", "SIEMENS LTD", "SRF LTD", "SHRIRAM TRANSPORT FIN CO.",
+>"STRIDES PHARMA SCI LTD", "SUN PHARMACEUTICAL IND L", "SUN TV NETWORK LIMITED",
+>"SYNGENE INTERNATIONAL LTD", "TATA CHEMICALS LTD", "TATA COMMUNICATIONS LTD",
+>"TATA CONSUMER PRODUCT LTD"), LTI = c("LTTS", "LUPIN", "M&M",
+>"M&MFIN", "MANAPPURAM", "MARICO", "MARUTI", "MCDOWELL-N", "MCX",
+>"MFSL", "MGL", "MINDTREE", "MOTHERSUMI", "MPHASIS", "MRF", "MUTHOOTFIN",
+>"NATIONALUM", "NAUKRI", "NAVINFLUOR", "NBCC", "NMDC", "NTPC",
+>"OBEROIRLTY", "OFSS", "ONGC", "PAGEIND", "PEL", "PERSISTENT",
+>"PETRONET", "PFC", "PIDILITIND", "PIIND", "PNB", "POLYCAB", "POWERGRID",
+>"PVR", "RAIN", "RAMCOCEM", "RBLBANK", "RECLTD", "RELIANCE", "SAIL",
+>"SBICARD", "SBILIFE", "SBIN", "SHREECEM", "SIEMENS", "SRF", "SRTRANSFIN",
+>"STAR", "SUNPHARMA", "SUNTV", "SYNGENE", "TATACHEM", "TATACOMM",
+>"TATACONSUM"), X4.5 = c(4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5,
+>4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4, 4.5,
+>4.5, 4.5, 4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5,
+>4.5, 4.5, 4, 4.5, 4, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5,
+>4.5, 4, 4, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5)), class = "data.frame", row.names = c(NA,
+>-56L)), structure(list(X168 = 169:198, TATA.MOTORS.LIMITED = c("TATA POWER CO LTD",
+>"TATA STEEL LIMITED", "TATA CONSULTANCY SERV LT", "TECH MAHINDRA LIMITED",
+>"TITAN COMPANY LIMITED", "TORRENT PHARMACEUTICALS L", "TORRENT POWER LTD",
+>"TRENT LTD", "TVS MOTOR COMPANY  LTD", "UNITED BREWERIES LTD",
+>"ULTRATECH CEMENT LIMITED", "UPL LIMITED", "VEDANTA LIMITED",
+>"VOLTAS LTD", "WHIRLPOOL OF INDIA LTD", "WIPRO LTD", "ZEE ENTERTAINMENT ENT LTD",
+>"BALKRISHNA IND. LTD", "BHARAT FORGE LTD", "BHARAT PETROLEUM CORP  LT",
+>"EICHER MOTORS LTD", "GODREJ PROPERTIES LTD", "HINDUSTAN PETROLEUM CORP",
+>"JK CEMENT LIMITED", "NESTLE INDIA LIMITED", "METROPOLIS HEALTHCARE LTD",
+>"HINDUSTAN UNILEVER LTD.", "VODAFONE IDEA LIMITED", "NIPPON L I A M LTD",
+>"INDIABULLS HSG FIN LTD"), TATAMOTORS = c("TATAPOWER", "TATASTEEL",
+>"TCS", "TECHM", "TITAN", "TORNTPHARM", "TORNTPOWER", "TRENT",
+>"TVSMOTOR", "UBL", "ULTRACEMCO", "UPL", "VEDL", "VOLTAS", "WHIRLPOOL",
+>"WIPRO", "ZEEL", "BALKRISIND", "BHARATFORG", "BPCL", "EICHERMOT",
+>"GODREJPROP", "HINDPETRO", "JKCEMENT", "NESTLEIND", "METROPOLIS",
+>"HINDUNILVR", "IDEA", "NAM-INDIA", "IBULHSGFIN"), X4 = c(4.5,
+>4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5,
+>4.5, 4.5, 3, 4.5, 4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4.5, 4.5,
+>4.5, 4.5, 3)), class = "data.frame", row.names = c(NA, -30L)))
+>
+>unlist(IDTpdf) is not working. It makes IDTpdf a lot messier...
+>
+>I want IDTpdf to be one data frame combining all the four pages in the above url...
+>
+>ANy help will be greatly appreciated...
+>
+>Thanking you,
+>Yours sincerely,
+>AKSHAY M KULKARNI
+>
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sun Jan  8 12:54:45 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sun, 8 Jan 2023 11:54:45 +0000
+Subject: [R] extracting a table from pdf file....
+In-Reply-To: <E354499F-1297-4EA5-A35B-30E7139969A1@dcn.davis.ca.us>
+References: <PU4P216MB156880E6BD28FFC8405882F8C8F99@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <E354499F-1297-4EA5-A35B-30E7139969A1@dcn.davis.ca.us>
+Message-ID: <PU4P216MB156834688CD4CCC8910B686EC8F99@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear jeff,
+                  Thanks a lot....
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+Sent: Sunday, January 8, 2023 3:59 PM
+To: r-help at r-project.org <r-help at r-project.org>; akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] extracting a table from pdf file....
+
+Here is a start for two of them... PDF files are actually programs written in the Postscript language... there are a lot of ways to write a program to put marks on a page, so this mess is actually not as bad a result as you might have encountered.
+
+str(IDTpdf)
+
+DF <- IDTpdf[[1]][ -(1:2), ]
+names( DF ) <- c( "SNo", "Scrip", "Symbol", "Leverage" )
+DF$SNo <- as.integer( DF$SNo )
+DF$Leverage <- as.numeric( DF$Leverage )
+IDTpdf[[ 1 ]] <- DF
+
+DF <- IDTpdf[[2]]
+names( DF ) <- c( "SNo", "Scrip", "Symbol", "Leverage" )
+DF <- rbind(
+  data.frame(
+    SNo = 54
+  , Symbol = "DIVISLAB"
+  , Scrip = "DIVIS LABORATORIES LTD"
+  , Leverage = 4.5
+  )
+, DF
+)
+IDTpdf[[ 2 ]] <- DF
+
+do.call( rbind, IDTpdf[ 1:2 ] )
+
+On January 8, 2023 12:59:58 AM PST, akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>dear members,
+>                            I am extracting a pdf table into a data frame from this URL:
+>
+>https://www.canmoney.in/pdf/INTRADAYLEVERAGE-20220531-latest.pdf
+>
+>I am using extract_table() from the tabulizer package (it is archived and have installed it from github)
+>
+>IDTpdf <- extract_tables("https://www.canmoney.in/pdf/INTRADAYLEVERAGE-20220531-latest.pdf",output="data.frame")
+>
+>But IDTpdf consists of four different dfs, and I want to collapse them into one. The dput of IDTpdf:
+>
+>list(structure(list(SCRIPS.AVAILABLE.FOR.INTRADAY.WITH.LEVERAGES.PROVIDED.ON.THEM = c("S.No.",
+>"times)", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+>"11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21",
+>"22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32",
+>"33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43",
+>"44", "45", "46", "47", "48", "49", "50", "51", "52", "53"),
+>    X = c("Scrip Name", "", "ALKEM LABORATORIES LTD.", "ATUL LTD",
+>    "ABB INDIA LIMITED", "AARTI INDUSTRIES LTD", "ABBOTT INDIA LIMITED",
+>    "ADITYA BIRLA CAPITAL LTD.", "ADITYA BIRLA FASHION & RT",
+>    "ACC LIMITED", "ADANI ENTERPRISES LIMITED", "ADANI PORT & SEZ LTD",
+>    "AMARA RAJA BATTERIES LTD.", "ASTRAL LIMITED", "AMBUJA CEMENTS LTD",
+>    "ALEMBIC PHARMA LTD", "APOLLO HOSPITALS ENTER. L", "APOLLO TYRES LTD",
+>    "ASHOK LEYLAND LTD", "ASIAN PAINTS LIMITED", "AU SMALL FINANCE BANK LTD",
+>    "AUROBINDO PHARMA LTD", "AXIS BANK LIMITED", "BAJAJ AUTO LIMITED",
+>    "BAJAJ FINSERV LTD.", "BAJAJ FINANCE LIMITED", "BALRAMPUR CHINI MILLS LTD",
+>    "BANDHAN BANK LIMITED", "BANK OF BARODA", "BATA INDIA LTD",
+>    "BHARAT ELECTRONICS LTD", "BERGER PAINTS (I) LTD", "BHARTI AIRTEL LIMITED",
+>    "BHEL", "BIOCON LIMITED.", "BOSCH LIMITED", "BRITANNIA INDUSTRIES LTD",
+>    "BIRLASOFT LIMITED", "ZYDUS LIFESCIENCES LTD", "CANARA BANK",
+>    "CAN FIN HOMES LTD", "CHAMBAL FERTILIZERS LTD", "CHOLAMANDALAM IN & FIN CO",
+>    "CIPLA LTD", "COAL INDIA LTD", "COFORGE LIMITED", "COLGATE PALMOLIVE LTD.",
+>    "CONTAINER CORP OF IND LTD", "COROMANDEL INTERNTL. LTD",
+>    "CROMPT GREA CON ELEC LTD", "CITY UNION BANK LTD", "CUMMINS INDIA LTD",
+>    "DABUR INDIA LTD", "DEEPAK NITRITE LTD", "DELTA CORP LIMITED"
+>    ), X.1 = c("Symbol Series", "", "ALKEM", "ATUL", "ABB", "AARTIIND",
+>    "ABBOTINDIA", "ABCAPITAL", "ABFRL", "ACC", "ADANIENT", "ADANIPORTS",
+>    "AMARAJABAT", "ASTRAL", "AMBUJACEM", "APLLTD", "APOLLOHOSP",
+>    "APOLLOTYRE", "ASHOKLEY", "ASIANPAINT", "AUBANK", "AUROPHARMA",
+>    "AXISBANK", "BAJAJ-AUTO", "BAJAJFINSV", "BAJFINANCE", "BALRAMCHIN",
+>    "BANDHANBNK", "BANKBARODA", "BATAINDIA", "BEL", "BERGEPAINT",
+>    "BHARTIARTL", "BHEL", "BIOCON", "BOSCHLTD", "BRITANNIA",
+>    "BSOFT", "ZYDUSLIFE", "CANBK", "CANFINHOME", "CHAMBLFERT",
+>    "CHOLAFIN", "CIPLA", "COALINDIA", "COFORGE", "COLPAL", "CONCOR",
+>    "COROMANDEL", "CROMPTON", "CUB", "CUMMINSIND", "DABUR", "DEEPAKNTR",
+>    "DELTACORP"), X.2 = c("Leverage (in", "", "4.5", "4.5", "4.5",
+>    "4.5", "4.5", "4.5", "4.5", "4.5", "4", "4.5", "4.5", "4.5",
+>    "4.5", "4.5", "4.5", "4.5", "4.5", "4.5", "4.5", "4.5", "4.5",
+>    "4.5", "4.5", "4.5", "4", "4", "4.5", "4.5", "4.5", "4.5",
+>    "4.5", "4", "4.5", "4.5", "4.5", "4", "4.5", "4", "4.5",
+>    "4", "4", "4.5", "4.5", "4", "4.5", "4.5", "4.5", "4.5",
+>    "4.5", "4.5", "4.5", "4.5", "4")), class = "data.frame", row.names = c(NA,
+>-55L)), structure(list(X54 = 55:110, DIVI.S.LABORATORIES.LTD = c("DIXON TECHNO (INDIA) LTD",
+>"DLF LIMITED", "DR. REDDY S LABORATORIES", "ESCORTS INDIA LTD",
+>"EXIDE INDUSTRIES LTD", "FEDERAL BANK LTD", "FIRSTSOURCE SOLU. LTD.",
+>"GAIL (INDIA) LTD", "GLENMARK PHARMACEUTICALS", "GMR INFRASTRUCTURE LTD.",
+>"GUJ NAR VAL FER & CHEM L", "DALMIA BHARAT LIMITED", "GODREJ CONSUMER PRODUCTS",
+>"GRANULES INDIA LIMITED", "GRASIM INDUSTRIES LTD", "GUJARAT STATE PETRO LTD",
+>"GUJARAT GAS LIMITED", "HINDUSTAN AERONAUTICS LTD", "HAVELLS INDIA LIMITED",
+>"HCL TECHNOLOGIES LTD", "HDFC LTD", "HDFC AMC LIMITED", "HDFC BANK LTD",
+>"HDFC LIFE INS CO LTD", "HERO MOTOCORP LIMITED", "HINDALCO INDUSTRIES LTD",
+>"HINDUSTAN COPPER LTD", "HONEYWELL AUTOMATION IND", "ICICI BANK LTD.",
+>"ICICI LOMBARD GIC LIMITED", "ICICI PRU LIFE INS CO LTD", "IDFC LIMITED",
+>"IDFC FIRST BANK LIMITED", "INDIAN ENERGY EXC LTD", "INDRAPRASTHA GAS LTD",
+>"THE INDIAN HOTELS CO. LTD", "THE INDIA CEMENTS LIMITED", "INDIAMART INTERMESH LTD",
+>"INTERGLOBE AVIATION LTD", "INDUSIND BANK LIMITED", "INDUS TOWERS LIMITED",
+>"INFOSYS LIMITED", "INTELLECT DESIGN ARENA", "INDIAN OIL CORP LTD",
+>"IPCA LABORATORIES LTD", "INDIAN RAIL TOUR CORP LTD", "ITC LTD",
+>"JINDAL STEEL & POWER LTD", "JSW STEEL LIMITED", "JUBILANT FOODWORKS LTD",
+>"KOTAK MAHINDRA BANK LTD", "L&T FINANCE HOLDINGS LTD", "DR. LAL PATH LABS LTD.",
+>"LAURUS LABS LIMITED", "LIC HOUSING FINANCE LTD", "LARSEN & TOUBRO LTD."
+>), DIVISLAB = c("DIXON", "DLF", "DRREDDY", "ESCORTS", "EXIDEIND",
+>"FEDERALBNK", "FSL", "GAIL", "GLENMARK", "GMRINFRA", "GNFC",
+>"DALBHARAT", "GODREJCP", "GRANULES", "GRASIM", "GSPL", "GUJGASLTD",
+>"HAL", "HAVELLS", "HCLTECH", "HDFC", "HDFCAMC", "HDFCBANK", "HDFCLIFE",
+>"HEROMOTOCO", "HINDALCO", "HINDCOPPER", "HONAUT", "ICICIBANK",
+>"ICICIGI", "ICICIPRULI", "IDFC", "IDFCFIRSTB", "IEX", "IGL",
+>"INDHOTEL", "INDIACEM", "INDIAMART", "INDIGO", "INDUSINDBK",
+>"INDUSTOWER", "INFY", "INTELLECT", "IOC", "IPCALAB", "IRCTC",
+>"ITC", "JINDALSTEL", "JSWSTEEL", "JUBLFOOD", "KOTAKBANK", "L&TFH",
+>"LALPATHLAB", "LAURUSLABS", "LICHSGFIN", "LT"), X4.5 = c(4.5,
+>4, 4.5, 4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4.5,
+>4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4, 4.5,
+>4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4.5, 4, 4, 4.5, 4, 4, 4.5, 4,
+>4.5, 4.5, 4, 4.5, 4, 4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4.5)), class = "data.frame", row.names = c(NA,
+>-56L)), structure(list(X111 = 112:167, L.T.INFOTECH.LIMITED = c("L&T TECHNOLOGY SER. LTD.",
+>"LUPIN LIMITED", "MAHINDRA & MAHINDRA LTD", "M&M FIN. SERVICES LTD",
+>"MANAPPURAM FINANCE LTD", "MARICO LIMITED", "MARUTI SUZUKI INDIA LTD.",
+>"UNITED SPIRITS LIMITED", "MULTI COMMODITY EXCHANGE", "MAX FINANCIAL SERV LTD",
+>"MAHANAGAR GAS LTD.", "MINDTREE LIMITED", "MOTHERSON SUMI SYSTEMS LT",
+>"MPHASIS LIMITED", "MRF LTD", "MUTHOOT FINANCE LIMITED", "NATIONAL ALUMINIUM CO LTD",
+>"INFO EDGE (I) LTD", "NAVIN FLUORINE INT. LTD", "NBCC (INDIA) LIMITED",
+>"NMDC LTD.", "NTPC LTD", "OBEROI REALTY LIMITED", "ORACLE FIN SERV SOFT LTD.",
+>"OIL AND NATURAL GAS CORP.", "PAGE INDUSTRIES LTD", "PIRAMAL ENTERPRISES LTD",
+>"PERSISTENT SYSTEMS LTD", "PETRONET LNG LIMITED", "POWER FIN CORP LTD.",
+>"PIDILITE INDUSTRIES LTD", "PI INDUSTRIES LTD", "PUNJAB NATIONAL BANK",
+>"POLYCAB INDIA LIMITED", "POWER GRID CORP. LTD.", "PVR LIMITED",
+>"RAIN INDUSTRIES LIMITED", "THE RAMCO CEMENTS LIMITED", "RBL BANK LIMITED",
+>"REC LIMITED", "RELIANCE INDUSTRIES LTD", "STEEL AUTHORITY OF INDIA",
+>"SBI CARDS & PAY SER LTD", "SBI LIFE INSURANCE CO LTD", "STATE BANK OF INDIA",
+>"SHREE CEMENT LIMITED", "SIEMENS LTD", "SRF LTD", "SHRIRAM TRANSPORT FIN CO.",
+>"STRIDES PHARMA SCI LTD", "SUN PHARMACEUTICAL IND L", "SUN TV NETWORK LIMITED",
+>"SYNGENE INTERNATIONAL LTD", "TATA CHEMICALS LTD", "TATA COMMUNICATIONS LTD",
+>"TATA CONSUMER PRODUCT LTD"), LTI = c("LTTS", "LUPIN", "M&M",
+>"M&MFIN", "MANAPPURAM", "MARICO", "MARUTI", "MCDOWELL-N", "MCX",
+>"MFSL", "MGL", "MINDTREE", "MOTHERSUMI", "MPHASIS", "MRF", "MUTHOOTFIN",
+>"NATIONALUM", "NAUKRI", "NAVINFLUOR", "NBCC", "NMDC", "NTPC",
+>"OBEROIRLTY", "OFSS", "ONGC", "PAGEIND", "PEL", "PERSISTENT",
+>"PETRONET", "PFC", "PIDILITIND", "PIIND", "PNB", "POLYCAB", "POWERGRID",
+>"PVR", "RAIN", "RAMCOCEM", "RBLBANK", "RECLTD", "RELIANCE", "SAIL",
+>"SBICARD", "SBILIFE", "SBIN", "SHREECEM", "SIEMENS", "SRF", "SRTRANSFIN",
+>"STAR", "SUNPHARMA", "SUNTV", "SYNGENE", "TATACHEM", "TATACOMM",
+>"TATACONSUM"), X4.5 = c(4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5,
+>4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4, 4.5,
+>4.5, 4.5, 4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5,
+>4.5, 4.5, 4, 4.5, 4, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5,
+>4.5, 4, 4, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5)), class = "data.frame", row.names = c(NA,
+>-56L)), structure(list(X168 = 169:198, TATA.MOTORS.LIMITED = c("TATA POWER CO LTD",
+>"TATA STEEL LIMITED", "TATA CONSULTANCY SERV LT", "TECH MAHINDRA LIMITED",
+>"TITAN COMPANY LIMITED", "TORRENT PHARMACEUTICALS L", "TORRENT POWER LTD",
+>"TRENT LTD", "TVS MOTOR COMPANY  LTD", "UNITED BREWERIES LTD",
+>"ULTRATECH CEMENT LIMITED", "UPL LIMITED", "VEDANTA LIMITED",
+>"VOLTAS LTD", "WHIRLPOOL OF INDIA LTD", "WIPRO LTD", "ZEE ENTERTAINMENT ENT LTD",
+>"BALKRISHNA IND. LTD", "BHARAT FORGE LTD", "BHARAT PETROLEUM CORP  LT",
+>"EICHER MOTORS LTD", "GODREJ PROPERTIES LTD", "HINDUSTAN PETROLEUM CORP",
+>"JK CEMENT LIMITED", "NESTLE INDIA LIMITED", "METROPOLIS HEALTHCARE LTD",
+>"HINDUSTAN UNILEVER LTD.", "VODAFONE IDEA LIMITED", "NIPPON L I A M LTD",
+>"INDIABULLS HSG FIN LTD"), TATAMOTORS = c("TATAPOWER", "TATASTEEL",
+>"TCS", "TECHM", "TITAN", "TORNTPHARM", "TORNTPOWER", "TRENT",
+>"TVSMOTOR", "UBL", "ULTRACEMCO", "UPL", "VEDL", "VOLTAS", "WHIRLPOOL",
+>"WIPRO", "ZEEL", "BALKRISIND", "BHARATFORG", "BPCL", "EICHERMOT",
+>"GODREJPROP", "HINDPETRO", "JKCEMENT", "NESTLEIND", "METROPOLIS",
+>"HINDUNILVR", "IDEA", "NAM-INDIA", "IBULHSGFIN"), X4 = c(4.5,
+>4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5, 4.5,
+>4.5, 4.5, 3, 4.5, 4.5, 4.5, 4.5, 4, 4.5, 4.5, 4.5, 4.5, 4.5,
+>4.5, 4.5, 3)), class = "data.frame", row.names = c(NA, -30L)))
+>
+>unlist(IDTpdf) is not working. It makes IDTpdf a lot messier...
+>
+>I want IDTpdf to be one data frame combining all the four pages in the above url...
+>
+>ANy help will be greatly appreciated...
+>
+>Thanking you,
+>Yours sincerely,
+>AKSHAY M KULKARNI
+>
+>
+>       [[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+--
+Sent from my phone. Please excuse my brevity.
+
+	[[alternative HTML version deleted]]
+
+
+From n|ckmwr@y @end|ng |rom gm@||@com  Sun Jan  8 19:04:19 2023
+From: n|ckmwr@y @end|ng |rom gm@||@com (Nick Wray)
+Date: Sun, 8 Jan 2023 18:04:19 +0000
+Subject: [R] getting information out of Rao test output
+Message-ID: <CABxY9BOF4k10GedwPr0f_awO2Dpwsu_+qZ67_Zri4Dro2wetUQ@mail.gmail.com>
+
+Hello  I'm using the Rao Spacing test from the circular package on a series
+of (circular) data vectors but I can't find a way of simply recording
+whether the null is rejected or not for each vector in the series - the
+test gives me an individual result but unlike with other tests in R (say
+MannKendall or pettitt etc) I can't find a way of delving into the guts of
+the output to extract either1)both the test statistic and critical value
+or 2)the status of ejection or not of the null eg as T/F
+
+I''ve tried various things including str(rao) and rao[[1]]
+as.character(rao) etc
+
+rao<-rao.spacing.test(pi_data,alpha=0.05) ## my input
+
+
+ Rao's Spacing Test of Uniformity
+
+Test Statistic = 169.6952
+Level 0.05 critical value = 155.19
+Reject null hypothesis of uniformity-- can't break this down
+
+Des anyone know how I could do this?
+
+Thanks, Nick Wray
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sun Jan  8 19:37:10 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sun, 8 Jan 2023 18:37:10 +0000
+Subject: [R] getting information out of Rao test output
+In-Reply-To: <CABxY9BOF4k10GedwPr0f_awO2Dpwsu_+qZ67_Zri4Dro2wetUQ@mail.gmail.com>
+References: <CABxY9BOF4k10GedwPr0f_awO2Dpwsu_+qZ67_Zri4Dro2wetUQ@mail.gmail.com>
+Message-ID: <080dcdba-6084-0e98-3ba9-1f9d2d4ba63a@sapo.pt>
+
+?s 18:04 de 08/01/2023, Nick Wray escreveu:
+> Hello  I'm using the Rao Spacing test from the circular package on a series
+> of (circular) data vectors but I can't find a way of simply recording
+> whether the null is rejected or not for each vector in the series - the
+> test gives me an individual result but unlike with other tests in R (say
+> MannKendall or pettitt etc) I can't find a way of delving into the guts of
+> the output to extract either1)both the test statistic and critical value
+> or 2)the status of ejection or not of the null eg as T/F
+> 
+> I''ve tried various things including str(rao) and rao[[1]]
+> as.character(rao) etc
+> 
+> rao<-rao.spacing.test(pi_data,alpha=0.05) ## my input
+> 
+> 
+>   Rao's Spacing Test of Uniformity
+> 
+> Test Statistic = 169.6952
+> Level 0.05 critical value = 155.19
+> Reject null hypothesis of uniformity-- can't break this down
+> 
+> Des anyone know how I could do this?
+> 
+> Thanks, Nick Wray
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+This test returns a non-standard object, meaning, not an object of class 
+"htest" and its print method creates and invisibly returns an object 
+with the value you want.
+
+
+
+library(circular)
+#>
+#> Attaching package: 'circular'
+#> The following objects are masked from 'package:stats':
+#>
+#>     sd, var
+
+# data
+x <- circular(runif(200, 0, 2*pi))
+# run the test
+test_result <- rao.spacing.test(x, alpha=0.1)
+# save the print method result
+print_result <- print(test_result)
+#>
+#>        Rao's Spacing Test of Uniformity
+#>
+#> Test Statistic = 135.2864
+#> Level 0.1 critical value = 140.06
+#> Do not reject null hypothesis of uniformity
+print_result$accepted
+#> [1] TRUE
+
+
+
+If you run
+
+getAnywhere("print.rao.spacing.test")
+
+you will see that the printing is made by a series of cat instructions 
+so to get the TRUE/FALSE above you will need to print the result like above.
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sun Jan  8 20:35:09 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sun, 8 Jan 2023 19:35:09 +0000
+Subject: [R] free_port returning only one port...
+Message-ID: <PU4P216MB156874B71B5E8932902B9064C8F99@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear members,
+                            I am using free_port from the netstat package, but it is returning only one value:
+
+> library(netstat)
+> free_port()
+[1] 14415
+
+This is occurring in both Linux and Windows. Previously it used to output thousands of ports. What has gone wrong?
+
+thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+	[[alternative HTML version deleted]]
+
+
+From djnord|und @end|ng |rom gm@||@com  Sun Jan  8 21:05:32 2023
+From: djnord|und @end|ng |rom gm@||@com (Daniel Nordlund)
+Date: Sun, 8 Jan 2023 12:05:32 -0800
+Subject: [R] free_port returning only one port...
+In-Reply-To: <PU4P216MB156874B71B5E8932902B9064C8F99@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB156874B71B5E8932902B9064C8F99@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <7f87fbfe-456f-ef28-b95a-c6c5d1aabc85@gmail.com>
+
+On 1/8/2023 11:35 AM, akshay kulkarni wrote:
+> Dear members,
+>                              I am using free_port from the netstat package, but it is returning only one value:
+>
+>> library(netstat)
+>> free_port()
+> [1] 14415
+>
+> This is occurring in both Linux and Windows. Previously it used to output thousands of ports. What has gone wrong?
+>
+> thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+I haven't used that function before, and I don't know what you 
+previously experienced, but if you set the parameter random=TRUE you 
+will get a different port on each invocation
+
+free_port(random=TRUE)
+
+
+Hope this is helpful,
+
+Dan
+
+-- 
+Daniel Nordlund
+Port Townsend, WA  USA
+
+
+-- 
+This email has been checked for viruses by Avast antivirus software.
+www.avast.com
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sun Jan  8 21:09:43 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sun, 8 Jan 2023 20:09:43 +0000
+Subject: [R] free_port returning only one port...
+In-Reply-To: <7f87fbfe-456f-ef28-b95a-c6c5d1aabc85@gmail.com>
+References: <PU4P216MB156874B71B5E8932902B9064C8F99@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <7f87fbfe-456f-ef28-b95a-c6c5d1aabc85@gmail.com>
+Message-ID: <PU4P216MB1568262F3505A0C218CF733AC8F99@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+dear Dan,
+                   Yes, i just read the documentation...Previously i was using it with RSelenium package and never got to know that the argument random defaulted to FALSE. I was just using it blindly...only now I got to know that you must set random = TRUE to get different values across invocations...
+Thanks anyways...
+
+Thanking you,
+Yours sincerely
+AKSHAY M KULKARNI
+
+________________________________
+From: Daniel Nordlund <djnordlund at gmail.com>
+Sent: Monday, January 9, 2023 1:35 AM
+To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] free_port returning only one port...
+
+On 1/8/2023 11:35 AM, akshay kulkarni wrote:
+> Dear members,
+>                              I am using free_port from the netstat package, but it is returning only one value:
+>
+>> library(netstat)
+>> free_port()
+> [1] 14415
+>
+
+ thousands of ports. What has gone wrong?
+>
+> thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>        [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+I haven't used that function before, and I don't know what you
+previously experienced, but if you set the parameter random=TRUE you
+will get a different port on each invocation
+
+free_port(random=TRUE)
+
+
+Hope this is helpful,
+
+Dan
+
+--
+Daniel Nordlund
+Port Townsend, WA  USA
+
+
+--
+This email has been checked for viruses by Avast antivirus software.
+www.avast.com<http://www.avast.com>
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sun Jan  8 21:44:20 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sun, 8 Jan 2023 20:44:20 +0000
+Subject: [R] on parallel package.....
+Message-ID: <PU4P216MB1568757F5BCD02CA859BA4D4C8F99@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+dear members,
+                            I want to parallelize a scraping code. Is mclapply() and clusterApplyLB() similar in functionality? I read the documentation and noted that there is copious information on clusyterApplyLB(), but not much on mclapply (it just says that on Unix alikes mclapply "uses parallel oprations"). I have a AWS EC2 Linux instance. Can I substitute mclapply() for clusterApplyLB()? Where can I get more information on mclapply()?
+
+any help will be greatly appreciated
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+	[[alternative HTML version deleted]]
+
+
