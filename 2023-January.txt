@@ -8187,3 +8187,960 @@ On Mon, Jan 9, 2023 at 3:16 PM Jeff Newmiller <jdnewmil at dcn.davis.ca.us> wrot
 > Sent from my phone. Please excuse my brevity.
 
 
+From v@|ent|n @end|ng |rom petze|@@t  Mon Jan  9 16:48:09 2023
+From: v@|ent|n @end|ng |rom petze|@@t (Valentin Petzel)
+Date: Mon, 9 Jan 2023 16:48:09 +0100 (GMT+01:00)
+Subject: [R] return value of {....}
+In-Reply-To: <PU4P216MB15683AFF29648D6DD2470B8DC8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB15683AFF29648D6DD2470B8DC8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <f2d42675-571d-4644-b31b-7371fa105b23@petzel.at>
+
+Hello Akshai,
+
+I think you are confusing {...} with local({...}). This one will evaluate the expression in a separate environment, returning the last expression.
+
+{...} simply evaluates multiple expressions as one and returns the result of the last line, but it still evaluates each expression.
+
+Assignment returns the assigned value, so we can chain assignments like this
+
+a <- 1 + (b <- 2)
+
+conveniently.
+
+So when is {...} useful? Well, anyplace where you want to execute complex stuff in a function argument. E.g. you might do:
+
+data %>% group_by(x) %>% summarise(y = {if(x[1] > 10) sum(y) else mean(y)})
+
+Regards,
+Valentin Petzel
+
+09.01.2023 15:47:53 akshay kulkarni <akshay_e4 at hotmail.com>:
+
+> Dear members,
+> ???????????????????????????? I have the following code:
+> 
+>> TB <- {x <- 3;y <- 5}
+>> TB
+> [1] 5
+> 
+> It is consistent with the documentation: For {, the result of the last expression evaluated. This has the visibility of the last evaluation.
+> 
+> But both x AND y are created, but the "return value" is y. How can this be advantageous for solving practical problems? Specifically, consider the following code:
+> 
+> F <- function(X) {? expr; expr2; { expr5; expr7}; expr8;expr10}
+> 
+> Both expr5 and expr7 are created, and are accessible by the code outside of the nested braces right? But the "return value" of the nested braces is expr7. So doesn't this mean that only expr7 should be accessible? Please help me entangle this (of course the return value of F is expr10, and all the other objects created by the preceding expressions are deleted. But expr5 is not, after the control passes outside of the nested braces!)
+> 
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+> 
+> ??? [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Tue Jan 10 15:32:48 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Tue, 10 Jan 2023 14:32:48 +0000
+Subject: [R] return value of {....}
+In-Reply-To: <009401d9247f$7e426fb0$7ac74f10$@gmail.com>
+References: <PU4P216MB15683AFF29648D6DD2470B8DC8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <f2d42675-571d-4644-b31b-7371fa105b23@petzel.at>
+ <PU4P216MB1568A92CDAD4B5CC59014CE3C8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <009401d9247f$7e426fb0$7ac74f10$@gmail.com>
+Message-ID: <PU4P216MB15680CE40E939E34B5671D4BC8FF9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Avi,
+                 Thanks for your reply...your exhortations are indeed justified...! But one caveat: I was not complaining about anything...just was curious of the rationale of a particular design....Thanks again...
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of avi.e.gross at gmail.com <avi.e.gross at gmail.com>
+Sent: Tuesday, January 10, 2023 4:39 AM
+Cc: 'R help Mailing list' <r-help at r-project.org>
+Subject: Re: [R] return value of {....}
+
+Akshay,
+
+Your question seems a tad mysterious to me as you are complaining about
+NOTHING.
+
+R was designed to return single values. The last statement executed in a
+function body, for example, is the value returned even when not at the end.
+
+Scoping is another issue entirely. What is visible is another discussion.
+
+So, yes, if you can see ALL the variables, you might see the last one BUT
+there often is no variable at the end. There is an expression that evaluates
+to a value with no NAME attached. You cannot reference that unless the block
+in curly braces returns that value.
+
+You can design your own language any way you want. The people who designed R
+did it this way. Mind you, the most common use of curly braces is probably
+in function bodies, or if/else blocks and loops, not quite what you are
+looking at and complaining about. The design is what it is.
+
+Others require things like an explicit return() statement. R chose not to.
+
+And if the value is redundant for you, who cares?
+
+Did you know that when running a program in the interpreter the last value
+is stored in a variable like this:
+
+> x <- 6
+> .Last.value
+[1] 6
+
+Why would that duplicate be needed or useful?
+
+Consider a partial calculation you want to reuse in another context:
+
+> y = x*2 + 2*x -3
+> z <- .Last.value/2
+> z
+[1] 10.5
+
+Yes, you could have used "y" ...
+
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of akshay kulkarni
+Sent: Monday, January 9, 2023 12:06 PM
+To: Valentin Petzel <valentin at petzel.at>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] return value of {....}
+
+Dear Valentin,
+                          But why should {....} "return" a value? It could
+just as well evaluate all the expressions and store the resulting objects in
+whatever environment the interpreter chooses, and then it would be left to
+the user to manipulate any object he chooses. Don't you think returning the
+last, or any value, is redundant? We are living in the 21st century world,
+and the R-core team might,I suppose, have a definite reason for"returning"
+the last value. Any comments?
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+________________________________
+From: Valentin Petzel <valentin at petzel.at>
+Sent: Monday, January 9, 2023 9:18 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] return value of {....}
+
+Hello Akshai,
+
+I think you are confusing {...} with local({...}). This one will evaluate
+the expression in a separate environment, returning the last expression.
+
+{...} simply evaluates multiple expressions as one and returns the result of
+the last line, but it still evaluates each expression.
+
+Assignment returns the assigned value, so we can chain assignments like this
+
+a <- 1 + (b <- 2)
+
+conveniently.
+
+So when is {...} useful? Well, anyplace where you want to execute complex
+stuff in a function argument. E.g. you might do:
+
+data %>% group_by(x) %>% summarise(y = {if(x[1] > 10) sum(y) else mean(y)})
+
+Regards,
+Valentin Petzel
+
+09.01.2023 15:47:53 akshay kulkarni <akshay_e4 at hotmail.com>:
+
+> Dear members,
+>                              I have the following code:
+>
+>> TB <- {x <- 3;y <- 5}
+>> TB
+> [1] 5
+>
+> It is consistent with the documentation: For {, the result of the last
+expression evaluated. This has the visibility of the last evaluation.
+>
+> But both x AND y are created, but the "return value" is y. How can this be
+advantageous for solving practical problems? Specifically, consider the
+following code:
+>
+> F <- function(X) {  expr; expr2; { expr5; expr7}; expr8;expr10}
+>
+> Both expr5 and expr7 are created, and are accessible by the code
+> outside of the nested braces right? But the "return value" of the
+> nested braces is expr7. So doesn't this mean that only expr7 should be
+> accessible? Please help me entangle this (of course the return value
+> of F is expr10, and all the other objects created by the preceding
+> expressions are deleted. But expr5 is not, after the control passes
+> outside of the nested braces!)
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>     [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From k@hun|ny@@h@13296 @end|ng |rom gm@||@com  Sat Jan  7 08:03:12 2023
+From: k@hun|ny@@h@13296 @end|ng |rom gm@||@com (Nyasha)
+Date: Sat, 7 Jan 2023 09:03:12 +0200
+Subject: [R] 
+ MLE Estimation of Gamma Distribution Parameters for data with
+ 'zeros'
+Message-ID: <CAPO0VmZxiSzzpsKVQPpsMSodKM1qisXNCfR1Zm32T9=70se_MQ@mail.gmail.com>
+
+Please how can one go about this one? I don't know how to go about it.
+
+	[[alternative HTML version deleted]]
+
+
+From mn@||z@deh @end|ng |rom y@hoo@com  Tue Jan 10 13:30:53 2023
+From: mn@||z@deh @end|ng |rom y@hoo@com (Fahimeh Alizadeh)
+Date: Tue, 10 Jan 2023 12:30:53 +0000 (UTC)
+Subject: [R] My forest plot is not fit to windows in R software
+References: <1899380576.9643212.1673353853414.ref@mail.yahoo.com>
+Message-ID: <1899380576.9643212.1673353853414@mail.yahoo.com>
+
+Dear Prof.?My forest plot is not fit to windows in R software, I have 49 studies but forest plot only show from 9 to 42.?
+forest.meta(hidemeta, layout="RevMan5", xlab="Proportion", comb.r=T, comb.f=F, xlim = c(0,1), fontsize=10, digits=3)
+
+
+Whould you please help me to access full forest plot??Thank you
+
+Sincerely,Fahimeh
+
+Dr. Fahimeh AlizadehPost-Doctorate Fellow and Ph.DMicrobial Biotechnology
+Islamic Azad University
+? ? ? ? ? ? ? ? ? ?
+ 
+ ?
+? ? ? ? ? ? ? ? ? ??
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: 1673296370309blob.jpg
+Type: image/png
+Size: 78623 bytes
+Desc: not available
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20230110/2bd45762/attachment.png>
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Tue Jan 10 17:53:46 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Tue, 10 Jan 2023 11:53:46 -0500
+Subject: [R] return value of {....}
+In-Reply-To: <PU4P216MB15680CE40E939E34B5671D4BC8FF9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB15683AFF29648D6DD2470B8DC8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <f2d42675-571d-4644-b31b-7371fa105b23@petzel.at>
+ <PU4P216MB1568A92CDAD4B5CC59014CE3C8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <009401d9247f$7e426fb0$7ac74f10$@gmail.com>
+ <PU4P216MB15680CE40E939E34B5671D4BC8FF9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <005a01d92514$1b5eedc0$521cc940$@gmail.com>
+
+Fair enough, Akshay. Wondering why a design was chosen is reasonable.
+
+ 
+
+There are languages like python that allow unpacking multiple values and it
+is not uncommon to return multiple things from some constructs as in this:
+
+ 
+
+>>> a,b,c = { 4, 5, 6 }
+
+>>> a
+
+4
+
+>>> b
+
+5
+
+>>> c
+
+6
+
+ 
+
+But that is a bit of an illusion as the thing in curly braces is a very
+different creature called a set with three items.  Python does not need or
+use curly braces for the purposes used in R as indentation levels group
+things.
+
+ 
+
+It is different in design. I do not know what other computer languages you
+have used, but R is NOT them and must be approached for what it is, and it
+is a fairly simple paradigm for the last item in a sequence to be the value
+of the sequence. You can return multiple things, if you wish, in other ways.
+Such as making a list:
+
+ 
+
+vals <- list(1+2, sin(.7), cos(.7))
+
+ 
+
+> vals[2:3]
+
+[[1]]
+
+[1] 0.6442177
+
+ 
+
+[[2]]
+
+[1] 0.7648422
+
+ 
+
+You get the idea. R returns ONE thing and it ca have parts, named or not.
+
+ 
+
+ 
+
+From: akshay kulkarni <akshay_e4 at hotmail.com> 
+Sent: Tuesday, January 10, 2023 9:33 AM
+To: avi.e.gross at gmail.com
+Cc: 'R help Mailing list' <r-help at r-project.org>
+Subject: Re: [R] return value of {....}
+
+ 
+
+Dear Avi,
+
+                 Thanks for your reply...your exhortations are indeed
+justified...! But one caveat: I was not complaining about anything...just
+was curious of the rationale of a particular design....Thanks again...
+
+ 
+
+Thanking you,
+
+Yours sincerely,
+
+AKSHAY M KULKARNI   
+
+  _____  
+
+From: R-help <r-help-bounces at r-project.org
+<mailto:r-help-bounces at r-project.org> > on behalf of avi.e.gross at gmail.com
+<mailto:avi.e.gross at gmail.com>  <avi.e.gross at gmail.com
+<mailto:avi.e.gross at gmail.com> >
+Sent: Tuesday, January 10, 2023 4:39 AM
+Cc: 'R help Mailing list' <r-help at r-project.org
+<mailto:r-help at r-project.org> >
+Subject: Re: [R] return value of {....} 
+
+ 
+
+Akshay,
+
+Your question seems a tad mysterious to me as you are complaining about
+NOTHING.
+
+R was designed to return single values. The last statement executed in a
+function body, for example, is the value returned even when not at the end.
+
+Scoping is another issue entirely. What is visible is another discussion.
+
+So, yes, if you can see ALL the variables, you might see the last one BUT
+there often is no variable at the end. There is an expression that evaluates
+to a value with no NAME attached. You cannot reference that unless the block
+in curly braces returns that value.
+
+You can design your own language any way you want. The people who designed R
+did it this way. Mind you, the most common use of curly braces is probably
+in function bodies, or if/else blocks and loops, not quite what you are
+looking at and complaining about. The design is what it is.
+
+Others require things like an explicit return() statement. R chose not to.
+
+And if the value is redundant for you, who cares?
+
+Did you know that when running a program in the interpreter the last value
+is stored in a variable like this:
+
+> x <- 6
+> .Last.value
+[1] 6
+
+Why would that duplicate be needed or useful?
+
+Consider a partial calculation you want to reuse in another context:
+
+> y = x*2 + 2*x -3
+> z <- .Last.value/2
+> z
+[1] 10.5
+
+Yes, you could have used "y" ...
+
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org
+<mailto:r-help-bounces at r-project.org> > On Behalf Of akshay kulkarni
+Sent: Monday, January 9, 2023 12:06 PM
+To: Valentin Petzel <valentin at petzel.at <mailto:valentin at petzel.at> >
+Cc: R help Mailing list <r-help at r-project.org <mailto:r-help at r-project.org>
+>
+Subject: Re: [R] return value of {....}
+
+Dear Valentin,
+                          But why should {....} "return" a value? It could
+just as well evaluate all the expressions and store the resulting objects in
+whatever environment the interpreter chooses, and then it would be left to
+the user to manipulate any object he chooses. Don't you think returning the
+last, or any value, is redundant? We are living in the 21st century world,
+and the R-core team might,I suppose, have a definite reason for"returning"
+the last value. Any comments?
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+________________________________
+From: Valentin Petzel <valentin at petzel.at <mailto:valentin at petzel.at> >
+Sent: Monday, January 9, 2023 9:18 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com <mailto:akshay_e4 at hotmail.com> >
+Cc: R help Mailing list <r-help at r-project.org <mailto:r-help at r-project.org>
+>
+Subject: Re: [R] return value of {....}
+
+Hello Akshai,
+
+I think you are confusing {...} with local({...}). This one will evaluate
+the expression in a separate environment, returning the last expression.
+
+{...} simply evaluates multiple expressions as one and returns the result of
+the last line, but it still evaluates each expression.
+
+Assignment returns the assigned value, so we can chain assignments like this
+
+a <- 1 + (b <- 2)
+
+conveniently.
+
+So when is {...} useful? Well, anyplace where you want to execute complex
+stuff in a function argument. E.g. you might do:
+
+data %>% group_by(x) %>% summarise(y = {if(x[1] > 10) sum(y) else mean(y)})
+
+Regards,
+Valentin Petzel
+
+09.01.2023 15:47:53 akshay kulkarni <akshay_e4 at hotmail.com
+<mailto:akshay_e4 at hotmail.com> >:
+
+> Dear members,
+>                              I have the following code:
+>
+>> TB <- {x <- 3;y <- 5}
+>> TB
+> [1] 5
+>
+> It is consistent with the documentation: For {, the result of the last
+expression evaluated. This has the visibility of the last evaluation.
+>
+> But both x AND y are created, but the "return value" is y. How can this be
+advantageous for solving practical problems? Specifically, consider the
+following code:
+>
+> F <- function(X) {  expr; expr2; { expr5; expr7}; expr8;expr10}
+>
+> Both expr5 and expr7 are created, and are accessible by the code 
+> outside of the nested braces right? But the "return value" of the 
+> nested braces is expr7. So doesn't this mean that only expr7 should be 
+> accessible? Please help me entangle this (of course the return value 
+> of F is expr10, and all the other objects created by the preceding 
+> expressions are deleted. But expr5 is not, after the control passes 
+> outside of the nested braces!)
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>     [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org <mailto:R-help at r-project.org>  mailing list -- To
+UNSUBSCRIBE and more, see 
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org <mailto:R-help at r-project.org>  mailing list -- To
+UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org <mailto:R-help at r-project.org>  mailing list -- To
+UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Tue Jan 10 18:09:51 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Tue, 10 Jan 2023 17:09:51 +0000
+Subject: [R] return value of {....}
+In-Reply-To: <005a01d92514$1b5eedc0$521cc940$@gmail.com>
+References: <PU4P216MB15683AFF29648D6DD2470B8DC8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <f2d42675-571d-4644-b31b-7371fa105b23@petzel.at>
+ <PU4P216MB1568A92CDAD4B5CC59014CE3C8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <009401d9247f$7e426fb0$7ac74f10$@gmail.com>
+ <PU4P216MB15680CE40E939E34B5671D4BC8FF9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <005a01d92514$1b5eedc0$521cc940$@gmail.com>
+Message-ID: <PU4P216MB15684D5D6851C277AD7FAA41C8FF9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Avi,
+                 THanks a lot..much of the "rationale" is explained ....!
+
+Thanking you,
+Yours sincerely
+AKSHAY M KULKARNI
+________________________________
+From: avi.e.gross at gmail.com <avi.e.gross at gmail.com>
+Sent: Tuesday, January 10, 2023 10:23 PM
+To: 'akshay kulkarni' <akshay_e4 at hotmail.com>
+Cc: 'R help Mailing list' <r-help at r-project.org>
+Subject: RE: [R] return value of {....}
+
+
+Fair enough, Akshay. Wondering why a design was chosen is reasonable.
+
+
+
+There are languages like python that allow unpacking multiple values and it is not uncommon to return multiple things from some constructs as in this:
+
+
+
+>>> a,b,c = { 4, 5, 6 }
+
+>>> a
+
+4
+
+>>> b
+
+5
+
+>>> c
+
+6
+
+
+
+But that is a bit of an illusion as the thing in curly braces is a very different creature called a set with three items.  Python does not need or use curly braces for the purposes used in R as indentation levels group things.
+
+
+
+It is different in design. I do not know what other computer languages you have used, but R is NOT them and must be approached for what it is, and it is a fairly simple paradigm for the last item in a sequence to be the value of the sequence. You can return multiple things, if you wish, in other ways. Such as making a list:
+
+
+
+vals <- list(1+2, sin(.7), cos(.7))
+
+
+
+> vals[2:3]
+
+[[1]]
+
+[1] 0.6442177
+
+
+
+[[2]]
+
+[1] 0.7648422
+
+
+
+You get the idea. R returns ONE thing and it ca have parts, named or not.
+
+
+
+
+
+From: akshay kulkarni <akshay_e4 at hotmail.com>
+Sent: Tuesday, January 10, 2023 9:33 AM
+To: avi.e.gross at gmail.com
+Cc: 'R help Mailing list' <r-help at r-project.org>
+Subject: Re: [R] return value of {....}
+
+
+
+Dear Avi,
+
+                 Thanks for your reply...your exhortations are indeed justified...! But one caveat: I was not complaining about anything...just was curious of the rationale of a particular design....Thanks again...
+
+
+
+Thanking you,
+
+Yours sincerely,
+
+AKSHAY M KULKARNI
+
+________________________________
+
+From: R-help <r-help-bounces at r-project.org<mailto:r-help-bounces at r-project.org>> on behalf of avi.e.gross at gmail.com<mailto:avi.e.gross at gmail.com> <avi.e.gross at gmail.com<mailto:avi.e.gross at gmail.com>>
+Sent: Tuesday, January 10, 2023 4:39 AM
+Cc: 'R help Mailing list' <r-help at r-project.org<mailto:r-help at r-project.org>>
+Subject: Re: [R] return value of {....}
+
+
+
+Akshay,
+
+Your question seems a tad mysterious to me as you are complaining about
+NOTHING.
+
+R was designed to return single values. The last statement executed in a
+function body, for example, is the value returned even when not at the end.
+
+Scoping is another issue entirely. What is visible is another discussion.
+
+So, yes, if you can see ALL the variables, you might see the last one BUT
+there often is no variable at the end. There is an expression that evaluates
+to a value with no NAME attached. You cannot reference that unless the block
+in curly braces returns that value.
+
+You can design your own language any way you want. The people who designed R
+did it this way. Mind you, the most common use of curly braces is probably
+in function bodies, or if/else blocks and loops, not quite what you are
+looking at and complaining about. The design is what it is.
+
+Others require things like an explicit return() statement. R chose not to.
+
+And if the value is redundant for you, who cares?
+
+Did you know that when running a program in the interpreter the last value
+is stored in a variable like this:
+
+> x <- 6
+> .Last.value
+[1] 6
+
+Why would that duplicate be needed or useful?
+
+Consider a partial calculation you want to reuse in another context:
+
+> y = x*2 + 2*x -3
+> z <- .Last.value/2
+> z
+[1] 10.5
+
+Yes, you could have used "y" ...
+
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org<mailto:r-help-bounces at r-project.org>> On Behalf Of akshay kulkarni
+Sent: Monday, January 9, 2023 12:06 PM
+To: Valentin Petzel <valentin at petzel.at<mailto:valentin at petzel.at>>
+Cc: R help Mailing list <r-help at r-project.org<mailto:r-help at r-project.org>>
+Subject: Re: [R] return value of {....}
+
+Dear Valentin,
+                          But why should {....} "return" a value? It could
+just as well evaluate all the expressions and store the resulting objects in
+whatever environment the interpreter chooses, and then it would be left to
+the user to manipulate any object he chooses. Don't you think returning the
+last, or any value, is redundant? We are living in the 21st century world,
+and the R-core team might,I suppose, have a definite reason for"returning"
+the last value. Any comments?
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+________________________________
+From: Valentin Petzel <valentin at petzel.at<mailto:valentin at petzel.at>>
+Sent: Monday, January 9, 2023 9:18 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com<mailto:akshay_e4 at hotmail.com>>
+Cc: R help Mailing list <r-help at r-project.org<mailto:r-help at r-project.org>>
+Subject: Re: [R] return value of {....}
+
+Hello Akshai,
+
+I think you are confusing {...} with local({...}). This one will evaluate
+the expression in a separate environment, returning the last expression.
+
+{...} simply evaluates multiple expressions as one and returns the result of
+the last line, but it still evaluates each expression.
+
+Assignment returns the assigned value, so we can chain assignments like this
+
+a <- 1 + (b <- 2)
+
+conveniently.
+
+So when is {...} useful? Well, anyplace where you want to execute complex
+stuff in a function argument. E.g. you might do:
+
+data %>% group_by(x) %>% summarise(y = {if(x[1] > 10) sum(y) else mean(y)})
+
+Regards,
+Valentin Petzel
+
+09.01.2023 15:47:53 akshay kulkarni <akshay_e4 at hotmail.com<mailto:akshay_e4 at hotmail.com>>:
+
+> Dear members,
+>                              I have the following code:
+>
+>> TB <- {x <- 3;y <- 5}
+>> TB
+> [1] 5
+>
+> It is consistent with the documentation: For {, the result of the last
+expression evaluated. This has the visibility of the last evaluation.
+>
+> But both x AND y are created, but the "return value" is y. How can this be
+advantageous for solving practical problems? Specifically, consider the
+following code:
+>
+> F <- function(X) {  expr; expr2; { expr5; expr7}; expr8;expr10}
+>
+> Both expr5 and expr7 are created, and are accessible by the code
+> outside of the nested braces right? But the "return value" of the
+> nested braces is expr7. So doesn't this mean that only expr7 should be
+> accessible? Please help me entangle this (of course the return value
+> of F is expr10, and all the other objects created by the preceding
+> expressions are deleted. But expr5 is not, after the control passes
+> outside of the nested braces!)
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>     [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue Jan 10 18:42:35 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 10 Jan 2023 09:42:35 -0800
+Subject: [R] 
+ MLE Estimation of Gamma Distribution Parameters for data with
+ 'zeros'
+In-Reply-To: <CAPO0VmZxiSzzpsKVQPpsMSodKM1qisXNCfR1Zm32T9=70se_MQ@mail.gmail.com>
+References: <CAPO0VmZxiSzzpsKVQPpsMSodKM1qisXNCfR1Zm32T9=70se_MQ@mail.gmail.com>
+Message-ID: <CAGxFJbT3HZLWs9V0NpMcdz6EPP1KbDzBmP5jmwYDFp_6=4LNng@mail.gmail.com>
+
+Is this homework? This list has a no-homework policy.
+
+
+-- Bert
+
+On Tue, Jan 10, 2023 at 8:13 AM Nyasha <kahuninyasha13296 at gmail.com> wrote:
+>
+> Please how can one go about this one? I don't know how to go about it.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ||@t@ @end|ng |rom dewey@myzen@co@uk  Tue Jan 10 19:16:32 2023
+From: ||@t@ @end|ng |rom dewey@myzen@co@uk (Michael Dewey)
+Date: Tue, 10 Jan 2023 18:16:32 +0000
+Subject: [R] My forest plot is not fit to windows in R software
+In-Reply-To: <1899380576.9643212.1673353853414@mail.yahoo.com>
+References: <1899380576.9643212.1673353853414.ref@mail.yahoo.com>
+ <1899380576.9643212.1673353853414@mail.yahoo.com>
+Message-ID: <5c10ff47-3a4a-ba1b-526b-2b0babdddb02@dewey.myzen.co.uk>
+
+Dear Fahimeh
+
+It would help if you also told us what package you are using as there 
+are several which perform forest plots. I assume it is meta.
+
+Your plot is cropped on three side as far as I can see. What parameters 
+did you give to the call of the graphics device? What happens if you use 
+a different graphics format like pdf? Then we may be able to see where 
+the issue lies.
+
+Michael
+
+On 10/01/2023 12:30, Fahimeh Alizadeh via R-help wrote:
+> Dear Prof.?My forest plot is not fit to windows in R software, I have 49 studies but forest plot only show from 9 to 42.
+> forest.meta(hidemeta, layout="RevMan5", xlab="Proportion", comb.r=T, comb.f=F, xlim = c(0,1), fontsize=10, digits=3)
+> 
+> 
+> Whould you please help me to access full forest plot??Thank you
+> 
+> Sincerely,Fahimeh
+> 
+> Dr. Fahimeh AlizadehPost-Doctorate Fellow and Ph.DMicrobial Biotechnology
+> Islamic Azad University
+>                     
+>   
+>    
+>                      
+> 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Michael
+http://www.dewey.myzen.co.uk/home.html
+
+
+From mn@||z@deh @end|ng |rom y@hoo@com  Tue Jan 10 20:37:08 2023
+From: mn@||z@deh @end|ng |rom y@hoo@com (Fahimeh Alizadeh)
+Date: Tue, 10 Jan 2023 19:37:08 +0000 (UTC)
+Subject: [R] My forest plot is not fit to windows in R software
+In-Reply-To: <5c10ff47-3a4a-ba1b-526b-2b0babdddb02@dewey.myzen.co.uk>
+References: <1899380576.9643212.1673353853414.ref@mail.yahoo.com>
+ <1899380576.9643212.1673353853414@mail.yahoo.com>
+ <5c10ff47-3a4a-ba1b-526b-2b0babdddb02@dewey.myzen.co.uk>
+Message-ID: <176828580.10152576.1673379428214@mail.yahoo.com>
+
+Dear Prof.Thank you for your kind response. I have only used:
+install.packages("tidyverse")
+
+install.packages("meta")
+
+install.packages("metafor")
+
+library(tidyverse)
+
+library(meta)
+library(metafor)and then,forest.meta(hidemeta, layout="RevMan5", xlab="Proportion", comb.r=T, comb.f=F, xlim = c(0,1), fontsize=10, digits=3)Unfortunately I am not familiar to R software, I have not chosen graphics device. could you please help me to choose graphics format like pdf?
+All the best for you
+Sincerely,Fahimeh Alizadeh
+
+
+
+Dr. Fahimeh AlizadehPost-Doctorate Fellow and Ph.DMicrobial Biotechnology
+Islamic Azad University
+? ? ? ? ? ? ? ? ? ?
+ 
+ ?
+? ? ? ? ? ? ? ? ? ?? 
+
+    On Tuesday, January 10, 2023 at 09:46:40 PM GMT+3:30, Michael Dewey <lists at dewey.myzen.co.uk> wrote:  
+ 
+ Dear Fahimeh
+
+It would help if you also told us what package you are using as there 
+are several which perform forest plots. I assume it is meta.
+
+Your plot is cropped on three side as far as I can see. What parameters 
+did you give to the call of the graphics device? What happens if you use 
+a different graphics format like pdf? Then we may be able to see where 
+the issue lies.
+
+Michael
+
+On 10/01/2023 12:30, Fahimeh Alizadeh via R-help wrote:
+> Dear Prof.?My forest plot is not fit to windows in R software, I have 49 studies but forest plot only show from 9 to 42.
+> forest.meta(hidemeta, layout="RevMan5", xlab="Proportion", comb.r=T, comb.f=F, xlim = c(0,1), fontsize=10, digits=3)
+> 
+> 
+> Whould you please help me to access full forest plot??Thank you
+> 
+> Sincerely,Fahimeh
+> 
+> Dr. Fahimeh AlizadehPost-Doctorate Fellow and Ph.DMicrobial Biotechnology
+> Islamic Azad University
+>? ? ? ? ? ? ? ? ? ? 
+>? 
+>? ? 
+>? ? ? ? ? ? ? ? ? ? ? 
+> 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Michael
+http://www.dewey.myzen.co.uk/home.html
+  
+	[[alternative HTML version deleted]]
+
+
