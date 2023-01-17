@@ -11765,3 +11765,2628 @@ Kingston ON Canada
 	[[alternative HTML version deleted]]
 
 
+From v@|ent|n @end|ng |rom petze|@@t  Sat Jan 14 19:21:07 2023
+From: v@|ent|n @end|ng |rom petze|@@t (Valentin Petzel)
+Date: Sat, 14 Jan 2023 19:21:07 +0100 (GMT+01:00)
+Subject: [R] Removing variables from data frame with a wile card
+In-Reply-To: <004101d9283d$8b9b30e0$a2d192a0$@gmail.com>
+References: <CAPcHnpS==8tWHya+C=K1kTQf1jE5f7oRmyf-PL137_C4h-sOYA@mail.gmail.com>
+ <20A1D131-4907-4D54-A624-ED53B0325CAC@ntu.edu.tw>
+ <004101d9283d$8b9b30e0$a2d192a0$@gmail.com>
+Message-ID: <cc30deac-3dbe-4250-b239-35df614ac418@petzel.at>
+
+Hello Avi,
+
+while something like d$something <- ... may seem like you're directly modifying the data it does not actually do so. Most R objects try to be immutable, that is, the object may not change after creation. This guarantees that if you have a binding for same object the object won't change sneakily.
+
+There is a data structure that is in fact mutable which are environments. For example compare
+
+L <- list()
+local({L$a <- 3})
+L$a
+
+with
+
+E <- new.env()
+local({E$a <- 3})
+E$a
+
+The latter will in fact work, as the same Environment is modified, while in the first one a modified copy of the list is made.
+
+Under the hood we have a parser trick: If R sees something like
+
+f(a) <- ...
+
+it will look for a function f<- and call
+
+a <- f<-(a, ...)
+
+(this also happens for example when you do names(x) <- ...)
+
+So in fact in our case this is equivalent to creating a copy with removed columns and rebind the symbol in the current environment to the result.
+
+The data.table package breaks with this convention and uses C based routines that allow changing of data without copying the object. Doing
+
+d[, (cols_to_remove) := NULL]
+
+will actually change the data.
+
+Regards,
+Valentin
+
+14.01.2023 18:28:33 avi.e.gross at gmail.com:
+
+> Steven,
+> 
+> Just want to add a few things to what people wrote.
+> 
+> In base R, the methods mentioned will let you make a copy of your original DF that is missing the items you are selecting that match your pattern.
+> 
+> That is fine.
+> 
+> For some purposes, you want to keep the original data.frame and remove a column within it. You can do that in several ways but the simplest is something where you sat the column to NULL as in:
+> 
+> mydata$NAME <- NULL
+> 
+> using the mydata["NAME"] notation can do that for you by using a loop of unctional programming method that does that with all components of your grep.
+> 
+> R does have optimizations that make this less useful as a partial copy of a data.frame retains common parts till things change.
+> 
+> For those who like to use the tidyverse, it comes with lots of tools that let you select columns that start with or end with or contain some pattern and I find that way easier.
+> 
+> 
+> 
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Steven Yen
+> Sent: Saturday, January 14, 2023 7:49 AM
+> To: Andrew Simmons <akwsimmo at gmail.com>
+> Cc: R-help Mailing List <r-help at r-project.org>
+> Subject: Re: [R] Removing variables from data frame with a wile card
+> 
+> Thanks to all. Very helpful.
+> 
+> Steven from iPhone
+> 
+>> On Jan 14, 2023, at 3:08 PM, Andrew Simmons <akwsimmo at gmail.com> wrote:
+>> 
+>> ?You'll want to use grep() or grepl(). By default, grep() uses
+>> extended regular expressions to find matches, but you can also use
+>> perl regular expressions and globbing (after converting to a regular expression).
+>> For example:
+>> 
+>> grepl("^yr", colnames(mydata))
+>> 
+>> will tell you which 'colnames' start with "yr". If you'd rather you
+>> use globbing:
+>> 
+>> grepl(glob2rx("yr*"), colnames(mydata))
+>> 
+>> Then you might write something like this to remove the columns starting with yr:
+>> 
+>> mydata <- mydata[, !grepl("^yr", colnames(mydata)), drop = FALSE]
+>> 
+>>> On Sat, Jan 14, 2023 at 1:56 AM Steven T. Yen <styen at ntu.edu.tw> wrote:
+>>> 
+>>> I have a data frame containing variables "yr3",...,"yr28".
+>>> 
+>>> How do I remove them with a wild card----something similar to "del yr*"
+>>> in Windows/doc? Thank you.
+>>> 
+>>>> colnames(mydata)
+>>> ? [1] "year"?????? "weight"???? "confeduc"?? "confothr" "college"
+>>> ? [6] ...
+>>> [41] "yr3"??????? "yr4"??????? "yr5"??????? "yr6" "yr7"
+>>> [46] "yr8"??????? "yr9"??????? "yr10"?????? "yr11" "yr12"
+>>> [51] "yr13"?????? "yr14"?????? "yr15"?????? "yr16" "yr17"
+>>> [56] "yr18"?????? "yr19"?????? "yr20"?????? "yr21" "yr22"
+>>> [61] "yr23"?????? "yr24"?????? "yr25"?????? "yr26" "yr27"
+>>> [66] "yr28"...
+>>> 
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ??? [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sun Jan 15 16:30:37 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sun, 15 Jan 2023 15:30:37 +0000
+Subject: [R] return value of {....}
+In-Reply-To: <bf2b6310-a43e-c46b-ff91-72e11f014f1b@syonic.eu>
+References: <bf2b6310-a43e-c46b-ff91-72e11f014f1b@syonic.eu>
+Message-ID: <PU4P216MB1568ACF90C25826FDB7DABDFC8C09@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear leonard,
+                         I think Avi's repsonse was best...it's just a design...as he said, there are other possibilities in other programming languages which augments this design...thanks anyways for your reply...
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Leonard Mada <leo.mada at syonic.eu>
+Sent: Friday, January 13, 2023 1:44 AM
+To: Akshay Kulkarni <akshay_e4 at hotmail.com>
+Cc: R-help Mailing List <r-help at r-project.org>
+Subject: Re: [R] return value of {....}
+
+Dear Akshay,
+
+The best response was given by Andrew. "{...}" is not a closure.
+
+This is unusual for someone used to C-type languages. But I will try to
+explain some of the rationale.
+
+In the case that "{...}" was a closure, then external variables would
+need to be explicitly declared before the closure (in order to reuse
+those values):
+intermediate = c()
+{
+     intermediate = ...;
+     result = someFUN(intermediate);
+}
+
+1.) Interactive Sessions
+This is cumbersome in interactive sessions. For example: you often
+compute the mean or the variance as intermediary results, and will need
+them later on as well. They could have been computed outside the
+"closure", but writing code in interactive sessions may not always be
+straightforward.
+
+2.) Missing arguments
+f = function(x, y) {
+     if(missing(y)) {
+         # assuming x = matrix
+         y = x[,2]; x = x[,1];
+     }
+}
+It would be much more cumbersome to define/use a temporary tempY.
+
+I hope this gives a better perspective why this is indeed a useful
+feature - even if it is counterintuitive.
+
+Sincerely,
+
+Leonard
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sun Jan 15 16:33:18 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sun, 15 Jan 2023 15:33:18 +0000
+Subject: [R] return value of {....}
+In-Reply-To: <d201ecea-b28d-ad26-75a4-311edf335c48@gmx.at>
+References: <PU4P216MB15683AFF29648D6DD2470B8DC8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <f2d42675-571d-4644-b31b-7371fa105b23@petzel.at>
+ <PU4P216MB1568A92CDAD4B5CC59014CE3C8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <cf027dca-4bde-4c05-a964-1522025d6532@petzel.at>
+ <d201ecea-b28d-ad26-75a4-311edf335c48@gmx.at>
+Message-ID: <PU4P216MB15683B8CDDAA65F62BAF1010C8C09@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+dear Heinz,
+                     Thanks for your reply....reason is as old as the Sun..!
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of Heinz Tuechler <tuechler at gmx.at>
+Sent: Friday, January 13, 2023 4:30 PM
+To: r-help at r-project.org <r-help at r-project.org>
+Subject: Re: [R] return value of {....}
+
+> 09.01.2023 18:05:58 akshay kulkarni <akshay_e4 at hotmail.com>:
+>
+> We are living in the 21st century world, and the R-core team might,I suppose, have a definite reason ...
+>
+
+Maybe compatibility reasons with S and R-versions from the 20st century?
+But maybe, you would have expected some reason even then.
+
+best regards,
+
+Heinz
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sun Jan 15 16:34:40 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sun, 15 Jan 2023 15:34:40 +0000
+Subject: [R] return value of {....}
+In-Reply-To: <CAHqSRuQRYv1fii+F6VHd8qxAmWtu45xFTE7sJMO9KG6FH9yyXQ@mail.gmail.com>
+References: <PU4P216MB15683AFF29648D6DD2470B8DC8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <f2d42675-571d-4644-b31b-7371fa105b23@petzel.at>
+ <PU4P216MB1568A92CDAD4B5CC59014CE3C8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <cf027dca-4bde-4c05-a964-1522025d6532@petzel.at>
+ <CAHqSRuQRYv1fii+F6VHd8qxAmWtu45xFTE7sJMO9KG6FH9yyXQ@mail.gmail.com>
+Message-ID: <PU4P216MB1568DF914499E2505DB1F3C2C8C09@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Bill,
+                 Thanks for your reply.....
+
+thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Bill Dunlap <williamwdunlap at gmail.com>
+Sent: Friday, January 13, 2023 10:48 PM
+To: Valentin Petzel <valentin at petzel.at>
+Cc: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] return value of {....}
+
+R's
+   { expr1; expr2; expr3}
+acts much like C's
+   ( expr1, expr2, expr3)
+
+E.g.,
+
+$ cat a.c
+#include <stdio.h>
+
+int main(int argc, char* argv[])
+{
+    double y = 10 ;
+    double x = (printf("Starting... "), y = y + 100, y * 20);
+    printf("Done: x=%g, y=%g\n", x, y);
+    return 0;
+}
+$ gcc -Wall a.c
+$ ./a.out
+Starting... Done: x=2200, y=110
+
+I don't like that syntax (e.g., commas between expressions instead of the usual semicolons after expressions).  Perhaps John Chambers et all didn't either.
+
+-Bill
+
+On Fri, Jan 13, 2023 at 2:28 AM Valentin Petzel <valentin at petzel.at<mailto:valentin at petzel.at>> wrote:
+Hello Akshay,
+
+R is quite inspired by LISP, where this is a common thing. It is not in fact that {...} returned something, rather any expression evalulates to some value, and for a compound statement that is the last evaluated expression.
+
+{...} might be seen as similar to LISPs (begin ...).
+
+Now this is a very different thing compared to {...} in something like C, even if it looks or behaves similarly. But in R {...} is in fact an expression and thus has evaluate to some value. This also comes with some nice benefits.
+
+You do not need to use {...} for anything that is a single statement. But you can in each possible place use {...} to turn multiple statements into one.
+
+Now think about a statement like this
+
+f <- function(n) {
+x <- runif(n)
+x**2
+}
+
+Then we can do
+
+y <- f(10)
+
+Now, you suggested way would look like this:
+
+f <- function(n) {
+x <- runif(n)
+y <- x**2
+}
+
+And we'd need to do something like:
+
+f(10)
+y <- somehow_get_last_env_of_f$y
+
+So having a compound statement evaluate to a value clearly has a benefit.
+
+Best Regards,
+Valentin
+
+09.01.2023 18:05:58 akshay kulkarni <akshay_e4 at hotmail.com<mailto:akshay_e4 at hotmail.com>>:
+
+> Dear Valentin,
+>                           But why should {....} "return" a value? It could just as well evaluate all the expressions and store the resulting objects in whatever environment the interpreter chooses, and then it would be left to the user to manipulate any object he chooses. Don't you think returning the last, or any value, is redundant? We are living in the 21st century world, and the R-core team might,I suppose, have a definite reason for"returning" the last value. Any comments?
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+> ----------------------------------------
+> *From:* Valentin Petzel <valentin at petzel.at<mailto:valentin at petzel.at>>
+> *Sent:* Monday, January 9, 2023 9:18 PM
+> *To:* akshay kulkarni <akshay_e4 at hotmail.com<mailto:akshay_e4 at hotmail.com>>
+> *Cc:* R help Mailing list <r-help at r-project.org<mailto:r-help at r-project.org>>
+> *Subject:* Re: [R] return value of {....}
+>
+> Hello Akshai,
+>
+> I think you are confusing {...} with local({...}). This one will evaluate the expression in a separate environment, returning the last expression.
+>
+> {...} simply evaluates multiple expressions as one and returns the result of the last line, but it still evaluates each expression.
+>
+> Assignment returns the assigned value, so we can chain assignments like this
+>
+> a <- 1 + (b <- 2)
+>
+> conveniently.
+>
+> So when is {...} useful? Well, anyplace where you want to execute complex stuff in a function argument. E.g. you might do:
+>
+> data %>% group_by(x) %>% summarise(y = {if(x[1] > 10) sum(y) else mean(y)})
+>
+> Regards,
+> Valentin Petzel
+>
+> 09.01.2023 15:47:53 akshay kulkarni <akshay_e4 at hotmail.com<mailto:akshay_e4 at hotmail.com>>:
+>
+>> Dear members,
+>>                              I have the following code:
+>>
+>>> TB <- {x <- 3;y <- 5}
+>>> TB
+>> [1] 5
+>>
+>> It is consistent with the documentation: For {, the result of the last expression evaluated. This has the visibility of the last evaluation.
+>>
+>> But both x AND y are created, but the "return value" is y. How can this be advantageous for solving practical problems? Specifically, consider the following code:
+>>
+>> F <- function(X) {  expr; expr2; { expr5; expr7}; expr8;expr10}
+>>
+>> Both expr5 and expr7 are created, and are accessible by the code outside of the nested braces right? But the "return value" of the nested braces is expr7. So doesn't this mean that only expr7 should be accessible? Please help me entangle this (of course the return value of F is expr10, and all the other objects created by the preceding expressions are deleted. But expr5 is not, after the control passes outside of the nested braces!)
+>>
+>> Thanking you,
+>> Yours sincerely,
+>> AKSHAY M KULKARNI
+>>
+>>     [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sun Jan 15 16:38:15 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sun, 15 Jan 2023 15:38:15 +0000
+Subject: [R] return value of {....}
+In-Reply-To: <cf027dca-4bde-4c05-a964-1522025d6532@petzel.at>
+References: <PU4P216MB15683AFF29648D6DD2470B8DC8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <f2d42675-571d-4644-b31b-7371fa105b23@petzel.at>
+ <PU4P216MB1568A92CDAD4B5CC59014CE3C8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <cf027dca-4bde-4c05-a964-1522025d6532@petzel.at>
+Message-ID: <PU4P216MB1568744F79BAC3EF0ED1A802C8C09@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear valentin,
+                          Thanks for a comprehensive background....
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Valentin Petzel <valentin at petzel.at>
+Sent: Friday, January 13, 2023 4:48 AM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] return value of {....}
+
+Hello Akshay,
+
+R is quite inspired by LISP, where this is a common thing. It is not in fact that {...} returned something, rather any expression evalulates to some value, and for a compound statement that is the last evaluated expression.
+
+{...} might be seen as similar to LISPs (begin ...).
+
+Now this is a very different thing compared to {...} in something like C, even if it looks or behaves similarly. But in R {...} is in fact an expression and thus has evaluate to some value. This also comes with some nice benefits.
+
+You do not need to use {...} for anything that is a single statement. But you can in each possible place use {...} to turn multiple statements into one.
+
+Now think about a statement like this
+
+f <- function(n) {
+x <- runif(n)
+x**2
+}
+
+Then we can do
+
+y <- f(10)
+
+Now, you suggested way would look like this:
+
+f <- function(n) {
+x <- runif(n)
+y <- x**2
+}
+
+And we'd need to do something like:
+
+f(10)
+y <- somehow_get_last_env_of_f$y
+
+So having a compound statement evaluate to a value clearly has a benefit.
+
+Best Regards,
+Valentin
+
+
+09.01.2023 18:05:58 akshay kulkarni <akshay_e4 at hotmail.com>:
+
+Dear Valentin,
+                          But why should {....} "return" a value? It could just as well evaluate all the expressions and store the resulting objects in whatever environment the interpreter chooses, and then it would be left to the user to manipulate any object he chooses. Don't you think returning the last, or any value, is redundant? We are living in the 21st century world, and the R-core team might,I suppose, have a definite reason for"returning" the last value. Any comments?
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+________________________________
+From: Valentin Petzel <valentin at petzel.at>
+Sent: Monday, January 9, 2023 9:18 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] return value of {....}
+
+Hello Akshai,
+
+I think you are confusing {...} with local({...}). This one will evaluate the expression in a separate environment, returning the last expression.
+
+{...} simply evaluates multiple expressions as one and returns the result of the last line, but it still evaluates each expression.
+
+Assignment returns the assigned value, so we can chain assignments like this
+
+a <- 1 + (b <- 2)
+
+conveniently.
+
+So when is {...} useful? Well, anyplace where you want to execute complex stuff in a function argument. E.g. you might do:
+
+data %>% group_by(x) %>% summarise(y = {if(x[1] > 10) sum(y) else mean(y)})
+
+Regards,
+Valentin Petzel
+
+09.01.2023 15:47:53 akshay kulkarni <akshay_e4 at hotmail.com>:
+
+> Dear members,
+>                              I have the following code:
+>
+>> TB <- {x <- 3;y <- 5}
+>> TB
+> [1] 5
+>
+> It is consistent with the documentation: For {, the result of the last expression evaluated. This has the visibility of the last evaluation.
+>
+> But both x AND y are created, but the "return value" is y. How can this be advantageous for solving practical problems? Specifically, consider the following code:
+>
+> F <- function(X) {  expr; expr2; { expr5; expr7}; expr8;expr10}
+>
+> Both expr5 and expr7 are created, and are accessible by the code outside of the nested braces right? But the "return value" of the nested braces is expr7. So doesn't this mean that only expr7 should be accessible? Please help me entangle this (of course the return value of F is expr10, and all the other objects created by the preceding expressions are deleted. But expr5 is not, after the control passes outside of the nested braces!)
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>     [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Sun Jan 15 17:54:34 2023
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Sun, 15 Jan 2023 16:54:34 +0000
+Subject: [R] Removing variables from data frame with a wile card
+In-Reply-To: <cc30deac-3dbe-4250-b239-35df614ac418@petzel.at>
+References: <CAPcHnpS==8tWHya+C=K1kTQf1jE5f7oRmyf-PL137_C4h-sOYA@mail.gmail.com>
+ <20A1D131-4907-4D54-A624-ED53B0325CAC@ntu.edu.tw>
+ <004101d9283d$8b9b30e0$a2d192a0$@gmail.com>
+ <cc30deac-3dbe-4250-b239-35df614ac418@petzel.at>
+Message-ID: <SJ0PR03MB6360F7A2EBF1D3B32C0ECE2AE2C09@SJ0PR03MB6360.namprd03.prod.outlook.com>
+
+I am new to this thread. At the risk of presenting something that has been shown before, below I demonstrate how a column in a data frame can be dropped using a wild card, i.e. a column whose name starts with "th" using nothing more than base r functions and base R syntax. While additions to R such as tidyverse can be very helpful, many things that they do can be accomplished simply using base R.  
+
+# Create data frame with three columns
+one <- rep(1,10)
+one
+two <- rep(2,10)
+two
+three <- rep(3,10)
+three
+mydata <- data.frame(one=one, two=two, three=three)
+cat("Data frame with three columns\n")
+mydata
+
+# Drop the column whose name starts with th, i.e. column three
+# Find the location of the column
+ColumToDelete <- grep("th",colnames((mydata)))
+cat("The colomumn to be dropped is the column called three, which is column",ColumToDelete,"\n")
+ColumToDelete
+
+# Drop the column whose name starts with "th"
+newdata2 <- mydata[,-ColumnToDelete]
+cat("Data frame after droping column whose name is three\n")
+newdata2
+
+I hope this helps.
+John
+
+
+________________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of Valentin Petzel <valentin at petzel.at>
+Sent: Saturday, January 14, 2023 1:21 PM
+To: avi.e.gross at gmail.com
+Cc: 'R-help Mailing List'
+Subject: Re: [R] Removing variables from data frame with a wile card
+
+Hello Avi,
+
+while something like d$something <- ... may seem like you're directly modifying the data it does not actually do so. Most R objects try to be immutable, that is, the object may not change after creation. This guarantees that if you have a binding for same object the object won't change sneakily.
+
+There is a data structure that is in fact mutable which are environments. For example compare
+
+L <- list()
+local({L$a <- 3})
+L$a
+
+with
+
+E <- new.env()
+local({E$a <- 3})
+E$a
+
+The latter will in fact work, as the same Environment is modified, while in the first one a modified copy of the list is made.
+
+Under the hood we have a parser trick: If R sees something like
+
+f(a) <- ...
+
+it will look for a function f<- and call
+
+a <- f<-(a, ...)
+
+(this also happens for example when you do names(x) <- ...)
+
+So in fact in our case this is equivalent to creating a copy with removed columns and rebind the symbol in the current environment to the result.
+
+The data.table package breaks with this convention and uses C based routines that allow changing of data without copying the object. Doing
+
+d[, (cols_to_remove) := NULL]
+
+will actually change the data.
+
+Regards,
+Valentin
+
+14.01.2023 18:28:33 avi.e.gross at gmail.com:
+
+> Steven,
+>
+> Just want to add a few things to what people wrote.
+>
+> In base R, the methods mentioned will let you make a copy of your original DF that is missing the items you are selecting that match your pattern.
+>
+> That is fine.
+>
+> For some purposes, you want to keep the original data.frame and remove a column within it. You can do that in several ways but the simplest is something where you sat the column to NULL as in:
+>
+> mydata$NAME <- NULL
+>
+> using the mydata["NAME"] notation can do that for you by using a loop of unctional programming method that does that with all components of your grep.
+>
+> R does have optimizations that make this less useful as a partial copy of a data.frame retains common parts till things change.
+>
+> For those who like to use the tidyverse, it comes with lots of tools that let you select columns that start with or end with or contain some pattern and I find that way easier.
+>
+>
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Steven Yen
+> Sent: Saturday, January 14, 2023 7:49 AM
+> To: Andrew Simmons <akwsimmo at gmail.com>
+> Cc: R-help Mailing List <r-help at r-project.org>
+> Subject: Re: [R] Removing variables from data frame with a wile card
+>
+> Thanks to all. Very helpful.
+>
+> Steven from iPhone
+>
+>> On Jan 14, 2023, at 3:08 PM, Andrew Simmons <akwsimmo at gmail.com> wrote:
+>>
+>> ?You'll want to use grep() or grepl(). By default, grep() uses
+>> extended regular expressions to find matches, but you can also use
+>> perl regular expressions and globbing (after converting to a regular expression).
+>> For example:
+>>
+>> grepl("^yr", colnames(mydata))
+>>
+>> will tell you which 'colnames' start with "yr". If you'd rather you
+>> use globbing:
+>>
+>> grepl(glob2rx("yr*"), colnames(mydata))
+>>
+>> Then you might write something like this to remove the columns starting with yr:
+>>
+>> mydata <- mydata[, !grepl("^yr", colnames(mydata)), drop = FALSE]
+>>
+>>> On Sat, Jan 14, 2023 at 1:56 AM Steven T. Yen <styen at ntu.edu.tw> wrote:
+>>>
+>>> I have a data frame containing variables "yr3",...,"yr28".
+>>>
+>>> How do I remove them with a wild card----something similar to "del yr*"
+>>> in Windows/doc? Thank you.
+>>>
+>>>> colnames(mydata)
+>>>   [1] "year"?????? "weight"???? "confeduc"?? "confothr" "college"
+>>>   [6] ...
+>>> [41] "yr3"??????? "yr4"??????? "yr5"??????? "yr6" "yr7"
+>>> [46] "yr8"??????? "yr9"??????? "yr10"?????? "yr11" "yr12"
+>>> [51] "yr13"?????? "yr14"?????? "yr15"?????? "yr16" "yr17"
+>>> [56] "yr18"?????? "yr19"?????? "yr20"?????? "yr21" "yr22"
+>>> [61] "yr23"?????? "yr24"?????? "yr25"?????? "yr26" "yr27"
+>>> [66] "yr28"...
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=GP9WF81MtvF%2FYi8LoWQt0W0VInk2WsPAgB0zHsu5aRQ%3D&reserved=0
+>>> PLEASE do read the posting guide
+>>> https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=h6SEOa8rBxjsq%2FQirtXACss4DdfseradQm9FFhDhbVw%3D&reserved=0
+>>> and provide commented, minimal, self-contained, reproducible code.
+>
+>     [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=GP9WF81MtvF%2FYi8LoWQt0W0VInk2WsPAgB0zHsu5aRQ%3D&reserved=0
+> PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=h6SEOa8rBxjsq%2FQirtXACss4DdfseradQm9FFhDhbVw%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=GP9WF81MtvF%2FYi8LoWQt0W0VInk2WsPAgB0zHsu5aRQ%3D&reserved=0
+> PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=h6SEOa8rBxjsq%2FQirtXACss4DdfseradQm9FFhDhbVw%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=GP9WF81MtvF%2FYi8LoWQt0W0VInk2WsPAgB0zHsu5aRQ%3D&reserved=0
+PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=h6SEOa8rBxjsq%2FQirtXACss4DdfseradQm9FFhDhbVw%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sun Jan 15 20:39:58 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sun, 15 Jan 2023 14:39:58 -0500
+Subject: [R] Removing variables from data frame with a wile card
+In-Reply-To: <SJ0PR03MB6360F7A2EBF1D3B32C0ECE2AE2C09@SJ0PR03MB6360.namprd03.prod.outlook.com>
+References: <CAPcHnpS==8tWHya+C=K1kTQf1jE5f7oRmyf-PL137_C4h-sOYA@mail.gmail.com>
+ <20A1D131-4907-4D54-A624-ED53B0325CAC@ntu.edu.tw>
+ <004101d9283d$8b9b30e0$a2d192a0$@gmail.com>
+ <cc30deac-3dbe-4250-b239-35df614ac418@petzel.at>
+ <SJ0PR03MB6360F7A2EBF1D3B32C0ECE2AE2C09@SJ0PR03MB6360.namprd03.prod.outlook.com>
+Message-ID: <004401d92919$272d9440$7588bcc0$@gmail.com>
+
+John,
+
+As you said, you are new to the discussion so let me catch you up.
+
+The original question was about removing many columns that shared a similar feature in the naming convention while leaving other columns in-place. Quite a few replies were given on how to do that including how to use a regular expression to gather the column names you want to remove.
+
+It was only afterwards that the topic changed a bit to mention that some people used additional ways both in base R and also using packages like dplyr in the tidyverse.
+
+As a general rule, most packages out there provide functionality that can be done in base R if you wish, and some are written purely in R while some augment that with parts re-done in C or something. If a package is well built and frequently used, it may well make your life as a programmer easier as the code need not be re-invented and debugged. Of course some packages are of poorer quality.
+
+So we fully agree that unless asked for, the base R answers should be the focus HERE. Then again, languages are not static and sometimes we see things like pipes moved in a modified version into the main language.
+
+Avi
+
+-----Original Message-----
+From: Sorkin, John <jsorkin at som.umaryland.edu> 
+Sent: Sunday, January 15, 2023 11:55 AM
+To: Valentin Petzel <valentin at petzel.at>; avi.e.gross at gmail.com
+Cc: 'R-help Mailing List' <r-help at r-project.org>
+Subject: Re: [R] Removing variables from data frame with a wile card
+
+I am new to this thread. At the risk of presenting something that has been shown before, below I demonstrate how a column in a data frame can be dropped using a wild card, i.e. a column whose name starts with "th" using nothing more than base r functions and base R syntax. While additions to R such as tidyverse can be very helpful, many things that they do can be accomplished simply using base R.  
+
+# Create data frame with three columns
+one <- rep(1,10)
+one
+two <- rep(2,10)
+two
+three <- rep(3,10)
+three
+mydata <- data.frame(one=one, two=two, three=three) cat("Data frame with three columns\n") mydata
+
+# Drop the column whose name starts with th, i.e. column three # Find the location of the column ColumToDelete <- grep("th",colnames((mydata))) cat("The colomumn to be dropped is the column called three, which is column",ColumToDelete,"\n") ColumToDelete
+
+# Drop the column whose name starts with "th"
+newdata2 <- mydata[,-ColumnToDelete]
+cat("Data frame after droping column whose name is three\n")
+newdata2
+
+I hope this helps.
+John
+
+
+________________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of Valentin Petzel <valentin at petzel.at>
+Sent: Saturday, January 14, 2023 1:21 PM
+To: avi.e.gross at gmail.com
+Cc: 'R-help Mailing List'
+Subject: Re: [R] Removing variables from data frame with a wile card
+
+Hello Avi,
+
+while something like d$something <- ... may seem like you're directly modifying the data it does not actually do so. Most R objects try to be immutable, that is, the object may not change after creation. This guarantees that if you have a binding for same object the object won't change sneakily.
+
+There is a data structure that is in fact mutable which are environments. For example compare
+
+L <- list()
+local({L$a <- 3})
+L$a
+
+with
+
+E <- new.env()
+local({E$a <- 3})
+E$a
+
+The latter will in fact work, as the same Environment is modified, while in the first one a modified copy of the list is made.
+
+Under the hood we have a parser trick: If R sees something like
+
+f(a) <- ...
+
+it will look for a function f<- and call
+
+a <- f<-(a, ...)
+
+(this also happens for example when you do names(x) <- ...)
+
+So in fact in our case this is equivalent to creating a copy with removed columns and rebind the symbol in the current environment to the result.
+
+The data.table package breaks with this convention and uses C based routines that allow changing of data without copying the object. Doing
+
+d[, (cols_to_remove) := NULL]
+
+will actually change the data.
+
+Regards,
+Valentin
+
+14.01.2023 18:28:33 avi.e.gross at gmail.com:
+
+> Steven,
+>
+> Just want to add a few things to what people wrote.
+>
+> In base R, the methods mentioned will let you make a copy of your original DF that is missing the items you are selecting that match your pattern.
+>
+> That is fine.
+>
+> For some purposes, you want to keep the original data.frame and remove a column within it. You can do that in several ways but the simplest is something where you sat the column to NULL as in:
+>
+> mydata$NAME <- NULL
+>
+> using the mydata["NAME"] notation can do that for you by using a loop of unctional programming method that does that with all components of your grep.
+>
+> R does have optimizations that make this less useful as a partial copy of a data.frame retains common parts till things change.
+>
+> For those who like to use the tidyverse, it comes with lots of tools that let you select columns that start with or end with or contain some pattern and I find that way easier.
+>
+>
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Steven Yen
+> Sent: Saturday, January 14, 2023 7:49 AM
+> To: Andrew Simmons <akwsimmo at gmail.com>
+> Cc: R-help Mailing List <r-help at r-project.org>
+> Subject: Re: [R] Removing variables from data frame with a wile card
+>
+> Thanks to all. Very helpful.
+>
+> Steven from iPhone
+>
+>> On Jan 14, 2023, at 3:08 PM, Andrew Simmons <akwsimmo at gmail.com> wrote:
+>>
+>> ?You'll want to use grep() or grepl(). By default, grep() uses 
+>> extended regular expressions to find matches, but you can also use 
+>> perl regular expressions and globbing (after converting to a regular expression).
+>> For example:
+>>
+>> grepl("^yr", colnames(mydata))
+>>
+>> will tell you which 'colnames' start with "yr". If you'd rather you 
+>> use globbing:
+>>
+>> grepl(glob2rx("yr*"), colnames(mydata))
+>>
+>> Then you might write something like this to remove the columns starting with yr:
+>>
+>> mydata <- mydata[, !grepl("^yr", colnames(mydata)), drop = FALSE]
+>>
+>>> On Sat, Jan 14, 2023 at 1:56 AM Steven T. Yen <styen at ntu.edu.tw> wrote:
+>>>
+>>> I have a data frame containing variables "yr3",...,"yr28".
+>>>
+>>> How do I remove them with a wild card----something similar to "del yr*"
+>>> in Windows/doc? Thank you.
+>>>
+>>>> colnames(mydata)
+>>>   [1] "year"       "weight"     "confeduc"   "confothr" "college"
+>>>   [6] ...
+>>> [41] "yr3"        "yr4"        "yr5"        "yr6" "yr7"
+>>> [46] "yr8"        "yr9"        "yr10"       "yr11" "yr12"
+>>> [51] "yr13"       "yr14"       "yr15"       "yr16" "yr17"
+>>> [56] "yr18"       "yr19"       "yr20"       "yr21" "yr22"
+>>> [61] "yr23"       "yr24"       "yr25"       "yr26" "yr27"
+>>> [66] "yr28"...
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fst
+>>> at.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40so
+>>> m.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461
+>>> a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb
+>>> 3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3
+>>> D%7C3000%7C%7C%7C&sdata=GP9WF81MtvF%2FYi8LoWQt0W0VInk2WsPAgB0zHsu5aR
+>>> Q%3D&reserved=0
+>>> PLEASE do read the posting guide
+>>> https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww
+>>> .r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.uma
+>>> ryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a8894
+>>> 0312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8ey
+>>> JWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3
+>>> 000%7C%7C%7C&sdata=h6SEOa8rBxjsq%2FQirtXACss4DdfseradQm9FFhDhbVw%3D&
+>>> reserved=0 and provide commented, minimal, self-contained, 
+>>> reproducible code.
+>
+>     [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat
+> .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.um
+> aryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940
+> 312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWI
+> joiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7
+> C%7C%7C&sdata=GP9WF81MtvF%2FYi8LoWQt0W0VInk2WsPAgB0zHsu5aRQ%3D&reserve
+> d=0 PLEASE do read the posting guide 
+> https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r
+> -project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryla
+> nd.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a3
+> 95cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC
+> 4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%
+> 7C&sdata=h6SEOa8rBxjsq%2FQirtXACss4DdfseradQm9FFhDhbVw%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat
+> .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.um
+> aryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940
+> 312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWI
+> joiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7
+> C%7C%7C&sdata=GP9WF81MtvF%2FYi8LoWQt0W0VInk2WsPAgB0zHsu5aRQ%3D&reserve
+> d=0 PLEASE do read the posting guide 
+> https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r
+> -project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryla
+> nd.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a3
+> 95cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC
+> 4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%
+> 7C&sdata=h6SEOa8rBxjsq%2FQirtXACss4DdfseradQm9FFhDhbVw%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=GP9WF81MtvF%2FYi8LoWQt0W0VInk2WsPAgB0zHsu5aRQ%3D&reserved=0
+PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=h6SEOa8rBxjsq%2FQirtXACss4DdfseradQm9FFhDhbVw%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sun Jan 15 21:59:04 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sun, 15 Jan 2023 20:59:04 +0000
+Subject: [R] Removing variables from data frame with a wile card
+In-Reply-To: <SJ0PR03MB6360F7A2EBF1D3B32C0ECE2AE2C09@SJ0PR03MB6360.namprd03.prod.outlook.com>
+References: <CAPcHnpS==8tWHya+C=K1kTQf1jE5f7oRmyf-PL137_C4h-sOYA@mail.gmail.com>
+ <20A1D131-4907-4D54-A624-ED53B0325CAC@ntu.edu.tw>
+ <004101d9283d$8b9b30e0$a2d192a0$@gmail.com>
+ <cc30deac-3dbe-4250-b239-35df614ac418@petzel.at>
+ <SJ0PR03MB6360F7A2EBF1D3B32C0ECE2AE2C09@SJ0PR03MB6360.namprd03.prod.outlook.com>
+Message-ID: <bfb76048-01ad-3d69-a0ac-25faef952c61@sapo.pt>
+
+?s 16:54 de 15/01/2023, Sorkin, John escreveu:
+> I am new to this thread. At the risk of presenting something that has been shown before, below I demonstrate how a column in a data frame can be dropped using a wild card, i.e. a column whose name starts with "th" using nothing more than base r functions and base R syntax. While additions to R such as tidyverse can be very helpful, many things that they do can be accomplished simply using base R.
+> 
+> # Create data frame with three columns
+> one <- rep(1,10)
+> one
+> two <- rep(2,10)
+> two
+> three <- rep(3,10)
+> three
+> mydata <- data.frame(one=one, two=two, three=three)
+> cat("Data frame with three columns\n")
+> mydata
+> 
+> # Drop the column whose name starts with th, i.e. column three
+> # Find the location of the column
+> ColumToDelete <- grep("th",colnames((mydata)))
+> cat("The colomumn to be dropped is the column called three, which is column",ColumToDelete,"\n")
+> ColumToDelete
+> 
+> # Drop the column whose name starts with "th"
+> newdata2 <- mydata[,-ColumnToDelete]
+> cat("Data frame after droping column whose name is three\n")
+> newdata2
+> 
+> I hope this helps.
+> John
+> 
+> 
+> ________________________________________
+> From: R-help <r-help-bounces at r-project.org> on behalf of Valentin Petzel <valentin at petzel.at>
+> Sent: Saturday, January 14, 2023 1:21 PM
+> To: avi.e.gross at gmail.com
+> Cc: 'R-help Mailing List'
+> Subject: Re: [R] Removing variables from data frame with a wile card
+> 
+> Hello Avi,
+> 
+> while something like d$something <- ... may seem like you're directly modifying the data it does not actually do so. Most R objects try to be immutable, that is, the object may not change after creation. This guarantees that if you have a binding for same object the object won't change sneakily.
+> 
+> There is a data structure that is in fact mutable which are environments. For example compare
+> 
+> L <- list()
+> local({L$a <- 3})
+> L$a
+> 
+> with
+> 
+> E <- new.env()
+> local({E$a <- 3})
+> E$a
+> 
+> The latter will in fact work, as the same Environment is modified, while in the first one a modified copy of the list is made.
+> 
+> Under the hood we have a parser trick: If R sees something like
+> 
+> f(a) <- ...
+> 
+> it will look for a function f<- and call
+> 
+> a <- f<-(a, ...)
+> 
+> (this also happens for example when you do names(x) <- ...)
+> 
+> So in fact in our case this is equivalent to creating a copy with removed columns and rebind the symbol in the current environment to the result.
+> 
+> The data.table package breaks with this convention and uses C based routines that allow changing of data without copying the object. Doing
+> 
+> d[, (cols_to_remove) := NULL]
+> 
+> will actually change the data.
+> 
+> Regards,
+> Valentin
+> 
+> 14.01.2023 18:28:33 avi.e.gross at gmail.com:
+> 
+>> Steven,
+>>
+>> Just want to add a few things to what people wrote.
+>>
+>> In base R, the methods mentioned will let you make a copy of your original DF that is missing the items you are selecting that match your pattern.
+>>
+>> That is fine.
+>>
+>> For some purposes, you want to keep the original data.frame and remove a column within it. You can do that in several ways but the simplest is something where you sat the column to NULL as in:
+>>
+>> mydata$NAME <- NULL
+>>
+>> using the mydata["NAME"] notation can do that for you by using a loop of unctional programming method that does that with all components of your grep.
+>>
+>> R does have optimizations that make this less useful as a partial copy of a data.frame retains common parts till things change.
+>>
+>> For those who like to use the tidyverse, it comes with lots of tools that let you select columns that start with or end with or contain some pattern and I find that way easier.
+>>
+>>
+>>
+>> -----Original Message-----
+>> From: R-help <r-help-bounces at r-project.org> On Behalf Of Steven Yen
+>> Sent: Saturday, January 14, 2023 7:49 AM
+>> To: Andrew Simmons <akwsimmo at gmail.com>
+>> Cc: R-help Mailing List <r-help at r-project.org>
+>> Subject: Re: [R] Removing variables from data frame with a wile card
+>>
+>> Thanks to all. Very helpful.
+>>
+>> Steven from iPhone
+>>
+>>> On Jan 14, 2023, at 3:08 PM, Andrew Simmons <akwsimmo at gmail.com> wrote:
+>>>
+>>> ?You'll want to use grep() or grepl(). By default, grep() uses
+>>> extended regular expressions to find matches, but you can also use
+>>> perl regular expressions and globbing (after converting to a regular expression).
+>>> For example:
+>>>
+>>> grepl("^yr", colnames(mydata))
+>>>
+>>> will tell you which 'colnames' start with "yr". If you'd rather you
+>>> use globbing:
+>>>
+>>> grepl(glob2rx("yr*"), colnames(mydata))
+>>>
+>>> Then you might write something like this to remove the columns starting with yr:
+>>>
+>>> mydata <- mydata[, !grepl("^yr", colnames(mydata)), drop = FALSE]
+>>>
+>>>> On Sat, Jan 14, 2023 at 1:56 AM Steven T. Yen <styen at ntu.edu.tw> wrote:
+>>>>
+>>>> I have a data frame containing variables "yr3",...,"yr28".
+>>>>
+>>>> How do I remove them with a wild card----something similar to "del yr*"
+>>>> in Windows/doc? Thank you.
+>>>>
+>>>>> colnames(mydata)
+>>>>    [1] "year"?????? "weight"???? "confeduc"?? "confothr" "college"
+>>>>    [6] ...
+>>>> [41] "yr3"??????? "yr4"??????? "yr5"??????? "yr6" "yr7"
+>>>> [46] "yr8"??????? "yr9"??????? "yr10"?????? "yr11" "yr12"
+>>>> [51] "yr13"?????? "yr14"?????? "yr15"?????? "yr16" "yr17"
+>>>> [56] "yr18"?????? "yr19"?????? "yr20"?????? "yr21" "yr22"
+>>>> [61] "yr23"?????? "yr24"?????? "yr25"?????? "yr26" "yr27"
+>>>> [66] "yr28"...
+>>>>
+>>>> ______________________________________________
+>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=GP9WF81MtvF%2FYi8LoWQt0W0VInk2WsPAgB0zHsu5aRQ%3D&reserved=0
+>>>> PLEASE do read the posting guide
+>>>> https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=h6SEOa8rBxjsq%2FQirtXACss4DdfseradQm9FFhDhbVw%3D&reserved=0
+>>>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>>      [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=GP9WF81MtvF%2FYi8LoWQt0W0VInk2WsPAgB0zHsu5aRQ%3D&reserved=0
+>> PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=h6SEOa8rBxjsq%2FQirtXACss4DdfseradQm9FFhDhbVw%3D&reserved=0
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=GP9WF81MtvF%2FYi8LoWQt0W0VInk2WsPAgB0zHsu5aRQ%3D&reserved=0
+>> PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=h6SEOa8rBxjsq%2FQirtXACss4DdfseradQm9FFhDhbVw%3D&reserved=0
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=GP9WF81MtvF%2FYi8LoWQt0W0VInk2WsPAgB0zHsu5aRQ%3D&reserved=0
+> PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Cca354e487c4e4b977f6b08daf6e2df29%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638093751546679426%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=h6SEOa8rBxjsq%2FQirtXACss4DdfseradQm9FFhDhbVw%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+Hello,
+
+Actually, Bill had addressed this in his post yesterday [1].
+With your example,
+
+
+one <- rep(1,10)
+two <- rep(2,10)
+three <- rep(3,10)
+mydata <- data.frame(one=one, two=two, three=three)
+
+ColumToDelete <- grep("fo",colnames((mydata)))
+ColumToDelete
+#> integer(0)
+ColumToDeleteLogical <- grepl("fo",colnames((mydata)))
+ColumToDeleteLogical
+#> [1] FALSE FALSE FALSE
+
+# Drop the column whose name starts with "fo"
+# empty data.frame
+mydata[, -ColumToDelete]
+#> data frame with 0 columns and 10 rows
+
+# nothing is deleted
+mydata[, !ColumToDeleteLogical]
+#>    one two three
+#> 1    1   2     3
+#> 2    1   2     3
+#> 3    1   2     3
+#> 4    1   2     3
+#> 5    1   2     3
+#> 6    1   2     3
+#> 7    1   2     3
+#> 8    1   2     3
+#> 9    1   2     3
+#> 10   1   2     3
+
+
+
+[1] https://stat.ethz.ch/pipermail/r-help/2023-January/476682.html
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+From r@oknz @end|ng |rom gm@||@com  Mon Jan 16 00:39:07 2023
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Mon, 16 Jan 2023 12:39:07 +1300
+Subject: [R] return value of {....}
+In-Reply-To: <cf027dca-4bde-4c05-a964-1522025d6532@petzel.at>
+References: <PU4P216MB15683AFF29648D6DD2470B8DC8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <f2d42675-571d-4644-b31b-7371fa105b23@petzel.at>
+ <PU4P216MB1568A92CDAD4B5CC59014CE3C8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <cf027dca-4bde-4c05-a964-1522025d6532@petzel.at>
+Message-ID: <CABcYAdL2WP87USzaSXNeLip2m_yMFRFRPrPq_7pXptW9AnsbZA@mail.gmail.com>
+
+I wonder if the real confusino is not R's scope rules?
+(begin .) is not Lisp, it's Scheme (a major Lisp dialect),
+and in Scheme, (begin (define x ...) (define y ...) ...)
+declares variables x and y that are local to the (begin ...)
+form, just like Algol 68.  That's weirdness 1.  Javascript
+had a similar weirdness, when the ECMAscript process eventually
+addressed.  But the real weirdness in R is not just that the
+existence of variables is indifferent to the presence of curly
+braces, it's that it's *dynamic*.  In
+f <- function (...) {
+   ... use x ...
+   x <- ...
+   ... use x ...
+}
+the two occurrences of "use x" refer to DIFFERENT variables.
+The first occurrence refers to the x that exists outside the
+function.  It has to: the local variable does not exist yet.
+The assignment *creates* the variable, so the second
+occurrence of "use x" refers to the inner variable.
+Here's an actual example.
+> x <- 137
+> f <- function () {
++     a <- x
++     x <- 42
++     b <- x
++     list(a=a, b=b)
++ }
+> f()
+$a
+[1] 137
+$b
+[1] 42
+
+Many years ago I set out to write a compiler for R, and this was
+the issue that finally sank my attempt.  It's not whether the
+occurrence of "use x" is *lexically* before the creation of x.
+It's when the assignment is *executed* that makes the difference.
+Different paths of execution through a function may result in it
+arriving at its return point with different sets of local variables.
+R is the only language I routinely use that does this.
+
+So rule 1: whether an identifier in an R function refers to an
+outer variable or a local variable depends on whether an assignment
+creating that local variable has been executed yet.
+And rule 2: the scope of a local variable is the whole function.
+
+If the following transcript not only makes sense to you, but is
+exactly what you expect, congratulations, you understand local
+variables in R.
+
+> x <- 0
+> g <- function () {
++     n <- 10
++     r <- numeric(n)
++     for (i in 1:n) {
++         if (i == 6) x <- 100
++         r[i] <- x + i
++     }
++     r
++ }
+> g()
+ [1]   1   2   3   4   5 106 107 108 109 110
+
+
+On Fri, 13 Jan 2023 at 23:28, Valentin Petzel <valentin at petzel.at> wrote:
+
+> Hello Akshay,
+>
+> R is quite inspired by LISP, where this is a common thing. It is not in
+> fact that {...} returned something, rather any expression evalulates to
+> some value, and for a compound statement that is the last evaluated
+> expression.
+>
+> {...} might be seen as similar to LISPs (begin ...).
+>
+> Now this is a very different thing compared to {...} in something like C,
+> even if it looks or behaves similarly. But in R {...} is in fact an
+> expression and thus has evaluate to some value. This also comes with some
+> nice benefits.
+>
+> You do not need to use {...} for anything that is a single statement. But
+> you can in each possible place use {...} to turn multiple statements into
+> one.
+>
+> Now think about a statement like this
+>
+> f <- function(n) {
+> x <- runif(n)
+> x**2
+> }
+>
+> Then we can do
+>
+> y <- f(10)
+>
+> Now, you suggested way would look like this:
+>
+> f <- function(n) {
+> x <- runif(n)
+> y <- x**2
+> }
+>
+> And we'd need to do something like:
+>
+> f(10)
+> y <- somehow_get_last_env_of_f$y
+>
+> So having a compound statement evaluate to a value clearly has a benefit.
+>
+> Best Regards,
+> Valentin
+>
+> 09.01.2023 18:05:58 akshay kulkarni <akshay_e4 at hotmail.com>:
+>
+> > Dear Valentin,
+> >                           But why should {....} "return" a value? It
+> could just as well evaluate all the expressions and store the resulting
+> objects in whatever environment the interpreter chooses, and then it would
+> be left to the user to manipulate any object he chooses. Don't you think
+> returning the last, or any value, is redundant? We are living in the
+> 21st century world, and the R-core team might,I suppose, have a definite
+> reason for"returning" the last value. Any comments?
+> >
+> > Thanking you,
+> > Yours sincerely,
+> > AKSHAY M KULKARNI
+> >
+> > ----------------------------------------
+> > *From:* Valentin Petzel <valentin at petzel.at>
+> > *Sent:* Monday, January 9, 2023 9:18 PM
+> > *To:* akshay kulkarni <akshay_e4 at hotmail.com>
+> > *Cc:* R help Mailing list <r-help at r-project.org>
+> > *Subject:* Re: [R] return value of {....}
+> >
+> > Hello Akshai,
+> >
+> > I think you are confusing {...} with local({...}). This one will
+> evaluate the expression in a separate environment, returning the last
+> expression.
+> >
+> > {...} simply evaluates multiple expressions as one and returns the
+> result of the last line, but it still evaluates each expression.
+> >
+> > Assignment returns the assigned value, so we can chain assignments like
+> this
+> >
+> > a <- 1 + (b <- 2)
+> >
+> > conveniently.
+> >
+> > So when is {...} useful? Well, anyplace where you want to execute
+> complex stuff in a function argument. E.g. you might do:
+> >
+> > data %>% group_by(x) %>% summarise(y = {if(x[1] > 10) sum(y) else
+> mean(y)})
+> >
+> > Regards,
+> > Valentin Petzel
+> >
+> > 09.01.2023 15:47:53 akshay kulkarni <akshay_e4 at hotmail.com>:
+> >
+> >> Dear members,
+> >>                              I have the following code:
+> >>
+> >>> TB <- {x <- 3;y <- 5}
+> >>> TB
+> >> [1] 5
+> >>
+> >> It is consistent with the documentation: For {, the result of the last
+> expression evaluated. This has the visibility of the last evaluation.
+> >>
+> >> But both x AND y are created, but the "return value" is y. How can this
+> be advantageous for solving practical problems? Specifically, consider the
+> following code:
+> >>
+> >> F <- function(X) {  expr; expr2; { expr5; expr7}; expr8;expr10}
+> >>
+> >> Both expr5 and expr7 are created, and are accessible by the code
+> outside of the nested braces right? But the "return value" of the nested
+> braces is expr7. So doesn't this mean that only expr7 should be accessible?
+> Please help me entangle this (of course the return value of F is expr10,
+> and all the other objects created by the preceding expressions are deleted.
+> But expr5 is not, after the control passes outside of the nested braces!)
+> >>
+> >> Thanking you,
+> >> Yours sincerely,
+> >> AKSHAY M KULKARNI
+> >>
+> >>     [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Mon Jan 16 01:40:02 2023
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Mon, 16 Jan 2023 00:40:02 +0000
+Subject: [R] return value of {....}
+In-Reply-To: <CABcYAdL2WP87USzaSXNeLip2m_yMFRFRPrPq_7pXptW9AnsbZA@mail.gmail.com>
+References: <PU4P216MB15683AFF29648D6DD2470B8DC8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <f2d42675-571d-4644-b31b-7371fa105b23@petzel.at>
+ <PU4P216MB1568A92CDAD4B5CC59014CE3C8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <cf027dca-4bde-4c05-a964-1522025d6532@petzel.at>
+ <CABcYAdL2WP87USzaSXNeLip2m_yMFRFRPrPq_7pXptW9AnsbZA@mail.gmail.com>
+Message-ID: <MW4PR03MB636390FD5934FED2BFDD81D9E2C19@MW4PR03MB6363.namprd03.prod.outlook.com>
+
+Richard,
+A slight addition to your code shows an important aspect of R, local vs. global variables:
+
+x <- 137
+f <- function () {
+       a <- x
+       x <- 42
+       b <- x
+       list(a=a, b=b)
+   }
+ f()
+print(x)
+
+________________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of Richard O'Keefe <raoknz at gmail.com>
+Sent: Sunday, January 15, 2023 6:39 PM
+To: Valentin Petzel
+Cc: R help Mailing list
+Subject: Re: [R] return value of {....}
+
+I wonder if the real confusino is not R's scope rules?
+(begin .) is not Lisp, it's Scheme (a major Lisp dialect),
+and in Scheme, (begin (define x ...) (define y ...) ...)
+declares variables x and y that are local to the (begin ...)
+form, just like Algol 68.  That's weirdness 1.  Javascript
+had a similar weirdness, when the ECMAscript process eventually
+addressed.  But the real weirdness in R is not just that the
+existence of variables is indifferent to the presence of curly
+braces, it's that it's *dynamic*.  In
+f <- function (...) {
+   ... use x ...
+   x <- ...
+   ... use x ...
+}
+the two occurrences of "use x" refer to DIFFERENT variables.
+The first occurrence refers to the x that exists outside the
+function.  It has to: the local variable does not exist yet.
+The assignment *creates* the variable, so the second
+occurrence of "use x" refers to the inner variable.
+Here's an actual example.
+> x <- 137
+> f <- function () {
++     a <- x
++     x <- 42
++     b <- x
++     list(a=a, b=b)
++ }
+> f()
+$a
+[1] 137
+$b
+[1] 42
+
+Many years ago I set out to write a compiler for R, and this was
+the issue that finally sank my attempt.  It's not whether the
+occurrence of "use x" is *lexically* before the creation of x.
+It's when the assignment is *executed* that makes the difference.
+Different paths of execution through a function may result in it
+arriving at its return point with different sets of local variables.
+R is the only language I routinely use that does this.
+
+So rule 1: whether an identifier in an R function refers to an
+outer variable or a local variable depends on whether an assignment
+creating that local variable has been executed yet.
+And rule 2: the scope of a local variable is the whole function.
+
+If the following transcript not only makes sense to you, but is
+exactly what you expect, congratulations, you understand local
+variables in R.
+
+> x <- 0
+> g <- function () {
++     n <- 10
++     r <- numeric(n)
++     for (i in 1:n) {
++         if (i == 6) x <- 100
++         r[i] <- x + i
++     }
++     r
++ }
+> g()
+ [1]   1   2   3   4   5 106 107 108 109 110
+
+
+On Fri, 13 Jan 2023 at 23:28, Valentin Petzel <valentin at petzel.at> wrote:
+
+> Hello Akshay,
+>
+> R is quite inspired by LISP, where this is a common thing. It is not in
+> fact that {...} returned something, rather any expression evalulates to
+> some value, and for a compound statement that is the last evaluated
+> expression.
+>
+> {...} might be seen as similar to LISPs (begin ...).
+>
+> Now this is a very different thing compared to {...} in something like C,
+> even if it looks or behaves similarly. But in R {...} is in fact an
+> expression and thus has evaluate to some value. This also comes with some
+> nice benefits.
+>
+> You do not need to use {...} for anything that is a single statement. But
+> you can in each possible place use {...} to turn multiple statements into
+> one.
+>
+> Now think about a statement like this
+>
+> f <- function(n) {
+> x <- runif(n)
+> x**2
+> }
+>
+> Then we can do
+>
+> y <- f(10)
+>
+> Now, you suggested way would look like this:
+>
+> f <- function(n) {
+> x <- runif(n)
+> y <- x**2
+> }
+>
+> And we'd need to do something like:
+>
+> f(10)
+> y <- somehow_get_last_env_of_f$y
+>
+> So having a compound statement evaluate to a value clearly has a benefit.
+>
+> Best Regards,
+> Valentin
+>
+> 09.01.2023 18:05:58 akshay kulkarni <akshay_e4 at hotmail.com>:
+>
+> > Dear Valentin,
+> >                           But why should {....} "return" a value? It
+> could just as well evaluate all the expressions and store the resulting
+> objects in whatever environment the interpreter chooses, and then it would
+> be left to the user to manipulate any object he chooses. Don't you think
+> returning the last, or any value, is redundant? We are living in the
+> 21st century world, and the R-core team might,I suppose, have a definite
+> reason for"returning" the last value. Any comments?
+> >
+> > Thanking you,
+> > Yours sincerely,
+> > AKSHAY M KULKARNI
+> >
+> > ----------------------------------------
+> > *From:* Valentin Petzel <valentin at petzel.at>
+> > *Sent:* Monday, January 9, 2023 9:18 PM
+> > *To:* akshay kulkarni <akshay_e4 at hotmail.com>
+> > *Cc:* R help Mailing list <r-help at r-project.org>
+> > *Subject:* Re: [R] return value of {....}
+> >
+> > Hello Akshai,
+> >
+> > I think you are confusing {...} with local({...}). This one will
+> evaluate the expression in a separate environment, returning the last
+> expression.
+> >
+> > {...} simply evaluates multiple expressions as one and returns the
+> result of the last line, but it still evaluates each expression.
+> >
+> > Assignment returns the assigned value, so we can chain assignments like
+> this
+> >
+> > a <- 1 + (b <- 2)
+> >
+> > conveniently.
+> >
+> > So when is {...} useful? Well, anyplace where you want to execute
+> complex stuff in a function argument. E.g. you might do:
+> >
+> > data %>% group_by(x) %>% summarise(y = {if(x[1] > 10) sum(y) else
+> mean(y)})
+> >
+> > Regards,
+> > Valentin Petzel
+> >
+> > 09.01.2023 15:47:53 akshay kulkarni <akshay_e4 at hotmail.com>:
+> >
+> >> Dear members,
+> >>                              I have the following code:
+> >>
+> >>> TB <- {x <- 3;y <- 5}
+> >>> TB
+> >> [1] 5
+> >>
+> >> It is consistent with the documentation: For {, the result of the last
+> expression evaluated. This has the visibility of the last evaluation.
+> >>
+> >> But both x AND y are created, but the "return value" is y. How can this
+> be advantageous for solving practical problems? Specifically, consider the
+> following code:
+> >>
+> >> F <- function(X) {  expr; expr2; { expr5; expr7}; expr8;expr10}
+> >>
+> >> Both expr5 and expr7 are created, and are accessible by the code
+> outside of the nested braces right? But the "return value" of the nested
+> braces is expr7. So doesn't this mean that only expr7 should be accessible?
+> Please help me entangle this (of course the return value of F is expr10,
+> and all the other objects created by the preceding expressions are deleted.
+> But expr5 is not, after the control passes outside of the nested braces!)
+> >>
+> >> Thanking you,
+> >> Yours sincerely,
+> >> AKSHAY M KULKARNI
+> >>
+> >>     [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C7667e3a25e004319a09408daf751c352%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094227808126030%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=DYZ1Jle5re1jwM%2F1pVrpS%2BwOeT%2BgjNXQZz0Fq8N4sIU%3D&reserved=0
+> >> PLEASE do read the posting guide
+> https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C7667e3a25e004319a09408daf751c352%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094227808126030%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=q1Gy%2FTQd0eXsa8fUKW3slt%2Byn7EUfqmOOqPGDoxYx4U%3D&reserved=0
+> >> and provide commented, minimal, self-contained, reproducible code.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C7667e3a25e004319a09408daf751c352%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094227808126030%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=DYZ1Jle5re1jwM%2F1pVrpS%2BwOeT%2BgjNXQZz0Fq8N4sIU%3D&reserved=0
+> PLEASE do read the posting guide
+> https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C7667e3a25e004319a09408daf751c352%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094227808126030%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=q1Gy%2FTQd0eXsa8fUKW3slt%2Byn7EUfqmOOqPGDoxYx4U%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C7667e3a25e004319a09408daf751c352%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094227808126030%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=DYZ1Jle5re1jwM%2F1pVrpS%2BwOeT%2BgjNXQZz0Fq8N4sIU%3D&reserved=0
+PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C7667e3a25e004319a09408daf751c352%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094227808126030%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=q1Gy%2FTQd0eXsa8fUKW3slt%2Byn7EUfqmOOqPGDoxYx4U%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Mon Jan 16 01:55:05 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 15 Jan 2023 16:55:05 -0800
+Subject: [R] return value of {....}
+In-Reply-To: <CABcYAdL2WP87USzaSXNeLip2m_yMFRFRPrPq_7pXptW9AnsbZA@mail.gmail.com>
+References: <PU4P216MB15683AFF29648D6DD2470B8DC8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <f2d42675-571d-4644-b31b-7371fa105b23@petzel.at>
+ <PU4P216MB1568A92CDAD4B5CC59014CE3C8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <cf027dca-4bde-4c05-a964-1522025d6532@petzel.at>
+ <CABcYAdL2WP87USzaSXNeLip2m_yMFRFRPrPq_7pXptW9AnsbZA@mail.gmail.com>
+Message-ID: <CAGxFJbSmc1_f-P-YKM99pvVajx04+p3-gF_ydh_TJ-SE0V-VmQ@mail.gmail.com>
+
+Well, weirdness is in the eyes of the beholder, I think.
+
+In any case, R's scoping procedures are described in ?environment and
+?assign and ?function, among other places; and in detail in the R
+Language Definition. So no matter the behavior, as long as it is
+clearly documented -- and consistent of course -- it's OK by me: it's
+my job to learn it. Perhaps this just reflects my ignorance of what
+might be considered "better" alternatives.
+
+And of course, someone *did* write a compiler for R.
+
+Cheers,
+Bert
+
+On Sun, Jan 15, 2023 at 3:39 PM Richard O'Keefe <raoknz at gmail.com> wrote:
+>
+> I wonder if the real confusino is not R's scope rules?
+> (begin .) is not Lisp, it's Scheme (a major Lisp dialect),
+> and in Scheme, (begin (define x ...) (define y ...) ...)
+> declares variables x and y that are local to the (begin ...)
+> form, just like Algol 68.  That's weirdness 1.  Javascript
+> had a similar weirdness, when the ECMAscript process eventually
+> addressed.  But the real weirdness in R is not just that the
+> existence of variables is indifferent to the presence of curly
+> braces, it's that it's *dynamic*.  In
+> f <- function (...) {
+>    ... use x ...
+>    x <- ...
+>    ... use x ...
+> }
+> the two occurrences of "use x" refer to DIFFERENT variables.
+> The first occurrence refers to the x that exists outside the
+> function.  It has to: the local variable does not exist yet.
+> The assignment *creates* the variable, so the second
+> occurrence of "use x" refers to the inner variable.
+> Here's an actual example.
+> > x <- 137
+> > f <- function () {
+> +     a <- x
+> +     x <- 42
+> +     b <- x
+> +     list(a=a, b=b)
+> + }
+> > f()
+> $a
+> [1] 137
+> $b
+> [1] 42
+>
+> Many years ago I set out to write a compiler for R, and this was
+> the issue that finally sank my attempt.  It's not whether the
+> occurrence of "use x" is *lexically* before the creation of x.
+> It's when the assignment is *executed* that makes the difference.
+> Different paths of execution through a function may result in it
+> arriving at its return point with different sets of local variables.
+> R is the only language I routinely use that does this.
+>
+> So rule 1: whether an identifier in an R function refers to an
+> outer variable or a local variable depends on whether an assignment
+> creating that local variable has been executed yet.
+> And rule 2: the scope of a local variable is the whole function.
+>
+> If the following transcript not only makes sense to you, but is
+> exactly what you expect, congratulations, you understand local
+> variables in R.
+>
+> > x <- 0
+> > g <- function () {
+> +     n <- 10
+> +     r <- numeric(n)
+> +     for (i in 1:n) {
+> +         if (i == 6) x <- 100
+> +         r[i] <- x + i
+> +     }
+> +     r
+> + }
+> > g()
+>  [1]   1   2   3   4   5 106 107 108 109 110
+>
+>
+> On Fri, 13 Jan 2023 at 23:28, Valentin Petzel <valentin at petzel.at> wrote:
+>
+> > Hello Akshay,
+> >
+> > R is quite inspired by LISP, where this is a common thing. It is not in
+> > fact that {...} returned something, rather any expression evalulates to
+> > some value, and for a compound statement that is the last evaluated
+> > expression.
+> >
+> > {...} might be seen as similar to LISPs (begin ...).
+> >
+> > Now this is a very different thing compared to {...} in something like C,
+> > even if it looks or behaves similarly. But in R {...} is in fact an
+> > expression and thus has evaluate to some value. This also comes with some
+> > nice benefits.
+> >
+> > You do not need to use {...} for anything that is a single statement. But
+> > you can in each possible place use {...} to turn multiple statements into
+> > one.
+> >
+> > Now think about a statement like this
+> >
+> > f <- function(n) {
+> > x <- runif(n)
+> > x**2
+> > }
+> >
+> > Then we can do
+> >
+> > y <- f(10)
+> >
+> > Now, you suggested way would look like this:
+> >
+> > f <- function(n) {
+> > x <- runif(n)
+> > y <- x**2
+> > }
+> >
+> > And we'd need to do something like:
+> >
+> > f(10)
+> > y <- somehow_get_last_env_of_f$y
+> >
+> > So having a compound statement evaluate to a value clearly has a benefit.
+> >
+> > Best Regards,
+> > Valentin
+> >
+> > 09.01.2023 18:05:58 akshay kulkarni <akshay_e4 at hotmail.com>:
+> >
+> > > Dear Valentin,
+> > >                           But why should {....} "return" a value? It
+> > could just as well evaluate all the expressions and store the resulting
+> > objects in whatever environment the interpreter chooses, and then it would
+> > be left to the user to manipulate any object he chooses. Don't you think
+> > returning the last, or any value, is redundant? We are living in the
+> > 21st century world, and the R-core team might,I suppose, have a definite
+> > reason for"returning" the last value. Any comments?
+> > >
+> > > Thanking you,
+> > > Yours sincerely,
+> > > AKSHAY M KULKARNI
+> > >
+> > > ----------------------------------------
+> > > *From:* Valentin Petzel <valentin at petzel.at>
+> > > *Sent:* Monday, January 9, 2023 9:18 PM
+> > > *To:* akshay kulkarni <akshay_e4 at hotmail.com>
+> > > *Cc:* R help Mailing list <r-help at r-project.org>
+> > > *Subject:* Re: [R] return value of {....}
+> > >
+> > > Hello Akshai,
+> > >
+> > > I think you are confusing {...} with local({...}). This one will
+> > evaluate the expression in a separate environment, returning the last
+> > expression.
+> > >
+> > > {...} simply evaluates multiple expressions as one and returns the
+> > result of the last line, but it still evaluates each expression.
+> > >
+> > > Assignment returns the assigned value, so we can chain assignments like
+> > this
+> > >
+> > > a <- 1 + (b <- 2)
+> > >
+> > > conveniently.
+> > >
+> > > So when is {...} useful? Well, anyplace where you want to execute
+> > complex stuff in a function argument. E.g. you might do:
+> > >
+> > > data %>% group_by(x) %>% summarise(y = {if(x[1] > 10) sum(y) else
+> > mean(y)})
+> > >
+> > > Regards,
+> > > Valentin Petzel
+> > >
+> > > 09.01.2023 15:47:53 akshay kulkarni <akshay_e4 at hotmail.com>:
+> > >
+> > >> Dear members,
+> > >>                              I have the following code:
+> > >>
+> > >>> TB <- {x <- 3;y <- 5}
+> > >>> TB
+> > >> [1] 5
+> > >>
+> > >> It is consistent with the documentation: For {, the result of the last
+> > expression evaluated. This has the visibility of the last evaluation.
+> > >>
+> > >> But both x AND y are created, but the "return value" is y. How can this
+> > be advantageous for solving practical problems? Specifically, consider the
+> > following code:
+> > >>
+> > >> F <- function(X) {  expr; expr2; { expr5; expr7}; expr8;expr10}
+> > >>
+> > >> Both expr5 and expr7 are created, and are accessible by the code
+> > outside of the nested braces right? But the "return value" of the nested
+> > braces is expr7. So doesn't this mean that only expr7 should be accessible?
+> > Please help me entangle this (of course the return value of F is expr10,
+> > and all the other objects created by the preceding expressions are deleted.
+> > But expr5 is not, after the control passes outside of the nested braces!)
+> > >>
+> > >> Thanking you,
+> > >> Yours sincerely,
+> > >> AKSHAY M KULKARNI
+> > >>
+> > >>     [[alternative HTML version deleted]]
+> > >>
+> > >> ______________________________________________
+> > >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > >> https://stat.ethz.ch/mailman/listinfo/r-help
+> > >> PLEASE do read the posting guide
+> > http://www.R-project.org/posting-guide.html
+> > >> and provide commented, minimal, self-contained, reproducible code.
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> > http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Mon Jan 16 02:07:34 2023
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Mon, 16 Jan 2023 01:07:34 +0000
+Subject: [R] return value of {....}
+In-Reply-To: <MW4PR03MB636390FD5934FED2BFDD81D9E2C19@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <PU4P216MB15683AFF29648D6DD2470B8DC8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <f2d42675-571d-4644-b31b-7371fa105b23@petzel.at>
+ <PU4P216MB1568A92CDAD4B5CC59014CE3C8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <cf027dca-4bde-4c05-a964-1522025d6532@petzel.at>
+ <CABcYAdL2WP87USzaSXNeLip2m_yMFRFRPrPq_7pXptW9AnsbZA@mail.gmail.com>
+ <MW4PR03MB636390FD5934FED2BFDD81D9E2C19@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <MW4PR03MB63634102EDFD608D21BCE633E2C19@MW4PR03MB6363.namprd03.prod.outlook.com>
+
+Richard,
+I sent my prior email too quickly:
+
+A slight addition to your code shows an important aspect of R, local vs. global variables:
+
+x <- 137
+f <- function () {
+       a <- x
+       x <- 42
+       b <- x
+       list(a=a, b=b)
+   }
+ f()
+print(x)
+
+When run the program produces the following:
+
+> x <- 137
+> f <- function () {
++        a <- x
++        x <- 42
++        b <- x
++        list(a=a, b=b)
++    }
+>  f()
+$a
+[1] 137
+
+$b
+[1] 42
+
+> print(x)
+[1] 137
+
+The fist x, a <- x, invokes an x variable that is GLOBAL. It is known both inside and outside the function.
+The second x, x <- 42, defines an x that is LOCAL to the function, it is not known to the program that called the function. The LOCAL value of x is used in the expression  b <- x. As can be seen by the print(x) statement, the LOCAL value of x is NOT known by the program that calls the function. The class of a variable, scoping (i.e. local vs. variable) can be a source of subtle programming errors. A general recommendation is to AVOID use of a global variable in a function, i.e. don't use a variable in function that is not passed as a parameter to the function (as was done in the function above in the statment a <- x). If you need to use a variable in a function that is known by the program that calls the function, pass the variable as a argument to the function e.g. 
+
+Use this code:
+
+# Set values needed by function
+y <- 2
+b <- 30
+
+myfunction <- function(a,b){
+cat("a=",a,"b=",b,"\n")
+  y <- a
+  y2 <- y+b
+  cat("y=",y,"y2=",y2,"\n")
+}
+# Call the function and pass all needed values to the function
+myfunction(y,b)
+ 
+Don't use the following code that depends on a global value that is known to the function, but not passed as a parameter to the function:
+
+y <- 2
+myNGfunction <- function(a){
+  cat("a=",a,"b=",b,"\n")
+  y <- a
+  y2 <- y+b
+  cat("y=",y,"y2=",y2,"\n")
+}
+# b is a global variable and will be know to the function, 
+# but should be passed as a parameter as in example above.
+b <- 100
+myNGfunction(y)
+
+John
+
+________________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of Sorkin, John <jsorkin at som.umaryland.edu>
+Sent: Sunday, January 15, 2023 7:40 PM
+To: Richard O'Keefe; Valentin Petzel
+Cc: R help Mailing list
+Subject: Re: [R] return value of {....}
+
+Richard,
+A slight addition to your code shows an important aspect of R, local vs. global variables:
+
+x <- 137
+f <- function () {
+       a <- x
+       x <- 42
+       b <- x
+       list(a=a, b=b)
+   }
+ f()
+print(x)
+
+________________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of Richard O'Keefe <raoknz at gmail.com>
+Sent: Sunday, January 15, 2023 6:39 PM
+To: Valentin Petzel
+Cc: R help Mailing list
+Subject: Re: [R] return value of {....}
+
+I wonder if the real confusino is not R's scope rules?
+(begin .) is not Lisp, it's Scheme (a major Lisp dialect),
+and in Scheme, (begin (define x ...) (define y ...) ...)
+declares variables x and y that are local to the (begin ...)
+form, just like Algol 68.  That's weirdness 1.  Javascript
+had a similar weirdness, when the ECMAscript process eventually
+addressed.  But the real weirdness in R is not just that the
+existence of variables is indifferent to the presence of curly
+braces, it's that it's *dynamic*.  In
+f <- function (...) {
+   ... use x ...
+   x <- ...
+   ... use x ...
+}
+the two occurrences of "use x" refer to DIFFERENT variables.
+The first occurrence refers to the x that exists outside the
+function.  It has to: the local variable does not exist yet.
+The assignment *creates* the variable, so the second
+occurrence of "use x" refers to the inner variable.
+Here's an actual example.
+> x <- 137
+> f <- function () {
++     a <- x
++     x <- 42
++     b <- x
++     list(a=a, b=b)
++ }
+> f()
+$a
+[1] 137
+$b
+[1] 42
+
+Many years ago I set out to write a compiler for R, and this was
+the issue that finally sank my attempt.  It's not whether the
+occurrence of "use x" is *lexically* before the creation of x.
+It's when the assignment is *executed* that makes the difference.
+Different paths of execution through a function may result in it
+arriving at its return point with different sets of local variables.
+R is the only language I routinely use that does this.
+
+So rule 1: whether an identifier in an R function refers to an
+outer variable or a local variable depends on whether an assignment
+creating that local variable has been executed yet.
+And rule 2: the scope of a local variable is the whole function.
+
+If the following transcript not only makes sense to you, but is
+exactly what you expect, congratulations, you understand local
+variables in R.
+
+> x <- 0
+> g <- function () {
++     n <- 10
++     r <- numeric(n)
++     for (i in 1:n) {
++         if (i == 6) x <- 100
++         r[i] <- x + i
++     }
++     r
++ }
+> g()
+ [1]   1   2   3   4   5 106 107 108 109 110
+
+
+On Fri, 13 Jan 2023 at 23:28, Valentin Petzel <valentin at petzel.at> wrote:
+
+> Hello Akshay,
+>
+> R is quite inspired by LISP, where this is a common thing. It is not in
+> fact that {...} returned something, rather any expression evalulates to
+> some value, and for a compound statement that is the last evaluated
+> expression.
+>
+> {...} might be seen as similar to LISPs (begin ...).
+>
+> Now this is a very different thing compared to {...} in something like C,
+> even if it looks or behaves similarly. But in R {...} is in fact an
+> expression and thus has evaluate to some value. This also comes with some
+> nice benefits.
+>
+> You do not need to use {...} for anything that is a single statement. But
+> you can in each possible place use {...} to turn multiple statements into
+> one.
+>
+> Now think about a statement like this
+>
+> f <- function(n) {
+> x <- runif(n)
+> x**2
+> }
+>
+> Then we can do
+>
+> y <- f(10)
+>
+> Now, you suggested way would look like this:
+>
+> f <- function(n) {
+> x <- runif(n)
+> y <- x**2
+> }
+>
+> And we'd need to do something like:
+>
+> f(10)
+> y <- somehow_get_last_env_of_f$y
+>
+> So having a compound statement evaluate to a value clearly has a benefit.
+>
+> Best Regards,
+> Valentin
+>
+> 09.01.2023 18:05:58 akshay kulkarni <akshay_e4 at hotmail.com>:
+>
+> > Dear Valentin,
+> >                           But why should {....} "return" a value? It
+> could just as well evaluate all the expressions and store the resulting
+> objects in whatever environment the interpreter chooses, and then it would
+> be left to the user to manipulate any object he chooses. Don't you think
+> returning the last, or any value, is redundant? We are living in the
+> 21st century world, and the R-core team might,I suppose, have a definite
+> reason for"returning" the last value. Any comments?
+> >
+> > Thanking you,
+> > Yours sincerely,
+> > AKSHAY M KULKARNI
+> >
+> > ----------------------------------------
+> > *From:* Valentin Petzel <valentin at petzel.at>
+> > *Sent:* Monday, January 9, 2023 9:18 PM
+> > *To:* akshay kulkarni <akshay_e4 at hotmail.com>
+> > *Cc:* R help Mailing list <r-help at r-project.org>
+> > *Subject:* Re: [R] return value of {....}
+> >
+> > Hello Akshai,
+> >
+> > I think you are confusing {...} with local({...}). This one will
+> evaluate the expression in a separate environment, returning the last
+> expression.
+> >
+> > {...} simply evaluates multiple expressions as one and returns the
+> result of the last line, but it still evaluates each expression.
+> >
+> > Assignment returns the assigned value, so we can chain assignments like
+> this
+> >
+> > a <- 1 + (b <- 2)
+> >
+> > conveniently.
+> >
+> > So when is {...} useful? Well, anyplace where you want to execute
+> complex stuff in a function argument. E.g. you might do:
+> >
+> > data %>% group_by(x) %>% summarise(y = {if(x[1] > 10) sum(y) else
+> mean(y)})
+> >
+> > Regards,
+> > Valentin Petzel
+> >
+> > 09.01.2023 15:47:53 akshay kulkarni <akshay_e4 at hotmail.com>:
+> >
+> >> Dear members,
+> >>                              I have the following code:
+> >>
+> >>> TB <- {x <- 3;y <- 5}
+> >>> TB
+> >> [1] 5
+> >>
+> >> It is consistent with the documentation: For {, the result of the last
+> expression evaluated. This has the visibility of the last evaluation.
+> >>
+> >> But both x AND y are created, but the "return value" is y. How can this
+> be advantageous for solving practical problems? Specifically, consider the
+> following code:
+> >>
+> >> F <- function(X) {  expr; expr2; { expr5; expr7}; expr8;expr10}
+> >>
+> >> Both expr5 and expr7 are created, and are accessible by the code
+> outside of the nested braces right? But the "return value" of the nested
+> braces is expr7. So doesn't this mean that only expr7 should be accessible?
+> Please help me entangle this (of course the return value of F is expr10,
+> and all the other objects created by the preceding expressions are deleted.
+> But expr5 is not, after the control passes outside of the nested braces!)
+> >>
+> >> Thanking you,
+> >> Yours sincerely,
+> >> AKSHAY M KULKARNI
+> >>
+> >>     [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Jp7JGV%2BVKkAx3SI%2Fak%2BiEIkUraGyQBTfSLWqRRUYmaQ%3D&reserved=0
+> >> PLEASE do read the posting guide
+> https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Got4ab%2BEO6LD%2FOXqp9j9ImnSn0zi8vhV6YZMD7OJ8WU%3D&reserved=0
+> >> and provide commented, minimal, self-contained, reproducible code.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Jp7JGV%2BVKkAx3SI%2Fak%2BiEIkUraGyQBTfSLWqRRUYmaQ%3D&reserved=0
+> PLEASE do read the posting guide
+> https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Got4ab%2BEO6LD%2FOXqp9j9ImnSn0zi8vhV6YZMD7OJ8WU%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Jp7JGV%2BVKkAx3SI%2Fak%2BiEIkUraGyQBTfSLWqRRUYmaQ%3D&reserved=0
+PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Got4ab%2BEO6LD%2FOXqp9j9ImnSn0zi8vhV6YZMD7OJ8WU%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Jp7JGV%2BVKkAx3SI%2Fak%2BiEIkUraGyQBTfSLWqRRUYmaQ%3D&reserved=0
+PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Got4ab%2BEO6LD%2FOXqp9j9ImnSn0zi8vhV6YZMD7OJ8WU%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Mon Jan 16 02:49:52 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 15 Jan 2023 17:49:52 -0800
+Subject: [R] return value of {....}
+In-Reply-To: <MW4PR03MB63634102EDFD608D21BCE633E2C19@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <PU4P216MB15683AFF29648D6DD2470B8DC8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <f2d42675-571d-4644-b31b-7371fa105b23@petzel.at>
+ <PU4P216MB1568A92CDAD4B5CC59014CE3C8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <cf027dca-4bde-4c05-a964-1522025d6532@petzel.at>
+ <CABcYAdL2WP87USzaSXNeLip2m_yMFRFRPrPq_7pXptW9AnsbZA@mail.gmail.com>
+ <MW4PR03MB636390FD5934FED2BFDD81D9E2C19@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <MW4PR03MB63634102EDFD608D21BCE633E2C19@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <CAGxFJbQxEw+C6CG8OuEB_C3BH02fm92H+pZt_yD1ou_xaAm3cQ@mail.gmail.com>
+
+Sorry, John. If I understand you correctly, R has no "Global
+Variables" in the sense that you seem to indicate. It does have a
+"Global environment", but variables referred to in a function but not
+found in the function environment are *not* necessarily searched for
+in the "Global Environment" -- they are searched for in the function's
+enclosing (defining) environment, then in that environment's enclosing
+environment if not found there, etc.
+
+Consider:
+f <- f <- function(){
+   x <- 3
+   g <- function() x  ## x not bound to a value in g's environment
+   g ## f returns the function g
+}
+> environment()
+<environment: R_GlobalEnv>
+x <- 5 ## defined in the Global environment
+g <- f()
+## Now what do you think g() returns?
+
+If I have misconstrued what you said, my apologies.
+Even if I have not, none of the above is revelatory -- it's all
+standard, documented R behavior.
+
+Cheers,
+Bert
+
+Cheers,
+Bert
+
+
+
+while something like d$something <- ... may seem like you're directly
+modifying the data it does not actually do so. Most R objects try to
+be immutable, that is, the object may not change after creation. This
+guarantees that if you have a binding for same object the object won't
+change sneakily.
+
+There is a data structure that is in fact mutable which are
+environments. For example compare
+
+L <- list()
+local({L$a <- 3})
+L$a
+
+with
+
+E <- new.env()
+local({E$a <- 3})
+E$
+
+Valentin Petzel valentin at petzel.at via r-project.org
+
+2:25 AM (5 hours ago)
+
+
+to avi.e.gross, R-help
+
+On Sun, Jan 15, 2023 at 5:07 PM Sorkin, John <jsorkin at som.umaryland.edu> wrote:
+>
+> Richard,
+> I sent my prior email too quickly:
+>
+> A slight addition to your code shows an important aspect of R, local vs. global variables:
+>
+> x <- 137
+> f <- function () {
+>        a <- x
+>        x <- 42
+>        b <- x
+>        list(a=a, b=b)
+>    }
+>  f()
+> print(x)
+>
+> When run the program produces the following:
+>
+> > x <- 137
+> > f <- function () {
+> +        a <- x
+> +        x <- 42
+> +        b <- x
+> +        list(a=a, b=b)
+> +    }
+> >  f()
+> $a
+> [1] 137
+>
+> $b
+> [1] 42
+>
+> > print(x)
+> [1] 137
+>
+> The fist x, a <- x, invokes an x variable that is GLOBAL. It is known both inside and outside the function.
+> The second x, x <- 42, defines an x that is LOCAL to the function, it is not known to the program that called the function. The LOCAL value of x is used in the expression  b <- x. As can be seen by the print(x) statement, the LOCAL value of x is NOT known by the program that calls the function. The class of a variable, scoping (i.e. local vs. variable) can be a source of subtle programming errors. A general recommendation is to AVOID use of a global variable in a function, i.e. don't use a variable in function that is not passed as a parameter to the function (as was done in the function above in the statment a <- x). If you need to use a variable in a function that is known by the program that calls the function, pass the variable as a argument to the function e.g.
+>
+> Use this code:
+>
+> # Set values needed by function
+> y <- 2
+> b <- 30
+>
+> myfunction <- function(a,b){
+> cat("a=",a,"b=",b,"\n")
+>   y <- a
+>   y2 <- y+b
+>   cat("y=",y,"y2=",y2,"\n")
+> }
+> # Call the function and pass all needed values to the function
+> myfunction(y,b)
+>
+> Don't use the following code that depends on a global value that is known to the function, but not passed as a parameter to the function:
+>
+> y <- 2
+> myNGfunction <- function(a){
+>   cat("a=",a,"b=",b,"\n")
+>   y <- a
+>   y2 <- y+b
+>   cat("y=",y,"y2=",y2,"\n")
+> }
+> # b is a global variable and will be know to the function,
+> # but should be passed as a parameter as in example above.
+> b <- 100
+> myNGfunction(y)
+>
+> John
+>
+> ________________________________________
+> From: R-help <r-help-bounces at r-project.org> on behalf of Sorkin, John <jsorkin at som.umaryland.edu>
+> Sent: Sunday, January 15, 2023 7:40 PM
+> To: Richard O'Keefe; Valentin Petzel
+> Cc: R help Mailing list
+> Subject: Re: [R] return value of {....}
+>
+> Richard,
+> A slight addition to your code shows an important aspect of R, local vs. global variables:
+>
+> x <- 137
+> f <- function () {
+>        a <- x
+>        x <- 42
+>        b <- x
+>        list(a=a, b=b)
+>    }
+>  f()
+> print(x)
+>
+> ________________________________________
+> From: R-help <r-help-bounces at r-project.org> on behalf of Richard O'Keefe <raoknz at gmail.com>
+> Sent: Sunday, January 15, 2023 6:39 PM
+> To: Valentin Petzel
+> Cc: R help Mailing list
+> Subject: Re: [R] return value of {....}
+>
+> I wonder if the real confusino is not R's scope rules?
+> (begin .) is not Lisp, it's Scheme (a major Lisp dialect),
+> and in Scheme, (begin (define x ...) (define y ...) ...)
+> declares variables x and y that are local to the (begin ...)
+> form, just like Algol 68.  That's weirdness 1.  Javascript
+> had a similar weirdness, when the ECMAscript process eventually
+> addressed.  But the real weirdness in R is not just that the
+> existence of variables is indifferent to the presence of curly
+> braces, it's that it's *dynamic*.  In
+> f <- function (...) {
+>    ... use x ...
+>    x <- ...
+>    ... use x ...
+> }
+> the two occurrences of "use x" refer to DIFFERENT variables.
+> The first occurrence refers to the x that exists outside the
+> function.  It has to: the local variable does not exist yet.
+> The assignment *creates* the variable, so the second
+> occurrence of "use x" refers to the inner variable.
+> Here's an actual example.
+> > x <- 137
+> > f <- function () {
+> +     a <- x
+> +     x <- 42
+> +     b <- x
+> +     list(a=a, b=b)
+> + }
+> > f()
+> $a
+> [1] 137
+> $b
+> [1] 42
+>
+> Many years ago I set out to write a compiler for R, and this was
+> the issue that finally sank my attempt.  It's not whether the
+> occurrence of "use x" is *lexically* before the creation of x.
+> It's when the assignment is *executed* that makes the difference.
+> Different paths of execution through a function may result in it
+> arriving at its return point with different sets of local variables.
+> R is the only language I routinely use that does this.
+>
+> So rule 1: whether an identifier in an R function refers to an
+> outer variable or a local variable depends on whether an assignment
+> creating that local variable has been executed yet.
+> And rule 2: the scope of a local variable is the whole function.
+>
+> If the following transcript not only makes sense to you, but is
+> exactly what you expect, congratulations, you understand local
+> variables in R.
+>
+> > x <- 0
+> > g <- function () {
+> +     n <- 10
+> +     r <- numeric(n)
+> +     for (i in 1:n) {
+> +         if (i == 6) x <- 100
+> +         r[i] <- x + i
+> +     }
+> +     r
+> + }
+> > g()
+>  [1]   1   2   3   4   5 106 107 108 109 110
+>
+>
+> On Fri, 13 Jan 2023 at 23:28, Valentin Petzel <valentin at petzel.at> wrote:
+>
+> > Hello Akshay,
+> >
+> > R is quite inspired by LISP, where this is a common thing. It is not in
+> > fact that {...} returned something, rather any expression evalulates to
+> > some value, and for a compound statement that is the last evaluated
+> > expression.
+> >
+> > {...} might be seen as similar to LISPs (begin ...).
+> >
+> > Now this is a very different thing compared to {...} in something like C,
+> > even if it looks or behaves similarly. But in R {...} is in fact an
+> > expression and thus has evaluate to some value. This also comes with some
+> > nice benefits.
+> >
+> > You do not need to use {...} for anything that is a single statement. But
+> > you can in each possible place use {...} to turn multiple statements into
+> > one.
+> >
+> > Now think about a statement like this
+> >
+> > f <- function(n) {
+> > x <- runif(n)
+> > x**2
+> > }
+> >
+> > Then we can do
+> >
+> > y <- f(10)
+> >
+> > Now, you suggested way would look like this:
+> >
+> > f <- function(n) {
+> > x <- runif(n)
+> > y <- x**2
+> > }
+> >
+> > And we'd need to do something like:
+> >
+> > f(10)
+> > y <- somehow_get_last_env_of_f$y
+> >
+> > So having a compound statement evaluate to a value clearly has a benefit.
+> >
+> > Best Regards,
+> > Valentin
+> >
+> > 09.01.2023 18:05:58 akshay kulkarni <akshay_e4 at hotmail.com>:
+> >
+> > > Dear Valentin,
+> > >                           But why should {....} "return" a value? It
+> > could just as well evaluate all the expressions and store the resulting
+> > objects in whatever environment the interpreter chooses, and then it would
+> > be left to the user to manipulate any object he chooses. Don't you think
+> > returning the last, or any value, is redundant? We are living in the
+> > 21st century world, and the R-core team might,I suppose, have a definite
+> > reason for"returning" the last value. Any comments?
+> > >
+> > > Thanking you,
+> > > Yours sincerely,
+> > > AKSHAY M KULKARNI
+> > >
+> > > ----------------------------------------
+> > > *From:* Valentin Petzel <valentin at petzel.at>
+> > > *Sent:* Monday, January 9, 2023 9:18 PM
+> > > *To:* akshay kulkarni <akshay_e4 at hotmail.com>
+> > > *Cc:* R help Mailing list <r-help at r-project.org>
+> > > *Subject:* Re: [R] return value of {....}
+> > >
+> > > Hello Akshai,
+> > >
+> > > I think you are confusing {...} with local({...}). This one will
+> > evaluate the expression in a separate environment, returning the last
+> > expression.
+> > >
+> > > {...} simply evaluates multiple expressions as one and returns the
+> > result of the last line, but it still evaluates each expression.
+> > >
+> > > Assignment returns the assigned value, so we can chain assignments like
+> > this
+> > >
+> > > a <- 1 + (b <- 2)
+> > >
+> > > conveniently.
+> > >
+> > > So when is {...} useful? Well, anyplace where you want to execute
+> > complex stuff in a function argument. E.g. you might do:
+> > >
+> > > data %>% group_by(x) %>% summarise(y = {if(x[1] > 10) sum(y) else
+> > mean(y)})
+> > >
+> > > Regards,
+> > > Valentin Petzel
+> > >
+> > > 09.01.2023 15:47:53 akshay kulkarni <akshay_e4 at hotmail.com>:
+> > >
+> > >> Dear members,
+> > >>                              I have the following code:
+> > >>
+> > >>> TB <- {x <- 3;y <- 5}
+> > >>> TB
+> > >> [1] 5
+> > >>
+> > >> It is consistent with the documentation: For {, the result of the last
+> > expression evaluated. This has the visibility of the last evaluation.
+> > >>
+> > >> But both x AND y are created, but the "return value" is y. How can this
+> > be advantageous for solving practical problems? Specifically, consider the
+> > following code:
+> > >>
+> > >> F <- function(X) {  expr; expr2; { expr5; expr7}; expr8;expr10}
+> > >>
+> > >> Both expr5 and expr7 are created, and are accessible by the code
+> > outside of the nested braces right? But the "return value" of the nested
+> > braces is expr7. So doesn't this mean that only expr7 should be accessible?
+> > Please help me entangle this (of course the return value of F is expr10,
+> > and all the other objects created by the preceding expressions are deleted.
+> > But expr5 is not, after the control passes outside of the nested braces!)
+> > >>
+> > >> Thanking you,
+> > >> Yours sincerely,
+> > >> AKSHAY M KULKARNI
+> > >>
+> > >>     [[alternative HTML version deleted]]
+> > >>
+> > >> ______________________________________________
+> > >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > >> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Jp7JGV%2BVKkAx3SI%2Fak%2BiEIkUraGyQBTfSLWqRRUYmaQ%3D&reserved=0
+> > >> PLEASE do read the posting guide
+> > https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Got4ab%2BEO6LD%2FOXqp9j9ImnSn0zi8vhV6YZMD7OJ8WU%3D&reserved=0
+> > >> and provide commented, minimal, self-contained, reproducible code.
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Jp7JGV%2BVKkAx3SI%2Fak%2BiEIkUraGyQBTfSLWqRRUYmaQ%3D&reserved=0
+> > PLEASE do read the posting guide
+> > https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Got4ab%2BEO6LD%2FOXqp9j9ImnSn0zi8vhV6YZMD7OJ8WU%3D&reserved=0
+> > and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Jp7JGV%2BVKkAx3SI%2Fak%2BiEIkUraGyQBTfSLWqRRUYmaQ%3D&reserved=0
+> PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Got4ab%2BEO6LD%2FOXqp9j9ImnSn0zi8vhV6YZMD7OJ8WU%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Jp7JGV%2BVKkAx3SI%2Fak%2BiEIkUraGyQBTfSLWqRRUYmaQ%3D&reserved=0
+> PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Got4ab%2BEO6LD%2FOXqp9j9ImnSn0zi8vhV6YZMD7OJ8WU%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
