@@ -14390,3 +14390,1990 @@ On Sun, Jan 15, 2023 at 5:07 PM Sorkin, John <jsorkin at som.umaryland.edu> wrot
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From @vi@e@gross m@iii@g oii gm@ii@com  Mon Jan 16 03:20:26 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sun, 15 Jan 2023 21:20:26 -0500
+Subject: [R] return value of {....}
+In-Reply-To: <CABcYAdL2WP87USzaSXNeLip2m_yMFRFRPrPq_7pXptW9AnsbZA@mail.gmail.com>
+References: <PU4P216MB15683AFF29648D6DD2470B8DC8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <f2d42675-571d-4644-b31b-7371fa105b23@petzel.at>
+ <PU4P216MB1568A92CDAD4B5CC59014CE3C8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <cf027dca-4bde-4c05-a964-1522025d6532@petzel.at>
+ <CABcYAdL2WP87USzaSXNeLip2m_yMFRFRPrPq_7pXptW9AnsbZA@mail.gmail.com>
+Message-ID: <003401d92951$18e2b220$4aa81660$@gmail.com>
+
+Richard,
+
+I appreciate your observations. As regularly noted, there are many possible
+forks in the road to designing a language and it seems someone is determined
+to try every possible fork.
+
+Yes, some languages that are compiled, or like JavaScript, read the entire
+function before executing it and promote some parts written further down to
+the top so all variable declarations, as one example, are done before
+executing any remaining code. If you look at R, if you decide to use a
+library, you can ask for it near the top or just before you want to use it.
+I think they get executed as needed so if you only load it in one branch of
+an IF statement, ...
+
+We can debate good and bad subjective choices in language design BUT for
+practical purposes, what matters is that a feature IS a certain way and you
+use it consistently with what is documented, not what you wish it was like.
+R has an interpreter that arguably may be simple and keep reading small
+sections of code and executing them and then getting more. Much of the code
+is not even evaluated till much later or never and thus it may not be
+trivial to do any kind of look-ahead and adjustment.
+
+Many languages now look a bit silly after some changes are made or things
+added that make the earlier way look clumsy. Some features may even be
+deprecated and eventually removed, or the language forks again and people
+argue that everyone should upgrade to the new version 12.x and so on.
+
+Do note R lets you use rm(x) and also supports multiple environments
+including new dynamic ones  so your example might have a region where an x
+is used in quite a few ways such as asking some function call to be
+evaluated in a specific environment. This flexibility would be harder if you
+asked the interpreter to do things like some other languages that may not
+support much. However, lots of languages with scoping rules will indeed
+allow you to use variables in outer scopes or hidden scopes and so on. To
+each their own.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Richard O'Keefe
+Sent: Sunday, January 15, 2023 6:39 PM
+To: Valentin Petzel <valentin at petzel.at>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] return value of {....}
+
+I wonder if the real confusino is not R's scope rules?
+(begin .) is not Lisp, it's Scheme (a major Lisp dialect), and in Scheme,
+(begin (define x ...) (define y ...) ...) declares variables x and y that
+are local to the (begin ...) form, just like Algol 68.  That's weirdness 1.
+Javascript had a similar weirdness, when the ECMAscript process eventually
+addressed.  But the real weirdness in R is not just that the existence of
+variables is indifferent to the presence of curly braces, it's that it's
+*dynamic*.  In f <- function (...) {
+   ... use x ...
+   x <- ...
+   ... use x ...
+}
+the two occurrences of "use x" refer to DIFFERENT variables.
+The first occurrence refers to the x that exists outside the function.  It
+has to: the local variable does not exist yet.
+The assignment *creates* the variable, so the second occurrence of "use x"
+refers to the inner variable.
+Here's an actual example.
+> x <- 137
+> f <- function () {
++     a <- x
++     x <- 42
++     b <- x
++     list(a=a, b=b)
++ }
+> f()
+$a
+[1] 137
+$b
+[1] 42
+
+Many years ago I set out to write a compiler for R, and this was the issue
+that finally sank my attempt.  It's not whether the occurrence of "use x" is
+*lexically* before the creation of x.
+It's when the assignment is *executed* that makes the difference.
+Different paths of execution through a function may result in it arriving at
+its return point with different sets of local variables.
+R is the only language I routinely use that does this.
+
+So rule 1: whether an identifier in an R function refers to an outer
+variable or a local variable depends on whether an assignment creating that
+local variable has been executed yet.
+And rule 2: the scope of a local variable is the whole function.
+
+If the following transcript not only makes sense to you, but is exactly what
+you expect, congratulations, you understand local variables in R.
+
+> x <- 0
+> g <- function () {
++     n <- 10
++     r <- numeric(n)
++     for (i in 1:n) {
++         if (i == 6) x <- 100
++         r[i] <- x + i
++     }
++     r
++ }
+> g()
+ [1]   1   2   3   4   5 106 107 108 109 110
+
+
+On Fri, 13 Jan 2023 at 23:28, Valentin Petzel <valentin at petzel.at> wrote:
+
+> Hello Akshay,
+>
+> R is quite inspired by LISP, where this is a common thing. It is not 
+> in fact that {...} returned something, rather any expression 
+> evalulates to some value, and for a compound statement that is the 
+> last evaluated expression.
+>
+> {...} might be seen as similar to LISPs (begin ...).
+>
+> Now this is a very different thing compared to {...} in something like 
+> C, even if it looks or behaves similarly. But in R {...} is in fact an 
+> expression and thus has evaluate to some value. This also comes with 
+> some nice benefits.
+>
+> You do not need to use {...} for anything that is a single statement. 
+> But you can in each possible place use {...} to turn multiple 
+> statements into one.
+>
+> Now think about a statement like this
+>
+> f <- function(n) {
+> x <- runif(n)
+> x**2
+> }
+>
+> Then we can do
+>
+> y <- f(10)
+>
+> Now, you suggested way would look like this:
+>
+> f <- function(n) {
+> x <- runif(n)
+> y <- x**2
+> }
+>
+> And we'd need to do something like:
+>
+> f(10)
+> y <- somehow_get_last_env_of_f$y
+>
+> So having a compound statement evaluate to a value clearly has a benefit.
+>
+> Best Regards,
+> Valentin
+>
+> 09.01.2023 18:05:58 akshay kulkarni <akshay_e4 at hotmail.com>:
+>
+> > Dear Valentin,
+> >                           But why should {....} "return" a value? It
+> could just as well evaluate all the expressions and store the 
+> resulting objects in whatever environment the interpreter chooses, and 
+> then it would be left to the user to manipulate any object he chooses. 
+> Don't you think returning the last, or any value, is redundant? We are 
+> living in the 21st century world, and the R-core team might,I suppose, 
+> have a definite reason for"returning" the last value. Any comments?
+> >
+> > Thanking you,
+> > Yours sincerely,
+> > AKSHAY M KULKARNI
+> >
+> > ----------------------------------------
+> > *From:* Valentin Petzel <valentin at petzel.at>
+> > *Sent:* Monday, January 9, 2023 9:18 PM
+> > *To:* akshay kulkarni <akshay_e4 at hotmail.com>
+> > *Cc:* R help Mailing list <r-help at r-project.org>
+> > *Subject:* Re: [R] return value of {....}
+> >
+> > Hello Akshai,
+> >
+> > I think you are confusing {...} with local({...}). This one will
+> evaluate the expression in a separate environment, returning the last 
+> expression.
+> >
+> > {...} simply evaluates multiple expressions as one and returns the
+> result of the last line, but it still evaluates each expression.
+> >
+> > Assignment returns the assigned value, so we can chain assignments 
+> > like
+> this
+> >
+> > a <- 1 + (b <- 2)
+> >
+> > conveniently.
+> >
+> > So when is {...} useful? Well, anyplace where you want to execute
+> complex stuff in a function argument. E.g. you might do:
+> >
+> > data %>% group_by(x) %>% summarise(y = {if(x[1] > 10) sum(y) else
+> mean(y)})
+> >
+> > Regards,
+> > Valentin Petzel
+> >
+> > 09.01.2023 15:47:53 akshay kulkarni <akshay_e4 at hotmail.com>:
+> >
+> >> Dear members,
+> >>                              I have the following code:
+> >>
+> >>> TB <- {x <- 3;y <- 5}
+> >>> TB
+> >> [1] 5
+> >>
+> >> It is consistent with the documentation: For {, the result of the 
+> >> last
+> expression evaluated. This has the visibility of the last evaluation.
+> >>
+> >> But both x AND y are created, but the "return value" is y. How can 
+> >> this
+> be advantageous for solving practical problems? Specifically, consider 
+> the following code:
+> >>
+> >> F <- function(X) {  expr; expr2; { expr5; expr7}; expr8;expr10}
+> >>
+> >> Both expr5 and expr7 are created, and are accessible by the code
+> outside of the nested braces right? But the "return value" of the 
+> nested braces is expr7. So doesn't this mean that only expr7 should be
+accessible?
+> Please help me entangle this (of course the return value of F is 
+> expr10, and all the other objects created by the preceding expressions are
+deleted.
+> But expr5 is not, after the control passes outside of the nested 
+> braces!)
+> >>
+> >> Thanking you,
+> >> Yours sincerely,
+> >> AKSHAY M KULKARNI
+> >>
+> >>     [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Mon Jan 16 04:53:17 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sun, 15 Jan 2023 22:53:17 -0500
+Subject: [R] return value of {....}
+In-Reply-To: <MW4PR03MB63634102EDFD608D21BCE633E2C19@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <PU4P216MB15683AFF29648D6DD2470B8DC8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <f2d42675-571d-4644-b31b-7371fa105b23@petzel.at>
+ <PU4P216MB1568A92CDAD4B5CC59014CE3C8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <cf027dca-4bde-4c05-a964-1522025d6532@petzel.at>
+ <CABcYAdL2WP87USzaSXNeLip2m_yMFRFRPrPq_7pXptW9AnsbZA@mail.gmail.com>
+ <MW4PR03MB636390FD5934FED2BFDD81D9E2C19@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <MW4PR03MB63634102EDFD608D21BCE633E2C19@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <003d01d9295e$11925e50$34b71af0$@gmail.com>
+
+Again, John, we are comparing different designs in languages that are often
+decades old and partially retrofitted selectively over the years.
+
+Is it poor form to use global variables? Many think so. Discussions have
+been had on how to use variables hidden in various ways that are not global,
+such as within a package.
+
+But note R still has global assignment operators like <<- and its partner
+->> that explicitly can even create a global variable that did not exist
+before the function began and that persists for that session. This is
+perhaps a special case of the assign() function which can do the same for
+any designated environment.
+
+Although it may sometimes be better form to avoid things like this, it can
+also be worse form when you want to do something decentralized with no
+control over passing additional arguments to all kinds of functions.  
+
+Some languages try to finesse their way past this by creating concepts like
+closures that hold values and can even change the values without them being
+globally visible. Some may use singleton objects or variables that are part
+of a class rather than a single object (which is again a singleton.)
+
+So is the way R allows really a bad thing, especially if rarely used?
+
+All I know is MANY languages use scoping including functions that declare a
+variable then create an inner function or many and return the inner
+function(s) to the outside where the one getting it can later use that
+function and access the variable and even use it as a way to communicate
+with the multiple functions it got that were created in that incubator.
+Nifty stuff but arguably not always as easy to comprehend!
+
+This forum is not intended for BASHING any language, certainly not R. There
+are many other languages to choose from and every one of them will have some
+things others consider flaws. How many opted out of say a ++ operator as in
+y = x++ for fairly good reasons and later added something like the Walrus
+operator so you can now write y = (x := x + 1) as a way to do the same thing
+and other things besides?
+
+But to address your point, about a variable outside a function as defined in
+a set of environments to search that includes a global context, I want to
+note that it is just a set of maskings and your variable "x" can appear in
+EVERY environment above you and you can get in real trouble if the order the
+environments are put in place changes in some way. The arguably safer way
+would be to get a specific value of x would be to not ask for it directly
+but as get("x", envir=...) and specify the specific environment that ideally
+is in existence at that time. Other arguments to get() let you specify a few
+more things such as whether to search other places or supply a default.
+
+Is it then poor technique to re-use the same name "x" in the same code for
+some independent use? Probably, albeit if the new value plays a similar
+role, just in another stretch of code, maybe not. I would comment it
+carefully, and spell that out.
+
+S first came out and before I even decided to become a Computer Scientist in
+the mid to late  70's  and evolved multiple times. I first noticed it at
+Bell Labs in the 80's. To a certain extent, R started as heavily influenced
+by S and many programs could run on both. It too has changed over about
+three decades. What kind of perfection can anyone expect over more recent
+languages carefully produced with little concern about backward
+compatibility?
+
+And it remains very useful not necessarily based on the original language or
+even the evolving core, but because of changes that maintained compatibility
+as well as so many packages that met needs. Making changes, even if
+"improvements" is likely to break all kinds of code unless it is something
+like the new pipe operator that simply uses aspects that nobody would have
+used before such as the new "|>" operator. 
+
+The answer to too many questions about R remains BECAUSE that is how it was
+done and whether you like it or not, may not change much any time soon. That
+is why so many people like packages such as in the tidyverse because they
+manage to make some changes, for better and often for verse.
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+Sent: Sunday, January 15, 2023 8:08 PM
+To: Richard O'Keefe <raoknz at gmail.com>; Valentin Petzel <valentin at petzel.at>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] return value of {....}
+
+Richard,
+I sent my prior email too quickly:
+
+A slight addition to your code shows an important aspect of R, local vs.
+global variables:
+
+x <- 137
+f <- function () {
+       a <- x
+       x <- 42
+       b <- x
+       list(a=a, b=b)
+   }
+ f()
+print(x)
+
+When run the program produces the following:
+
+> x <- 137
+> f <- function () {
++        a <- x
++        x <- 42
++        b <- x
++        list(a=a, b=b)
++    }
+>  f()
+$a
+[1] 137
+
+$b
+[1] 42
+
+> print(x)
+[1] 137
+
+The fist x, a <- x, invokes an x variable that is GLOBAL. It is known both
+inside and outside the function.
+The second x, x <- 42, defines an x that is LOCAL to the function, it is not
+known to the program that called the function. The LOCAL value of x is used
+in the expression  b <- x. As can be seen by the print(x) statement, the
+LOCAL value of x is NOT known by the program that calls the function. The
+class of a variable, scoping (i.e. local vs. variable) can be a source of
+subtle programming errors. A general recommendation is to AVOID use of a
+global variable in a function, i.e. don't use a variable in function that is
+not passed as a parameter to the function (as was done in the function above
+in the statment a <- x). If you need to use a variable in a function that is
+known by the program that calls the function, pass the variable as a
+argument to the function e.g. 
+
+Use this code:
+
+# Set values needed by function
+y <- 2
+b <- 30
+
+myfunction <- function(a,b){
+cat("a=",a,"b=",b,"\n")
+  y <- a
+  y2 <- y+b
+  cat("y=",y,"y2=",y2,"\n")
+}
+# Call the function and pass all needed values to the function
+myfunction(y,b)
+ 
+Don't use the following code that depends on a global value that is known to
+the function, but not passed as a parameter to the function:
+
+y <- 2
+myNGfunction <- function(a){
+  cat("a=",a,"b=",b,"\n")
+  y <- a
+  y2 <- y+b
+  cat("y=",y,"y2=",y2,"\n")
+}
+# b is a global variable and will be know to the function, # but should be
+passed as a parameter as in example above.
+b <- 100
+myNGfunction(y)
+
+John
+
+________________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of Sorkin, John
+<jsorkin at som.umaryland.edu>
+Sent: Sunday, January 15, 2023 7:40 PM
+To: Richard O'Keefe; Valentin Petzel
+Cc: R help Mailing list
+Subject: Re: [R] return value of {....}
+
+Richard,
+A slight addition to your code shows an important aspect of R, local vs.
+global variables:
+
+x <- 137
+f <- function () {
+       a <- x
+       x <- 42
+       b <- x
+       list(a=a, b=b)
+   }
+ f()
+print(x)
+
+________________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of Richard O'Keefe
+<raoknz at gmail.com>
+Sent: Sunday, January 15, 2023 6:39 PM
+To: Valentin Petzel
+Cc: R help Mailing list
+Subject: Re: [R] return value of {....}
+
+I wonder if the real confusino is not R's scope rules?
+(begin .) is not Lisp, it's Scheme (a major Lisp dialect), and in Scheme,
+(begin (define x ...) (define y ...) ...) declares variables x and y that
+are local to the (begin ...) form, just like Algol 68.  That's weirdness 1.
+Javascript had a similar weirdness, when the ECMAscript process eventually
+addressed.  But the real weirdness in R is not just that the existence of
+variables is indifferent to the presence of curly braces, it's that it's
+*dynamic*.  In f <- function (...) {
+   ... use x ...
+   x <- ...
+   ... use x ...
+}
+the two occurrences of "use x" refer to DIFFERENT variables.
+The first occurrence refers to the x that exists outside the function.  It
+has to: the local variable does not exist yet.
+The assignment *creates* the variable, so the second occurrence of "use x"
+refers to the inner variable.
+Here's an actual example.
+> x <- 137
+> f <- function () {
++     a <- x
++     x <- 42
++     b <- x
++     list(a=a, b=b)
++ }
+> f()
+$a
+[1] 137
+$b
+[1] 42
+
+Many years ago I set out to write a compiler for R, and this was the issue
+that finally sank my attempt.  It's not whether the occurrence of "use x" is
+*lexically* before the creation of x.
+It's when the assignment is *executed* that makes the difference.
+Different paths of execution through a function may result in it arriving at
+its return point with different sets of local variables.
+R is the only language I routinely use that does this.
+
+So rule 1: whether an identifier in an R function refers to an outer
+variable or a local variable depends on whether an assignment creating that
+local variable has been executed yet.
+And rule 2: the scope of a local variable is the whole function.
+
+If the following transcript not only makes sense to you, but is exactly what
+you expect, congratulations, you understand local variables in R.
+
+> x <- 0
+> g <- function () {
++     n <- 10
++     r <- numeric(n)
++     for (i in 1:n) {
++         if (i == 6) x <- 100
++         r[i] <- x + i
++     }
++     r
++ }
+> g()
+ [1]   1   2   3   4   5 106 107 108 109 110
+
+
+On Fri, 13 Jan 2023 at 23:28, Valentin Petzel <valentin at petzel.at> wrote:
+
+> Hello Akshay,
+>
+> R is quite inspired by LISP, where this is a common thing. It is not 
+> in fact that {...} returned something, rather any expression 
+> evalulates to some value, and for a compound statement that is the 
+> last evaluated expression.
+>
+> {...} might be seen as similar to LISPs (begin ...).
+>
+> Now this is a very different thing compared to {...} in something like 
+> C, even if it looks or behaves similarly. But in R {...} is in fact an 
+> expression and thus has evaluate to some value. This also comes with 
+> some nice benefits.
+>
+> You do not need to use {...} for anything that is a single statement. 
+> But you can in each possible place use {...} to turn multiple 
+> statements into one.
+>
+> Now think about a statement like this
+>
+> f <- function(n) {
+> x <- runif(n)
+> x**2
+> }
+>
+> Then we can do
+>
+> y <- f(10)
+>
+> Now, you suggested way would look like this:
+>
+> f <- function(n) {
+> x <- runif(n)
+> y <- x**2
+> }
+>
+> And we'd need to do something like:
+>
+> f(10)
+> y <- somehow_get_last_env_of_f$y
+>
+> So having a compound statement evaluate to a value clearly has a benefit.
+>
+> Best Regards,
+> Valentin
+>
+> 09.01.2023 18:05:58 akshay kulkarni <akshay_e4 at hotmail.com>:
+>
+> > Dear Valentin,
+> >                           But why should {....} "return" a value? It
+> could just as well evaluate all the expressions and store the 
+> resulting objects in whatever environment the interpreter chooses, and 
+> then it would be left to the user to manipulate any object he chooses. 
+> Don't you think returning the last, or any value, is redundant? We are 
+> living in the 21st century world, and the R-core team might,I suppose, 
+> have a definite reason for"returning" the last value. Any comments?
+> >
+> > Thanking you,
+> > Yours sincerely,
+> > AKSHAY M KULKARNI
+> >
+> > ----------------------------------------
+> > *From:* Valentin Petzel <valentin at petzel.at>
+> > *Sent:* Monday, January 9, 2023 9:18 PM
+> > *To:* akshay kulkarni <akshay_e4 at hotmail.com>
+> > *Cc:* R help Mailing list <r-help at r-project.org>
+> > *Subject:* Re: [R] return value of {....}
+> >
+> > Hello Akshai,
+> >
+> > I think you are confusing {...} with local({...}). This one will
+> evaluate the expression in a separate environment, returning the last 
+> expression.
+> >
+> > {...} simply evaluates multiple expressions as one and returns the
+> result of the last line, but it still evaluates each expression.
+> >
+> > Assignment returns the assigned value, so we can chain assignments 
+> > like
+> this
+> >
+> > a <- 1 + (b <- 2)
+> >
+> > conveniently.
+> >
+> > So when is {...} useful? Well, anyplace where you want to execute
+> complex stuff in a function argument. E.g. you might do:
+> >
+> > data %>% group_by(x) %>% summarise(y = {if(x[1] > 10) sum(y) else
+> mean(y)})
+> >
+> > Regards,
+> > Valentin Petzel
+> >
+> > 09.01.2023 15:47:53 akshay kulkarni <akshay_e4 at hotmail.com>:
+> >
+> >> Dear members,
+> >>                              I have the following code:
+> >>
+> >>> TB <- {x <- 3;y <- 5}
+> >>> TB
+> >> [1] 5
+> >>
+> >> It is consistent with the documentation: For {, the result of the 
+> >> last
+> expression evaluated. This has the visibility of the last evaluation.
+> >>
+> >> But both x AND y are created, but the "return value" is y. How can 
+> >> this
+> be advantageous for solving practical problems? Specifically, consider 
+> the following code:
+> >>
+> >> F <- function(X) {  expr; expr2; { expr5; expr7}; expr8;expr10}
+> >>
+> >> Both expr5 and expr7 are created, and are accessible by the code
+> outside of the nested braces right? But the "return value" of the 
+> nested braces is expr7. So doesn't this mean that only expr7 should be
+accessible?
+> Please help me entangle this (of course the return value of F is 
+> expr10, and all the other objects created by the preceding expressions are
+deleted.
+> But expr5 is not, after the control passes outside of the nested 
+> braces!)
+> >>
+> >> Thanking you,
+> >> Yours sincerely,
+> >> AKSHAY M KULKARNI
+> >>
+> >>     [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fs
+> >> tat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40
+> >> som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de
+> >> 461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpb
+> >> GZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6
+> >> Mn0%3D%7C3000%7C%7C%7C&sdata=Jp7JGV%2BVKkAx3SI%2Fak%2BiEIkUraGyQBTf
+> >> SLWqRRUYmaQ%3D&reserved=0
+> >> PLEASE do read the posting guide
+> https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r
+> -project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryla
+> nd.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a3
+> 95cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC
+> 4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%
+> 7C&sdata=Got4ab%2BEO6LD%2FOXqp9j9ImnSn0zi8vhV6YZMD7OJ8WU%3D&reserved=0
+> >> and provide commented, minimal, self-contained, reproducible code.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat
+> .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.um
+> aryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940
+> 312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWI
+> joiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7
+> C%7C%7C&sdata=Jp7JGV%2BVKkAx3SI%2Fak%2BiEIkUraGyQBTfSLWqRRUYmaQ%3D&res
+> erved=0
+> PLEASE do read the posting guide
+> https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r
+> -project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryla
+> nd.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a3
+> 95cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC
+> 4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%
+> 7C&sdata=Got4ab%2BEO6LD%2FOXqp9j9ImnSn0zi8vhV6YZMD7OJ8WU%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.
+ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%
+7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C
+0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV
+2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Jp7JGV%2BVKkAx3S
+I%2Fak%2BiEIkUraGyQBTfSLWqRRUYmaQ%3D&reserved=0
+PLEASE do read the posting guide
+https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-proje
+ct.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c
+2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C6
+38094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMz
+IiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Got4ab%2BEO6LD%2FOXqp
+9j9ImnSn0zi8vhV6YZMD7OJ8WU%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.
+ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%
+7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C
+0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV
+2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Jp7JGV%2BVKkAx3S
+I%2Fak%2BiEIkUraGyQBTfSLWqRRUYmaQ%3D&reserved=0
+PLEASE do read the posting guide
+https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-proje
+ct.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c
+2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C6
+38094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMz
+IiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Got4ab%2BEO6LD%2FOXqp
+9j9ImnSn0zi8vhV6YZMD7OJ8WU%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Mon Jan 16 05:26:26 2023
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Mon, 16 Jan 2023 04:26:26 +0000
+Subject: [R] return value of {....}
+In-Reply-To: <003d01d9295e$11925e50$34b71af0$@gmail.com>
+References: <PU4P216MB15683AFF29648D6DD2470B8DC8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <f2d42675-571d-4644-b31b-7371fa105b23@petzel.at>
+ <PU4P216MB1568A92CDAD4B5CC59014CE3C8FE9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <cf027dca-4bde-4c05-a964-1522025d6532@petzel.at>
+ <CABcYAdL2WP87USzaSXNeLip2m_yMFRFRPrPq_7pXptW9AnsbZA@mail.gmail.com>
+ <MW4PR03MB636390FD5934FED2BFDD81D9E2C19@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <MW4PR03MB63634102EDFD608D21BCE633E2C19@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <003d01d9295e$11925e50$34b71af0$@gmail.com>
+Message-ID: <MW4PR03MB6363895EBC8C929B5906FAD5E2C19@MW4PR03MB6363.namprd03.prod.outlook.com>
+
+Avi,
+
+Please do not mistake my posting as being a BASHING of R. I greatly admire R and the progress it has made from its roots in S. I thank the may people who contribute to the development and growth of R. 
+
+Just because a language allows a given syntax does not mean (1) that the language is bad or (2) that the syntax should be used (except in rare occasions). There may well be a few occasions when using a global variable in a function makes sense and in that instance the global variable should be used, and the usage should be documented in the comments that are part of the source code. Please note that I stated "A general recommendation  use of a global variable in a function"; I used the words "recommendation is to AVOID". I did not, and would not forbid the use of a global variable in a function. 
+
+English has the word "or" which is not clearly defined; is it an exclusive or or an inclusive or? I don't bash English because of this semantic ambiguity. What I try to do is make certain that when it is essential to understand if the "or" I use in a sentence in exclusive vs. inclusive (or conversely) I make certain my meaning is clear. e.g. You can use bleach or ammonia to clean the stain, but NEVER use ammonia and bleach together as the combination produces a deadly gas. I try to follow this philosophy when I program. I don't use global variables in a function unless there is an overwhelming reason to do so. When I do, I indicate that that a global variable has been used in my comments. In the same vane, I rarely use call by reference in my programs (when this is allowed by a programming language); I try to use call by value whenever possible as call by reference can be fraught. On the other hand when working with extremely large data objects (especially in the old days when I had perhaps 20k of memory rather than 100 gig), I have used call by reference to save storage. Despite this, I know that call by reference is not recommended just as using a global variable in a function is not recommended, but can, and should be used when needed.
+
+John 
+________________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of avi.e.gross at gmail.com <avi.e.gross at gmail.com>
+Sent: Sunday, January 15, 2023 10:53 PM
+Cc: 'R help Mailing list'
+Subject: Re: [R] return value of {....}
+
+Again, John, we are comparing different designs in languages that are often
+decades old and partially retrofitted selectively over the years.
+
+Is it poor form to use global variables? Many think so. Discussions have
+been had on how to use variables hidden in various ways that are not global,
+such as within a package.
+
+But note R still has global assignment operators like <<- and its partner
+->> that explicitly can even create a global variable that did not exist
+before the function began and that persists for that session. This is
+perhaps a special case of the assign() function which can do the same for
+any designated environment.
+
+Although it may sometimes be better form to avoid things like this, it can
+also be worse form when you want to do something decentralized with no
+control over passing additional arguments to all kinds of functions.
+
+Some languages try to finesse their way past this by creating concepts like
+closures that hold values and can even change the values without them being
+globally visible. Some may use singleton objects or variables that are part
+of a class rather than a single object (which is again a singleton.)
+
+So is the way R allows really a bad thing, especially if rarely used?
+
+All I know is MANY languages use scoping including functions that declare a
+variable then create an inner function or many and return the inner
+function(s) to the outside where the one getting it can later use that
+function and access the variable and even use it as a way to communicate
+with the multiple functions it got that were created in that incubator.
+Nifty stuff but arguably not always as easy to comprehend!
+
+This forum is not intended for BASHING any language, certainly not R. There
+are many other languages to choose from and every one of them will have some
+things others consider flaws. How many opted out of say a ++ operator as in
+y = x++ for fairly good reasons and later added something like the Walrus
+operator so you can now write y = (x := x + 1) as a way to do the same thing
+and other things besides?
+
+But to address your point, about a variable outside a function as defined in
+a set of environments to search that includes a global context, I want to
+note that it is just a set of maskings and your variable "x" can appear in
+EVERY environment above you and you can get in real trouble if the order the
+environments are put in place changes in some way. The arguably safer way
+would be to get a specific value of x would be to not ask for it directly
+but as get("x", envir=...) and specify the specific environment that ideally
+is in existence at that time. Other arguments to get() let you specify a few
+more things such as whether to search other places or supply a default.
+
+Is it then poor technique to re-use the same name "x" in the same code for
+some independent use? Probably, albeit if the new value plays a similar
+role, just in another stretch of code, maybe not. I would comment it
+carefully, and spell that out.
+
+S first came out and before I even decided to become a Computer Scientist in
+the mid to late  70's  and evolved multiple times. I first noticed it at
+Bell Labs in the 80's. To a certain extent, R started as heavily influenced
+by S and many programs could run on both. It too has changed over about
+three decades. What kind of perfection can anyone expect over more recent
+languages carefully produced with little concern about backward
+compatibility?
+
+And it remains very useful not necessarily based on the original language or
+even the evolving core, but because of changes that maintained compatibility
+as well as so many packages that met needs. Making changes, even if
+"improvements" is likely to break all kinds of code unless it is something
+like the new pipe operator that simply uses aspects that nobody would have
+used before such as the new "|>" operator.
+
+The answer to too many questions about R remains BECAUSE that is how it was
+done and whether you like it or not, may not change much any time soon. That
+is why so many people like packages such as in the tidyverse because they
+manage to make some changes, for better and often for verse.
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+Sent: Sunday, January 15, 2023 8:08 PM
+To: Richard O'Keefe <raoknz at gmail.com>; Valentin Petzel <valentin at petzel.at>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] return value of {....}
+
+Richard,
+I sent my prior email too quickly:
+
+A slight addition to your code shows an important aspect of R, local vs.
+global variables:
+
+x <- 137
+f <- function () {
+       a <- x
+       x <- 42
+       b <- x
+       list(a=a, b=b)
+   }
+ f()
+print(x)
+
+When run the program produces the following:
+
+> x <- 137
+> f <- function () {
++        a <- x
++        x <- 42
++        b <- x
++        list(a=a, b=b)
++    }
+>  f()
+$a
+[1] 137
+
+$b
+[1] 42
+
+> print(x)
+[1] 137
+
+The fist x, a <- x, invokes an x variable that is GLOBAL. It is known both
+inside and outside the function.
+The second x, x <- 42, defines an x that is LOCAL to the function, it is not
+known to the program that called the function. The LOCAL value of x is used
+in the expression  b <- x. As can be seen by the print(x) statement, the
+LOCAL value of x is NOT known by the program that calls the function. The
+class of a variable, scoping (i.e. local vs. variable) can be a source of
+subtle programming errors. A general recommendation is to AVOID use of a
+global variable in a function, i.e. don't use a variable in function that is
+not passed as a parameter to the function (as was done in the function above
+in the statment a <- x). If you need to use a variable in a function that is
+known by the program that calls the function, pass the variable as a
+argument to the function e.g.
+
+Use this code:
+
+# Set values needed by function
+y <- 2
+b <- 30
+
+myfunction <- function(a,b){
+cat("a=",a,"b=",b,"\n")
+  y <- a
+  y2 <- y+b
+  cat("y=",y,"y2=",y2,"\n")
+}
+# Call the function and pass all needed values to the function
+myfunction(y,b)
+
+Don't use the following code that depends on a global value that is known to
+the function, but not passed as a parameter to the function:
+
+y <- 2
+myNGfunction <- function(a){
+  cat("a=",a,"b=",b,"\n")
+  y <- a
+  y2 <- y+b
+  cat("y=",y,"y2=",y2,"\n")
+}
+# b is a global variable and will be know to the function, # but should be
+passed as a parameter as in example above.
+b <- 100
+myNGfunction(y)
+
+John
+
+________________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of Sorkin, John
+<jsorkin at som.umaryland.edu>
+Sent: Sunday, January 15, 2023 7:40 PM
+To: Richard O'Keefe; Valentin Petzel
+Cc: R help Mailing list
+Subject: Re: [R] return value of {....}
+
+Richard,
+A slight addition to your code shows an important aspect of R, local vs.
+global variables:
+
+x <- 137
+f <- function () {
+       a <- x
+       x <- 42
+       b <- x
+       list(a=a, b=b)
+   }
+ f()
+print(x)
+
+________________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of Richard O'Keefe
+<raoknz at gmail.com>
+Sent: Sunday, January 15, 2023 6:39 PM
+To: Valentin Petzel
+Cc: R help Mailing list
+Subject: Re: [R] return value of {....}
+
+I wonder if the real confusino is not R's scope rules?
+(begin .) is not Lisp, it's Scheme (a major Lisp dialect), and in Scheme,
+(begin (define x ...) (define y ...) ...) declares variables x and y that
+are local to the (begin ...) form, just like Algol 68.  That's weirdness 1.
+Javascript had a similar weirdness, when the ECMAscript process eventually
+addressed.  But the real weirdness in R is not just that the existence of
+variables is indifferent to the presence of curly braces, it's that it's
+*dynamic*.  In f <- function (...) {
+   ... use x ...
+   x <- ...
+   ... use x ...
+}
+the two occurrences of "use x" refer to DIFFERENT variables.
+The first occurrence refers to the x that exists outside the function.  It
+has to: the local variable does not exist yet.
+The assignment *creates* the variable, so the second occurrence of "use x"
+refers to the inner variable.
+Here's an actual example.
+> x <- 137
+> f <- function () {
++     a <- x
++     x <- 42
++     b <- x
++     list(a=a, b=b)
++ }
+> f()
+$a
+[1] 137
+$b
+[1] 42
+
+Many years ago I set out to write a compiler for R, and this was the issue
+that finally sank my attempt.  It's not whether the occurrence of "use x" is
+*lexically* before the creation of x.
+It's when the assignment is *executed* that makes the difference.
+Different paths of execution through a function may result in it arriving at
+its return point with different sets of local variables.
+R is the only language I routinely use that does this.
+
+So rule 1: whether an identifier in an R function refers to an outer
+variable or a local variable depends on whether an assignment creating that
+local variable has been executed yet.
+And rule 2: the scope of a local variable is the whole function.
+
+If the following transcript not only makes sense to you, but is exactly what
+you expect, congratulations, you understand local variables in R.
+
+> x <- 0
+> g <- function () {
++     n <- 10
++     r <- numeric(n)
++     for (i in 1:n) {
++         if (i == 6) x <- 100
++         r[i] <- x + i
++     }
++     r
++ }
+> g()
+ [1]   1   2   3   4   5 106 107 108 109 110
+
+
+On Fri, 13 Jan 2023 at 23:28, Valentin Petzel <valentin at petzel.at> wrote:
+
+> Hello Akshay,
+>
+> R is quite inspired by LISP, where this is a common thing. It is not
+> in fact that {...} returned something, rather any expression
+> evalulates to some value, and for a compound statement that is the
+> last evaluated expression.
+>
+> {...} might be seen as similar to LISPs (begin ...).
+>
+> Now this is a very different thing compared to {...} in something like
+> C, even if it looks or behaves similarly. But in R {...} is in fact an
+> expression and thus has evaluate to some value. This also comes with
+> some nice benefits.
+>
+> You do not need to use {...} for anything that is a single statement.
+> But you can in each possible place use {...} to turn multiple
+> statements into one.
+>
+> Now think about a statement like this
+>
+> f <- function(n) {
+> x <- runif(n)
+> x**2
+> }
+>
+> Then we can do
+>
+> y <- f(10)
+>
+> Now, you suggested way would look like this:
+>
+> f <- function(n) {
+> x <- runif(n)
+> y <- x**2
+> }
+>
+> And we'd need to do something like:
+>
+> f(10)
+> y <- somehow_get_last_env_of_f$y
+>
+> So having a compound statement evaluate to a value clearly has a benefit.
+>
+> Best Regards,
+> Valentin
+>
+> 09.01.2023 18:05:58 akshay kulkarni <akshay_e4 at hotmail.com>:
+>
+> > Dear Valentin,
+> >                           But why should {....} "return" a value? It
+> could just as well evaluate all the expressions and store the
+> resulting objects in whatever environment the interpreter chooses, and
+> then it would be left to the user to manipulate any object he chooses.
+> Don't you think returning the last, or any value, is redundant? We are
+> living in the 21st century world, and the R-core team might,I suppose,
+> have a definite reason for"returning" the last value. Any comments?
+> >
+> > Thanking you,
+> > Yours sincerely,
+> > AKSHAY M KULKARNI
+> >
+> > ----------------------------------------
+> > *From:* Valentin Petzel <valentin at petzel.at>
+> > *Sent:* Monday, January 9, 2023 9:18 PM
+> > *To:* akshay kulkarni <akshay_e4 at hotmail.com>
+> > *Cc:* R help Mailing list <r-help at r-project.org>
+> > *Subject:* Re: [R] return value of {....}
+> >
+> > Hello Akshai,
+> >
+> > I think you are confusing {...} with local({...}). This one will
+> evaluate the expression in a separate environment, returning the last
+> expression.
+> >
+> > {...} simply evaluates multiple expressions as one and returns the
+> result of the last line, but it still evaluates each expression.
+> >
+> > Assignment returns the assigned value, so we can chain assignments
+> > like
+> this
+> >
+> > a <- 1 + (b <- 2)
+> >
+> > conveniently.
+> >
+> > So when is {...} useful? Well, anyplace where you want to execute
+> complex stuff in a function argument. E.g. you might do:
+> >
+> > data %>% group_by(x) %>% summarise(y = {if(x[1] > 10) sum(y) else
+> mean(y)})
+> >
+> > Regards,
+> > Valentin Petzel
+> >
+> > 09.01.2023 15:47:53 akshay kulkarni <akshay_e4 at hotmail.com>:
+> >
+> >> Dear members,
+> >>                              I have the following code:
+> >>
+> >>> TB <- {x <- 3;y <- 5}
+> >>> TB
+> >> [1] 5
+> >>
+> >> It is consistent with the documentation: For {, the result of the
+> >> last
+> expression evaluated. This has the visibility of the last evaluation.
+> >>
+> >> But both x AND y are created, but the "return value" is y. How can
+> >> this
+> be advantageous for solving practical problems? Specifically, consider
+> the following code:
+> >>
+> >> F <- function(X) {  expr; expr2; { expr5; expr7}; expr8;expr10}
+> >>
+> >> Both expr5 and expr7 are created, and are accessible by the code
+> outside of the nested braces right? But the "return value" of the
+> nested braces is expr7. So doesn't this mean that only expr7 should be
+accessible?
+> Please help me entangle this (of course the return value of F is
+> expr10, and all the other objects created by the preceding expressions are
+deleted.
+> But expr5 is not, after the control passes outside of the nested
+> braces!)
+> >>
+> >> Thanking you,
+> >> Yours sincerely,
+> >> AKSHAY M KULKARNI
+> >>
+> >>     [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fs%2F&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C6522db410c7f4f77355f08daf7753e13%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094380183223600%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=iITNRDBSqiZR9wH3nBmPlEBL2YJ%2Fa3wAOnXFO5t86vc%3D&reserved=0
+> >> tat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40
+> >> som.umaryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de
+> >> 461a88940312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpb
+> >> GZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6
+> >> Mn0%3D%7C3000%7C%7C%7C&sdata=Jp7JGV%2BVKkAx3SI%2Fak%2BiEIkUraGyQBTf
+> >> SLWqRRUYmaQ%3D&reserved=0
+> >> PLEASE do read the posting guide
+> https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r%2F&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C6522db410c7f4f77355f08daf7753e13%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094380183223600%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=xtsEfKOhvwt1AwN66CQjtmMMxBil6VjtTi5Jl5%2BBzw4%3D&reserved=0
+> -project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryla
+> nd.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a3
+> 95cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC
+> 4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%
+> 7C&sdata=Got4ab%2BEO6LD%2FOXqp9j9ImnSn0zi8vhV6YZMD7OJ8WU%3D&reserved=0
+> >> and provide commented, minimal, self-contained, reproducible code.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat%2F&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C6522db410c7f4f77355f08daf7753e13%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094380183223600%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=lFPBCrwNEYB51JT%2FKolr6cGzf4djn0vMTZPouaxQXcc%3D&reserved=0
+> .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.um
+> aryland.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940
+> 312a395cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWI
+> joiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7
+> C%7C%7C&sdata=Jp7JGV%2BVKkAx3SI%2Fak%2BiEIkUraGyQBTfSLWqRRUYmaQ%3D&res
+> erved=0
+> PLEASE do read the posting guide
+> https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r%2F&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C6522db410c7f4f77355f08daf7753e13%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094380183223600%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=xtsEfKOhvwt1AwN66CQjtmMMxBil6VjtTi5Jl5%2BBzw4%3D&reserved=0
+> -project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryla
+> nd.edu%7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a3
+> 95cac9%7C0%7C0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC
+> 4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%
+> 7C&sdata=Got4ab%2BEO6LD%2FOXqp9j9ImnSn0zi8vhV6YZMD7OJ8WU%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz%2F&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C6522db410c7f4f77355f08daf7753e13%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094380183223600%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=7d9nxo8q4ZbUYsv%2B81iYSMydFvK2dToIhdjseND8Nxc%3D&reserved=0.
+ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%
+7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C
+0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV
+2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Jp7JGV%2BVKkAx3S
+I%2Fak%2BiEIkUraGyQBTfSLWqRRUYmaQ%3D&reserved=0
+PLEASE do read the posting guide
+https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-proje%2F&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C6522db410c7f4f77355f08daf7753e13%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094380183223600%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=I7m6vGh3r46%2FMwZGVqaiLIkdHYNVskuCjDG%2BTMnJh7I%3D&reserved=0
+ct.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c
+2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C6
+38094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMz
+IiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Got4ab%2BEO6LD%2FOXqp
+9j9ImnSn0zi8vhV6YZMD7OJ8WU%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz%2F&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C6522db410c7f4f77355f08daf7753e13%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094380183223600%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=7d9nxo8q4ZbUYsv%2B81iYSMydFvK2dToIhdjseND8Nxc%3D&reserved=0.
+ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%
+7C75c2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C
+0%7C638094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV
+2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Jp7JGV%2BVKkAx3S
+I%2Fak%2BiEIkUraGyQBTfSLWqRRUYmaQ%3D&reserved=0
+PLEASE do read the posting guide
+https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-proje%2F&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C6522db410c7f4f77355f08daf7753e13%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094380183223600%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=I7m6vGh3r46%2FMwZGVqaiLIkdHYNVskuCjDG%2BTMnJh7I%3D&reserved=0
+ct.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C75c
+2bc42c20b4c03601d08daf75a4405%7C717009a620de461a88940312a395cac9%7C0%7C0%7C6
+38094264319036570%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMz
+IiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Got4ab%2BEO6LD%2FOXqp
+9j9ImnSn0zi8vhV6YZMD7OJ8WU%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C6522db410c7f4f77355f08daf7753e13%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094380183223600%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=hYMD0rT15XwKYOvX%2F71JXNahEoml%2BYVmuPoNK567p68%3D&reserved=0
+PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C6522db410c7f4f77355f08daf7753e13%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094380183223600%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=qZmtlO5ifp0BjoWHfRbL8Vd4dGVBQ1DGByekCiBUYFw%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C6522db410c7f4f77355f08daf7753e13%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094380183223600%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=hYMD0rT15XwKYOvX%2F71JXNahEoml%2BYVmuPoNK567p68%3D&reserved=0
+PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7C6522db410c7f4f77355f08daf7753e13%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638094380183223600%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=qZmtlO5ifp0BjoWHfRbL8Vd4dGVBQ1DGByekCiBUYFw%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From ||@her @end|ng |rom p|e@@th@n@com  Mon Jan 16 09:18:48 2023
+From: ||@her @end|ng |rom p|e@@th@n@com (Dennis Fisher)
+Date: Mon, 16 Jan 2023 09:18:48 +0100
+Subject: [R] Printing special characters
+Message-ID: <36AF880A-F414-4D7D-99D6-EC10C86D7CC1@plessthan.com>
+
+R 4.2.2
+OS X
+
+Colleagues
+
+A file that I have read includes strings like this:
+	"EVENT ? 30 sec"
+When I include the string in a graphic using:
+	mtext(STRING, ?)
+it appears as:
+	"EVENT ... 30 sec"
+
+Is there a simple work-around (short of reformatting all the strings, then using plotmath)?
+
+Dennis
+
+Dennis Fisher MD
+P < (The "P Less Than" Company)
+Phone / Fax: 1-866-PLessThan (1-866-753-7784)
+www.PLessThan.com
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Mon Jan 16 09:31:48 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Mon, 16 Jan 2023 00:31:48 -0800
+Subject: [R] Printing special characters
+In-Reply-To: <36AF880A-F414-4D7D-99D6-EC10C86D7CC1@plessthan.com>
+References: <36AF880A-F414-4D7D-99D6-EC10C86D7CC1@plessthan.com>
+Message-ID: <DA53BD30-0F90-44F4-9CB7-BCEE0F9BB2B1@dcn.davis.ca.us>
+
+Use the Cairo PDF device?
+
+On January 16, 2023 12:18:48 AM PST, Dennis Fisher <fisher at plessthan.com> wrote:
+>R 4.2.2
+>OS X
+>
+>Colleagues
+>
+>A file that I have read includes strings like this:
+>	"EVENT ? 30 sec"
+>When I include the string in a graphic using:
+>	mtext(STRING, ?)
+>it appears as:
+>	"EVENT ... 30 sec"
+>
+>Is there a simple work-around (short of reformatting all the strings, then using plotmath)?
+>
+>Dennis
+>
+>Dennis Fisher MD
+>P < (The "P Less Than" Company)
+>Phone / Fax: 1-866-PLessThan (1-866-753-7784)
+>www.PLessThan.com
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From er|cjberger @end|ng |rom gm@||@com  Mon Jan 16 09:32:06 2023
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Mon, 16 Jan 2023 10:32:06 +0200
+Subject: [R] Printing special characters
+In-Reply-To: <36AF880A-F414-4D7D-99D6-EC10C86D7CC1@plessthan.com>
+References: <36AF880A-F414-4D7D-99D6-EC10C86D7CC1@plessthan.com>
+Message-ID: <CAGgJW75YPZ-C89=qQhLDGv8xzY737uoO8Y_2h0n41jUrCm8=Bg@mail.gmail.com>
+
+How about  just 'EVENT > 30 sec' or 'EVENT > 29 sec' ?
+
+
+On Mon, Jan 16, 2023 at 10:19 AM Dennis Fisher <fisher at plessthan.com> wrote:
+
+> R 4.2.2
+> OS X
+>
+> Colleagues
+>
+> A file that I have read includes strings like this:
+>         "EVENT ? 30 sec"
+> When I include the string in a graphic using:
+>         mtext(STRING, ?)
+> it appears as:
+>         "EVENT ... 30 sec"
+>
+> Is there a simple work-around (short of reformatting all the strings, then
+> using plotmath)?
+>
+> Dennis
+>
+> Dennis Fisher MD
+> P < (The "P Less Than" Company)
+> Phone / Fax: 1-866-PLessThan (1-866-753-7784)
+> www.PLessThan.com
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Jan 16 09:46:43 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 16 Jan 2023 08:46:43 +0000
+Subject: [R] Printing special characters
+In-Reply-To: <DA53BD30-0F90-44F4-9CB7-BCEE0F9BB2B1@dcn.davis.ca.us>
+References: <36AF880A-F414-4D7D-99D6-EC10C86D7CC1@plessthan.com>
+ <DA53BD30-0F90-44F4-9CB7-BCEE0F9BB2B1@dcn.davis.ca.us>
+Message-ID: <d62811e6-ed5c-59f6-ec6b-ea805542fa9f@sapo.pt>
+
+?s 08:31 de 16/01/2023, Jeff Newmiller escreveu:
+> Use the Cairo PDF device?
+> 
+> On January 16, 2023 12:18:48 AM PST, Dennis Fisher <fisher at plessthan.com> wrote:
+>> R 4.2.2
+>> OS X
+>>
+>> Colleagues
+>>
+>> A file that I have read includes strings like this:
+>> 	"EVENT ? 30 sec"
+>> When I include the string in a graphic using:
+>> 	mtext(STRING, ?)
+>> it appears as:
+>> 	"EVENT ... 30 sec"
+>>
+>> Is there a simple work-around (short of reformatting all the strings, then using plotmath)?
+>>
+>> Dennis
+>>
+>> Dennis Fisher MD
+>> P < (The "P Less Than" Company)
+>> Phone / Fax: 1-866-PLessThan (1-866-753-7784)
+>> www.PLessThan.com
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+Hello,
+
+I had no problems with
+
+
+X11()
+plot(1,1, pch = "")
+text(1, 1, "EVENT ? 30 sec")
+#dev.off()
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+From petr@p|k@| @end|ng |rom prechez@@cz  Mon Jan 16 10:39:57 2023
+From: petr@p|k@| @end|ng |rom prechez@@cz (PIKAL Petr)
+Date: Mon, 16 Jan 2023 09:39:57 +0000
+Subject: [R] Printing special characters
+In-Reply-To: <36AF880A-F414-4D7D-99D6-EC10C86D7CC1@plessthan.com>
+References: <36AF880A-F414-4D7D-99D6-EC10C86D7CC1@plessthan.com>
+Message-ID: <d667120233504311b585c3bb5c425cd2@SRVEXCHCM1302.precheza.cz>
+
+Hallo Dennis
+
+Is the STRING in R still containing **?** character?
+Or it was converted during reading to R to ...?
+
+What dput(STRING) result i?
+ 
+Cheers
+Petr
+
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Dennis Fisher
+> Sent: Monday, January 16, 2023 9:19 AM
+> To: r-help at r-project.org
+> Subject: [R] Printing special characters
+> 
+> R 4.2.2
+> OS X
+> 
+> Colleagues
+> 
+> A file that I have read includes strings like this:
+> 	"EVENT ? 30 sec"
+> When I include the string in a graphic using:
+> 	mtext(STRING, ?)
+> it appears as:
+> 	"EVENT ... 30 sec"
+> 
+> Is there a simple work-around (short of reformatting all the strings, then using
+> plotmath)?
+> 
+> Dennis
+> 
+> Dennis Fisher MD
+> P < (The "P Less Than" Company)
+> Phone / Fax: 1-866-PLessThan (1-866-753-7784) www.PLessThan.com
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Mon Jan 16 11:15:45 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Mon, 16 Jan 2023 11:15:45 +0100
+Subject: [R] Printing special characters
+In-Reply-To: <d62811e6-ed5c-59f6-ec6b-ea805542fa9f@sapo.pt>
+References: <36AF880A-F414-4D7D-99D6-EC10C86D7CC1@plessthan.com>
+ <DA53BD30-0F90-44F4-9CB7-BCEE0F9BB2B1@dcn.davis.ca.us>
+ <d62811e6-ed5c-59f6-ec6b-ea805542fa9f@sapo.pt>
+Message-ID: <25541.9169.124518.375870@stat.math.ethz.ch>
+
+>>>>> Rui Barradas 
+>>>>>     on Mon, 16 Jan 2023 08:46:43 +0000 writes:
+
+    > ?s 08:31 de 16/01/2023, Jeff Newmiller escreveu:
+    >> Use the Cairo PDF device?
+    >> 
+    >> On January 16, 2023 12:18:48 AM PST, Dennis Fisher
+    >> <fisher at plessthan.com> wrote:
+    >>> R 4.2.2 OS X
+    >>> 
+    >>> Colleagues
+    >>> 
+    >>> A file that I have read includes strings like this:
+    >>> "EVENT ? 30 sec" When I include the string in a graphic
+    >>> using: mtext(STRING, ?)  it appears as: "EVENT ... 30
+    >>> sec"
+    >>> 
+    >>> Is there a simple work-around (short of reformatting all
+    >>> the strings, then using plotmath)?
+    >>> 
+    >>> Dennis
+    >>> 
+    >>> Dennis Fisher MD P < (The "P Less Than" Company) Phone /
+    >>> Fax: 1-866-PLessThan (1-866-753-7784) www.PLessThan.com
+    >>> 
+    >>> ______________________________________________
+    >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and
+    >>> more, see https://stat.ethz.ch/mailman/listinfo/r-help
+    >>> PLEASE do read the posting guide
+    >>> http://www.R-project.org/posting-guide.html and provide
+    >>> commented, minimal, self-contained, reproducible code.
+    >> 
+    > Hello,
+
+    > I had no problems with
+
+    > X11()
+    > plot(1,1, pch = "") 
+    > text(1, 1, "EVENT ? 30 sec")
+    > #dev.off()
+
+Yes, for me too.
+X11() *is*  by default the "X11cairo" device and that works, the
+same as the "Cairo PDF" device that Jeff mentioned above.
+
+Indeed,
+  cairo_pdf("utf8-ex.pdf")  # works nicely
+
+whereas  pdf("utf8-ex.pdf") does not {for me, with default font
+families etc}, but rather shows the "..." instead.
+
+*and* gives warnings during the plot
+  conversion failure on 'EVENT ? 30 sec' in 'mbcsToSbcs': dot substituted for <e2>
+  conversion failure on 'EVENT ? 30 sec' in 'mbcsToSbcs': dot substituted for <89>
+  conversion failure on 'EVENT ? 30 sec' in 'mbcsToSbcs': dot substituted for <a5>
+
+BTW, a simple one liner for testing is
+
+   plot(1, type="n", axes=FALSE, main = "EVENT ? 30 sec")
+
+Note that help(pdf)  contains
+
+   See Also:
+
+        pdfFonts, pdf.options, embedFonts, Devices, postscript.
+
+        cairo_pdf and (on macOS only) quartz for other devices that
+        can produce PDF.
+
+        More details of font families and encodings and especially
+        handling text in a non-Latin-1 encoding and embedding fonts can be
+        found in
+
+        Paul Murrell and Brian Ripley (2006).  ?Non-standard fonts in
+        PostScript and PDF graphics.? _R News_, *6*(2), 41-47.
+        <https://www.r-project.org/doc/Rnews/Rnews_2006-2.pdf>.
+
+-
+Martin
+
+    > Hope this helps,
+    > Rui Barradas
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Jan 16 12:02:01 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 16 Jan 2023 11:02:01 +0000
+Subject: [R] Printing special characters
+In-Reply-To: <25541.9169.124518.375870@stat.math.ethz.ch>
+References: <36AF880A-F414-4D7D-99D6-EC10C86D7CC1@plessthan.com>
+ <DA53BD30-0F90-44F4-9CB7-BCEE0F9BB2B1@dcn.davis.ca.us>
+ <d62811e6-ed5c-59f6-ec6b-ea805542fa9f@sapo.pt>
+ <25541.9169.124518.375870@stat.math.ethz.ch>
+Message-ID: <1ade6c42-0cfa-97fe-b7a9-6c47c8863f5d@sapo.pt>
+
+?s 10:15 de 16/01/2023, Martin Maechler escreveu:
+>>>>>> Rui Barradas
+>>>>>>      on Mon, 16 Jan 2023 08:46:43 +0000 writes:
+> 
+>      > ?s 08:31 de 16/01/2023, Jeff Newmiller escreveu:
+>      >> Use the Cairo PDF device?
+>      >>
+>      >> On January 16, 2023 12:18:48 AM PST, Dennis Fisher
+>      >> <fisher at plessthan.com> wrote:
+>      >>> R 4.2.2 OS X
+>      >>>
+>      >>> Colleagues
+>      >>>
+>      >>> A file that I have read includes strings like this:
+>      >>> "EVENT ? 30 sec" When I include the string in a graphic
+>      >>> using: mtext(STRING, ?)  it appears as: "EVENT ... 30
+>      >>> sec"
+>      >>>
+>      >>> Is there a simple work-around (short of reformatting all
+>      >>> the strings, then using plotmath)?
+>      >>>
+>      >>> Dennis
+>      >>>
+>      >>> Dennis Fisher MD P < (The "P Less Than" Company) Phone /
+>      >>> Fax: 1-866-PLessThan (1-866-753-7784) www.PLessThan.com
+>      >>>
+>      >>> ______________________________________________
+>      >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and
+>      >>> more, see https://stat.ethz.ch/mailman/listinfo/r-help
+>      >>> PLEASE do read the posting guide
+>      >>> http://www.R-project.org/posting-guide.html and provide
+>      >>> commented, minimal, self-contained, reproducible code.
+>      >>
+>      > Hello,
+> 
+>      > I had no problems with
+> 
+>      > X11()
+>      > plot(1,1, pch = "")
+>      > text(1, 1, "EVENT ? 30 sec")
+>      > #dev.off()
+> 
+> Yes, for me too.
+> X11() *is*  by default the "X11cairo" device and that works, the
+> same as the "Cairo PDF" device that Jeff mentioned above.
+> 
+> Indeed,
+>    cairo_pdf("utf8-ex.pdf")  # works nicely
+> 
+> whereas  pdf("utf8-ex.pdf") does not {for me, with default font
+> families etc}, but rather shows the "..." instead.
+> 
+> *and* gives warnings during the plot
+>    conversion failure on 'EVENT ? 30 sec' in 'mbcsToSbcs': dot substituted for <e2>
+>    conversion failure on 'EVENT ? 30 sec' in 'mbcsToSbcs': dot substituted for <89>
+>    conversion failure on 'EVENT ? 30 sec' in 'mbcsToSbcs': dot substituted for <a5>
+> 
+> BTW, a simple one liner for testing is
+> 
+>     plot(1, type="n", axes=FALSE, main = "EVENT ? 30 sec")
+> 
+> Note that help(pdf)  contains
+> 
+>     See Also:
+> 
+>          pdfFonts, pdf.options, embedFonts, Devices, postscript.
+> 
+>          cairo_pdf and (on macOS only) quartz for other devices that
+>          can produce PDF.
+> 
+>          More details of font families and encodings and especially
+>          handling text in a non-Latin-1 encoding and embedding fonts can be
+>          found in
+> 
+>          Paul Murrell and Brian Ripley (2006).  ?Non-standard fonts in
+>          PostScript and PDF graphics.? _R News_, *6*(2), 41-47.
+>          <https://www.r-project.org/doc/Rnews/Rnews_2006-2.pdf>.
+> 
+> -
+> Martin
+> 
+>      > Hope this helps,
+>      > Rui Barradas
+Hello,
+
+I can confrim this behavior with cairo_pdf(), it works as expected 
+printing "EVENT ? 30 sec".
+But with pdf() I get an equal sign "EVENT = 30 sec" and no errors.
+Full code:
+
+
+
+cairo_pdf("~/Temp/cairo_pdf_utf8-ex.pdf")  # works
+plot(1,1, pch = "")
+text(1, 1, "EVENT ? 30 sec")
+dev.off()
+# null device
+#           1
+
+pdf("~/Temp/pdf_utf8-ex.pdf")              # prints "=", no warnings
+plot(1,1, pch = "")
+text(1, 1, "EVENT ? 30 sec")
+dev.off()
+# null device
+#           1
+
+sessionInfo()
+# R version 4.2.1 (2022-06-23 ucrt)
+# Platform: x86_64-w64-mingw32/x64 (64-bit)
+# Running under: Windows 10 x64 (build 22621)
+#
+# Matrix products: default
+#
+# locale:
+# [1] LC_COLLATE=Portuguese_Portugal.utf8  LC_CTYPE=Portuguese_Portugal.utf8
+# [3] LC_MONETARY=Portuguese_Portugal.utf8 LC_NUMERIC=C
+# [5] LC_TIME=Portuguese_Portugal.utf8
+#
+# attached base packages:
+# [1] stats     graphics  grDevices utils     datasets  methods   base
+#
+# loaded via a namespace (and not attached):
+# [1] compiler_4.2.1
+#
+
+
+Also, nice trick to print the text as plot title, I will remember that 
+one-liner.
+
+Hope this helps,
+
+Rui Barradas
+
+
+From up@n@nd@@p@n| @end|ng |rom gm@||@com  Mon Jan 16 17:39:20 2023
+From: up@n@nd@@p@n| @end|ng |rom gm@||@com (Upananda Pani)
+Date: Mon, 16 Jan 2023 22:09:20 +0530
+Subject: [R] Reg: Frequency in declaring time series data
+Message-ID: <CAEezrQTAmZvNQPTq7W3k_PY9YC_5M0VC-rE_x8EYJfFfcHxz_g@mail.gmail.com>
+
+Dear All,
+
+I have a time series daily data with date are stored ( %dd-%mm-%yy format )
+from 22-01-20 to 03-08-21. In total I have 560 observations. I am using the
+following command to declare as a time series object. Here the the data set
+is 7 days a week.
+oil <- read_xlsx("crudefinal.xlsx")
+pricet=ts(oil$price, start = c(2020, 22), freq = 365)
+roilt=ts(diff(log(oil$price))*100,start=c(2020,22), freq=365)
+
+Shall I have to declare the dates here?  I want to know also if it is a 5
+day trading a week, how to declare the frequency.
+
+Looking forward to your reply
+
+Regards,
+Upananda Pani
+
+Looking forward to your suggestions.
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Jan 16 21:09:56 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 16 Jan 2023 20:09:56 +0000
+Subject: [R] Reg: Frequency in declaring time series data
+In-Reply-To: <CAEezrQTAmZvNQPTq7W3k_PY9YC_5M0VC-rE_x8EYJfFfcHxz_g@mail.gmail.com>
+References: <CAEezrQTAmZvNQPTq7W3k_PY9YC_5M0VC-rE_x8EYJfFfcHxz_g@mail.gmail.com>
+Message-ID: <8ad14c34-ec70-8817-8477-114639f15638@sapo.pt>
+
+?s 16:39 de 16/01/2023, Upananda Pani escreveu:
+> Dear All,
+> 
+> I have a time series daily data with date are stored ( %dd-%mm-%yy format )
+> from 22-01-20 to 03-08-21. In total I have 560 observations. I am using the
+> following command to declare as a time series object. Here the the data set
+> is 7 days a week.
+> oil <- read_xlsx("crudefinal.xlsx")
+> pricet=ts(oil$price, start = c(2020, 22), freq = 365)
+> roilt=ts(diff(log(oil$price))*100,start=c(2020,22), freq=365)
+> 
+> Shall I have to declare the dates here?  I want to know also if it is a 5
+> day trading a week, how to declare the frequency.
+> 
+> Looking forward to your reply
+> 
+> Regards,
+> Upananda Pani
+> 
+> Looking forward to your suggestions.
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Package zoo is the best way of having dates in a time series. The 
+package comes with several vignettes that can get you started quickly.
+See the difference between classes ts and zoo below.
+
+# make up some test data
+oil <- data.frame(price = cumsum(rnorm(560)))
+oil$date <- seq(as.Date("2020-01-22"), by = "1 day", length.out = 560)
+
+# base R
+pricet <- ts(oil$price, start = c(2020, 22), freq = 365)
+time(pricet)
+index(pricet)
+plot(pricet)
+
+#---
+
+library(zoo)
+library(ggplot2)
+
+pricez <- zoo(oil$price, order.by = oil$date)
+time(pricez)
+index(pricez)
+autoplot(pricez)
+
+vignette(package = "zoo")
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+From up@n@nd@@p@n| @end|ng |rom gm@||@com  Mon Jan 16 21:55:22 2023
+From: up@n@nd@@p@n| @end|ng |rom gm@||@com (Upananda Pani)
+Date: Tue, 17 Jan 2023 02:25:22 +0530
+Subject: [R] (no subject)
+Message-ID: <CAEezrQR1K5fm-aL0TENW0Fxa2ieY3nH2_tTUfbhNjm97UA9BRg@mail.gmail.com>
+
+Dear Members,
+
+
+
+Greetings! I would like to know how to create the lag variable for my data.
+
+
+
+# Load data and create time series object ----
+
+oil <- read_xlsx("crudefinal.xlsx")
+
+
+
+pricet=ts(oil$price, start = c(2020, 22), frequency = 365)
+
+roilt=ts(diff(log(oil$price))*100,start=c(2020,22),freq=365)
+
+
+
+# Fit MSW model ----
+
+roilt.lag0 = window(roilt,start=c(2020,23),end=c(2021,215),freq=365) # get
+al the lags right
+
+roilt.lag1 = window(roilt,start=c(2020,22),end=c(2021,214),freq=365)
+
+roilt.lag2 = window(roilt,start=c(2020,20),end=c(2021,213),freq=365)
+
+roilt.lag3 = window(roilt,start=c(2020,20),end=c(2021,212),freq=365)
+
+roilt.lag4 = window(roilt,start=c(2020,19),end=c(2021,211),freq=365)
+
+
+
+I am getting error (length is not matching), while creating lag. I will
+grateful to you if you can tell me where  I am making mistakes.
+
+
+
+Regards,
+
+Upananda Pani
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Jan 16 22:13:53 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 16 Jan 2023 21:13:53 +0000
+Subject: [R] Reg: Frequency in declaring time series data
+In-Reply-To: <CAEezrQTfXwdUdurL7qD5ZA_67iN=xAqj7SNnw8PCdeoUDGPxkw@mail.gmail.com>
+References: <CAEezrQTAmZvNQPTq7W3k_PY9YC_5M0VC-rE_x8EYJfFfcHxz_g@mail.gmail.com>
+ <8ad14c34-ec70-8817-8477-114639f15638@sapo.pt>
+ <CAEezrQTfXwdUdurL7qD5ZA_67iN=xAqj7SNnw8PCdeoUDGPxkw@mail.gmail.com>
+Message-ID: <8931072f-67dd-12d4-c3c7-602d51aff484@sapo.pt>
+
+?s 20:52 de 16/01/2023, Upananda Pani escreveu:
+> Hi Rui,
+> 
+> Thank you so much for your help. As I have to fit a Markov Switching Model
+> using  MSwM package.
+> 
+> May I know whether i can convert from zoo object to a time series object.
+> 
+> As I have to use several packages which uses ts so I am not able to decide
+> how to do it.
+> 
+> Grateful to you for your help and support.
+> 
+> With sincere regards,
+> Upananda
+> 
+> On Tue, 17 Jan, 2023, 01:40 Rui Barradas, <ruipbarradas at sapo.pt> wrote:
+> 
+>> ?s 16:39 de 16/01/2023, Upananda Pani escreveu:
+>>> Dear All,
+>>>
+>>> I have a time series daily data with date are stored ( %dd-%mm-%yy
+>> format )
+>>> from 22-01-20 to 03-08-21. In total I have 560 observations. I am using
+>> the
+>>> following command to declare as a time series object. Here the the data
+>> set
+>>> is 7 days a week.
+>>> oil <- read_xlsx("crudefinal.xlsx")
+>>> pricet=ts(oil$price, start = c(2020, 22), freq = 365)
+>>> roilt=ts(diff(log(oil$price))*100,start=c(2020,22), freq=365)
+>>>
+>>> Shall I have to declare the dates here?  I want to know also if it is a 5
+>>> day trading a week, how to declare the frequency.
+>>>
+>>> Looking forward to your reply
+>>>
+>>> Regards,
+>>> Upananda Pani
+>>>
+>>> Looking forward to your suggestions.
+>>>
+>>>        [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>> Hello,
+>>
+>> Package zoo is the best way of having dates in a time series. The
+>> package comes with several vignettes that can get you started quickly.
+>> See the difference between classes ts and zoo below.
+>>
+>> # make up some test data
+>> oil <- data.frame(price = cumsum(rnorm(560)))
+>> oil$date <- seq(as.Date("2020-01-22"), by = "1 day", length.out = 560)
+>>
+>> # base R
+>> pricet <- ts(oil$price, start = c(2020, 22), freq = 365)
+>> time(pricet)
+>> index(pricet)
+>> plot(pricet)
+>>
+>> #---
+>>
+>> library(zoo)
+>> library(ggplot2)
+>>
+>> pricez <- zoo(oil$price, order.by = oil$date)
+>> time(pricez)
+>> index(pricez)
+>> autoplot(pricez)
+>>
+>> vignette(package = "zoo")
+>>
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>>
+>>
+> 
+Hello,
+
+Please always cc the R-Help list.
+
+I have no experience with package MSwM but according to the
+
+vignette("example", package = "MSwM")
+
+you first fit a regression model, say 'mod', and then fit an 
+Autoregressive Markov Switching Model to mod. You don't need a time 
+series, only a regression fit.
+
+Hope this helps,
+
+Rui Barradas
+
+
