@@ -20086,3 +20086,1042 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From JH@rm@e @end|ng |rom roku@com  Fri Jan 20 17:04:24 2023
+From: JH@rm@e @end|ng |rom roku@com (Jorgen Harmse)
+Date: Fri, 20 Jan 2023 16:04:24 +0000
+Subject: [R] 
+ function doesn't exists but still runs..... (akshay kulkarni)
+In-Reply-To: <mailman.368738.1.1674212402.9424.r-help@r-project.org>
+References: <mailman.368738.1.1674212402.9424.r-help@r-project.org>
+Message-ID: <MW4PR01MB646566368BCB841E6D18626EDCC59@MW4PR01MB6465.prod.exchangelabs.com>
+
+It may help to expand a bit on Bill Dunlap's answer. I think that library does something like this:
+
+
+
+Create a new environment for all the package objects. This environment will not be directly visible from .GlobalEnv, and ancestor environments may not be directly visible either. It may contain functions & other objects that are not exported, and it may use objects in ancestor environments that .GlobalEnv doesn't see directly. On the other hand, functions in the package will still see external functions in the way the package author intended instead of seeing functions with the same name that are visible to .GlobalEnv.
+
+
+
+Run the source code in the private environment (using source(local=private environment, ....)?). Most package source code just defines functions, but the source code could build other objects that the package needs for some reason, or it could use delayedAssign to build the objects lazily. By default, the environment of any function defined by the source code is the private environment, so the function has access to private objects and to anything in ancestor environments.
+
+
+
+Create a second new environment whose parent is parent.env(.GlobalEnv). For every export, assign the corresponding object from the private environment into the corresponding name in the public environment. Note that the environment of any function is still the private environment in which it was created. (I think that a function is mostly determined by its environment, its formals, and its body. A function call creates a new environment whose parent is the environment of the function. Thus whoever wrote the function can control the search for anything that isn?t passed in or created by the function itself.)
+
+
+
+Reset parent.env(.GlobalEnv) to be the public environment. This makes all the exported objects (usually functions) available at the command line and allows the user to see everything that was available before (usually by name only, but by scope-resolved name if necessary). As noted by Bill Dunlap and in more detail above, package functions can use functions & other objects that are not directly visible to the user. As he also showed, you can (usually) pierce the privacy as long at least one function is exported. environment(package_function) is the private environment, so you can use it to see all the private objects and everything in the ancestor environments. You can repeat the trick to see private environments of packages you didn't directly pull in. I think you can even unlock bindings and do ghastly things to the package's private environment.
+
+
+
+Regards,
+
+Jorgen Harmse.
+
+------------------------------
+
+Message: 17
+Date: Thu, 19 Jan 2023 16:02:31 -0800
+From: Bill Dunlap <williamwdunlap at gmail.com>
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] function doesn't exists but still runs.....
+Message-ID:
+        <CAHqSRuTCBqh84FHg7=Xmd9qHxUiAN3Y4zBJbkAR3dRWhggu89Q at mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+
+Look into R's scoping rules.  E.g.,
+https://bookdown.org/rdpeng/rprogdatascience/scoping-rules-of-r.html.
+
+* When a function looks up a name, it looks it up in the environment in
+which the function was defined.
+* Functions in a package are generally defined in the package's environment
+(although sometimes they are in a descendent of the parent's environment).
+* When one searches an environment for a name, if it is not found in the
+environment the search continues in the parent environment of that
+environment, recursively until the parent environment is the empty
+environment.
+
+> with(environment(wdman::selenium), java_check)
+function ()
+{
+    javapath <- Sys.which("java")
+    if (identical(unname(javapath), "")) {
+        stop("PATH to JAVA not found. Please check JAVA is installed.")
+    }
+    javapath
+}
+<bytecode: 0x000001fd0ab826a8>
+<environment: namespace:wdman>
+
+-Bill
+
+On Thu, Jan 19, 2023 at 2:28 PM akshay kulkarni <akshay_e4 at hotmail.com>
+wrote:
+
+> dear members,
+>                             I am using the RSelenium package which uses
+> the function selenium() from the wdman package. The selenium function
+> contains the function java_check at line 12. If I try to run it, it throws
+> an error:
+>
+> >   javapath <- java_check()
+> Error in java_check() : could not find function "java_check"
+>
+> Also:
+>
+> > exists("java_check")
+> [1] FALSE
+>
+> But when I run selenium(), it works fine....
+>
+> How do you explain this conundrum? You can refer to this link:
+> https://github.com/ropensci/wdman/issues/15
+>
+> Specifically what concept of R explains this weird behaviour?
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+        [[alternative HTML version deleted]]
+
+
+
+
+------------------------------
+
+Subject: Digest Footer
+
+_______________________________________________
+R-help at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+------------------------------
+
+End of R-help Digest, Vol 239, Issue 20
+***************************************
+
+	[[alternative HTML version deleted]]
+
+
+From y@ngk@|9999 @end|ng |rom y@hoo@com  Fri Jan 20 17:20:15 2023
+From: y@ngk@|9999 @end|ng |rom y@hoo@com (Kai Yang)
+Date: Fri, 20 Jan 2023 16:20:15 +0000 (UTC)
+Subject: [R] Problem to run python code in r markdown
+References: <191453828.1924329.1674231615887.ref@mail.yahoo.com>
+Message-ID: <191453828.1924329.1674231615887@mail.yahoo.com>
+
+Hi Team,I'm trying to run python in R markdown (flexdashboard). The code is below:
+
+try Python=============
+```{r, include=FALSE, echo=TRUE}library(reticulate)py_install("numpy")
+use_condaenv("base")
+```
+```{python}import numpy as np```
+
+I got error message below:
+Error in py_call_impl(callable, dots$args, dots$keywords) :?? ModuleNotFoundError: No module named 'numpy'Calls: <Anonymous> ... py_capture_output -> force -> <Anonymous> -> py_call_implIn addition: There were 26 warnings (use warnings() to see them)Execution halted
+
+
+Based on message, the python can not find numpy package. But I'm sure I installed the package. I don't know how to fix the problem. please help
+Thank you,Kai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From 538280 @end|ng |rom gm@||@com  Fri Jan 20 17:58:33 2023
+From: 538280 @end|ng |rom gm@||@com (Greg Snow)
+Date: Fri, 20 Jan 2023 09:58:33 -0700
+Subject: [R] function doesn't exists but still runs.....
+In-Reply-To: <PU4P216MB1568AED34F5EE91DFBD0BF79C8C49@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB1568AED34F5EE91DFBD0BF79C8C49@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <CAFEqCdy__B8-fU0X6K1fSCMJL+LTiRe4fnr0pLnBrtjRt=X7PQ@mail.gmail.com>
+
+A little simpler answer than the others.
+
+Look at package Namespaces.  When a package is created, the NAMESPACE
+file defines which functions in the package are exported (i.e.
+available for you to use), the other functions are "private" to the
+package meaning that other functions in the package can call those
+functions, but they are not meant to be called directly by the user.
+
+So in your case, the `selenium` function was exported, but
+`java_check` was not exported.  The function does exist, but R's
+regular search rules do not find it when you try to call it directly
+(but because it shares the Namespace with selenium, it is found when
+called there).
+
+It is possible to call non-exported functions (use something like
+RSelenium:::java_check()), but non-exported functions are not usually
+documented and subject to change without any warning.  You are using
+the functionality in a way different from how the author intended, so
+there are no guarantees that it will do what you think it should.
+
+On Thu, Jan 19, 2023 at 3:28 PM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>
+> dear members,
+>                             I am using the RSelenium package which uses the function selenium() from the wdman package. The selenium function contains the function java_check at line 12. If I try to run it, it throws an error:
+>
+> >   javapath <- java_check()
+> Error in java_check() : could not find function "java_check"
+>
+> Also:
+>
+> > exists("java_check")
+> [1] FALSE
+>
+> But when I run selenium(), it works fine....
+>
+> How do you explain this conundrum? You can refer to this link: https://github.com/ropensci/wdman/issues/15
+>
+> Specifically what concept of R explains this weird behaviour?
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Gregory (Greg) L. Snow Ph.D.
+538280 at gmail.com
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Fri Jan 20 18:07:49 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Fri, 20 Jan 2023 17:07:49 +0000
+Subject: [R] function doesn't exists but still runs.....
+In-Reply-To: <CAFEqCdy__B8-fU0X6K1fSCMJL+LTiRe4fnr0pLnBrtjRt=X7PQ@mail.gmail.com>
+References: <PU4P216MB1568AED34F5EE91DFBD0BF79C8C49@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAFEqCdy__B8-fU0X6K1fSCMJL+LTiRe4fnr0pLnBrtjRt=X7PQ@mail.gmail.com>
+Message-ID: <PU4P216MB15680C184B9B24AB95EA734CC8C59@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Greg,
+                  THanks for a very well pointed answer.....
+
+THanking you,
+yours sincerely
+AKSHAY M KULKARNI
+________________________________
+From: Greg Snow <538280 at gmail.com>
+Sent: Friday, January 20, 2023 10:28 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] function doesn't exists but still runs.....
+
+A little simpler answer than the others.
+
+Look at package Namespaces.  When a package is created, the NAMESPACE
+file defines which functions in the package are exported (i.e.
+available for you to use), the other functions are "private" to the
+package meaning that other functions in the package can call those
+functions, but they are not meant to be called directly by the user.
+
+So in your case, the `selenium` function was exported, but
+`java_check` was not exported.  The function does exist, but R's
+regular search rules do not find it when you try to call it directly
+(but because it shares the Namespace with selenium, it is found when
+called there).
+
+It is possible to call non-exported functions (use something like
+RSelenium:::java_check()), but non-exported functions are not usually
+documented and subject to change without any warning.  You are using
+the functionality in a way different from how the author intended, so
+there are no guarantees that it will do what you think it should.
+
+On Thu, Jan 19, 2023 at 3:28 PM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>
+> dear members,
+>                             I am using the RSelenium package which uses the function selenium() from the wdman package. The selenium function contains the function java_check at line 12. If I try to run it, it throws an error:
+>
+> >   javapath <- java_check()
+> Error in java_check() : could not find function "java_check"
+>
+> Also:
+>
+> > exists("java_check")
+> [1] FALSE
+>
+> But when I run selenium(), it works fine....
+>
+> How do you explain this conundrum? You can refer to this link: https://github.com/ropensci/wdman/issues/15
+>
+> Specifically what concept of R explains this weird behaviour?
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+--
+Gregory (Greg) L. Snow Ph.D.
+538280 at gmail.com
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Fri Jan 20 18:10:59 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Fri, 20 Jan 2023 17:10:59 +0000
+Subject: [R] function doesn't exists but still runs.....
+In-Reply-To: <CAHqSRuTCBqh84FHg7=Xmd9qHxUiAN3Y4zBJbkAR3dRWhggu89Q@mail.gmail.com>
+References: <PU4P216MB1568AED34F5EE91DFBD0BF79C8C49@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAHqSRuTCBqh84FHg7=Xmd9qHxUiAN3Y4zBJbkAR3dRWhggu89Q@mail.gmail.com>
+Message-ID: <PU4P216MB1568CB60C7B91A45E16B92FFC8C59@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Bill,
+                Thanks for your reply...If I run selenium() in debug mode,  java_check() should work inside of selenium(), right?
+Any other points to be considered when running selenium() in debug mode?
+
+THanking you,
+yours sincerely
+AKSHAY M KULKARNI
+________________________________
+From: Bill Dunlap <williamwdunlap at gmail.com>
+Sent: Friday, January 20, 2023 5:32 AM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] function doesn't exists but still runs.....
+
+Look into R's scoping rules.  E.g., https://bookdown.org/rdpeng/rprogdatascience/scoping-rules-of-r.html.
+
+* When a function looks up a name, it looks it up in the environment in which the function was defined.
+* Functions in a package are generally defined in the package's environment (although sometimes they are in a descendent of the parent's environment).
+* When one searches an environment for a name, if it is not found in the environment the search continues in the parent environment of that environment, recursively until the parent environment is the empty environment.
+
+> with(environment(wdman::selenium), java_check)
+function ()
+{
+    javapath <- Sys.which("java")
+    if (identical(unname(javapath), "")) {
+        stop("PATH to JAVA not found. Please check JAVA is installed.")
+    }
+    javapath
+}
+<bytecode: 0x000001fd0ab826a8>
+<environment: namespace:wdman>
+
+-Bill
+
+On Thu, Jan 19, 2023 at 2:28 PM akshay kulkarni <akshay_e4 at hotmail.com<mailto:akshay_e4 at hotmail.com>> wrote:
+dear members,
+                            I am using the RSelenium package which uses the function selenium() from the wdman package. The selenium function contains the function java_check at line 12. If I try to run it, it throws an error:
+
+>   javapath <- java_check()
+Error in java_check() : could not find function "java_check"
+
+Also:
+
+> exists("java_check")
+[1] FALSE
+
+But when I run selenium(), it works fine....
+
+How do you explain this conundrum? You can refer to this link: https://github.com/ropensci/wdman/issues/15
+
+Specifically what concept of R explains this weird behaviour?
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Fri Jan 20 18:18:54 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Fri, 20 Jan 2023 17:18:54 +0000
+Subject: [R] 
+ function doesn't exists but still runs..... (akshay kulkarni)
+In-Reply-To: <MW4PR01MB646566368BCB841E6D18626EDCC59@MW4PR01MB6465.prod.exchangelabs.com>
+References: <mailman.368738.1.1674212402.9424.r-help@r-project.org>
+ <MW4PR01MB646566368BCB841E6D18626EDCC59@MW4PR01MB6465.prod.exchangelabs.com>
+Message-ID: <PU4P216MB156875424240A880C680B4CFC8C59@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Jorgen,
+                     thanks for the reply.....so according to you one can pegion hole the problem as concerning R's lexical scoping rules,am I right? Or some arcane concept regarding environments....?
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Jorgen Harmse <JHarmse at roku.com>
+Sent: Friday, January 20, 2023 9:34 PM
+To: r-help at r-project.org <r-help at r-project.org>; akshay_e4 at hotmail.com <akshay_e4 at hotmail.com>; williamwdunlap at gmail.com <williamwdunlap at gmail.com>
+Subject: Re: function doesn't exists but still runs..... (akshay kulkarni)
+
+
+It may help to expand a bit on Bill Dunlap's answer. I think that library does something like this:
+
+
+
+Create a new environment for all the package objects. This environment will not be directly visible from .GlobalEnv, and ancestor environments may not be directly visible either. It may contain functions & other objects that are not exported, and it may use objects in ancestor environments that .GlobalEnv doesn't see directly. On the other hand, functions in the package will still see external functions in the way the package author intended instead of seeing functions with the same name that are visible to .GlobalEnv.
+
+
+
+Run the source code in the private environment (using source(local=private environment, ....)?). Most package source code just defines functions, but the source code could build other objects that the package needs for some reason, or it could use delayedAssign to build the objects lazily. By default, the environment of any function defined by the source code is the private environment, so the function has access to private objects and to anything in ancestor environments.
+
+
+
+Create a second new environment whose parent is parent.env(.GlobalEnv). For every export, assign the corresponding object from the private environment into the corresponding name in the public environment. Note that the environment of any function is still the private environment in which it was created. (I think that a function is mostly determined by its environment, its formals, and its body. A function call creates a new environment whose parent is the environment of the function. Thus whoever wrote the function can control the search for anything that isn?t passed in or created by the function itself.)
+
+
+
+Reset parent.env(.GlobalEnv) to be the public environment. This makes all the exported objects (usually functions) available at the command line and allows the user to see everything that was available before (usually by name only, but by scope-resolved name if necessary). As noted by Bill Dunlap and in more detail above, package functions can use functions & other objects that are not directly visible to the user. As he also showed, you can (usually) pierce the privacy as long at least one function is exported. environment(package_function) is the private environment, so you can use it to see all the private objects and everything in the ancestor environments. You can repeat the trick to see private environments of packages you didn't directly pull in. I think you can even unlock bindings and do ghastly things to the package's private environment.
+
+
+
+Regards,
+
+Jorgen Harmse.
+
+------------------------------
+
+Message: 17
+Date: Thu, 19 Jan 2023 16:02:31 -0800
+From: Bill Dunlap <williamwdunlap at gmail.com>
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] function doesn't exists but still runs.....
+Message-ID:
+        <CAHqSRuTCBqh84FHg7=Xmd9qHxUiAN3Y4zBJbkAR3dRWhggu89Q at mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+
+Look into R's scoping rules.  E.g.,
+https://bookdown.org/rdpeng/rprogdatascience/scoping-rules-of-r.html.
+
+* When a function looks up a name, it looks it up in the environment in
+which the function was defined.
+* Functions in a package are generally defined in the package's environment
+(although sometimes they are in a descendent of the parent's environment).
+* When one searches an environment for a name, if it is not found in the
+environment the search continues in the parent environment of that
+environment, recursively until the parent environment is the empty
+environment.
+
+> with(environment(wdman::selenium), java_check)
+function ()
+{
+    javapath <- Sys.which("java")
+    if (identical(unname(javapath), "")) {
+        stop("PATH to JAVA not found. Please check JAVA is installed.")
+    }
+    javapath
+}
+<bytecode: 0x000001fd0ab826a8>
+<environment: namespace:wdman>
+
+-Bill
+
+On Thu, Jan 19, 2023 at 2:28 PM akshay kulkarni <akshay_e4 at hotmail.com>
+wrote:
+
+> dear members,
+>                             I am using the RSelenium package which uses
+> the function selenium() from the wdman package. The selenium function
+> contains the function java_check at line 12. If I try to run it, it throws
+> an error:
+>
+> >   javapath <- java_check()
+> Error in java_check() : could not find function "java_check"
+>
+> Also:
+>
+> > exists("java_check")
+> [1] FALSE
+>
+> But when I run selenium(), it works fine....
+>
+> How do you explain this conundrum? You can refer to this link:
+> https://github.com/ropensci/wdman/issues/15
+>
+> Specifically what concept of R explains this weird behaviour?
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+        [[alternative HTML version deleted]]
+
+
+
+
+------------------------------
+
+Subject: Digest Footer
+
+_______________________________________________
+R-help at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+------------------------------
+
+End of R-help Digest, Vol 239, Issue 20
+***************************************
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Fri Jan 20 18:59:40 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Fri, 20 Jan 2023 09:59:40 -0800
+Subject: [R] 
+ function doesn't exists but still runs..... (akshay kulkarni)
+In-Reply-To: <PU4P216MB156875424240A880C680B4CFC8C59@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <mailman.368738.1.1674212402.9424.r-help@r-project.org>
+ <MW4PR01MB646566368BCB841E6D18626EDCC59@MW4PR01MB6465.prod.exchangelabs.com>
+ <PU4P216MB156875424240A880C680B4CFC8C59@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <1ACFC3C6-8B81-4FCF-ADB1-98E8240B1B00@dcn.davis.ca.us>
+
+This is not a "problem" ... it is a "feature". Packages often use functions from other packages, but that does NOT mean that you as a user can automatically use those functions  also.
+
+If Package A uses Package B to implement something, but Package B becomes unavailable, the maintainer of Package A would like to fill in the gap. If Package A "Depends" on Package B then users of package A automatically get access to Package B and they get used to treating Package A like it contains all of the functions in Package B directly.
+
+Therefore it is common to have Package A "Import" Package B so that the Package A maintainer won't have to re-implement all of Package B to avoid breaking code for users of Package A. They can fix things under the hood for their own Package A functions using other code.
+
+If a user wants to depend on Package B, it is up to them to use the library function to do so explicitly... and when Package B goes away, they are responsible for dealing with that mess themselves.
+
+You asked "how", and got answers... but you didn't bother to follow up on those answers by reading things like "Writing R Extensions" or Hadley Wickham's "R Packages" or "Advanced R". Don't turn that laziness into a value judgement about "problems" with R.
+
+On January 20, 2023 9:18:54 AM PST, akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>Dear Jorgen,
+>                     thanks for the reply.....so according to you one can pegion hole the problem as concerning R's lexical scoping rules,am I right? Or some arcane concept regarding environments....?
+>
+>THanking you,
+>Yours sincerely,
+>AKSHAY M KULKARNI
+>________________________________
+>From: Jorgen Harmse <JHarmse at roku.com>
+>Sent: Friday, January 20, 2023 9:34 PM
+>To: r-help at r-project.org <r-help at r-project.org>; akshay_e4 at hotmail.com <akshay_e4 at hotmail.com>; williamwdunlap at gmail.com <williamwdunlap at gmail.com>
+>Subject: Re: function doesn't exists but still runs..... (akshay kulkarni)
+>
+>
+>It may help to expand a bit on Bill Dunlap's answer. I think that library does something like this:
+>
+>
+>
+>Create a new environment for all the package objects. This environment will not be directly visible from .GlobalEnv, and ancestor environments may not be directly visible either. It may contain functions & other objects that are not exported, and it may use objects in ancestor environments that .GlobalEnv doesn't see directly. On the other hand, functions in the package will still see external functions in the way the package author intended instead of seeing functions with the same name that are visible to .GlobalEnv.
+>
+>
+>
+>Run the source code in the private environment (using source(local=private environment, ....)?). Most package source code just defines functions, but the source code could build other objects that the package needs for some reason, or it could use delayedAssign to build the objects lazily. By default, the environment of any function defined by the source code is the private environment, so the function has access to private objects and to anything in ancestor environments.
+>
+>
+>
+>Create a second new environment whose parent is parent.env(.GlobalEnv). For every export, assign the corresponding object from the private environment into the corresponding name in the public environment. Note that the environment of any function is still the private environment in which it was created. (I think that a function is mostly determined by its environment, its formals, and its body. A function call creates a new environment whose parent is the environment of the function. Thus whoever wrote the function can control the search for anything that isn?t passed in or created by the function itself.)
+>
+>
+>
+>Reset parent.env(.GlobalEnv) to be the public environment. This makes all the exported objects (usually functions) available at the command line and allows the user to see everything that was available before (usually by name only, but by scope-resolved name if necessary). As noted by Bill Dunlap and in more detail above, package functions can use functions & other objects that are not directly visible to the user. As he also showed, you can (usually) pierce the privacy as long at least one function is exported. environment(package_function) is the private environment, so you can use it to see all the private objects and everything in the ancestor environments. You can repeat the trick to see private environments of packages you didn't directly pull in. I think you can even unlock bindings and do ghastly things to the package's private environment.
+>
+>
+>
+>Regards,
+>
+>Jorgen Harmse.
+>
+>------------------------------
+>
+>Message: 17
+>Date: Thu, 19 Jan 2023 16:02:31 -0800
+>From: Bill Dunlap <williamwdunlap at gmail.com>
+>To: akshay kulkarni <akshay_e4 at hotmail.com>
+>Cc: R help Mailing list <r-help at r-project.org>
+>Subject: Re: [R] function doesn't exists but still runs.....
+>Message-ID:
+>        <CAHqSRuTCBqh84FHg7=Xmd9qHxUiAN3Y4zBJbkAR3dRWhggu89Q at mail.gmail.com>
+>Content-Type: text/plain; charset="utf-8"
+>
+>Look into R's scoping rules.  E.g.,
+>https://bookdown.org/rdpeng/rprogdatascience/scoping-rules-of-r.html.
+>
+>* When a function looks up a name, it looks it up in the environment in
+>which the function was defined.
+>* Functions in a package are generally defined in the package's environment
+>(although sometimes they are in a descendent of the parent's environment).
+>* When one searches an environment for a name, if it is not found in the
+>environment the search continues in the parent environment of that
+>environment, recursively until the parent environment is the empty
+>environment.
+>
+>> with(environment(wdman::selenium), java_check)
+>function ()
+>{
+>    javapath <- Sys.which("java")
+>    if (identical(unname(javapath), "")) {
+>        stop("PATH to JAVA not found. Please check JAVA is installed.")
+>    }
+>    javapath
+>}
+><bytecode: 0x000001fd0ab826a8>
+><environment: namespace:wdman>
+>
+>-Bill
+>
+>On Thu, Jan 19, 2023 at 2:28 PM akshay kulkarni <akshay_e4 at hotmail.com>
+>wrote:
+>
+>> dear members,
+>>                             I am using the RSelenium package which uses
+>> the function selenium() from the wdman package. The selenium function
+>> contains the function java_check at line 12. If I try to run it, it throws
+>> an error:
+>>
+>> >   javapath <- java_check()
+>> Error in java_check() : could not find function "java_check"
+>>
+>> Also:
+>>
+>> > exists("java_check")
+>> [1] FALSE
+>>
+>> But when I run selenium(), it works fine....
+>>
+>> How do you explain this conundrum? You can refer to this link:
+>> https://github.com/ropensci/wdman/issues/15
+>>
+>> Specifically what concept of R explains this weird behaviour?
+>>
+>> Thanking you,
+>> Yours sincerely,
+>> AKSHAY M KULKARNI
+>>
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+>        [[alternative HTML version deleted]]
+>
+>
+>
+>
+>------------------------------
+>
+>Subject: Digest Footer
+>
+>_______________________________________________
+>R-help at r-project.org mailing list
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+>
+>
+>------------------------------
+>
+>End of R-help Digest, Vol 239, Issue 20
+>***************************************
+>
+>	[[alternative HTML version deleted]]
+>
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From JH@rm@e @end|ng |rom roku@com  Fri Jan 20 19:05:24 2023
+From: JH@rm@e @end|ng |rom roku@com (Jorgen Harmse)
+Date: Fri, 20 Jan 2023 18:05:24 +0000
+Subject: [R] [EXTERNAL] Re: function doesn't exists but still runs.....
+ (akshay kulkarni)
+In-Reply-To: <PU4P216MB156875424240A880C680B4CFC8C59@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <mailman.368738.1.1674212402.9424.r-help@r-project.org>
+ <MW4PR01MB646566368BCB841E6D18626EDCC59@MW4PR01MB6465.prod.exchangelabs.com>
+ <PU4P216MB156875424240A880C680B4CFC8C59@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <MW4PR01MB64651D15AD89A2A28C1F1B3BDCC59@MW4PR01MB6465.prod.exchangelabs.com>
+
+Hi Akshay,
+
+Lexical scoping and environments are closely tied. (I think Bill even cited the documentation.) I guess it's arcane in the sense that scoping usually does what you expect, but the way that works is related to what we discussed.
+
+What led you to discover the issue? Were you debugging the public package function because it didn't do what you expected, or were you just curious how it worked?
+
+Regards,
+Jorgen.
+
+
+From: akshay kulkarni <akshay_e4 at hotmail.com>
+Date: Friday, January 20, 2023 at 11:19
+To: Jorgen Harmse <JHarmse at roku.com>, r-help at r-project.org <r-help at r-project.org>, williamwdunlap at gmail.com <williamwdunlap at gmail.com>
+Subject: [EXTERNAL] Re: function doesn't exists but still runs..... (akshay kulkarni)
+Dear Jorgen,
+                     thanks for the reply.....so according to you one can pegion hole the problem as concerning R's lexical scoping rules,am I right? Or some arcane concept regarding environments....?
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Jorgen Harmse <JHarmse at roku.com>
+Sent: Friday, January 20, 2023 9:34 PM
+To: r-help at r-project.org <r-help at r-project.org>; akshay_e4 at hotmail.com <akshay_e4 at hotmail.com>; williamwdunlap at gmail.com <williamwdunlap at gmail.com>
+Subject: Re: function doesn't exists but still runs..... (akshay kulkarni)
+
+
+It may help to expand a bit on Bill Dunlap's answer. I think that library does something like this:
+
+
+
+Create a new environment for all the package objects. This environment will not be directly visible from .GlobalEnv, and ancestor environments may not be directly visible either. It may contain functions & other objects that are not exported, and it may use objects in ancestor environments that .GlobalEnv doesn't see directly. On the other hand, functions in the package will still see external functions in the way the package author intended instead of seeing functions with the same name that are visible to .GlobalEnv.
+
+
+
+Run the source code in the private environment (using source(local=private environment, ....)?). Most package source code just defines functions, but the source code could build other objects that the package needs for some reason, or it could use delayedAssign to build the objects lazily. By default, the environment of any function defined by the source code is the private environment, so the function has access to private objects and to anything in ancestor environments.
+
+
+
+Create a second new environment whose parent is parent.env(.GlobalEnv). For every export, assign the corresponding object from the private environment into the corresponding name in the public environment. Note that the environment of any function is still the private environment in which it was created. (I think that a function is mostly determined by its environment, its formals, and its body. A function call creates a new environment whose parent is the environment of the function. Thus whoever wrote the function can control the search for anything that isn?t passed in or created by the function itself.)
+
+
+
+Reset parent.env(.GlobalEnv) to be the public environment. This makes all the exported objects (usually functions) available at the command line and allows the user to see everything that was available before (usually by name only, but by scope-resolved name if necessary). As noted by Bill Dunlap and in more detail above, package functions can use functions & other objects that are not directly visible to the user. As he also showed, you can (usually) pierce the privacy as long at least one function is exported. environment(package_function) is the private environment, so you can use it to see all the private objects and everything in the ancestor environments. You can repeat the trick to see private environments of packages you didn't directly pull in. I think you can even unlock bindings and do ghastly things to the package's private environment.
+
+
+
+Regards,
+
+Jorgen Harmse.
+
+------------------------------
+
+Message: 17
+Date: Thu, 19 Jan 2023 16:02:31 -0800
+From: Bill Dunlap <williamwdunlap at gmail.com>
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] function doesn't exists but still runs.....
+Message-ID:
+        <CAHqSRuTCBqh84FHg7=Xmd9qHxUiAN3Y4zBJbkAR3dRWhggu89Q at mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+
+Look into R's scoping rules.  E.g.,
+https://bookdown.org/rdpeng/rprogdatascience/scoping-rules-of-r.html.
+
+* When a function looks up a name, it looks it up in the environment in
+which the function was defined.
+* Functions in a package are generally defined in the package's environment
+(although sometimes they are in a descendent of the parent's environment).
+* When one searches an environment for a name, if it is not found in the
+environment the search continues in the parent environment of that
+environment, recursively until the parent environment is the empty
+environment.
+
+> with(environment(wdman::selenium), java_check)
+function ()
+{
+    javapath <- Sys.which("java")
+    if (identical(unname(javapath), "")) {
+        stop("PATH to JAVA not found. Please check JAVA is installed.")
+    }
+    javapath
+}
+<bytecode: 0x000001fd0ab826a8>
+<environment: namespace:wdman>
+
+-Bill
+
+On Thu, Jan 19, 2023 at 2:28 PM akshay kulkarni <akshay_e4 at hotmail.com>
+wrote:
+
+> dear members,
+>                             I am using the RSelenium package which uses
+> the function selenium() from the wdman package. The selenium function
+> contains the function java_check at line 12. If I try to run it, it throws
+> an error:
+>
+> >   javapath <- java_check()
+> Error in java_check() : could not find function "java_check"
+>
+> Also:
+>
+> > exists("java_check")
+> [1] FALSE
+>
+> But when I run selenium(), it works fine....
+>
+> How do you explain this conundrum? You can refer to this link:
+> https://github.com/ropensci/wdman/issues/15
+>
+> Specifically what concept of R explains this weird behaviour?
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+        [[alternative HTML version deleted]]
+
+
+
+
+------------------------------
+
+Subject: Digest Footer
+
+_______________________________________________
+R-help at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+------------------------------
+
+End of R-help Digest, Vol 239, Issue 20
+***************************************
+
+	[[alternative HTML version deleted]]
+
+
+From er|cjberger @end|ng |rom gm@||@com  Fri Jan 20 19:29:58 2023
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Fri, 20 Jan 2023 20:29:58 +0200
+Subject: [R] Problem to run python code in r markdown
+In-Reply-To: <191453828.1924329.1674231615887@mail.yahoo.com>
+References: <191453828.1924329.1674231615887.ref@mail.yahoo.com>
+ <191453828.1924329.1674231615887@mail.yahoo.com>
+Message-ID: <CAGgJW77AYewxLZMguiEhaYaBc0EsqRJOs=y4a7N0SmVhQqE+Vw@mail.gmail.com>
+
+You don't specify what platform you are on (linux / Windows / other),
+and what tools you are using.
+I am running a linux system and I have virtual environments set up.
+I set the environment variable RETICULATE_PYTHON to point to python
+(in my virtual environment).
+I am using RStudio, and I use the File pulldown menu and select New
+File --> 'R Markdown' or New File --> 'Quarto document'.
+In the R Markdown (or Quarto) document, create a python code chunk:
+
+```{python}
+import numpy as np
+print(np.arange(5))
+```
+
+works for me.
+HTH,
+Eric
+
+
+
+
+On Fri, Jan 20, 2023 at 6:20 PM Kai Yang via R-help
+<r-help at r-project.org> wrote:
+>
+> Hi Team,I'm trying to run python in R markdown (flexdashboard). The code is below:
+>
+> try Python=============
+> ```{r, include=FALSE, echo=TRUE}library(reticulate)py_install("numpy")
+> use_condaenv("base")
+> ```
+> ```{python}import numpy as np```
+>
+> I got error message below:
+> Error in py_call_impl(callable, dots$args, dots$keywords) :   ModuleNotFoundError: No module named 'numpy'Calls: <Anonymous> ... py_capture_output -> force -> <Anonymous> -> py_call_implIn addition: There were 26 warnings (use warnings() to see them)Execution halted
+>
+>
+> Based on message, the python can not find numpy package. But I'm sure I installed the package. I don't know how to fix the problem. please help
+> Thank you,Kai
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From new@ @end|ng |rom m||@ng|@c|er@com  Fri Jan 20 21:30:03 2023
+From: new@ @end|ng |rom m||@ng|@c|er@com (Milan Glacier)
+Date: Fri, 20 Jan 2023 15:30:03 -0500
+Subject: [R] Problem to run python code in r markdown
+In-Reply-To: <191453828.1924329.1674231615887@mail.yahoo.com>
+References: <191453828.1924329.1674231615887.ref@mail.yahoo.com>
+ <191453828.1924329.1674231615887@mail.yahoo.com>
+Message-ID: <20230120203003.waudn5b4ssxfyqc4@zoho.com>
+
+Maybe it is the order. You called py_install() first and then called
+use_condaenv(). Perhaps you need to switch to your conda env first and
+then call py_install().
+
+On 01/20/23 16:20, Kai Yang via R-help wrote:
+>Hi Team,I'm trying to run python in R markdown (flexdashboard). The code is below:
+>
+>try Python=============
+>```{r, include=FALSE, echo=TRUE}library(reticulate)py_install("numpy")
+>use_condaenv("base")
+>```
+>```{python}import numpy as np```
+>
+>I got error message below:
+>Error in py_call_impl(callable, dots$args, dots$keywords) :?? ModuleNotFoundError: No module named 'numpy'Calls: <Anonymous> ... py_capture_output -> force -> <Anonymous> -> py_call_implIn addition: There were 26 warnings (use warnings() to see them)Execution halted
+>
+>
+>Based on message, the python can not find numpy package. But I'm sure I installed the package. I don't know how to fix the problem. please help
+>Thank you,Kai
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Fri Jan 20 21:33:04 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Fri, 20 Jan 2023 15:33:04 -0500
+Subject: [R] Problem to run python code in r markdown
+In-Reply-To: <191453828.1924329.1674231615887@mail.yahoo.com>
+References: <191453828.1924329.1674231615887.ref@mail.yahoo.com>
+ <191453828.1924329.1674231615887@mail.yahoo.com>
+Message-ID: <007a01d92d0e$6613dc70$323b9550$@gmail.com>
+
+Kai,
+
+Just FYI, this is mainly an R mailing list and although there ware ways to combine python with R (or sort of alone) within environments like RSTUDIO, this may not be an optimal place to discuss this. You are discussing what is no longer really "R markdown" and more just plain "markdown" that supports many languages in many environments and you are using one called flexdashboard.
+
+I had a similar problem for a while because I had an amazing number of copies of python installed on my machine in various ways including directly and within Anaconda and several other ways. Each may have kept copies of modules like numpy in a different place. Unfortunately, when running python from RSTUDIO, it was looking in a place that did not have it and when I used "pip" to get the latest copy, it insisted I already had it!
+
+So I eventually uninstalled all versions I could find and reinstalled just one version and then got the numpy and pandas modules installed under that version. Oh, I also replaced/updated RSTUDIO. Things work fine for now.
+
+Some people may advise you on how to determine which version of python you are calling, or change it, and how to download numpy to the place it is expected, or change some environmental variable to point to it or any number of other solutions. Some like virtual environments, for example.
+
+The bottom line is your setup does not have numpy installed as far as the software is concerned even if it is installed somewhere on your machine. When you get things aligned, you will be fine. 
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Kai Yang via R-help
+Sent: Friday, January 20, 2023 11:20 AM
+To: R-help Mailing List <r-help at r-project.org>
+Subject: [R] Problem to run python code in r markdown
+
+Hi Team,I'm trying to run python in R markdown (flexdashboard). The code is below:
+
+try Python=============
+```{r, include=FALSE, echo=TRUE}library(reticulate)py_install("numpy")
+use_condaenv("base")
+```
+```{python}import numpy as np```
+
+I got error message below:
+Error in py_call_impl(callable, dots$args, dots$keywords) :   ModuleNotFoundError: No module named 'numpy'Calls: <Anonymous> ... py_capture_output -> force -> <Anonymous> -> py_call_implIn addition: There were 26 warnings (use warnings() to see them)Execution halted
+
+
+Based on message, the python can not find numpy package. But I'm sure I installed the package. I don't know how to fix the problem. please help Thank you,Kai
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	[[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
