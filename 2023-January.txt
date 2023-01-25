@@ -22408,3 +22408,876 @@ On 1/23/2023 2:24 AM, Leonard Mada wrote:
 	[[alternative HTML version deleted]]
 
 
+From tr|ng @end|ng |rom gvdnet@dk  Mon Jan 23 09:04:02 2023
+From: tr|ng @end|ng |rom gvdnet@dk (Troels Ring)
+Date: Mon, 23 Jan 2023 09:04:02 +0100
+Subject: [R] R emulation of FindRoot in Mathematica
+In-Reply-To: <8ec44b74-2cd0-28bf-e2e1-e3464dce6660@syonic.eu>
+References: <f52da468-5e5a-45c6-d7ca-c0d849e51033@syonic.eu>
+ <8ec44b74-2cd0-28bf-e2e1-e3464dce6660@syonic.eu>
+Message-ID: <9c893774-7ae1-72db-c6a5-6e19c8139e92@gvdnet.dk>
+
+Dear Leonard - thanks a lot for the solution! Yes, you are right: pH is 
+presumed known, so the effort is repeated at a series of chosen pH 
+values.? It appears that no matter x0 the estimate for atp is always 
+-6.239560e-01 which even accounting for offset of 0.008 is negative 
+which is not possible and the estimate of the other species also appear 
+to be constant no matter x0? The algorithm needs only 2 or 3 iterations 
+and doesn't complain. I have been through the equations and they appear 
+correct. Wonder what I did wrong?
+
+Below some output
+
+Best wishes
+Troels
+
+x0 = c(
+ ? atp = 0.008,
+ ? adp = 0.00001,
+ ? pi = 0.003,
+ ? pcr = 0.042,
+ ? cr = 0.004,
+ ? lactate = 0.005
+) / 3;
+# tricky to get a positive value !!!
+ ?x0[1] = 0.001; # still NOT positive;
+
+x = multiroot(solve.AcidSpecies, x0, H = 4E-8)
+x
+# $root
+# atp?????????? adp??????????? pi?????????? pcr cr?????? lactate
+# -6.239560e-01? 3.254998e-06? 5.581774e-08? 4.142785e-09 5.011807e-10? 
+4.973691e-03
+
+x0 <- 1000*x0
+x = multiroot(solve.AcidSpecies, x0, H = 4E-8)
+x
+# $root
+# atp?????????? adp??????????? pi?????????? pcr cr?????? lactate
+# -6.239560e-01? 3.254998e-06? 5.581774e-08? 4.142785e-09 5.011807e-10? 
+4.973691e-03
+
+x0 <- x0*1e-6
+x = multiroot(solve.AcidSpecies, x0, H = 4E-8)
+x
+# $root
+# atp?????????? adp??????????? pi?????????? pcr cr?????? lactate
+# -6.239560e-01? 3.254998e-06? 5.581774e-08? 4.142785e-09 5.011807e-10? 
+4.973691e-03
+
+
+Den 23-01-2023 kl. 01:24 skrev Leonard Mada:
+> Dear Troels,
+>
+> I send you an updated version of the response. I think that a hybrid 
+> approach is probably the best solution:
+> - Input / Starting values = free: ATP, ADP, Crea, CreaP, lactate, 
+> inorganic phosphate;
+> - Output: diff(Total, given total value);
+> - I assume that the pH is given;
+> - I did NOT check all individual eqs;
+>
+> library(rootSolve)
+>
+> solve.AcidSpecies = function(x, H, Mg=0.0006, K = 0.12) {
+> ??? # ... the eqs: ...;
+> ??? ATPTotal = KaATPH * ATP * H + KaATPH2 * KaATPH * ATP * H^2 +
+> ??? + KaATPH3 * KaATPH2 * KaATPH * ATP * H^3 + KdATPMg * ATP * Mg +
+> ??? + KdATPHMg * ATP * H * Mg + KdATPMg2 * ATP * Mg^2 + KdATPK * ATP * K;
+> ??? ### Output:
+> ??? total = c(
+> ??? ??? ATPTotal - 0.008,
+> ??? ??? ADPTotal - 1E-5,
+> ??? ??? CreaTotal - 0.004,
+> ??? ??? CreaPTotal - 0.042,
+> ??? ??? PiTotal - 0.003,
+> ??? ??? LactateTotal - 0.005);
+> ??? return(total);
+> }
+>
+> KaATPH = 10^6.494; # ...
+> x0 = c(ATP = 0.008, ADP = 1E-5,
+> ??? Crea = 0.004, CreaP = 0.042, Pi = 0.003, Lactate = 0.005) / 2;
+> x = multiroot(solve.AcidSpecies, x0, H = 4E-8);
+>
+>
+> print(x)
+>
+>
+> I think that it is possible to use the eqs directly as provided 
+> initially (with some minor corrections). You only need to output the 
+> known totals (as a diff), see full code below.
+>
+>
+> Sincerely,
+>
+>
+> Leonard
+>
+>
+>
+> library(rootSolve)
+>
+> solve.AcidSpecies = function(x, H, Mg=0.0006, k = 0.12) {
+> ?? ?# with(list(x), { seems NOT to work with multiroot });
+> ?? ?atp = x[1]; adp = x[2]; pi = x[3];
+> ?? ?pcr = x[4]; cr = x[5]; lactate = x[6];
+>
+> ###
+> hatp <- 10^6.494*H*atp
+> hhatp <- 10^3.944*H*hatp
+> hhhatp <- 10^1.9*H*hhatp
+> hhhhatp? <- 10*H*hhhatp
+> mgatp <- 10^4.363*atp*Mg
+> mghatp <- 10^2.299*hatp*Mg
+> mg2atp <- 10^1-7*Mg*mgatp
+> katp <- 10^0.959*atp*k
+>
+> hadp <- 10^6.349*adp*H
+> hhadp <- 10^3.819*hadp*H
+> hhhadp <- 10*H*hhadp
+> mgadp <- 10^3.294*Mg*adp
+> mghadp <- 10^1.61*Mg*hadp
+> mg2adp <- 10*Mg*mgadp
+> kadp <- 10^0.82*k*adp
+>
+> hpi <- 10^11.616*H*pi
+> hhpi <- 10^6.7*H*hpi
+> hhhpi <- 10^1.962*H*hhpi
+> mgpi <- 10^3.4*Mg*pi
+> mghpi <- 10^1.946*Mg*hpi
+> mghhpi <- 10^1.19*Mg*hhpi
+> kpi <- 10^0.6*k*pi
+> khpi <- 10^1.218*k*hpi
+> khhpi <- 10^-0.2*k*hhpi
+>
+> hpcr <- 10^14.3*H*pcr
+> hhpcr <- 10^4.5*H*hpcr
+> hhhpcr <- 10^2.7*H*hhpcr
+> hhhhpcr <- 100*H*hhhpcr
+> mghpcr <- 10^1.6*Mg*hpcr
+> kpcr <- 10^0.74*k*pcr
+> khpcr <- 10^0.31*k*hpcr
+> khhpcr <- 10^-0.13*k*hhpcr
+>
+> hcr <- 10^14.3*H*cr
+> hhcr <- 10^2.512*H*hcr
+>
+> hlactate <- 10^3.66*H*lactate
+> mglactate <- 10^0.93*Mg*lactate
+>
+> tatp <- atp + hatp + hhatp + hhhatp + mgatp + mghatp + mg2atp + katp
+> tadp <- adp + hadp + hhadp + hhhadp + mghadp + mgadp + mg2adp + kadp
+> tpi? <- pi + hpi + hhpi + hhhpi + mgpi + mghpi + mghhpi + kpi + khpi + 
+> khhpi
+> tpcr <- pcr + hpcr + hhpcr + hhhpcr + hhhhpcr + mghpcr + kpcr + khpcr 
+> + khhpcr
+> tcr? <- cr + hcr + hhcr
+> tlactate <- lactate + hlactate + mglactate
+> # tmg <- Mg + mgatp + mghatp + mg2atp + mgadp + mghadp + mg2adp + mgpi +
+> #??? kghpi + mghhpi + mghpcr + mglactate
+> # tk <- k + katp + kadp + kpi + khpi + khhpi + kpcr + khpcr + khhpcr
+>
+>
+> total = c(
+> ?? ?tatp - 0.008,
+> ?? ?tadp - 0.00001,
+> ?? ?tpi - 0.003,
+> ?? ?tpcr - 0.042,
+> ?? ?tcr - 0.004,
+> ?? ?tlactate - 0.005)
+> return(total);
+> # })
+> }
+>
+> # conditions
+>
+> x0 = c(
+> ?? ?atp = 0.008,
+> ?? ?adp = 0.00001,
+> ?? ?pi = 0.003,
+> ?? ?pcr = 0.042,
+> ?? ?cr = 0.004,
+> ?? ?lactate = 0.005
+> ) / 3;
+> # tricky to get a positive value !!!
+> x0[1] = 0.001; # still NOT positive;
+>
+> x = multiroot(solve.AcidSpecies, x0, H = 4E-8)
+>
+>
+> On 1/23/2023 12:37 AM, Leonard Mada wrote:
+>> Dear Troels,
+>>
+>> The system that you mentioned needs to be transformed first. The 
+>> equations are standard acid-base equilibria-type equations in 
+>> analytic chemistry.
+>>
+>> ATP + H <-> ATPH
+>> ATPH + H <-> ATPH2
+>> ATPH2 + H <-> ATPH3
+>> [...]
+>> The total amount of [ATP] is provided, while the concentration of the 
+>> intermediates are unknown.
+>>
+>> Q.) It was unclear from your description:
+>> Do you know the pH?
+>> Or is the pH also unknown?
+>>
+>> I believe that the system is exactly solvable. The "multivariable" 
+>> system/solution may be easier to write down: but is uglier to solve, 
+>> as the "system" is under-determined. You can use optim in such cases, 
+>> see eg. an example were I use it:
+>> https://github.com/discoleo/R/blob/master/Stat/Polygons.Examples.R
+>>
+>>
+>> a2 = optim(c(0.9, 0.5), polygonOptim, d=x)
+>> # where the function polygonOptim() computes the distance between the 
+>> starting-point & ending point of the polygon;
+>> # (the polygon is defined only by the side lengths and optim() tries 
+>> to compute the angles);
+>> # optimal distance = 0, when the polygon is closed;
+>> # Note: it is possible to use more than 2 starting values in the 
+>> example above (the version with optim) works quit well;
+>> # - but you need to "design" the function that is optimized for your 
+>> particular system, e.g.
+>> #?? by returning: c((ATPTotal - value)^2, (ADPTotal - value)^2, ...);
+>>
+>>
+>> S.1.) Exact Solution
+>> ATP system: You can express all components as eqs of free ATP, [ATP], 
+>> and [H], [Mg], [K].
+>> ATPH = KaATPH * ATP * H;
+>> ATPH2 = KaATPH2 * ATPH * H
+>> = KaATPH2 * KaATPH * ATP * H^2;
+>> [...]
+>>
+>> Then you substitute these into the total-eqs. It is a bit uglier, as 
+>> you have 5 coupled systems: ATP, ADP, Creatinine, CreaP and Lactate. 
+>> This is why I thought that it may be easier to do it, at least 
+>> partially/hybrid, in a "multivariate" way.
+>>
+>> # Total ATP:
+>> ATPTotal = KaATPH * ATP * H + KaATPH2 * KaATPH * ATP * H^2 +
+>> ??? + KaATPH3 * KaATPH2 * KaATPH * ATP * H^3 + ...;
+>>
+>> Note:
+>> - the system above is solvable, if the pH is known; it may be 
+>> undetermined if the pH is NOT known (but I am not very certain: 
+>> easier to spot only when all the eqs are written down nicely);
+>> - the eqs for total K & total Mg: are not useful to solve the system, 
+>> as there are NO constraints on the total values; they will yield only 
+>> some numerical values (which may be interesting for the analysis);
+>> - total K & total Mg can be computed after solving the system;
+>>
+>> Please let me know if you need further assistance.
+>>
+>> Sincerely,
+>>
+>> Leonard
+>>
+>>
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sun Jan 22 18:38:13 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sun, 22 Jan 2023 12:38:13 -0500
+Subject: [R] Info files in Windows and Mac distributions
+In-Reply-To: <IA1P223MB0499FFD767FBFB80C54426BEFACB9@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+References: <IA1P223MB0499FFD767FBFB80C54426BEFACB9@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+Message-ID: <6a1cb904-fd30-7686-9f7f-3d28e9b63bb5@gmail.com>
+
+On 22/01/2023 12:09 p.m., Naresh Gurbuxani wrote:
+> Recently I installed Linux on my desktop.  I discovered that R for Linux ships with info files of manuals.  R for Windows and Mac only ship with html and pdf files of manuals.
+> 
+> Why not include info files in R distributions for Windows and Mac?  These are very convenient with emacs.  Using pandoc , I tried converting from html to info.  The results were nowhere near as good as the originals.
+
+I think the answer to the question is just that there isn't much demand 
+for them:  emacs is mainly used by Linux users these days.
+
+But the source to the manuals is available, so presumably you could 
+produce these pretty easily yourself.  The R-devel versions are here:
+
+   https://github.com/r-devel/r-svn/tree/master/doc/manual
+
+I don't know whether the .texi files are sufficient for emacs or whether 
+you need to process them first; I'm not an emacs user.
+
+Duncan Murdoch
+
+
+From JH@rm@e @end|ng |rom roku@com  Mon Jan 23 17:01:15 2023
+From: JH@rm@e @end|ng |rom roku@com (Jorgen Harmse)
+Date: Mon, 23 Jan 2023 16:01:15 +0000
+Subject: [R] [EXTERNAL] Re: function doesn't exists but still runs.....
+ (akshay kulkarni)
+In-Reply-To: <mailman.368758.1.1674471601.10506.r-help@r-project.org>
+References: <mailman.368758.1.1674471601.10506.r-help@r-project.org>
+Message-ID: <MW4PR01MB6465AAB90079281B2151D808DCC89@MW4PR01MB6465.prod.exchangelabs.com>
+
+Hi Akshay,
+
+I usually use debug (a function provided by R). When you are stepping through a function your environment is the one in which function code is being executed, so you can easily see everything that is visible to the function. If you single step into a function that the first function calls then you also see everything that is available to that function. Moreover, you don't see anything that is not visible to the function you are debugging, so you can really determine what any piece of code would do if called inside the function.
+
+Note 1: Code in R is always executed in an environment. I show in the example below that in the empty environment (the ultimate ancestor of all other environments) R can't even add. Usually the current environment (e.g. .GlobalEnv at the command line or a fresh environment created by a function call) has the right contents and the right parent to do what you expect, but in some special cases you need to understand how environments work. Even evalq & with are functions (unavailable for example in the empty environment), and the environment argument has to be evaluated in the current environment before the main expression can be evaluated in the environment that you want.
+
+
+> E[1]
+
+[[1]]
+
+<environment: R_EmptyEnv>
+
+
+
+> evalq(2+2, E[[1L]])
+
+Error in 2 + 2 : could not find function "+"
+
+> evalq(2L+2L, E[[1L]])
+
+Error in 2L + 2L : could not find function "+"
+
+Note 2: Besides automatically showing what a function sees, using debug (instead of hand-executing lines of code from the function) gives you the correct call stack. Suppose that you run some code at the debug command line to make a sub-sub-?-function do what you want, and you create in that environment what you hope is the correct return value. You can then use parent.frame() to put that value into the environment of the caller and run the caller's remaining code in the correct environment to see what happens. If there are no other problems then you can work your way up to top level and confirm that your patch has the right effect before you even modify the actual code of the offending function. (Saving all environments in .GlobalEnv forces R to keep them even if you quit the debugger. Combining eval & parse is sometimes more convenient than using evalq.)
+
+Regards,
+Jorgen.
+
+------------------------------
+
+Message: 2
+Date: Sun, 22 Jan 2023 14:25:59 +0000
+From: akshay kulkarni <akshay_e4 at hotmail.com>
+To: Jorgen Harmse <JHarmse at roku.com>, "r-help at r-project.org"
+        <r-help at r-project.org>, "williamwdunlap at gmail.com"
+        <williamwdunlap at gmail.com>
+Subject: Re: [R] [EXTERNAL] Re: function doesn't exists but still
+        runs..... (akshay kulkarni)
+Message-ID:
+        <PU4P216MB1568BDE0E4929806E096CC11C8CB9 at PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Content-Type: text/plain; charset="utf-8"
+
+Dear Jorgen,
+                        regrets to reply this late....
+I got into this issue because it threw an error, and it took more than 4 days to fix this. I  learnt a lot, and one things I learnt  is to debug the function, even when that is a public package function....instead of googling the error message...Any ideas on how to do this more efficiently?
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Jorgen Harmse <JHarmse at roku.com>
+Sent: Friday, January 20, 2023 11:35 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>; r-help at r-project.org <r-help at r-project.org>; williamwdunlap at gmail.com <williamwdunlap at gmail.com>
+Subject: Re: [EXTERNAL] Re: function doesn't exists but still runs..... (akshay kulkarni)
+
+
+Hi Akshay,
+
+
+
+Lexical scoping and environments are closely tied. (I think Bill even cited the documentation.) I guess it's arcane in the sense that scoping usually does what you expect, but the way that works is related to what we discussed.
+
+
+
+What led you to discover the issue? Were you debugging the public package function because it didn't do what you expected, or were you just curious how it worked?
+
+
+
+Regards,
+
+Jorgen.
+
+
+
+
+
+From: akshay kulkarni <akshay_e4 at hotmail.com>
+Date: Friday, January 20, 2023 at 11:19
+To: Jorgen Harmse <JHarmse at roku.com>, r-help at r-project.org <r-help at r-project.org>, williamwdunlap at gmail.com <williamwdunlap at gmail.com>
+Subject: [EXTERNAL] Re: function doesn't exists but still runs..... (akshay kulkarni)
+
+Dear Jorgen,
+
+                     thanks for the reply.....so according to you one can pegion hole the problem as concerning R's lexical scoping rules,am I right? Or some arcane concept regarding environments....?
+
+
+
+THanking you,
+
+Yours sincerely,
+
+AKSHAY M KULKARNI
+
+________________________________
+
+From: Jorgen Harmse <JHarmse at roku.com>
+Sent: Friday, January 20, 2023 9:34 PM
+To: r-help at r-project.org <r-help at r-project.org>; akshay_e4 at hotmail.com <akshay_e4 at hotmail.com>; williamwdunlap at gmail.com <williamwdunlap at gmail.com>
+Subject: Re: function doesn't exists but still runs..... (akshay kulkarni)
+
+
+
+It may help to expand a bit on Bill Dunlap's answer. I think that library does something like this:
+
+
+
+Create a new environment for all the package objects. This environment will not be directly visible from .GlobalEnv, and ancestor environments may not be directly visible either. It may contain functions & other objects that are not exported, and it may use objects in ancestor environments that .GlobalEnv doesn't see directly. On the other hand, functions in the package will still see external functions in the way the package author intended instead of seeing functions with the same name that are visible to .GlobalEnv.
+
+
+
+Run the source code in the private environment (using source(local=private environment, ....)?). Most package source code just defines functions, but the source code could build other objects that the package needs for some reason, or it could use delayedAssign to build the objects lazily. By default, the environment of any function defined by the source code is the private environment, so the function has access to private objects and to anything in ancestor environments.
+
+
+
+Create a second new environment whose parent is parent.env(.GlobalEnv). For every export, assign the corresponding object from the private environment into the corresponding name in the public environment. Note that the environment of any function is still the private environment in which it was created. (I think that a function is mostly determined by its environment, its formals, and its body. A function call creates a new environment whose parent is the environment of the function. Thus whoever wrote the function can control the search for anything that isn?t passed in or created by the function itself.)
+
+
+
+Reset parent.env(.GlobalEnv) to be the public environment. This makes all the exported objects (usually functions) available at the command line and allows the user to see everything that was available before (usually by name only, but by scope-resolved name if necessary). As noted by Bill Dunlap and in more detail above, package functions can use functions & other objects that are not directly visible to the user. As he also showed, you can (usually) pierce the privacy as long at least one function is exported. environment(package_function) is the private environment, so you can use it to see all the private objects and everything in the ancestor environments. You can repeat the trick to see private environments of packages you didn't directly pull in. I think you can even unlock bindings and do ghastly things to the package's private environment.
+
+
+
+Regards,
+
+Jorgen Harmse.
+
+------------------------------
+
+Message: 17
+Date: Thu, 19 Jan 2023 16:02:31 -0800
+From: Bill Dunlap <williamwdunlap at gmail.com>
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] function doesn't exists but still runs.....
+Message-ID:
+        <CAHqSRuTCBqh84FHg7=Xmd9qHxUiAN3Y4zBJbkAR3dRWhggu89Q at mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+
+Look into R's scoping rules.  E.g.,
+https://bookdown.org/rdpeng/rprogdatascience/scoping-rules-of-r.html.
+
+* When a function looks up a name, it looks it up in the environment in
+which the function was defined.
+* Functions in a package are generally defined in the package's environment
+(although sometimes they are in a descendent of the parent's environment).
+* When one searches an environment for a name, if it is not found in the
+environment the search continues in the parent environment of that
+environment, recursively until the parent environment is the empty
+environment.
+
+> with(environment(wdman::selenium), java_check)
+function ()
+{
+    javapath <- Sys.which("java")
+    if (identical(unname(javapath), "")) {
+        stop("PATH to JAVA not found. Please check JAVA is installed.")
+    }
+    javapath
+}
+<bytecode: 0x000001fd0ab826a8>
+<environment: namespace:wdman>
+
+-Bill
+
+On Thu, Jan 19, 2023 at 2:28 PM akshay kulkarni <akshay_e4 at hotmail.com>
+wrote:
+
+> dear members,
+>                             I am using the RSelenium package which uses
+> the function selenium() from the wdman package. The selenium function
+> contains the function java_check at line 12. If I try to run it, it throws
+> an error:
+>
+> >   javapath <- java_check()
+> Error in java_check() : could not find function "java_check"
+>
+> Also:
+>
+> > exists("java_check")
+> [1] FALSE
+>
+> But when I run selenium(), it works fine....
+>
+> How do you explain this conundrum? You can refer to this link:
+> https://github.com/ropensci/wdman/issues/15
+>
+> Specifically what concept of R explains this weird behaviour?
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+        [[alternative HTML version deleted]]
+
+
+
+
+------------------------------
+
+Subject: Digest Footer
+
+_______________________________________________
+R-help at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+------------------------------
+
+End of R-help Digest, Vol 239, Issue 20
+***************************************
+
+        [[alternative HTML version deleted]]
+
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Mon Jan 23 18:54:47 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Mon, 23 Jan 2023 17:54:47 +0000
+Subject: [R] [EXTERNAL] Re: function doesn't exists but still runs.....
+ (akshay kulkarni)
+In-Reply-To: <MW4PR01MB6465AAB90079281B2151D808DCC89@MW4PR01MB6465.prod.exchangelabs.com>
+References: <mailman.368758.1.1674471601.10506.r-help@r-project.org>
+ <MW4PR01MB6465AAB90079281B2151D808DCC89@MW4PR01MB6465.prod.exchangelabs.com>
+Message-ID: <PU4P216MB15683A4FA52903D059493EB3C8C89@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Jorgen,
+                       thanks a lot....
+
+Thanking you,
+Yours sincerely
+Akshay M Kulkarni
+________________________________
+From: Jorgen Harmse <JHarmse at roku.com>
+Sent: Monday, January 23, 2023 9:31 PM
+To: r-help at r-project.org <r-help at r-project.org>; akshay kulkarni <akshay_e4 at hotmail.com>
+Subject: Re: [R] [EXTERNAL] Re: function doesn't exists but still runs..... (akshay kulkarni)
+
+
+Hi Akshay,
+
+
+
+I usually use debug (a function provided by R). When you are stepping through a function your environment is the one in which function code is being executed, so you can easily see everything that is visible to the function. If you single step into a function that the first function calls then you also see everything that is available to that function. Moreover, you don't see anything that is not visible to the function you are debugging, so you can really determine what any piece of code would do if called inside the function.
+
+
+
+Note 1: Code in R is always executed in an environment. I show in the example below that in the empty environment (the ultimate ancestor of all other environments) R can't even add. Usually the current environment (e.g. .GlobalEnv at the command line or a fresh environment created by a function call) has the right contents and the right parent to do what you expect, but in some special cases you need to understand how environments work. Even evalq & with are functions (unavailable for example in the empty environment), and the environment argument has to be evaluated in the current environment before the main expression can be evaluated in the environment that you want.
+
+
+
+> E[1]
+
+[[1]]
+
+<environment: R_EmptyEnv>
+
+
+
+> evalq(2+2, E[[1L]])
+
+Error in 2 + 2 : could not find function "+"
+
+> evalq(2L+2L, E[[1L]])
+
+Error in 2L + 2L : could not find function "+"
+
+
+
+Note 2: Besides automatically showing what a function sees, using debug (instead of hand-executing lines of code from the function) gives you the correct call stack. Suppose that you run some code at the debug command line to make a sub-sub-?-function do what you want, and you create in that environment what you hope is the correct return value. You can then use parent.frame() to put that value into the environment of the caller and run the caller's remaining code in the correct environment to see what happens. If there are no other problems then you can work your way up to top level and confirm that your patch has the right effect before you even modify the actual code of the offending function. (Saving all environments in .GlobalEnv forces R to keep them even if you quit the debugger. Combining eval & parse is sometimes more convenient than using evalq.)
+
+
+
+Regards,
+
+Jorgen.
+
+------------------------------
+
+Message: 2
+Date: Sun, 22 Jan 2023 14:25:59 +0000
+From: akshay kulkarni <akshay_e4 at hotmail.com>
+To: Jorgen Harmse <JHarmse at roku.com>, "r-help at r-project.org"
+        <r-help at r-project.org>, "williamwdunlap at gmail.com"
+        <williamwdunlap at gmail.com>
+Subject: Re: [R] [EXTERNAL] Re: function doesn't exists but still
+        runs..... (akshay kulkarni)
+Message-ID:
+        <PU4P216MB1568BDE0E4929806E096CC11C8CB9 at PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Content-Type: text/plain; charset="utf-8"
+
+Dear Jorgen,
+                        regrets to reply this late....
+I got into this issue because it threw an error, and it took more than 4 days to fix this. I  learnt a lot, and one things I learnt  is to debug the function, even when that is a public package function....instead of googling the error message...Any ideas on how to do this more efficiently?
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Jorgen Harmse <JHarmse at roku.com>
+Sent: Friday, January 20, 2023 11:35 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>; r-help at r-project.org <r-help at r-project.org>; williamwdunlap at gmail.com <williamwdunlap at gmail.com>
+Subject: Re: [EXTERNAL] Re: function doesn't exists but still runs..... (akshay kulkarni)
+
+
+Hi Akshay,
+
+
+
+Lexical scoping and environments are closely tied. (I think Bill even cited the documentation.) I guess it's arcane in the sense that scoping usually does what you expect, but the way that works is related to what we discussed.
+
+
+
+What led you to discover the issue? Were you debugging the public package function because it didn't do what you expected, or were you just curious how it worked?
+
+
+
+Regards,
+
+Jorgen.
+
+
+
+
+
+From: akshay kulkarni <akshay_e4 at hotmail.com>
+Date: Friday, January 20, 2023 at 11:19
+To: Jorgen Harmse <JHarmse at roku.com>, r-help at r-project.org <r-help at r-project.org>, williamwdunlap at gmail.com <williamwdunlap at gmail.com>
+Subject: [EXTERNAL] Re: function doesn't exists but still runs..... (akshay kulkarni)
+
+Dear Jorgen,
+
+                     thanks for the reply.....so according to you one can pegion hole the problem as concerning R's lexical scoping rules,am I right? Or some arcane concept regarding environments....?
+
+
+
+THanking you,
+
+Yours sincerely,
+
+AKSHAY M KULKARNI
+
+________________________________
+
+From: Jorgen Harmse <JHarmse at roku.com>
+Sent: Friday, January 20, 2023 9:34 PM
+To: r-help at r-project.org <r-help at r-project.org>; akshay_e4 at hotmail.com <akshay_e4 at hotmail.com>; williamwdunlap at gmail.com <williamwdunlap at gmail.com>
+Subject: Re: function doesn't exists but still runs..... (akshay kulkarni)
+
+
+
+It may help to expand a bit on Bill Dunlap's answer. I think that library does something like this:
+
+
+
+Create a new environment for all the package objects. This environment will not be directly visible from .GlobalEnv, and ancestor environments may not be directly visible either. It may contain functions & other objects that are not exported, and it may use objects in ancestor environments that .GlobalEnv doesn't see directly. On the other hand, functions in the package will still see external functions in the way the package author intended instead of seeing functions with the same name that are visible to .GlobalEnv.
+
+
+
+Run the source code in the private environment (using source(local=private environment, ....)?). Most package source code just defines functions, but the source code could build other objects that the package needs for some reason, or it could use delayedAssign to build the objects lazily. By default, the environment of any function defined by the source code is the private environment, so the function has access to private objects and to anything in ancestor environments.
+
+
+
+Create a second new environment whose parent is parent.env(.GlobalEnv). For every export, assign the corresponding object from the private environment into the corresponding name in the public environment. Note that the environment of any function is still the private environment in which it was created. (I think that a function is mostly determined by its environment, its formals, and its body. A function call creates a new environment whose parent is the environment of the function. Thus whoever wrote the function can control the search for anything that isn?t passed in or created by the function itself.)
+
+
+
+Reset parent.env(.GlobalEnv) to be the public environment. This makes all the exported objects (usually functions) available at the command line and allows the user to see everything that was available before (usually by name only, but by scope-resolved name if necessary). As noted by Bill Dunlap and in more detail above, package functions can use functions & other objects that are not directly visible to the user. As he also showed, you can (usually) pierce the privacy as long at least one function is exported. environment(package_function) is the private environment, so you can use it to see all the private objects and everything in the ancestor environments. You can repeat the trick to see private environments of packages you didn't directly pull in. I think you can even unlock bindings and do ghastly things to the package's private environment.
+
+
+
+Regards,
+
+Jorgen Harmse.
+
+------------------------------
+
+Message: 17
+Date: Thu, 19 Jan 2023 16:02:31 -0800
+From: Bill Dunlap <williamwdunlap at gmail.com>
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] function doesn't exists but still runs.....
+Message-ID:
+        <CAHqSRuTCBqh84FHg7=Xmd9qHxUiAN3Y4zBJbkAR3dRWhggu89Q at mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+
+Look into R's scoping rules.  E.g.,
+https://bookdown.org/rdpeng/rprogdatascience/scoping-rules-of-r.html.
+
+* When a function looks up a name, it looks it up in the environment in
+which the function was defined.
+* Functions in a package are generally defined in the package's environment
+(although sometimes they are in a descendent of the parent's environment).
+* When one searches an environment for a name, if it is not found in the
+environment the search continues in the parent environment of that
+environment, recursively until the parent environment is the empty
+environment.
+
+> with(environment(wdman::selenium), java_check)
+function ()
+{
+    javapath <- Sys.which("java")
+    if (identical(unname(javapath), "")) {
+        stop("PATH to JAVA not found. Please check JAVA is installed.")
+    }
+    javapath
+}
+<bytecode: 0x000001fd0ab826a8>
+<environment: namespace:wdman>
+
+-Bill
+
+On Thu, Jan 19, 2023 at 2:28 PM akshay kulkarni <akshay_e4 at hotmail.com>
+wrote:
+
+> dear members,
+>                             I am using the RSelenium package which uses
+> the function selenium() from the wdman package. The selenium function
+> contains the function java_check at line 12. If I try to run it, it throws
+> an error:
+>
+> >   javapath <- java_check()
+> Error in java_check() : could not find function "java_check"
+>
+> Also:
+>
+> > exists("java_check")
+> [1] FALSE
+>
+> But when I run selenium(), it works fine....
+>
+> How do you explain this conundrum? You can refer to this link:
+> https://github.com/ropensci/wdman/issues/15
+>
+> Specifically what concept of R explains this weird behaviour?
+>
+> Thanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+        [[alternative HTML version deleted]]
+
+
+
+
+------------------------------
+
+Subject: Digest Footer
+
+_______________________________________________
+R-help at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+------------------------------
+
+End of R-help Digest, Vol 239, Issue 20
+***************************************
+
+        [[alternative HTML version deleted]]
+
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From v@r|n@@ch@ @end|ng |rom y@hoo@|r  Mon Jan 23 19:38:23 2023
+From: v@r|n@@ch@ @end|ng |rom y@hoo@|r (varin sacha)
+Date: Mon, 23 Jan 2023 18:38:23 +0000 (UTC)
+Subject: [R] package FactoMineR
+References: <830985149.1604446.1674499103618.ref@mail.yahoo.com>
+Message-ID: <830985149.1604446.1674499103618@mail.yahoo.com>
+
+Dear R-experts,
+
+Here below the R code working (page 8?http://www2.uaem.mx/r-mirror/web/packages/FactoMineR/FactoMineR.pdf).?
+
+But I am trying to get all the labels (the writes) : comfort, university, economic, world, ... smaller.?
+How could I do that ?
+
+Many thanks.
+
+library(FactoMineR)
+data(children)
+res.ca <- CA (children, row.sup = 15:18, col.sup = 6:8)
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Jan 23 20:16:42 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 23 Jan 2023 19:16:42 +0000
+Subject: [R] package FactoMineR
+In-Reply-To: <830985149.1604446.1674499103618@mail.yahoo.com>
+References: <830985149.1604446.1674499103618.ref@mail.yahoo.com>
+ <830985149.1604446.1674499103618@mail.yahoo.com>
+Message-ID: <1fc08bf7-1a52-cabc-f8e9-4dabc158635c@sapo.pt>
+
+?s 18:38 de 23/01/2023, varin sacha via R-help escreveu:
+> Dear R-experts,
+> 
+> Here below the R code working (page 8?http://www2.uaem.mx/r-mirror/web/packages/FactoMineR/FactoMineR.pdf).
+> 
+> But I am trying to get all the labels (the writes) : comfort, university, economic, world, ... smaller.
+> How could I do that ?
+> 
+> Many thanks.
+> 
+> library(FactoMineR)
+> data(children)
+> res.ca <- CA (children, row.sup = 15:18, col.sup = 6:8)
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+I'm not finding "smaller" but are you looking for
+
+
+rownames(res.ca$row$coord)
+rownames(res.ca$row.sup$coord)
+
+?
+
+Hope this helps,
+
+Rui Barradas
+
+
