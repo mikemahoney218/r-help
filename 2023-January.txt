@@ -26769,3 +26769,776 @@ On Wed, Jan 25, 2023 at 7:57 PM Duncan Murdoch <murdoch.duncan at gmail.com> wro
 >
 
 
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Jan 26 11:12:33 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 26 Jan 2023 05:12:33 -0500
+Subject: [R] Minimal match to regexp?
+In-Reply-To: <CAPcHnpSADhURtx0aAbDAfrDywu7FnhnmZjGZ5WochiYOMzKs5w@mail.gmail.com>
+References: <37382c1f-7ab1-6145-5fd7-d4a15e7a7655@gmail.com>
+ <CAPcHnpTT1p-_U+FxoeJHv4puisZe6SCPc41A7xkn2TJpYEKQVg@mail.gmail.com>
+ <e1ba31be-9504-fb93-8194-78858407eb07@gmail.com>
+ <CAPcHnpSADhURtx0aAbDAfrDywu7FnhnmZjGZ5WochiYOMzKs5w@mail.gmail.com>
+Message-ID: <dca52f1c-021f-1012-6ee6-937b18cf4494@gmail.com>
+
+I'll submit a bug report.
+
+On 25/01/2023 8:38 p.m., Andrew Simmons wrote:
+> It seems like a bug to me. Using perl = TRUE, I see the desired result:
+> 
+> ```
+> x <- "\n```html\nblah blah \n```\n\n```r\nblah blah\n```\n"
+> 
+> pattern2 <- "\n([`]{3,})html\n.*?\n\\1\n"
+> 
+> cat(regmatches(x, regexpr(pattern2, x, perl = TRUE)))
+> ```
+> 
+> If you change it to something like:
+> 
+> ```
+> x <- c(
+>      "\n```html\nblah blah \n```\n\n```r\nblah blah\n```\n",
+>      "\n```html\nblah blah \n```\n"
+> )
+> 
+> pattern2 <- "\n([`]{3,})html\n.*?\n\\1\n"
+> 
+> print(regmatches(x, regexpr(pattern2, x)), width = 10)
+> ```
+> 
+> you can see that it does find the match, so the combination of *? and
+> \\1 must be messing up regexpr(). They seem to work perfectly fine on
+> their own.
+> 
+> On Wed, Jan 25, 2023 at 7:57 PM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>
+>> Thanks for pointing out my mistake.  I oversimplified the real problem.
+>>
+>> I'll try to post a version of it that comes closer:  Suppose I have a
+>> string like this:
+>>
+>> x <- "\n```html\nblah blah \n```\n\n```r\nblah blah\n```\n"
+>>
+>> If I cat() it, I see that it is really markdown source:
+>>
+>>     ```html
+>>     blah blah
+>>     ```
+>>
+>>     ```r
+>>     blah blah
+>>     ```
+>>
+>> I want to find the part that includes the html block, but not the r
+>> block.  So I want to match "```html", followed by a minimal number of
+>> characters, then "```".  Then this pattern works:
+>>
+>>     pattern <- "\n```html\n.*?\n```\n"
+>>
+>> and we get the right answer:
+>>
+>>     cat(regmatches(x, regexpr(pattern, x)))
+>>
+>>     ```html
+>>     blah blah
+>>     ```
+>>
+>> Okay, but this flavour of markdown says there can be more backticks, not
+>> just 3.  So the block might look like
+>>
+>>     ````html
+>>     blah blah
+>>     ````
+>>
+>> I need to have the same number of backticks in the opening and closing
+>> marker.  So I make the pattern more complicated, and it doesn't work:
+>>
+>>     pattern2 <- "\n([`]{3,})html\n.*?\n\\1\n"
+>>
+>> This matches all of x:
+>>
+>>     > pattern2 <- "\n([`]{3,})html\n.*?\n\\1\n"
+>>     > cat(regmatches(x, regexpr(pattern2, x)))
+>>
+>>     ```html
+>>     blah blah
+>>     ```
+>>
+>>     ```r
+>>     blah blah
+>>     ```
+>>
+>>
+>> Is that a bug, or am I making a silly mistake again?
+>>
+>> Duncan Murdoch
+>>
+>>
+>>
+>> On 25/01/2023 7:34 p.m., Andrew Simmons wrote:
+>>> grep(value = TRUE) just returns the strings which match the pattern. You
+>>> have to use regexpr() or gregexpr() if you want to know where the
+>>> matches are:
+>>>
+>>> ```
+>>> x <- "abaca"
+>>>
+>>> # extract only the first match with regexpr()
+>>> m <- regexpr("a.*?a", x)
+>>> regmatches(x, m)
+>>>
+>>> # or
+>>>
+>>> # extract every match with gregexpr()
+>>> m <- gregexpr("a.*?a", x)
+>>> regmatches(x, m)
+>>> ```
+>>>
+>>> You could also use sub() to remove the rest of the string:
+>>> `sub("^.*(a.*?a).*$", "\\1", x)`
+>>> keeping only the match within the parenthesis.
+>>>
+>>>
+>>> On Wed, Jan 25, 2023, 19:19 Duncan Murdoch <murdoch.duncan at gmail.com
+>>> <mailto:murdoch.duncan at gmail.com>> wrote:
+>>>
+>>>      The docs for ?regexp say this:  "By default repetition is greedy, so
+>>>      the
+>>>      maximal possible number of repeats is used. This can be changed to
+>>>      ?minimal? by appending ? to the quantifier. (There are further
+>>>      quantifiers that allow approximate matching: see the TRE
+>>>      documentation.)"
+>>>
+>>>      I want the minimal match, but I don't seem to be getting it.  For
+>>>      example,
+>>>
+>>>      x <- "abaca"
+>>>      grep("a.*?a", x, value = TRUE)
+>>>      #> [1] "abaca"
+>>>
+>>>      Shouldn't I have gotten "aba", which is the first match to "a.*a"?  If
+>>>      not, what would be the regexp that would give me the first match to
+>>>      "a.*a", without greedy expansion of the .*?
+>>>
+>>>      Duncan Murdoch
+>>>
+>>>      ______________________________________________
+>>>      R-help at r-project.org <mailto:R-help at r-project.org> mailing list --
+>>>      To UNSUBSCRIBE and more, see
+>>>      https://stat.ethz.ch/mailman/listinfo/r-help
+>>>      <https://stat.ethz.ch/mailman/listinfo/r-help>
+>>>      PLEASE do read the posting guide
+>>>      http://www.R-project.org/posting-guide.html
+>>>      <http://www.R-project.org/posting-guide.html>
+>>>      and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+
+
+From petr@p|k@| @end|ng |rom prechez@@cz  Thu Jan 26 15:35:24 2023
+From: petr@p|k@| @end|ng |rom prechez@@cz (PIKAL Petr)
+Date: Thu, 26 Jan 2023 14:35:24 +0000
+Subject: [R] akima interp results to zero with less than 10 values
+Message-ID: <925137bc32b04ee7b2f32314b9178df7@SRVEXCHCM1302.precheza.cz>
+
+Dear all
+
+I have this table 
+> dput(mat)
+mat <- structure(c(2, 16, 9, 2, 16, 1, 1, 4, 7, 7, 44.52, 42.8, 43.54, 
+40.26, 40.09), dim = c(5L, 3L))
+
+And I want to calculate result for contour or image plots as I did few years
+ago.
+
+However interp does not compute the z values and gives me zeros in z matrix.
+library(akima)
+
+> interp(mat[,1], mat[,2], mat[, 3], nx=5, ny=5)
+$x
+[1]  2.0  5.5  9.0 12.5 16.0
+
+$y
+[1] 1.0 2.5 4.0 5.5 7.0
+
+$z
+     [,1] [,2] [,3] [,4] [,5]
+[1,]    0    0    0    0    0
+[2,]    0    0    0    0    0
+[3,]    0    0    0    0    0
+[4,]    0    0    0    0    0
+[5,]    0    0    0    0    0
+
+With the example from help page if less than 10 values are used, the result
+is also zero
+interp(akima$x[1:9], akima$y[1:9], akima$z[1:9], nx=5, ny=5)
+
+but with 10 or more values the result is correctly calculated
+interp(akima$x[1:10], akima$y[1:10], akima$z[1:10], nx=5, ny=5)
+$x
+[1]  0.0000  6.1625 12.3250 18.4875 24.6500
+
+$y
+[1]  1.24  5.93 10.62 15.31 20.00
+
+$z
+     [,1]     [,2]     [,3]     [,4]     [,5]
+[1,]   NA       NA       NA       NA 34.60000
+[2,]   NA       NA 27.29139 27.11807 26.60971
+[3,]   NA 19.81371 19.63614 19.12778 18.61943
+[4,]   NA 14.01443 10.66531 11.13750 10.62914
+[5,]   NA       NA       NA       NA       NA
+
+Help page says
+x, y, and z must be the same length (execpt if x is a
+SpatialPointsDataFrame) and may contain no fewer than ***four*** points.
+
+So my understanding was that 5 poins could be used but I am obviously wrong.
+Is it a bug in interp or in the documentation or is it my poor understanding
+of the whole matter.
+
+Best regards
+Petr
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Jan 26 15:43:55 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 26 Jan 2023 09:43:55 -0500
+Subject: [R] akima interp results to zero with less than 10 values
+In-Reply-To: <925137bc32b04ee7b2f32314b9178df7@SRVEXCHCM1302.precheza.cz>
+References: <925137bc32b04ee7b2f32314b9178df7@SRVEXCHCM1302.precheza.cz>
+Message-ID: <97630a08-0980-49cf-c819-0c4cf334b962@gmail.com>
+
+The akima package has a problematic license (it doesn't allow commercial 
+use), so it's been recommended that people use the interp package 
+instead.  When I use interp::interp instead of akima::interp, I get 
+reasonable output from your example.
+
+So that's another reason to drop akima...
+
+Duncan Murdoch
+
+On 26/01/2023 9:35 a.m., PIKAL Petr wrote:
+> Dear all
+> 
+> I have this table
+>> dput(mat)
+> mat <- structure(c(2, 16, 9, 2, 16, 1, 1, 4, 7, 7, 44.52, 42.8, 43.54,
+> 40.26, 40.09), dim = c(5L, 3L))
+> 
+> And I want to calculate result for contour or image plots as I did few years
+> ago.
+> 
+> However interp does not compute the z values and gives me zeros in z matrix.
+> library(akima)
+> 
+>> interp(mat[,1], mat[,2], mat[, 3], nx=5, ny=5)
+> $x
+> [1]  2.0  5.5  9.0 12.5 16.0
+> 
+> $y
+> [1] 1.0 2.5 4.0 5.5 7.0
+> 
+> $z
+>       [,1] [,2] [,3] [,4] [,5]
+> [1,]    0    0    0    0    0
+> [2,]    0    0    0    0    0
+> [3,]    0    0    0    0    0
+> [4,]    0    0    0    0    0
+> [5,]    0    0    0    0    0
+> 
+> With the example from help page if less than 10 values are used, the result
+> is also zero
+> interp(akima$x[1:9], akima$y[1:9], akima$z[1:9], nx=5, ny=5)
+> 
+> but with 10 or more values the result is correctly calculated
+> interp(akima$x[1:10], akima$y[1:10], akima$z[1:10], nx=5, ny=5)
+> $x
+> [1]  0.0000  6.1625 12.3250 18.4875 24.6500
+> 
+> $y
+> [1]  1.24  5.93 10.62 15.31 20.00
+> 
+> $z
+>       [,1]     [,2]     [,3]     [,4]     [,5]
+> [1,]   NA       NA       NA       NA 34.60000
+> [2,]   NA       NA 27.29139 27.11807 26.60971
+> [3,]   NA 19.81371 19.63614 19.12778 18.61943
+> [4,]   NA 14.01443 10.66531 11.13750 10.62914
+> [5,]   NA       NA       NA       NA       NA
+> 
+> Help page says
+> x, y, and z must be the same length (execpt if x is a
+> SpatialPointsDataFrame) and may contain no fewer than ***four*** points.
+> 
+> So my understanding was that 5 poins could be used but I am obviously wrong.
+> Is it a bug in interp or in the documentation or is it my poor understanding
+> of the whole matter.
+> 
+> Best regards
+> Petr
+> 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From petr@p|k@| @end|ng |rom prechez@@cz  Thu Jan 26 15:49:01 2023
+From: petr@p|k@| @end|ng |rom prechez@@cz (PIKAL Petr)
+Date: Thu, 26 Jan 2023 14:49:01 +0000
+Subject: [R] akima interp results to zero with less than 10 values
+In-Reply-To: <97630a08-0980-49cf-c819-0c4cf334b962@gmail.com>
+References: <925137bc32b04ee7b2f32314b9178df7@SRVEXCHCM1302.precheza.cz>
+ <97630a08-0980-49cf-c819-0c4cf334b962@gmail.com>
+Message-ID: <7fe86878ab6f42be8627e1d5e500ee6e@SRVEXCHCM1302.precheza.cz>
+
+Hallo Duncan
+
+Thanks, I was not aware of this package.  I will try.
+
+Petr
+
+> -----Original Message-----
+> From: Duncan Murdoch <murdoch.duncan at gmail.com>
+> Sent: Thursday, January 26, 2023 3:44 PM
+> To: PIKAL Petr <petr.pikal at precheza.cz>; r-help at r-project.org
+> Subject: Re: [R] akima interp results to zero with less than 10 values
+>
+> The akima package has a problematic license (it doesn't allow commercial 
+> use),
+> so it's been recommended that people use the interp package instead.  When I
+> use interp::interp instead of akima::interp, I get reasonable output from 
+> your
+> example.
+>
+> So that's another reason to drop akima...
+>
+> Duncan Murdoch
+>
+> On 26/01/2023 9:35 a.m., PIKAL Petr wrote:
+> > Dear all
+> >
+> > I have this table
+> >> dput(mat)
+> > mat <- structure(c(2, 16, 9, 2, 16, 1, 1, 4, 7, 7, 44.52, 42.8, 43.54,
+> > 40.26, 40.09), dim = c(5L, 3L))
+> >
+> > And I want to calculate result for contour or image plots as I did few
+> > years ago.
+> >
+> > However interp does not compute the z values and gives me zeros in z 
+> > matrix.
+> > library(akima)
+> >
+> >> interp(mat[,1], mat[,2], mat[, 3], nx=5, ny=5)
+> > $x
+> > [1]  2.0  5.5  9.0 12.5 16.0
+> >
+> > $y
+> > [1] 1.0 2.5 4.0 5.5 7.0
+> >
+> > $z
+> >       [,1] [,2] [,3] [,4] [,5]
+> > [1,]    0    0    0    0    0
+> > [2,]    0    0    0    0    0
+> > [3,]    0    0    0    0    0
+> > [4,]    0    0    0    0    0
+> > [5,]    0    0    0    0    0
+> >
+> > With the example from help page if less than 10 values are used, the
+> > result is also zero interp(akima$x[1:9], akima$y[1:9], akima$z[1:9],
+> > nx=5, ny=5)
+> >
+> > but with 10 or more values the result is correctly calculated
+> > interp(akima$x[1:10], akima$y[1:10], akima$z[1:10], nx=5, ny=5) $x [1]
+> > 0.0000  6.1625 12.3250 18.4875 24.6500
+> >
+> > $y
+> > [1]  1.24  5.93 10.62 15.31 20.00
+> >
+> > $z
+> >       [,1]     [,2]     [,3]     [,4]     [,5]
+> > [1,]   NA       NA       NA       NA 34.60000
+> > [2,]   NA       NA 27.29139 27.11807 26.60971
+> > [3,]   NA 19.81371 19.63614 19.12778 18.61943
+> > [4,]   NA 14.01443 10.66531 11.13750 10.62914
+> > [5,]   NA       NA       NA       NA       NA
+> >
+> > Help page says
+> > x, y, and z must be the same length (execpt if x is a
+> > SpatialPointsDataFrame) and may contain no fewer than ***four*** points.
+> >
+> > So my understanding was that 5 poins could be used but I am obviously
+> wrong.
+> > Is it a bug in interp or in the documentation or is it my poor
+> > understanding of the whole matter.
+> >
+> > Best regards
+> > Petr
+> >
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> > http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+
+From tg@77m @end|ng |rom y@hoo@com  Thu Jan 26 16:40:34 2023
+From: tg@77m @end|ng |rom y@hoo@com (Thomas Subia)
+Date: Thu, 26 Jan 2023 15:40:34 +0000 (UTC)
+Subject: [R] Shadow Graphics Error in R Studio
+References: <665268593.3060042.1674747634928.ref@mail.yahoo.com>
+Message-ID: <665268593.3060042.1674747634928@mail.yahoo.com>
+
+Brinkley,
+
+I am using R studio with
+R version 4.2.0 (2022-04-22 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 10 x64 (build 19045)
+
+I cannot reproduce your error messages.
+That being said, you might want to look at:
+?
+https://github.com/rstudio/rstudio/issues/2214 
+https://stackoverflow.com/questions/19513705/error-in-rstudiogd-shadow-graphics-device-error-r-error-4-r-code-execution
+
+Hope this helps!
+
+Thomas Subia
+
+
+From v|v|@njunge|@ @end|ng |rom |c|oud@com  Wed Jan 25 17:22:40 2023
+From: v|v|@njunge|@ @end|ng |rom |c|oud@com (Vivian Jungels)
+Date: Wed, 25 Jan 2023 10:22:40 -0600
+Subject: [R] R installation
+Message-ID: <CE4CEF71-58FC-4727-8E8D-647E14A52A9F@icloud.com>
+
+Hello! 
+
+I am trying to install R and its says there is an error with the software. I am using the link for Mac OS the most recent version on the website because my Mac OS is M1 and 13.2 version. I am able to download it but then when I install it it says they?re an error with the software that caused the installation to fail. I was wondering what I need to do to install R? 
+
+Vivian Jungels 
+
+From kev|n@thorpe @end|ng |rom utoronto@c@  Thu Jan 26 18:16:53 2023
+From: kev|n@thorpe @end|ng |rom utoronto@c@ (Kevin Thorpe)
+Date: Thu, 26 Jan 2023 17:16:53 +0000
+Subject: [R] R installation
+In-Reply-To: <CE4CEF71-58FC-4727-8E8D-647E14A52A9F@icloud.com>
+References: <CE4CEF71-58FC-4727-8E8D-647E14A52A9F@icloud.com>
+Message-ID: <D15BA20C-9218-411A-80D3-89715F83F658@utoronto.ca>
+
+The most obvious question is did you download the correct package? There is a version for Intel-based MACs and for M1-based MACs.
+
+
+> On Jan 25, 2023, at 11:22 AM, Vivian Jungels via R-help <r-help at r-project.org> wrote:
+> 
+> Hello! 
+> 
+> I am trying to install R and its says there is an error with the software. I am using the link for Mac OS the most recent version on the website because my Mac OS is M1 and 13.2 version. I am able to download it but then when I install it it says they?re an error with the software that caused the installation to fail. I was wondering what I need to do to install R? 
+> 
+> Vivian Jungels 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Kevin E. Thorpe
+Head of Biostatistics,  Applied Health Research Centre (AHRC)
+Li Ka Shing Knowledge Institute of St. Michael?s Hospital
+Assistant Professor, Dalla Lana School of Public Health
+University of Toronto
+email: kevin.thorpe at utoronto.ca  Tel: 416.864.5776  Fax: 416.864.3016
+
+
+
+From kev|n@thorpe @end|ng |rom utoronto@c@  Thu Jan 26 18:25:39 2023
+From: kev|n@thorpe @end|ng |rom utoronto@c@ (Kevin Thorpe)
+Date: Thu, 26 Jan 2023 17:25:39 +0000
+Subject: [R] R installation
+In-Reply-To: <B5324B16-C2C7-4F29-B149-BDB55741BB23@icloud.com>
+References: <D15BA20C-9218-411A-80D3-89715F83F658@utoronto.ca>
+ <B5324B16-C2C7-4F29-B149-BDB55741BB23@icloud.com>
+Message-ID: <D024D7CB-0DC2-4536-ABBA-1048C4D570DB@utoronto.ca>
+
+If you used this link for R-4.2.2-arm64.pkg then I have no other ideas.
+
+The r-sig-mac list can probably help you more, but there is the possibility you will get help here.
+
+
+> On Jan 26, 2023, at 12:19 PM, Vivian Jungels <vivianjungels at icloud.com> wrote:
+> 
+> I have an M1 Mac with OS 13.2 so I did the most recent version that said for M1 Macs and higher. 
+> 
+> Vivian Jungels 
+> 
+>> On Jan 26, 2023, at 11:16 AM, Kevin Thorpe <kevin.thorpe at utoronto.ca> wrote:
+>> 
+>> ?The most obvious question is did you download the correct package? There is a version for Intel-based MACs and for M1-based MACs.
+>> 
+>> 
+>>> On Jan 25, 2023, at 11:22 AM, Vivian Jungels via R-help <r-help at r-project.org> wrote:
+>>> 
+>>> Hello! 
+>>> 
+>>> I am trying to install R and its says there is an error with the software. I am using the link for Mac OS the most recent version on the website because my Mac OS is M1 and 13.2 version. I am able to download it but then when I install it it says they?re an error with the software that caused the installation to fail. I was wondering what I need to do to install R? 
+>>> 
+>>> Vivian Jungels 
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>> 
+
+
+-- 
+Kevin E. Thorpe
+Head of Biostatistics,  Applied Health Research Centre (AHRC)
+Li Ka Shing Knowledge Institute of St. Michael?s Hospital
+Assistant Professor, Dalla Lana School of Public Health
+University of Toronto
+email: kevin.thorpe at utoronto.ca  Tel: 416.864.5776  Fax: 416.864.3016
+
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Thu Jan 26 18:42:02 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 26 Jan 2023 09:42:02 -0800
+Subject: [R] R installation
+In-Reply-To: <CE4CEF71-58FC-4727-8E8D-647E14A52A9F@icloud.com>
+References: <CE4CEF71-58FC-4727-8E8D-647E14A52A9F@icloud.com>
+Message-ID: <CAGxFJbTjEr871n0S1KCDzjka9HRfUDOq+DFdXf5Y4FkV5dz4qg@mail.gmail.com>
+
+What is the error, **exactly**?
+
+Bert
+
+On Thu, Jan 26, 2023 at 9:12 AM Vivian Jungels via R-help <
+r-help at r-project.org> wrote:
+
+> Hello!
+>
+> I am trying to install R and its says there is an error with the software.
+> I am using the link for Mac OS the most recent version on the website
+> because my Mac OS is M1 and 13.2 version. I am able to download it but then
+> when I install it it says they?re an error with the software that caused
+> the installation to fail. I was wondering what I need to do to install R?
+>
+> Vivian Jungels
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From tung@k@nt@rc| @end|ng |rom gm@||@com  Thu Jan 26 20:04:08 2023
+From: tung@k@nt@rc| @end|ng |rom gm@||@com (=?UTF-8?Q?Tunga_Kantarc=C4=B1?=)
+Date: Thu, 26 Jan 2023 20:04:08 +0100
+Subject: [R] Failing to install the rgl package
+Message-ID: <CAMDpC=sj=1QfTXkYeFWaVfoKDKbcLig1Ddj9R47f6KcjmvotJg@mail.gmail.com>
+
+Hi,
+
+I try to execute the seven lines of code below to plot a graph. But I
+am failing as the messages below show. Where am I going wrong?
+
+
+install.packages("rgl")
+library(rgl)
+y_hat = X%*%B_hat
+open3d(windowRect = c(100,100,900,900),family = "serif")
+color = rainbow(length(y_hat))[rank(y_hat)]
+plot3d(educ,exper,wage,col = color,type = "s",size = 0.5,xlim =
+c(0,20),ylim = c(0,60),zlim = c(-10,70),box = FALSE,axes = TRUE)
+planes3d(B_hat[2],B_hat[3],-1,B_hat[1],alpha = 0.5,col = "azure")
+
+
+ -------------------------------------------------------------------------
+> install.packages("rgl")
+trying URL 'https://cran.rstudio.com/bin/macosx/contrib/4.1/rgl_1.0.1.tgz'
+Content type 'application/x-gzip' length 9425401 bytes (9.0 MB)
+==================================================
+downloaded 9.0 MB
+
+The downloaded binary packages are in
+/var/folders/fx/_msf5ycn14g59c3vlc4pc7b80000gn/T//RtmpfaezHX/downloaded_packages
+> library(rgl)
+Registered S3 methods overwritten by 'rgl':
+  method               from
+  knit_print.rglId
+  knit_print.rglOpen3d
+  sew.rglRecordedplot
+Error in dyn.load(dynlib <- getDynlib(dir)) :
+  unable to load shared object
+'/Library/Frameworks/R.framework/Versions/4.1/Resources/library/rgl/libs/rgl.so':
+  dlopen(/Library/Frameworks/R.framework/Versions/4.1/Resources/library/rgl/libs/rgl.so,
+0x0006): Library not loaded: /opt/X11/lib/libGLU.1.dylib
+  Referenced from: <82C7D9AE-E1B2-39EA-A909-163B033CF7B1>
+/Library/Frameworks/R.framework/Versions/4.1/Resources/library/rgl/libs/rgl.so
+  Reason: tried: '/opt/X11/lib/libGLU.1.dylib' (no such file),
+'/System/Volumes/Preboot/Cryptexes/OS/opt/X11/lib/libGLU.1.dylib' (no
+such file), '/opt/X11/lib/libGLU.1.dylib' (no such file),
+'/Library/Frameworks/R.framework/Resources/lib/libGLU.1.dylib' (no
+such file), '/Users/tunga/lib/libGLU.1.dylib' (no such file),
+'/usr/local/lib/libGLU.1.dylib' (no such file),
+'/usr/lib/libGLU.1.dylib' (no such file, not in dyld cache),
+'/lib/libGLU.1.dylib' (no such file),
+'/Library/Java/JavaVirtualMachines/jdk1.8.0_241.jdk/Contents/Home/jre/lib/server/libGLU.1.dylib'
+(no such file), '/var/folders/fx/_msf5ycn
+In addition: Warning message:
+package ?rgl? was built under R version 4.1.2
+Error: package or namespace load failed for ?rgl?:
+ .onLoad failed in loadNamespace() for 'rgl', details:
+  call: rgl.init(initValue, onlyNULL)
+  error: OpenGL is not available in this build
+In addition: Warning messages:
+1: Loading rgl's DLL failed.
+This build of rgl depends on XQuartz, which failed to load.
+ See the discussion in https://stackoverflow.com/a/66127391/2554330
+2: Trying without OpenGL...
+
+
+From dw|n@em|u@ @end|ng |rom comc@@t@net  Thu Jan 26 20:17:26 2023
+From: dw|n@em|u@ @end|ng |rom comc@@t@net (David Winsemius)
+Date: Thu, 26 Jan 2023 11:17:26 -0800
+Subject: [R] Failing to install the rgl package
+In-Reply-To: <CAMDpC=sj=1QfTXkYeFWaVfoKDKbcLig1Ddj9R47f6KcjmvotJg@mail.gmail.com>
+References: <CAMDpC=sj=1QfTXkYeFWaVfoKDKbcLig1Ddj9R47f6KcjmvotJg@mail.gmail.com>
+Message-ID: <f2dea46f-787b-2146-2bc5-818b26043c9e@comcast.net>
+
+
+On 1/26/23 11:04, Tunga Kantarc? wrote:
+> Hi,
+>
+> I try to execute the seven lines of code below to plot a graph. But I
+> am failing as the messages below show. Where am I going wrong?
+>
+>
+> install.packages("rgl")
+> library(rgl)
+> y_hat = X%*%B_hat
+> open3d(windowRect = c(100,100,900,900),family = "serif")
+> color = rainbow(length(y_hat))[rank(y_hat)]
+> plot3d(educ,exper,wage,col = color,type = "s",size = 0.5,xlim =
+> c(0,20),ylim = c(0,60),zlim = c(-10,70),box = FALSE,axes = TRUE)
+> planes3d(B_hat[2],B_hat[3],-1,B_hat[1],alpha = 0.5,col = "azure")
+>
+>
+>   -------------------------------------------------------------------------
+>> install.packages("rgl")
+> trying URL 'https://cran.rstudio.com/bin/macosx/contrib/4.1/rgl_1.0.1.tgz'
+> Content type 'application/x-gzip' length 9425401 bytes (9.0 MB)
+> ==================================================
+> downloaded 9.0 MB
+>
+> The downloaded binary packages are in
+> /var/folders/fx/_msf5ycn14g59c3vlc4pc7b80000gn/T//RtmpfaezHX/downloaded_packages
+>> library(rgl)
+> Registered S3 methods overwritten by 'rgl':
+>    method               from
+>    knit_print.rglId
+>    knit_print.rglOpen3d
+>    sew.rglRecordedplot
+> Error in dyn.load(dynlib <- getDynlib(dir)) :
+>    unable to load shared object
+> '/Library/Frameworks/R.framework/Versions/4.1/Resources/library/rgl/libs/rgl.so':
+>    dlopen(/Library/Frameworks/R.framework/Versions/4.1/Resources/library/rgl/libs/rgl.so,
+> 0x0006): Library not loaded: /opt/X11/lib/libGLU.1.dylib
+>    Referenced from: <82C7D9AE-E1B2-39EA-A909-163B033CF7B1>
+
+
+So It appears that X11, a.k.a. XQuartz on a Mac, is failing to load. You 
+probably need to reinstall XQuartz with a current version that matches 
+your version of R. You are also getting a message saying Java sdk cannot 
+be found.
+
+
+You also appear to be attempting to load the version for R 4.1 while the 
+current version of R is 4.2. The R "ecosystem" needs consistency in 
+versions of R, XQuartz, Java, and R packages. You will probably get 
+better success if you first upgrade R, then reinstall XQuartz,? then 
+reinstall or update Java, and finally update all your installed packages 
+including rgl and then give it another go.
+
+Finally, this is Rhelp. There is a SIG for R-Mac users. This question 
+would have been more on-topic for? that help mailing list.
+
+-- 
+
+David
+
+> /Library/Frameworks/R.framework/Versions/4.1/Resources/library/rgl/libs/rgl.so
+>    Reason: tried: '/opt/X11/lib/libGLU.1.dylib' (no such file),
+> '/System/Volumes/Preboot/Cryptexes/OS/opt/X11/lib/libGLU.1.dylib' (no
+> such file), '/opt/X11/lib/libGLU.1.dylib' (no such file),
+> '/Library/Frameworks/R.framework/Resources/lib/libGLU.1.dylib' (no
+> such file), '/Users/tunga/lib/libGLU.1.dylib' (no such file),
+> '/usr/local/lib/libGLU.1.dylib' (no such file),
+> '/usr/lib/libGLU.1.dylib' (no such file, not in dyld cache),
+> '/lib/libGLU.1.dylib' (no such file),
+> '/Library/Java/JavaVirtualMachines/jdk1.8.0_241.jdk/Contents/Home/jre/lib/server/libGLU.1.dylib'
+> (no such file), '/var/folders/fx/_msf5ycn
+> In addition: Warning message:
+> package ?rgl? was built under R version 4.1.2
+> Error: package or namespace load failed for ?rgl?:
+>   .onLoad failed in loadNamespace() for 'rgl', details:
+>    call: rgl.init(initValue, onlyNULL)
+>    error: OpenGL is not available in this build
+> In addition: Warning messages:
+> 1: Loading rgl's DLL failed.
+> This build of rgl depends on XQuartz, which failed to load.
+>   See the discussion in https://stackoverflow.com/a/66127391/2554330
+> 2: Trying without OpenGL...
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From h@@@n@d|w@n @end|ng |rom gm@||@com  Thu Jan 26 22:16:13 2023
+From: h@@@n@d|w@n @end|ng |rom gm@||@com (Hasan Diwan)
+Date: Thu, 26 Jan 2023 13:16:13 -0800
+Subject: [R] (no subject)
+In-Reply-To: <CAEezrQR1K5fm-aL0TENW0Fxa2ieY3nH2_tTUfbhNjm97UA9BRg@mail.gmail.com>
+References: <CAEezrQR1K5fm-aL0TENW0Fxa2ieY3nH2_tTUfbhNjm97UA9BRg@mail.gmail.com>
+Message-ID: <CAP+bYWC4LJG0wVC-yOobR=XhDz+oT3DWsMhchFGyun59qN0Jkg@mail.gmail.com>
+
+Upananda.
+On Mon, 16 Jan 2023 at 12:55, Upananda Pani <upananda.pani at gmail.com> wrote:
+
+> Greetings! I would like to know how to create the lag variable for my data.
+>
+
+Kindly provide a link to your data, on a publicly accessible page or a
+means to generate fake data that illustrates your issue. -- H
+
+-- 
+OpenPGP: https://hasan.d8u.us/openpgp.asc
+If you wish to request my time, please do so using
+*bit.ly/hd1AppointmentRequest
+<http://bit.ly/hd1AppointmentRequest>*.
+Si vous voudrais faire connnaisance, allez a *bit.ly/hd1AppointmentRequest
+<http://bit.ly/hd1AppointmentRequest>*.
+
+<https://sks-keyservers.net/pks/lookup?op=get&search=0xFEBAD7FFD041BBA1>Sent
+from my mobile device
+Envoye de mon portable
+
+	[[alternative HTML version deleted]]
+
+
