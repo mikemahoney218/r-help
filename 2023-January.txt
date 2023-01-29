@@ -27542,3 +27542,674 @@ Envoye de mon portable
 	[[alternative HTML version deleted]]
 
 
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Fri Jan 27 04:33:25 2023
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Thu, 26 Jan 2023 22:33:25 -0500
+Subject: [R] implicit loop for nested list
+References: <IA1P223MB0499E4D420FDB2FCEEF896BDFACC9@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+Message-ID: <IA1P223MB0499C5015DF59BAB5A6D540AFACC9@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+
+> 
+> I am looking for a more elegant way to write below code.
+> 
+> #Simulation results have different dimensions
+> mysim <- lapply(1:10, function(y) {
+>    two.mat <- matrix(rnorm(4), nrow = 2)
+>    four.mat <- matrix(rnorm(16), nrow = 4)
+>    list(two.mat = two.mat, four.mat = four.mat) #results with different dimensions
+> })
+> 
+> #Collect different components of simulation results
+> #Is it possible to do this with implicit loops?
+> mat2 <- matrix(nrow = 2, ncol = 1)
+> mat4 <- matrix(nrow = 4, ncol = 1)
+> for (mat.list in mysim) {
+>    mat2 <- cbind(mat2, mat.list[["two.mat"]])
+>    mat4 <- cbind(mat4, mat.list[["four.mat"]])
+> }
+> mat2 <- mat2[,-1]
+> mat4 <- mat4[,-1]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Fri Jan 27 06:14:29 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 26 Jan 2023 21:14:29 -0800
+Subject: [R] implicit loop for nested list
+In-Reply-To: <IA1P223MB0499C5015DF59BAB5A6D540AFACC9@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+References: <IA1P223MB0499E4D420FDB2FCEEF896BDFACC9@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+ <IA1P223MB0499C5015DF59BAB5A6D540AFACC9@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+Message-ID: <CAGxFJbS3Km+aJ7z4o3Z=9gico+iVrfVnYVQ8_rmbh7DtU5uGDA@mail.gmail.com>
+
+Is this what you want:
+
+## This cbinds all the 2 matrix components of mysim
+## producing a 2 x 20 matrix
+do.call(cbind,lapply(mysim,`[[`,1))
+
+## Change the 1 to a 2 to cbind the other components.
+
+Cheers,
+Bert
+
+Tha
+
+On Thu, Jan 26, 2023 at 7:33 PM Naresh Gurbuxani <
+naresh_gurbuxani at hotmail.com> wrote:
+
+> >
+> > I am looking for a more elegant way to write below code.
+> >
+> > #Simulation results have different dimensions
+> > mysim <- lapply(1:10, function(y) {
+> >    two.mat <- matrix(rnorm(4), nrow = 2)
+> >    four.mat <- matrix(rnorm(16), nrow = 4)
+> >    list(two.mat = two.mat, four.mat = four.mat) #results with different
+> dimensions
+> > })
+> >
+> > #Collect different components of simulation results
+> > #Is it possible to do this with implicit loops?
+> > mat2 <- matrix(nrow = 2, ncol = 1)
+> > mat4 <- matrix(nrow = 4, ncol = 1)
+> > for (mat.list in mysim) {
+> >    mat2 <- cbind(mat2, mat.list[["two.mat"]])
+> >    mat4 <- cbind(mat4, mat.list[["four.mat"]])
+> > }
+> > mat2 <- mat2[,-1]
+> > mat4 <- mat4[,-1]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Fri Jan 27 06:15:51 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Thu, 26 Jan 2023 21:15:51 -0800
+Subject: [R] implicit loop for nested list
+In-Reply-To: <IA1P223MB0499C5015DF59BAB5A6D540AFACC9@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+References: <IA1P223MB0499E4D420FDB2FCEEF896BDFACC9@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+ <IA1P223MB0499C5015DF59BAB5A6D540AFACC9@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+Message-ID: <8FC8ABC2-419D-45EB-A352-06903C8877A6@dcn.davis.ca.us>
+
+Elegance is in the eyes of the beholder...
+
+extractor <- function( simlist, sim_name ) {
+  do.call(
+    cbind
+  , lapply(
+      simlist
+    , function( r ) r[[ sim_name ]]
+    )
+  )
+}
+extractor( mysim, "two.mat" )
+
+... but using do.call will be much more memory efficient than successive cbind operations.
+
+
+On January 26, 2023 7:33:25 PM PST, Naresh Gurbuxani <naresh_gurbuxani at hotmail.com> wrote:
+>> 
+>> I am looking for a more elegant way to write below code.
+>> 
+>> #Simulation results have different dimensions
+>> mysim <- lapply(1:10, function(y) {
+>>    two.mat <- matrix(rnorm(4), nrow = 2)
+>>    four.mat <- matrix(rnorm(16), nrow = 4)
+>>    list(two.mat = two.mat, four.mat = four.mat) #results with different dimensions
+>> })
+>> 
+>> #Collect different components of simulation results
+>> #Is it possible to do this with implicit loops?
+>> mat2 <- matrix(nrow = 2, ncol = 1)
+>> mat4 <- matrix(nrow = 4, ncol = 1)
+>> for (mat.list in mysim) {
+>>    mat2 <- cbind(mat2, mat.list[["two.mat"]])
+>>    mat4 <- cbind(mat4, mat.list[["four.mat"]])
+>> }
+>> mat2 <- mat2[,-1]
+>> mat4 <- mat4[,-1]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From @kw@|mmo @end|ng |rom gm@||@com  Fri Jan 27 06:16:57 2023
+From: @kw@|mmo @end|ng |rom gm@||@com (Andrew Simmons)
+Date: Fri, 27 Jan 2023 00:16:57 -0500
+Subject: [R] implicit loop for nested list
+In-Reply-To: <IA1P223MB0499C5015DF59BAB5A6D540AFACC9@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+References: <IA1P223MB0499E4D420FDB2FCEEF896BDFACC9@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+ <IA1P223MB0499C5015DF59BAB5A6D540AFACC9@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+Message-ID: <CAPcHnpQNtUSD1CE46Vk-Q6zCOebq0_GZkWKXjHCfCiB=RQLTJQ@mail.gmail.com>
+
+I would use replicate() to do an operation with random numbers repeatedly:
+
+```
+mysim <- replicate(10, {
+    two.mat <- matrix(rnorm(4), 2, 2)
+    four.mat <- matrix(rnorm(16), 4, 4)
+    list(two.mat = two.mat, four.mat = four.mat)
+})
+```
+
+which should give you a matrix-list. You can slice this matrix-list
+just like normal, then cbind it in one step:
+
+```
+two.mat <- do.call("cbind", mysim["two.mat", ])
+four.mat <- do.call("cbind", mysim["four.mat", ])
+```
+
+On Thu, Jan 26, 2023 at 10:33 PM Naresh Gurbuxani
+<naresh_gurbuxani at hotmail.com> wrote:
+>
+> >
+> > I am looking for a more elegant way to write below code.
+> >
+> > #Simulation results have different dimensions
+> > mysim <- lapply(1:10, function(y) {
+> >    two.mat <- matrix(rnorm(4), nrow = 2)
+> >    four.mat <- matrix(rnorm(16), nrow = 4)
+> >    list(two.mat = two.mat, four.mat = four.mat) #results with different dimensions
+> > })
+> >
+> > #Collect different components of simulation results
+> > #Is it possible to do this with implicit loops?
+> > mat2 <- matrix(nrow = 2, ncol = 1)
+> > mat4 <- matrix(nrow = 4, ncol = 1)
+> > for (mat.list in mysim) {
+> >    mat2 <- cbind(mat2, mat.list[["two.mat"]])
+> >    mat4 <- cbind(mat4, mat.list[["four.mat"]])
+> > }
+> > mat2 <- mat2[,-1]
+> > mat4 <- mat4[,-1]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Fri Jan 27 07:39:53 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Fri, 27 Jan 2023 06:39:53 +0000
+Subject: [R] Bug in R-Help Archives?
+Message-ID: <d4eb11f3-32d8-b375-b8cc-0411e749a6b8@sapo.pt>
+
+Hello,
+
+When consulting the R-Help Archives today I've noticed that the thread
+
+Pipe operator
+
+started by John Sorkin, Tue Jan 3 17:48:30 CET 2023 is under another thread,
+
+R Certification
+
+started by Mukesh Ghanshyamdas Lekhrajani.
+
+Isn't this a bug in the filing system?
+
+Thanks to the list maintainer  Martin Maechler and ETH Zurich for 
+organizing and hosting the list for all of us. It's an invaluable tool 
+that has served so many R users along the years and that surely gives a 
+lot of work organizing and eventual headaches. I hope this is not one of 
+them.
+
+Rui Barradas
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Fri Jan 27 07:56:26 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Fri, 27 Jan 2023 06:56:26 +0000
+Subject: [R] Bug in R-Help Archives?
+In-Reply-To: <d4eb11f3-32d8-b375-b8cc-0411e749a6b8@sapo.pt>
+References: <d4eb11f3-32d8-b375-b8cc-0411e749a6b8@sapo.pt>
+Message-ID: <3829a92e-b4b7-3edb-6303-db413266adb1@sapo.pt>
+
+?s 06:39 de 27/01/2023, Rui Barradas escreveu:
+> Hello,
+> 
+> When consulting the R-Help Archives today I've noticed that the thread
+> 
+> Pipe operator
+> 
+> started by John Sorkin, Tue Jan 3 17:48:30 CET 2023 is under another 
+> thread,
+> 
+> R Certification
+> 
+> started by Mukesh Ghanshyamdas Lekhrajani.
+> 
+> Isn't this a bug in the filing system?
+> 
+> Thanks to the list maintainer? Martin Maechler and ETH Zurich for 
+> organizing and hosting the list for all of us. It's an invaluable tool 
+> that has served so many R users along the years and that surely gives a 
+> lot of work organizing and eventual headaches. I hope this is not one of 
+> them.
+> 
+> Rui Barradas
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+Maybe the attached screen capture makes it more clear.
+
+Rui Barradas
+
+
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: rhelp_20230127.png
+Type: image/png
+Size: 96608 bytes
+Desc: not available
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20230127/b3fe994b/attachment.png>
+
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Fri Jan 27 08:31:39 2023
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Fri, 27 Jan 2023 13:01:39 +0530
+Subject: [R] Bug in R-Help Archives?
+In-Reply-To: <3829a92e-b4b7-3edb-6303-db413266adb1@sapo.pt>
+References: <d4eb11f3-32d8-b375-b8cc-0411e749a6b8@sapo.pt>
+ <3829a92e-b4b7-3edb-6303-db413266adb1@sapo.pt>
+Message-ID: <CADfFDC4YGqh9+Kd7kGy=re-czGvn3sKr4QJFfzmaghDjsiLKEQ@mail.gmail.com>
+
+>From looking at the headers in John Sorkin's mail, my guess is that he
+just replied to the other thread rather than starting a fresh email,
+and in his attempts to hide that, was outsmarted by Outlook.
+
+This is based on references to domains such as yahoo.com,
+dcn.davis.ca.us, and precheza.cz in the header, which were all
+involved in the certification thread.
+
+-Deepayan
+
+On Fri, Jan 27, 2023 at 12:26 PM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>
+> ?s 06:39 de 27/01/2023, Rui Barradas escreveu:
+> > Hello,
+> >
+> > When consulting the R-Help Archives today I've noticed that the thread
+> >
+> > Pipe operator
+> >
+> > started by John Sorkin, Tue Jan 3 17:48:30 CET 2023 is under another
+> > thread,
+> >
+> > R Certification
+> >
+> > started by Mukesh Ghanshyamdas Lekhrajani.
+> >
+> > Isn't this a bug in the filing system?
+> >
+> > Thanks to the list maintainer  Martin Maechler and ETH Zurich for
+> > organizing and hosting the list for all of us. It's an invaluable tool
+> > that has served so many R users along the years and that surely gives a
+> > lot of work organizing and eventual headaches. I hope this is not one of
+> > them.
+> >
+> > Rui Barradas
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> > http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> Maybe the attached screen capture makes it more clear.
+>
+> Rui Barradas
+>
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Jan 27 08:36:51 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 27 Jan 2023 10:36:51 +0300
+Subject: [R] Bug in R-Help Archives?
+In-Reply-To: <CADfFDC4YGqh9+Kd7kGy=re-czGvn3sKr4QJFfzmaghDjsiLKEQ@mail.gmail.com>
+References: <d4eb11f3-32d8-b375-b8cc-0411e749a6b8@sapo.pt>
+ <3829a92e-b4b7-3edb-6303-db413266adb1@sapo.pt>
+ <CADfFDC4YGqh9+Kd7kGy=re-czGvn3sKr4QJFfzmaghDjsiLKEQ@mail.gmail.com>
+Message-ID: <20230127103651.51b03710@Tarkus>
+
+On Fri, 27 Jan 2023 13:01:39 +0530
+Deepayan Sarkar <deepayan.sarkar at gmail.com> wrote:
+
+> From looking at the headers in John Sorkin's mail, my guess is that he
+> just replied to the other thread rather than starting a fresh email,
+> and in his attempts to hide that, was outsmarted by Outlook.
+
+That's 100% correct. The starting "Pipe operator" e-mail has
+In-Reply-To: <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>, and the
+message with this Message-ID is the one from Mukesh Ghanshyamdas
+Lekhrajani with the subject "Re: [R] R Certification" that's
+immediately above the message by John Sorkin.
+
+-- 
+Best regards,
+Ivan
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Fri Jan 27 08:44:47 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Thu, 26 Jan 2023 23:44:47 -0800
+Subject: [R] Bug in R-Help Archives?
+In-Reply-To: <CADfFDC4YGqh9+Kd7kGy=re-czGvn3sKr4QJFfzmaghDjsiLKEQ@mail.gmail.com>
+References: <d4eb11f3-32d8-b375-b8cc-0411e749a6b8@sapo.pt>
+ <3829a92e-b4b7-3edb-6303-db413266adb1@sapo.pt>
+ <CADfFDC4YGqh9+Kd7kGy=re-czGvn3sKr4QJFfzmaghDjsiLKEQ@mail.gmail.com>
+Message-ID: <83741930-F822-411A-9056-4BA36FA2723A@dcn.davis.ca.us>
+
+Every email thread (mailing list or not) gets a hidden identifier that is used to identify that thread. It is not that Outlook outsmarted John... any email program would have done the same.
+
+John... please don't reply to existing posts with a new subject... many mailing list users may be using the threaded view in their email program and never see your question at all if they were not interested in the original thread.
+
+On January 26, 2023 11:31:39 PM PST, Deepayan Sarkar <deepayan.sarkar at gmail.com> wrote:
+>From looking at the headers in John Sorkin's mail, my guess is that he
+>just replied to the other thread rather than starting a fresh email,
+>and in his attempts to hide that, was outsmarted by Outlook.
+>
+>This is based on references to domains such as yahoo.com,
+>dcn.davis.ca.us, and precheza.cz in the header, which were all
+>involved in the certification thread.
+>
+>-Deepayan
+>
+>On Fri, Jan 27, 2023 at 12:26 PM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>>
+>> ?s 06:39 de 27/01/2023, Rui Barradas escreveu:
+>> > Hello,
+>> >
+>> > When consulting the R-Help Archives today I've noticed that the thread
+>> >
+>> > Pipe operator
+>> >
+>> > started by John Sorkin, Tue Jan 3 17:48:30 CET 2023 is under another
+>> > thread,
+>> >
+>> > R Certification
+>> >
+>> > started by Mukesh Ghanshyamdas Lekhrajani.
+>> >
+>> > Isn't this a bug in the filing system?
+>> >
+>> > Thanks to the list maintainer  Martin Maechler and ETH Zurich for
+>> > organizing and hosting the list for all of us. It's an invaluable tool
+>> > that has served so many R users along the years and that surely gives a
+>> > lot of work organizing and eventual headaches. I hope this is not one of
+>> > them.
+>> >
+>> > Rui Barradas
+>> >
+>> > ______________________________________________
+>> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > https://stat.ethz.ch/mailman/listinfo/r-help
+>> > PLEASE do read the posting guide
+>> > http://www.R-project.org/posting-guide.html
+>> > and provide commented, minimal, self-contained, reproducible code.
+>>
+>> Maybe the attached screen capture makes it more clear.
+>>
+>> Rui Barradas
+>>
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Fri Jan 27 14:47:07 2023
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Fri, 27 Jan 2023 13:47:07 +0000
+Subject: [R] implicit loop for nested list
+In-Reply-To: <CAPcHnpQNtUSD1CE46Vk-Q6zCOebq0_GZkWKXjHCfCiB=RQLTJQ@mail.gmail.com>
+References: <IA1P223MB0499E4D420FDB2FCEEF896BDFACC9@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+ <IA1P223MB0499C5015DF59BAB5A6D540AFACC9@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+ <CAPcHnpQNtUSD1CE46Vk-Q6zCOebq0_GZkWKXjHCfCiB=RQLTJQ@mail.gmail.com>
+Message-ID: <IA1P223MB0499771F7FA03D7CEB0099BFFACC9@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+
+Thanks everyone for their solutions.  My problem is solved.
+
+Sent from my iPhone
+
+> On Jan 27, 2023, at 12:17 AM, Andrew Simmons <akwsimmo at gmail.com> wrote:
+> 
+> ?I would use replicate() to do an operation with random numbers repeatedly:
+> 
+> ```
+> mysim <- replicate(10, {
+>    two.mat <- matrix(rnorm(4), 2, 2)
+>    four.mat <- matrix(rnorm(16), 4, 4)
+>    list(two.mat = two.mat, four.mat = four.mat)
+> })
+> ```
+> 
+> which should give you a matrix-list. You can slice this matrix-list
+> just like normal, then cbind it in one step:
+> 
+> ```
+> two.mat <- do.call("cbind", mysim["two.mat", ])
+> four.mat <- do.call("cbind", mysim["four.mat", ])
+> ```
+> 
+>> On Thu, Jan 26, 2023 at 10:33 PM Naresh Gurbuxani
+>> <naresh_gurbuxani at hotmail.com> wrote:
+>> 
+>>> 
+>>> I am looking for a more elegant way to write below code.
+>>> 
+>>> #Simulation results have different dimensions
+>>> mysim <- lapply(1:10, function(y) {
+>>>   two.mat <- matrix(rnorm(4), nrow = 2)
+>>>   four.mat <- matrix(rnorm(16), nrow = 4)
+>>>   list(two.mat = two.mat, four.mat = four.mat) #results with different dimensions
+>>> })
+>>> 
+>>> #Collect different components of simulation results
+>>> #Is it possible to do this with implicit loops?
+>>> mat2 <- matrix(nrow = 2, ncol = 1)
+>>> mat4 <- matrix(nrow = 4, ncol = 1)
+>>> for (mat.list in mysim) {
+>>>   mat2 <- cbind(mat2, mat.list[["two.mat"]])
+>>>   mat4 <- cbind(mat4, mat.list[["four.mat"]])
+>>> }
+>>> mat2 <- mat2[,-1]
+>>> mat4 <- mat4[,-1]
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Fri Jan 27 16:12:39 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Fri, 27 Jan 2023 15:12:39 +0000
+Subject: [R] Bug in R-Help Archives?
+In-Reply-To: <CADfFDC4YGqh9+Kd7kGy=re-czGvn3sKr4QJFfzmaghDjsiLKEQ@mail.gmail.com>
+References: <d4eb11f3-32d8-b375-b8cc-0411e749a6b8@sapo.pt>
+ <3829a92e-b4b7-3edb-6303-db413266adb1@sapo.pt>
+ <CADfFDC4YGqh9+Kd7kGy=re-czGvn3sKr4QJFfzmaghDjsiLKEQ@mail.gmail.com>
+Message-ID: <4e26978f-83e8-77af-2d86-de70e59de9f3@sapo.pt>
+
+?s 07:31 de 27/01/2023, Deepayan Sarkar escreveu:
+>  From looking at the headers in John Sorkin's mail, my guess is that he
+> just replied to the other thread rather than starting a fresh email,
+> and in his attempts to hide that, was outsmarted by Outlook.
+> 
+> This is based on references to domains such as yahoo.com,
+> dcn.davis.ca.us, and precheza.cz in the header, which were all
+> involved in the certification thread.
+> 
+> -Deepayan
+> 
+> On Fri, Jan 27, 2023 at 12:26 PM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>>
+>> ?s 06:39 de 27/01/2023, Rui Barradas escreveu:
+>>> Hello,
+>>>
+>>> When consulting the R-Help Archives today I've noticed that the thread
+>>>
+>>> Pipe operator
+>>>
+>>> started by John Sorkin, Tue Jan 3 17:48:30 CET 2023 is under another
+>>> thread,
+>>>
+>>> R Certification
+>>>
+>>> started by Mukesh Ghanshyamdas Lekhrajani.
+>>>
+>>> Isn't this a bug in the filing system?
+>>>
+>>> Thanks to the list maintainer  Martin Maechler and ETH Zurich for
+>>> organizing and hosting the list for all of us. It's an invaluable tool
+>>> that has served so many R users along the years and that surely gives a
+>>> lot of work organizing and eventual headaches. I hope this is not one of
+>>> them.
+>>>
+>>> Rui Barradas
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>> Maybe the attached screen capture makes it more clear.
+>>
+>> Rui Barradas
+>>
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+Thanks, I had missed that.
+
+Rui Barradas
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Fri Jan 27 16:15:00 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Fri, 27 Jan 2023 15:15:00 +0000
+Subject: [R] Bug in R-Help Archives?
+In-Reply-To: <20230127103651.51b03710@Tarkus>
+References: <d4eb11f3-32d8-b375-b8cc-0411e749a6b8@sapo.pt>
+ <3829a92e-b4b7-3edb-6303-db413266adb1@sapo.pt>
+ <CADfFDC4YGqh9+Kd7kGy=re-czGvn3sKr4QJFfzmaghDjsiLKEQ@mail.gmail.com>
+ <20230127103651.51b03710@Tarkus>
+Message-ID: <6e079533-55d6-4524-d472-ee13cf09f0ab@sapo.pt>
+
+?s 07:36 de 27/01/2023, Ivan Krylov escreveu:
+> On Fri, 27 Jan 2023 13:01:39 +0530
+> Deepayan Sarkar <deepayan.sarkar at gmail.com> wrote:
+> 
+>>  From looking at the headers in John Sorkin's mail, my guess is that he
+>> just replied to the other thread rather than starting a fresh email,
+>> and in his attempts to hide that, was outsmarted by Outlook.
+> 
+> That's 100% correct. The starting "Pipe operator" e-mail has
+> In-Reply-To: <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>, and the
+> message with this Message-ID is the one from Mukesh Ghanshyamdas
+> Lekhrajani with the subject "Re: [R] R Certification" that's
+> immediately above the message by John Sorkin.
+> 
+Thanks, I was searching the archives for something else, stumbled on 
+that and forgot to look at the heders.
+Good news there's nothing wrong with R-Help.
+
+Rui Barradas
+
+
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Fri Jan 27 19:57:20 2023
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Fri, 27 Jan 2023 18:57:20 +0000
+Subject: [R] Bug in R-Help Archives?
+In-Reply-To: <6e079533-55d6-4524-d472-ee13cf09f0ab@sapo.pt>
+References: <d4eb11f3-32d8-b375-b8cc-0411e749a6b8@sapo.pt>
+ <3829a92e-b4b7-3edb-6303-db413266adb1@sapo.pt>
+ <CADfFDC4YGqh9+Kd7kGy=re-czGvn3sKr4QJFfzmaghDjsiLKEQ@mail.gmail.com>
+ <20230127103651.51b03710@Tarkus>
+ <6e079533-55d6-4524-d472-ee13cf09f0ab@sapo.pt>
+Message-ID: <MW4PR03MB6363F2D6A184C8F22B906A43E2CC9@MW4PR03MB6363.namprd03.prod.outlook.com>
+
+My apologies,
+I did not mean to be part of the discussion. If there is such a thing as a pocket email (similar to a pocket dial) the email would be classified as a pocket email.
+John
+
+________________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of Rui Barradas <ruipbarradas at sapo.pt>
+Sent: Friday, January 27, 2023 10:15 AM
+To: Ivan Krylov
+Cc: R-help Mailing List
+Subject: Re: [R] Bug in R-Help Archives?
+
+?s 07:36 de 27/01/2023, Ivan Krylov escreveu:
+> On Fri, 27 Jan 2023 13:01:39 +0530
+> Deepayan Sarkar <deepayan.sarkar at gmail.com> wrote:
+>
+>>  From looking at the headers in John Sorkin's mail, my guess is that he
+>> just replied to the other thread rather than starting a fresh email,
+>> and in his attempts to hide that, was outsmarted by Outlook.
+>
+> That's 100% correct. The starting "Pipe operator" e-mail has
+> In-Reply-To: <047e01d91ed5$577e42a0$067ac7e0$@yahoo.com>, and the
+> message with this Message-ID is the one from Mukesh Ghanshyamdas
+> Lekhrajani with the subject "Re: [R] R Certification" that's
+> immediately above the message by John Sorkin.
+>
+Thanks, I was searching the archives for something else, stumbled on
+that and forgot to look at the heders.
+Good news there's nothing wrong with R-Help.
+
+Rui Barradas
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam11.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Ca90bca3f346f470c472808db007a65cd%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638104297929279937%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=8CGlDg%2Fdkx28raPOalXjZ7NqN%2BP%2BoWo9UFL%2Boc6NBRU%3D&reserved=0
+PLEASE do read the posting guide https://nam11.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7CJSorkin%40som.umaryland.edu%7Ca90bca3f346f470c472808db007a65cd%7C717009a620de461a88940312a395cac9%7C0%7C0%7C638104297929279937%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=mira%2F3jlC1V3jAJvBiqw53EpaCJknQ1W77NY7jTzfyA%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+
