@@ -1,0 +1,358 @@
+From ttm|gue|tt @end|ng |rom gm@||@com  Wed Feb  1 04:16:54 2023
+From: ttm|gue|tt @end|ng |rom gm@||@com (Michael Milton)
+Date: Wed, 1 Feb 2023 14:16:54 +1100
+Subject: [R] dyn.load(now = FALSE) not actually lazy?
+Message-ID: <CAPZyOoJdGJ6yYhtmTyCR3v+=6H6XprxSsEG5bKwNbOTPqoJdTA@mail.gmail.com>
+
+On Linux, if I have a .so file that has a dependency on another .so, and I
+`dyn.load(now=FALSE)` the first one, R seems to try to resolve the symbols
+immediately, causing the load to fail.
+
+For example, I have `libtorch` installed on my HPC. Note that it links to
+various libs such as `libcudart.so` and `libmkl_intel_lp64.so.2` which
+aren't currently in my library path:
+
+?  ~ ldd
+/stornext/System/data/nvidia/libtorch-gpu/libtorch-gpu-1.12.1/lib/libtorch_cpu.so
+        linux-vdso.so.1 =>  (0x00007ffcab58c000)
+        libgomp.so.1 =>
+/stornext/System/data/apps/gcc/gcc-11.2.0/lib64/libgomp.so.1
+(0x00007f8cb22bf000)
+        libpthread.so.0 => /lib64/libpthread.so.0 (0x00007f8cb20a3000)
+        libc10.so =>
+/stornext/System/data/nvidia/libtorch-gpu/libtorch-gpu-1.12.1/lib/libc10.so
+(0x00007f8cb1e2d000)
+        libnuma.so.1 => /lib64/libnuma.so.1 (0x00007f8cb1c21000)
+        librt.so.1 => /lib64/librt.so.1 (0x00007f8cb1a19000)
+        libgcc_s.so.1 =>
+/stornext/System/data/apps/gcc/gcc-11.2.0/lib64/libgcc_s.so.1
+(0x00007f8cb1801000)
+        libdl.so.2 => /lib64/libdl.so.2 (0x00007f8cb15fd000)
+        libmkl_intel_lp64.so.2 => not found
+        libmkl_gnu_thread.so.2 => not found
+        libmkl_core.so.2 => not found
+        libm.so.6 => /lib64/libm.so.6 (0x00007f8cb12fb000)
+        libcudart.so.11.0 => not found
+
+Then in R, if I try to load that same file:
+
+>
+dyn.load("/stornext/System/data/nvidia/libtorch-gpu/libtorch-gpu-1.12.1/lib/libtorch_cpu.so",
+now=FALSE)
+Error in
+dyn.load("/stornext/System/data/nvidia/libtorch-gpu/libtorch-gpu-1.12.1/lib/libtorch_cpu.so",
+ :
+  unable to load shared object
+'/stornext/System/data/nvidia/libtorch-gpu/libtorch-gpu-1.12.1/lib/libtorch_cpu.so':
+  libmkl_intel_lp64.so.2: cannot open shared object file: No such file or
+directory
+
+Is this a bug in the `dyn.load` implementation for R? If not, why is it
+behaving like this? What should I do about it?
+
+For reference, I'm on CentOS 7, with Linux
+kernel 3.10.0-1160.81.1.el7.x86_64.
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Feb  1 10:42:21 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 1 Feb 2023 04:42:21 -0500
+Subject: [R] dyn.load(now = FALSE) not actually lazy?
+In-Reply-To: <CAPZyOoJdGJ6yYhtmTyCR3v+=6H6XprxSsEG5bKwNbOTPqoJdTA@mail.gmail.com>
+References: <CAPZyOoJdGJ6yYhtmTyCR3v+=6H6XprxSsEG5bKwNbOTPqoJdTA@mail.gmail.com>
+Message-ID: <f28795b0-fa8a-fbb8-2fd5-9321734a9174@gmail.com>
+
+According to the help page for dyn.load, I think this is within the 
+allowed behaviour:
+
+"now:
+a logical controlling whether all symbols are resolved (and relocated) 
+immediately the library is loaded or deferred until they are used. This 
+control is useful for developers testing whether a library is complete 
+and has all the necessary symbols, and for users to ignore missing 
+symbols. Whether this has any effect is system-dependent."
+
+It appears to be intended for a DLL that doesn't define all the symbols 
+that your program will use, not for a DLL that has external references 
+that can't be resolved.  And there's that last sentence.
+
+I think for what you want, you'd have to write the DLL (i.e. libtorch) 
+in such a way that it does delayed loading of its dependencies.
+
+Duncan Murdoch
+
+On 31/01/2023 10:16 p.m., Michael Milton wrote:
+> On Linux, if I have a .so file that has a dependency on another .so, and I
+> `dyn.load(now=FALSE)` the first one, R seems to try to resolve the symbols
+> immediately, causing the load to fail.
+> 
+> For example, I have `libtorch` installed on my HPC. Note that it links to
+> various libs such as `libcudart.so` and `libmkl_intel_lp64.so.2` which
+> aren't currently in my library path:
+> 
+> ?  ~ ldd
+> /stornext/System/data/nvidia/libtorch-gpu/libtorch-gpu-1.12.1/lib/libtorch_cpu.so
+>          linux-vdso.so.1 =>  (0x00007ffcab58c000)
+>          libgomp.so.1 =>
+> /stornext/System/data/apps/gcc/gcc-11.2.0/lib64/libgomp.so.1
+> (0x00007f8cb22bf000)
+>          libpthread.so.0 => /lib64/libpthread.so.0 (0x00007f8cb20a3000)
+>          libc10.so =>
+> /stornext/System/data/nvidia/libtorch-gpu/libtorch-gpu-1.12.1/lib/libc10.so
+> (0x00007f8cb1e2d000)
+>          libnuma.so.1 => /lib64/libnuma.so.1 (0x00007f8cb1c21000)
+>          librt.so.1 => /lib64/librt.so.1 (0x00007f8cb1a19000)
+>          libgcc_s.so.1 =>
+> /stornext/System/data/apps/gcc/gcc-11.2.0/lib64/libgcc_s.so.1
+> (0x00007f8cb1801000)
+>          libdl.so.2 => /lib64/libdl.so.2 (0x00007f8cb15fd000)
+>          libmkl_intel_lp64.so.2 => not found
+>          libmkl_gnu_thread.so.2 => not found
+>          libmkl_core.so.2 => not found
+>          libm.so.6 => /lib64/libm.so.6 (0x00007f8cb12fb000)
+>          libcudart.so.11.0 => not found
+> 
+> Then in R, if I try to load that same file:
+> 
+>>
+> dyn.load("/stornext/System/data/nvidia/libtorch-gpu/libtorch-gpu-1.12.1/lib/libtorch_cpu.so",
+> now=FALSE)
+> Error in
+> dyn.load("/stornext/System/data/nvidia/libtorch-gpu/libtorch-gpu-1.12.1/lib/libtorch_cpu.so",
+>   :
+>    unable to load shared object
+> '/stornext/System/data/nvidia/libtorch-gpu/libtorch-gpu-1.12.1/lib/libtorch_cpu.so':
+>    libmkl_intel_lp64.so.2: cannot open shared object file: No such file or
+> directory
+> 
+> Is this a bug in the `dyn.load` implementation for R? If not, why is it
+> behaving like this? What should I do about it?
+> 
+> For reference, I'm on CentOS 7, with Linux
+> kernel 3.10.0-1160.81.1.el7.x86_64.
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Feb  1 11:05:46 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 1 Feb 2023 13:05:46 +0300
+Subject: [R] dyn.load(now = FALSE) not actually lazy?
+In-Reply-To: <CAPZyOoJdGJ6yYhtmTyCR3v+=6H6XprxSsEG5bKwNbOTPqoJdTA@mail.gmail.com>
+References: <CAPZyOoJdGJ6yYhtmTyCR3v+=6H6XprxSsEG5bKwNbOTPqoJdTA@mail.gmail.com>
+Message-ID: <20230201130546.7b8abeba@arachnoid>
+
+? Wed, 1 Feb 2023 14:16:54 +1100
+Michael Milton <ttmigueltt at gmail.com> ?????:
+
+> Is this a bug in the `dyn.load` implementation for R? If not, why is
+> it behaving like this? What should I do about it?
+
+On Unix-like systems, dyn.load forwards its arguments to dlopen(). It
+should be possible to confirm with a debugger that R passes RTLD_NOW to
+dlopen() when calling dyn.load(now = TRUE) and RTLD_LAZY when calling
+dyn.load(now = FALSE).
+
+I don't know for sure why the symbols are being resolved despite you
+asked the linker not to. Did something in the system set the
+LD_BIND_NOW environment variable? Do any of the libraries in the
+dependency tree have any constructors (C++ or
+__attribute__((constructor)) or otherwise mentioned in .ini* sections)
+that rely on MKL being available at initialisation time?
+
+If you launch R with the environment variable LD_DEBUG=libs set, the
+debugging output may shine some light on the problem.
+
+-- 
+Best regards,
+Ivan
+
+
+From n|ckmwr@y @end|ng |rom gm@||@com  Wed Feb  1 17:07:51 2023
+From: n|ckmwr@y @end|ng |rom gm@||@com (Nick Wray)
+Date: Wed, 1 Feb 2023 16:07:51 +0000
+Subject: [R] Detpack package
+Message-ID: <CABxY9BP_j4Orh8WJv3k30egpTd7X-ins4Zbdq4FJBe9vtwsapA@mail.gmail.com>
+
+Hello   I've successfully installed the package "Detpack" and remembered to
+call it via library()  But when I try to use the functions i get this:
+
+
+chi2testuniform(vals, 0.05)
+
+Error in chi2testuniform(vals, 0.05) :
+  could not find function "chi2testuniform"
+
+
+And yet this function (amongst other which also are not recognised) are all
+listed on the CRAN page:
+http://cran.nexr.com/web/packages/detpack/detpack.pdf
+
+I can't remember anything like this happening before - as far as I can see
+I don't need to load or write anything else before executing the function
+and I can't find references to any problems with this package on the net
+Can anyone cast light on what's happening?  Thanks Nick Wray
+
+	[[alternative HTML version deleted]]
+
+
+From er|cjberger @end|ng |rom gm@||@com  Wed Feb  1 17:29:26 2023
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Wed, 1 Feb 2023 18:29:26 +0200
+Subject: [R] Detpack package
+In-Reply-To: <CABxY9BP_j4Orh8WJv3k30egpTd7X-ins4Zbdq4FJBe9vtwsapA@mail.gmail.com>
+References: <CABxY9BP_j4Orh8WJv3k30egpTd7X-ins4Zbdq4FJBe9vtwsapA@mail.gmail.com>
+Message-ID: <CAGgJW74mKv3zoOVqDDhi_FLQ-42VkwzbmH5t4=1D3gskgJ7OQQ@mail.gmail.com>
+
+Detpack or detpack?
+
+What happens when you try detpack::chi2testuniform(...) ?
+
+
+On Wed, Feb 1, 2023 at 6:08 PM Nick Wray <nickmwray at gmail.com> wrote:
+
+> Hello   I've successfully installed the package "Detpack" and remembered to
+> call it via library()  But when I try to use the functions i get this:
+>
+>
+> chi2testuniform(vals, 0.05)
+>
+> Error in chi2testuniform(vals, 0.05) :
+>   could not find function "chi2testuniform"
+>
+>
+> And yet this function (amongst other which also are not recognised) are all
+> listed on the CRAN page:
+> http://cran.nexr.com/web/packages/detpack/detpack.pdf
+>
+> I can't remember anything like this happening before - as far as I can see
+> I don't need to load or write anything else before executing the function
+> and I can't find references to any problems with this package on the net
+> Can anyone cast light on what's happening?  Thanks Nick Wray
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From n|ckmwr@y @end|ng |rom gm@||@com  Wed Feb  1 17:41:15 2023
+From: n|ckmwr@y @end|ng |rom gm@||@com (Nick Wray)
+Date: Wed, 1 Feb 2023 16:41:15 +0000
+Subject: [R] Detpack package
+In-Reply-To: <CAGgJW74mKv3zoOVqDDhi_FLQ-42VkwzbmH5t4=1D3gskgJ7OQQ@mail.gmail.com>
+References: <CABxY9BP_j4Orh8WJv3k30egpTd7X-ins4Zbdq4FJBe9vtwsapA@mail.gmail.com>
+ <CAGgJW74mKv3zoOVqDDhi_FLQ-42VkwzbmH5t4=1D3gskgJ7OQQ@mail.gmail.com>
+Message-ID: <CABxY9BOKrt6mRubbpi_sT2og45Q9kjPZozyRCejw_3VWbtRNbA@mail.gmail.com>
+
+I did use "detpack" ie not with a capital
+
+detpack::chi2testuniform(vals,0.05)
+gives this:
+
+Error: 'chi2testuniform' is not an exported object from 'namespace:detpack'
+??
+Thanks Nick
+
+
+On Wed, 1 Feb 2023 at 16:29, Eric Berger <ericjberger at gmail.com> wrote:
+
+> Detpack or detpack?
+>
+> What happens when you try detpack::chi2testuniform(...) ?
+>
+>
+> On Wed, Feb 1, 2023 at 6:08 PM Nick Wray <nickmwray at gmail.com> wrote:
+>
+>> Hello   I've successfully installed the package "Detpack" and remembered
+>> to
+>> call it via library()  But when I try to use the functions i get this:
+>>
+>>
+>> chi2testuniform(vals, 0.05)
+>>
+>> Error in chi2testuniform(vals, 0.05) :
+>>   could not find function "chi2testuniform"
+>>
+>>
+>> And yet this function (amongst other which also are not recognised) are
+>> all
+>> listed on the CRAN page:
+>> http://cran.nexr.com/web/packages/detpack/detpack.pdf
+>>
+>> I can't remember anything like this happening before - as far as I can see
+>> I don't need to load or write anything else before executing the function
+>> and I can't find references to any problems with this package on the net
+>> Can anyone cast light on what's happening?  Thanks Nick Wray
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Feb  1 18:32:43 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 1 Feb 2023 12:32:43 -0500
+Subject: [R] Detpack package
+In-Reply-To: <CABxY9BOKrt6mRubbpi_sT2og45Q9kjPZozyRCejw_3VWbtRNbA@mail.gmail.com>
+References: <CABxY9BP_j4Orh8WJv3k30egpTd7X-ins4Zbdq4FJBe9vtwsapA@mail.gmail.com>
+ <CAGgJW74mKv3zoOVqDDhi_FLQ-42VkwzbmH5t4=1D3gskgJ7OQQ@mail.gmail.com>
+ <CABxY9BOKrt6mRubbpi_sT2og45Q9kjPZozyRCejw_3VWbtRNbA@mail.gmail.com>
+Message-ID: <734b74e7-494d-e0d6-0ea7-dab9962e4d54@gmail.com>
+
+On 01/02/2023 11:41 a.m., Nick Wray wrote:
+> I did use "detpack" ie not with a capital
+> 
+> detpack::chi2testuniform(vals,0.05)
+> gives this:
+> 
+> Error: 'chi2testuniform' is not an exported object from 'namespace:detpack'
+> ??
+> Thanks Nick
+> 
+
+The only exports from detpack are these:
+
+   > library(detpack)
+   > ls(2)
+   [1] "det.construct" "det.cut"       "det.de"        "det.leafs" 
+"det.query"     "det.rnd"       "det1"
+   [8] "det2"
+
+It looks as though the author of detpack documented chi2testuniform, but 
+forgot to export it.  You can see the source of the version on CRAN here:
+
+   https://github.com/cran/detpack
+
+The author used Roxygen2, but apparently forgot to say @export before 
+that function (and some others).  The package tests perfectly OK on 
+CRAN, because none of the examples made it into the help pages, where 
+they would have failed.
+
+Duncan Murdoch
+
+
