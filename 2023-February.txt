@@ -5439,3 +5439,467 @@ Best,
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From m@rk@c|ement@ @end|ng |rom k|@@e  Tue Feb 14 14:37:36 2023
+From: m@rk@c|ement@ @end|ng |rom k|@@e (Mark Clements)
+Date: Tue, 14 Feb 2023 13:37:36 +0000
+Subject: [R] Issue with Rmath standalone (dwilcox, pwilcox, qwilcox,
+ rwilcox) with unif_rand()
+Message-ID: <GV3P280MB0001EABBB6B8431D42984D50F0A29@GV3P280MB0001.SWEP280.PROD.OUTLOOK.COM>
+
+I may have found a bug in the Rmath standalone library when providing a user-defined random number generator (for context, I was investigating using Mersenne Twister with Rmath). The following C code does not compile using the Makefile:
+
+// test_fails.c
+#define MATHLIB_STANDALONE
+#include <Rmath.h>
+#include <stdio.h>
+
+double unif_rand(void) { return 0.5; }
+
+int main() {
+  printf("%f\n", runif(0, 1));
+  printf("%f\n", pnorm(1.96, 0, 1, 1, 0));
+  printf("%f\n", dwilcox(100, 10, 20, 0));
+  return 0;
+}
+
+// Makefile
+LIBRMATH_A = $(shell pkg-config --variable=libdir libRmath)/libRmath.a
+test_fails:
+??????gcc -o test_fails test_fails.c ${LIBRMATH_A} -lm
+
+The error is "multiple definition of `unif_rand'". The code compiles and runs correctly after commenting out either (a) the unif_rand function or (b) the call to dwilcox(). I found similar issues with pwilcox, qwilcox and rwilcox. Can anyone explain this behaviour, please?
+
+Sincerely, Mark.
+
+
+N?r du skickar e-post till Karolinska Institutet (KI) inneb?r detta att KI kommer att behandla dina personuppgifter. H?r finns information om hur KI behandlar personuppgifter<https://ki.se/medarbetare/integritetsskyddspolicy>.
+
+
+Sending email to Karolinska Institutet (KI) will result in KI processing your personal data. You can read more about KI?s processing of personal data here<https://ki.se/en/staff/data-protection-policy>.
+
+From Adr|@@n@de@Jong @end|ng |rom @|u@@e  Tue Feb 14 13:13:03 2023
+From: Adr|@@n@de@Jong @end|ng |rom @|u@@e (Adriaan de Jong)
+Date: Tue, 14 Feb 2023 12:13:03 +0000
+Subject: [R] Plotting prediction curves and CIs from GAM models
+Message-ID: <61c32654a9df4502aedbd050d4490b8c@slu.se>
+
+Dear List member,
+My data are from 30 years of opportunistic counting of migratory Eurasian Curlew (Numenius arquata) during the core breeding season when the local population is supposed to be stable. My main objective is the trend in numbers over the years, but information about sighting efficiency over the days of season (DoS) and the time of the day (ToD) is also desired (they are not just nuisance variables). Observations were made while driving along the very same 25 km road in rural northern Sweden. This driving was for everyday life purposes, not for the sake of this study, i.e. the data are virtually zero-cost, zero-effort and zero-emission. For each counting event (N=1020), I registered date, midpoint-time (5 AM - 9 PM) and observed number of curlews. The date was used to create variables Year (integer) and Day-of-Season (integer, May 1 = 1 to June 14, leap-year adjusted). The ToD variable was expressed as decimal hours (e.g. 8.15)  I chose to use GAM-family models to describe the Count vs Year, DoS and ToD relationship (subset listed below, full dataset available at request). A overdisp_fun check of the Poisson distribution GAMs showed that a shift to negative binomial distribution (.. nb()..) GAMs was appropriate.
+
+Preliminary model selection favoured the following model (Total = count result):
+
+mod1<-gam(Total~s(Year) +
+                   te(DoS,ToD, k=5),
+           family=nb(),
+           data=Trend1,
+           method="ML")
+
+The model explained 38.8% of overall deviance. Model check-ups (gam.check, qq.gam and overdisp_fun) were all satisfactory.
+
+plot.gam(mod1) (and plot(mod1)) produced a s(Year)~Year curve with confidence interval lines and a ToD vs DoS "topography" plot with CI lines (PDF-copies attached). From what I understand, these curves/lines show estimated smoother and tensor values, respectively. These are useful plots for scientists, but not really what I want to present to non-academic ornithologists.
+
+In the next step, I used
+
+preddata<-predict.gam(newdata=Trend1, mod1, type="response")
+
+to produce a predicted dataset for the same (original) data and
+
+plot(preddata~Trend1$Year, xlab = "Year", ylab="Predicted Eurasian Curlew counts")
+
+to visualize the trend in numbers over the study period (scatterplot attached).
+
+Here is where my questions start.
+
+1. How can I fit a GAM-type trendline in this graph and how can I add upper and lower CI-limits to this trendline? It's the complex GAM structure that confuses me. Are these model components in the model output somewhere? Will this trendline be "rinsed" from the effects of DoS and ToD? If not, how can I find/create one?
+
+2. How can I produce a "topography"-plot of the predicted count numbers over ToD vs DoS, similar to the one for the tensor estimates produced by plot.gam?
+
+
+Thanks in advance for any references, comments and suggestions.
+Have a nice day,
+Adriaan de Jong
+Swedish University of Agricultural Sciences
+
+
+Data structure
+
+Year   DoS   ToD Total
+1993     6      9.25   7
+1993   11    12.50   4
+.
+.
+.
+2022    40    7.75    3
+---
+N?r du skickar e-post till SLU s? inneb?r detta att SLU behandlar dina personuppgifter. F?r att l?sa mer om hur detta g?r till, klicka h?r <https://www.slu.se/om-slu/kontakta-slu/personuppgifter/>
+E-mailing SLU will result in SLU processing your personal data. For more information on how this is done, click here <https://www.slu.se/en/about-slu/contact-slu/personal-data/>
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: AskR1.pdf
+Type: application/pdf
+Size: 6587 bytes
+Desc: AskR1.pdf
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20230214/b0c6c86b/attachment.pdf>
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: AskR2.pdf
+Type: application/pdf
+Size: 30343 bytes
+Desc: AskR2.pdf
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20230214/b0c6c86b/attachment-0001.pdf>
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: AskR3.pdf
+Type: application/pdf
+Size: 52271 bytes
+Desc: AskR3.pdf
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20230214/b0c6c86b/attachment-0002.pdf>
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Tue Feb 14 18:34:12 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 14 Feb 2023 17:34:12 +0000
+Subject: [R] TRCUKING 4
+In-Reply-To: <CAMsUFaShg=pFaxW-RLDb5WvYqaum7+N+7899PmmVvBzxKn3XDQ@mail.gmail.com>
+References: <CAMsUFaS1igRnnv=5K_pVd7PKJOOKbqghwt_ANGuS2obj53jarQ@mail.gmail.com>
+ <2906f465-8ec5-8c29-1526-6f6b4e538f03@sapo.pt>
+ <CAMsUFaShg=pFaxW-RLDb5WvYqaum7+N+7899PmmVvBzxKn3XDQ@mail.gmail.com>
+Message-ID: <6ed46bc5-eec9-5a88-5bc8-396103ca5def@sapo.pt>
+
+?s 03:22 de 14/02/2023, Mohammad Shoushary escreveu:
+> Hi Guys,
+> If I have a question, what is the best way to ask or post?
+> 
+> On Tue, Nov 9, 2021 at 6:13 AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+> 
+>> Hello,
+>>
+>> We can't really answer your question, we don't have access to the file.
+>> But here are some questions/tips.
+>>
+>> 1. R is case sensitive, is it TRUCKING.RDtata or TRUCKING.Rdtata?
+>> 2. In a clean R session, is there any warning or error message after
+>> running load("TRUCKING.Rdata")?
+>> 3. If not, what is the output of ls()? This will give you the objects in
+>> the global environment and RData files may store many objects. Exactly
+>> what was loaded?
+>> 4. I don't understand what do you mean by "trucking 4". Is it the name
+>> of a data set you expect to be in that file? If the file with "4
+>> carriers" was loaded, try running str(tablename) to see its structure.
+>> (tablename is to be replaced by the table's actual name).
+>>
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>>
+>> ?s 16:19 de 07/11/21, Mohammad Shoushary escreveu:
+>>> Hi Guys,
+>>> I wonder how to opt trucking 4 once loading "TRUCKING" file.
+>>> I loaded: load("TRUCKING.Rdata")
+>>> but I  4 carrierneed the file that hass, any clue please? I appreciate it
+>>>
+>>>
+>>> Mohammad
+>>>
+>>>        [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+> 
+
+Hello,
+
+Start by reading the posting guide:
+
+https://www.r-project.org/posting-guide.html
+
+Here are some additional instructions:
+
+https://stackoverflow.com/questions/5963269/how-to-make-a-great-r-reproducible-example
+
+Also, see if package reprex can be of help.
+
+Hope this helps,
+
+Rui  Barradas
+
+
+From L@urentRHe|p @end|ng |rom |ree@|r  Tue Feb 14 19:48:02 2023
+From: L@urentRHe|p @end|ng |rom |ree@|r (Laurent Rhelp)
+Date: Tue, 14 Feb 2023 19:48:02 +0100
+Subject: [R] 
+ latticeExtra: how to use doubleYScale when we want to keep the
+ groups of every lattice graph
+In-Reply-To: <CADfFDC6qoF3JLmdgJDs8=FE7vgQChDUbV0Q+Pn-6P89j6d1mBA@mail.gmail.com>
+References: <54eae433-0fc5-93cc-4728-08ab86603120@free.fr>
+ <CADfFDC6qoF3JLmdgJDs8=FE7vgQChDUbV0Q+Pn-6P89j6d1mBA@mail.gmail.com>
+Message-ID: <aed9df09-0324-7f9d-fd1d-0509c1a4e93e@free.fr>
+
+It is great !
+I had not thought to use the value 0 for the variables style1 and 
+style2. I did not well understand when reading the documentation.
+Thank you
+Laurent
+
+
+Le 13/02/2023 ? 19:04, Deepayan Sarkar a ?crit?:
+> On Mon, Feb 13, 2023 at 3:48 AM Laurent Rhelp <LaurentRHelp at free.fr> wrote:
+>> Dear R-Help-list,
+>>
+>>    I want to use the doubleYScale function from latticeExtra to overlap two
+>> lattice graphs (cf. code below). The overlapping works but I lose the
+>> groups of
+>> every lattice, there are only two colors. Reading the documentation,
+>> the arguments style1 and style2 give me the impression that it is not
+>> possible to keep the groups of every lattice.
+> I'm mostly guessing from looking at the examples, but is this what you want?
+>
+> gr_Gx_Tx <- latticeExtra::doubleYScale(gr_Gx, gr_Tx, style1 = 0, style2 = 0)
+>
+> Best,
+> -Deepayan
+>
+>> Is there any possibility to keep the groups of every lattice graph with
+>> the doubleYScale function ?
+>>
+>> Or, might you give me some orientations to realize the graph keeping the
+>> groups using the lattice package ?
+>>
+>> Thank you
+>>
+>> Best regards
+>>
+>> Laurent
+>>
+>> #-----o<------------------------------------------------------------------------------>o-----------------
+>> library(lattice)
+>> library(latticeExtra)
+>> ##
+>> ## creation of the first lattice graph gr_Gx with a group of two elements
+>> ##
+>> lattice.par <- trellis.par.get()
+>> my.superpose.line  <- lattice.par$superpose.line
+>> my.superpose.line$col[1:2] <- c("black","red")
+>> gr_Gx <- xyplot( value ~ time | region
+>>                     , data = df.m
+>>                     , subset = sensor %in% c("G2","G4")
+>>                     , group = sensor
+>>                     , type ="l"
+>>                     , scales = list( y = list(log=10)
+>>                                      , x = list(relation="free", axs =
+>> "i", abbreviate=TRUE))
+>>                     , yscale.components = yscale.components.log10ticks
+>>                     , par.settings = list(
+>>                       superpose.line = my.superpose.line
+>>                     )
+>> )
+>> print(gr_Gx)
+>> ##
+>> ## creation of the second lattice graph gr_Tx with a group of five elements
+>> ##
+>> lattice.par <- trellis.par.get()
+>> my.superpose.line  <- lattice.par$superpose.line
+>> my.superpose.line$col[1:5] <- c(1,2,3,4,5)
+>> gr_Tx <-  xyplot( value ~ time | region
+>>                      , group = sensor
+>>                      , subset = sensor %in% c("T1","T2","T3","T4","T5")
+>>                      , data= df.m
+>>                      , type = "l"
+>>                      , scales = list( x= list( axs = "i", relation = "free"
+>>                                                , abbreviate = TRUE))
+>>                      , par.settings = list( superpose.line =
+>> my.superpose.line )
+>> )
+>> print(gr_Tx)
+>> ##
+>> ## overlap the two lattice graphs
+>> ## We lost the groups of every lattice
+>> ##
+>> gr_Gx_Tx <- latticeExtra::doubleYScale(gr_Gx, gr_Tx)
+>> print(gr_Gx_Tx)
+>>
+>> #----o<------------------------------------------------------------------------------>o-----------------
+>>
+>> The data :
+>>
+>> df.m <- structure(list(time = c(0.000250101089477539, 0.000250101089477539,
+>>    0.000250101089477539, 0.000250101089477539, 0.000250101089477539,
+>>    0.000250101089477539, 0.000250101089477539, 0.000500202178955078,
+>>    0.000500202178955078, 0.000500202178955078, 0.000500202178955078,
+>>    0.000500202178955078, 0.000500202178955078, 0.000500202178955078,
+>>    0.000750064849853516, 0.000750064849853516, 0.000750064849853516,
+>>    0.000750064849853516, 0.000750064849853516, 0.000750064849853516,
+>>    0.000750064849853516, 0.00100016593933105, 0.00100016593933105,
+>>    0.00100016593933105, 0.00100016593933105, 0.00100016593933105,
+>>    0.00100016593933105, 0.00100016593933105, 0.00125002861022949,
+>>    0.00125002861022949, 0.00125002861022949, 0.00125002861022949,
+>>    0.00125002861022949, 0.00125002861022949, 0.00125002861022949,
+>>    0.00150012969970703, 0.00150012969970703, 0.00150012969970703,
+>>    0.00150012969970703, 0.00150012969970703, 0.00150012969970703,
+>>    0.00150012969970703, 0.00175023078918457, 0.00175023078918457,
+>>    0.00175023078918457, 0.00175023078918457, 0.00175023078918457,
+>>    0.00175023078918457, 0.00175023078918457, 0.00200009346008301,
+>>    0.00200009346008301, 0.00200009346008301, 0.00200009346008301,
+>>    0.00200009346008301, 0.00200009346008301, 0.00200009346008301,
+>>    0.00225019454956055, 0.00225019454956055, 0.00225019454956055,
+>>    0.00225019454956055, 0.00225019454956055, 0.00225019454956055,
+>>    0.00225019454956055, 0.00250005722045898, 0.00250005722045898,
+>>    0.00250005722045898, 0.00250005722045898, 0.00250005722045898,
+>>    0.00250005722045898, 0.00250005722045898, 0.00275015830993652,
+>>    0.00275015830993652, 0.00275015830993652, 0.00275015830993652,
+>>    0.00275015830993652, 0.00275015830993652, 0.00275015830993652,
+>>    0.00300002098083496, 0.00300002098083496, 0.00300002098083496,
+>>    0.00300002098083496, 0.00300002098083496, 0.00300002098083496,
+>>    0.00300002098083496, 0.0032501220703125, 0.0032501220703125,
+>>    0.0032501220703125, 0.0032501220703125, 0.0032501220703125,
+>> 0.0032501220703125,
+>>    0.0032501220703125, 0.00350022315979004, 0.00350022315979004,
+>>    0.00350022315979004, 0.00350022315979004, 0.00350022315979004,
+>>    0.00350022315979004, 0.00350022315979004, 0.00375008583068848,
+>>    0.00375008583068848, 0.00375008583068848, 0.00375008583068848,
+>>    0.00375008583068848, 0.00375008583068848, 0.00375008583068848,
+>>    0.00400018692016602, 0.00400018692016602, 0.00400018692016602,
+>>    0.00400018692016602, 0.00400018692016602, 0.00400018692016602,
+>>    0.00400018692016602, 0.00425004959106445, 0.00425004959106445,
+>>    0.00425004959106445, 0.00425004959106445, 0.00425004959106445,
+>>    0.00425004959106445, 0.00425004959106445, 0.00450015068054199,
+>>    0.00450015068054199, 0.00450015068054199, 0.00450015068054199,
+>>    0.00450015068054199, 0.00450015068054199, 0.00450015068054199,
+>>    0.00475001335144043, 0.00475001335144043, 0.00475001335144043,
+>>    0.00475001335144043, 0.00475001335144043, 0.00475001335144043,
+>>    0.00475001335144043), sensor = c("G2", "G4", "T1", "T2", "T3",
+>>    "T4", "T5", "G2", "G4", "T1", "T2", "T3", "T4", "T5", "G2", "G4",
+>>    "T1", "T2", "T3", "T4", "T5", "G2", "G4", "T1", "T2", "T3", "T4",
+>>    "T5", "G2", "G4", "T1", "T2", "T3", "T4", "T5", "G2", "G4", "T1",
+>>    "T2", "T3", "T4", "T5", "G2", "G4", "T1", "T2", "T3", "T4", "T5",
+>>    "G2", "G4", "T1", "T2", "T3", "T4", "T5", "G2", "G4", "T1", "T2",
+>>    "T3", "T4", "T5", "G2", "G4", "T1", "T2", "T3", "T4", "T5", "G2",
+>>    "G4", "T1", "T2", "T3", "T4", "T5", "G2", "G4", "T1", "T2", "T3",
+>>    "T4", "T5", "G2", "G4", "T1", "T2", "T3", "T4", "T5", "G2", "G4",
+>>    "T1", "T2", "T3", "T4", "T5", "G2", "G4", "T1", "T2", "T3", "T4",
+>>    "T5", "G2", "G4", "T1", "T2", "T3", "T4", "T5", "G2", "G4", "T1",
+>>    "T2", "T3", "T4", "T5", "G2", "G4", "T1", "T2", "T3", "T4", "T5",
+>>    "G2", "G4", "T1", "T2", "T3", "T4", "T5"), value = c(0.82246387,
+>>    0.087782182, 279.797452, 280.4561376, 279.0974149, 280.4561376,
+>>    280.0033092, 0.497085421, 0.09618856, 279.6739299, 280.1679832,
+>>    278.8502975, 280.8265749, 279.9621391, 0.553148733, 0.081679087,
+>>    279.7151046, 280.0856475, 279.7562786, 281.9787114, 280.2914819,
+>>    0.642081754, 0.089700232, 279.7151046, 280.2914819, 280.7854178,
+>>    279.3033279, 279.7562786, 0.398027343, 0.094197026, 279.9209683,
+>>    280.3326468, 281.3204096, 280.0444787, 280.1268157, 0.759092342,
+>>    0.087119837, 279.9621391, 280.4149746, 281.4850005, 279.5092244,
+>>    280.373811, 0.289783197, 0.090064786, 279.9621391, 280.4149746,
+>>    280.9911968, 278.6443482, 279.797452, 0.517901378, 0.094528963,
+>>    279.9209683, 280.6619426, 279.7562786, 281.1969597, 280.3326468,
+>>    0.708271104, 0.095114161, 279.7151046, 280.5384615, 279.1797821,
+>>    280.4561376, 279.9209683, 1.178671343, 0.099874465, 279.797452,
+>>    280.0856475, 279.0150451, 280.9500423, 279.8797969, 1.101495437,
+>>    0.102470373, 279.9209683, 280.1679832, 279.6739299, 281.8964327,
+>>    280.4561376, 0.659228704, 0.096755622, 279.6327545, 280.0444787,
+>>    280.5384615, 279.2209647, 279.797452, 0.884443388, 0.102303788,
+>>    279.7562786, 280.2503163, 281.2792603, 280.0444787, 280.1268157,
+>>    0.836088938, 0.101041082, 280.1268157, 280.5384615, 281.4438538,
+>>    279.4680464, 280.3326468, 1.249971134, 0.107426276, 280.1268157,
+>>    280.5384615, 280.9911968, 278.4383823, 279.8386248, 0.827054859,
+>>    0.100433257, 279.797452, 280.4149746, 280.0033092, 281.2792603,
+>>    280.2091501, 0.817296467, 0.10996377, 279.7562786, 280.2914819,
+>>    279.2621466, 280.4561376, 279.9621391, 0.449069929, 0.109872197,
+>>    279.7151046, 280.1268157, 278.9326726, 280.8677313, 280.0033092,
+>>    0.711569413, 0.115516437, 279.8797969, 280.0444787, 279.6327545,
+>>    282.0198498, 280.4149746), region = structure(c(1L, 1L, 1L, 1L,
+>> 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,
+>> 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+>> 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L, 2L,
+>> 2L, 2L, 2L, 2L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L,
+>> 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L, 3L,
+>> 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L,
+>> 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 4L, 5L, 5L, 5L, 5L,
+>> 5L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 5L, 5L,
+>> 5L), levels = c("[0.00025,0.001]", "(0.001,0.002]", "(0.002,0.003]",
+>>                   "(0.003,0.004]", "(0.004,0.00475]"), class = "factor"))
+>> , row.names = c(NA,-133L), class = c("tbl_df", "tbl", "data.frame"))
+>>
+>>
+>> --
+>> Cet e-mail a ?t? v?rifi? par le logiciel antivirus d'Avast.
+>> www.avast.com
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Cet e-mail a ?t? v?rifi? par le logiciel antivirus d'Avast.
+www.avast.com
+
+
+From b|om|crogen @end|ng |rom @o|@com  Tue Feb 14 21:35:06 2023
+From: b|om|crogen @end|ng |rom @o|@com (Dr. Brandon Guida)
+Date: Tue, 14 Feb 2023 20:35:06 +0000 (UTC)
+Subject: [R] ggVennDiagram
+References: <1938405688.938019.1676406906208.ref@mail.yahoo.com>
+Message-ID: <1938405688.938019.1676406906208@mail.yahoo.com>
+
+Hi all,?
+I'm creating Venn's using ggVennDiagram and I can print the intersection tibble using the process_region_data() function but I cannot figure out how to print the components of each intersection (the lists of intersection elements)? Can anyone help me here? Ultimately I want to extract these to a csv.
+
+Brandon
+
+	[[alternative HTML version deleted]]
+
+
+From drj|m|emon @end|ng |rom gm@||@com  Wed Feb 15 03:11:39 2023
+From: drj|m|emon @end|ng |rom gm@||@com (Jim Lemon)
+Date: Wed, 15 Feb 2023 13:11:39 +1100
+Subject: [R] Question about italics in legendg() - plotrix
+In-Reply-To: <CA+8X3fVHwEX95_Uqgmq1Z7f=CWigA2Y8ZGTD9qQNfEqN6ZpfpQ@mail.gmail.com>
+References: <LO2P265MB4664A4A7A458E89FA958A6D5B0A29@LO2P265MB4664.GBRP265.PROD.OUTLOOK.COM>
+ <CA+8X3fVHwEX95_Uqgmq1Z7f=CWigA2Y8ZGTD9qQNfEqN6ZpfpQ@mail.gmail.com>
+Message-ID: <CA+8X3fXuDucN5iPDtG8aEVO887hbd=XbF39KxLqP4Y-GHRcWyw@mail.gmail.com>
+
+Hi Nicole,
+plotrix is intended to be modular, that is, it builds plots step by step.
+This makes it easier to understand code that you haven't written or haven't
+seen for a while. Here is an example showing how to change the font using
+par():
+
+library(plotrix)
+plot(0,type="n",xlim=c(0,1),ylim=c(-1,0))
+par(font=3)
+legendg(0.115,-0.055,legend=c("Pan troglodytes","Macaca mulatta",
+ "Saguinus oedipus","Lemur catta","Galago senegalensis"),
+pch=list(c(15,0),c(16,1),c(17,2),c(18,5),c(19,10)),
+ col=list(c("royalblue","skyblue1"),
+ c("chocolate","gold"),c("deeppink","lightpink"),
+ c("black","grey"),c("forestgreen","lightgreen")))
+par(font=1)
+legendg(0.45,-0.7,legend=c("Pan troglodytes","Macaca mulatta",
+ "Saguinus oedipus","Lemur catta","Galago senegalensis"),
+pch=list(c(15,0),c(16,1),c(17,2),c(18,5),c(19,10)),
+ col=list(c("royalblue","skyblue1"),
+ c("chocolate","gold"),c("deeppink","lightpink"),
+ c("black","grey"),c("forestgreen","lightgreen")))
+
+There are 4 or 5 preset font types built into R (normal, bold, italic,
+bolditalic and maybe symbol). You can also change the base font using the
+family= argument to par(), but that's quite a bit more complicated.
+
+Jim
+
+	[[alternative HTML version deleted]]
+
+
