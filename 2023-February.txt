@@ -6829,3 +6829,412 @@ Office: A 4.23
 Email: pd.mes at cbs.dk? Priv: PDalgd at gmail.com
 
 
+From @|gbert @end|ng |rom w|w|@hu-ber||n@de  Thu Feb 23 10:36:37 2023
+From: @|gbert @end|ng |rom w|w|@hu-ber||n@de (Sigbert Klinke)
+Date: Thu, 23 Feb 2023 10:36:37 +0100
+Subject: [R] Palettes {grDevices} - wrong number of colors returned?
+Message-ID: <af404cb5-5305-ce4b-67db-b1169b3e3e4e@wiwi.hu-berlin.de>
+
+Hi,
+
+I would have expected that I get always 3 colors as result which is not 
+true:
+
+hcl.colors(3, alpha=c(0, 0.5, 1))     # 3 colors
+
+rainbow(3, alpha=c(0, 0.5, 1))        # 3 colors
+
+heat.colors(3, alpha=c(0, 0.5, 1))    # 3 colors
+
+terrain.colors(3, alpha=c(0, 0.5, 1)) # 6 colors
+
+cm.colors(3, alpha=c(0, 0.5, 1))      # 6 colors
+
+topo.colors(3, alpha=c(0, 0.5, 1))    # 9 colors
+
+R-Version and platform:
+R version 4.2.2 Patched (2022-11-10 r83330) -- "Innocent and Trusting"
+
+Copyright (C) 2022 The R Foundation for Statistical Computing
+
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+Bug or feature?
+
+Sigbert
+
+-- 
+https://hu.berlin/sk
+https://www.stat.de/faqs
+https://hu.berlin/mmstat
+https://hu.berlin/mmstat-ar
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Feb 23 12:04:05 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 23 Feb 2023 06:04:05 -0500
+Subject: [R] Palettes {grDevices} - wrong number of colors returned?
+In-Reply-To: <af404cb5-5305-ce4b-67db-b1169b3e3e4e@wiwi.hu-berlin.de>
+References: <af404cb5-5305-ce4b-67db-b1169b3e3e4e@wiwi.hu-berlin.de>
+Message-ID: <021939b8-5757-dd57-a714-fc571f964579@gmail.com>
+
+On 23/02/2023 4:36 a.m., Sigbert Klinke wrote:
+> Hi,
+> 
+> I would have expected that I get always 3 colors as result which is not
+> true:
+> 
+> hcl.colors(3, alpha=c(0, 0.5, 1))     # 3 colors
+> 
+> rainbow(3, alpha=c(0, 0.5, 1))        # 3 colors
+> 
+> heat.colors(3, alpha=c(0, 0.5, 1))    # 3 colors
+> 
+> terrain.colors(3, alpha=c(0, 0.5, 1)) # 6 colors
+> 
+> cm.colors(3, alpha=c(0, 0.5, 1))      # 6 colors
+> 
+> topo.colors(3, alpha=c(0, 0.5, 1))    # 9 colors
+> 
+> R-Version and platform:
+> R version 4.2.2 Patched (2022-11-10 r83330) -- "Innocent and Trusting"
+> 
+> Copyright (C) 2022 The R Foundation for Statistical Computing
+> 
+> Platform: x86_64-pc-linux-gnu (64-bit)
+> 
+> Bug or feature?
+
+Looks like a bug to me, they should all be length 3.  The reason it 
+happens in terrain.colors (I didn't look at the others) is that it 
+breaks the range into two parts, and relies on the number of values of 
+the parameters in each part to get the length, but passes the full alpha 
+vector in:
+
+terrain.colors <- function (n, alpha, rev = FALSE)
+{
+     if ((n <- as.integer(n[1L])) > 0) {
+	k <- n%/%2
+	h <- c(4/12, 2/12, 0/12)
+	s <- c(1, 1, 0)
+	v <- c(0.65, 0.9, 0.95)
+	cols <- c(hsv(h = seq.int(h[1L], h[2L], length.out = k),
+                       s = seq.int(s[1L], s[2L], length.out = k),
+                       v = seq.int(v[1L], v[2L], length.out = k), alpha 
+= alpha),
+                   hsv(h = seq.int(h[2L], h[3L], length.out = n - k + 
+1)[-1L],
+                       s = seq.int(s[2L], s[3L], length.out = n - k + 
+1)[-1L],
+                       v = seq.int(v[2L], v[3L], length.out = n - k + 
+1)[-1L],
+                       alpha = alpha))
+         if(rev) rev(cols) else cols
+     } else character()
+}
+
+
+A bug fix would be to recycle alpha to the right length and only pass in 
+portions of it, e.g.
+
+terrain.colors <- function (n, alpha, rev = FALSE)
+{
+     if ((n <- as.integer(n[1L])) > 0) {
+         alpha <- rep_len(alpha, length.out = n)
+	k <- n%/%2
+	h <- c(4/12, 2/12, 0/12)
+	s <- c(1, 1, 0)
+	v <- c(0.65, 0.9, 0.95)
+	cols <- c(hsv(h = seq.int(h[1L], h[2L], length.out = k),
+                       s = seq.int(s[1L], s[2L], length.out = k),
+                       v = seq.int(v[1L], v[2L], length.out = k), alpha 
+= alpha[seq_len(k)]),
+                   hsv(h = seq.int(h[2L], h[3L], length.out = n - k + 
+1)[-1L],
+                       s = seq.int(s[2L], s[3L], length.out = n - k + 
+1)[-1L],
+                       v = seq.int(v[2L], v[3L], length.out = n - k + 
+1)[-1L],
+                       alpha = alpha[seq_len(n - k) + k]))
+         if(rev) rev(cols) else cols
+     } else character()
+}
+
+I'd guess the same sort of approach would fix cm.colors and topo.colors.
+
+Duncan Murdoch
+
+
+From Ach|m@Ze||e|@ @end|ng |rom u|bk@@c@@t  Thu Feb 23 12:06:55 2023
+From: Ach|m@Ze||e|@ @end|ng |rom u|bk@@c@@t (Achim Zeileis)
+Date: Thu, 23 Feb 2023 12:06:55 +0100 (CET)
+Subject: [R] Palettes {grDevices} - wrong number of colors returned?
+In-Reply-To: <af404cb5-5305-ce4b-67db-b1169b3e3e4e@wiwi.hu-berlin.de>
+References: <af404cb5-5305-ce4b-67db-b1169b3e3e4e@wiwi.hu-berlin.de>
+Message-ID: <8d6e622e-50b3-691f-124f-b4073b52d41a@uibk.ac.at>
+
+Thanks, Sigbert, good catch.
+
+The reason that this happens is the following: rainbow(), heat.colors(), 
+terrain.colors(), cm.colors(), and topo.colors() are all just front-ends 
+to calls to hsv() for Hue-Saturation-Value colors. (BTW: This is also the 
+main reason why they yield palettes with rather poor perceptual 
+properties.)
+
+All of the palette functions just pass on the alpha argument to all 
+hsv(..., alpha=alpha) calls. And in each case if the length of alpha and 
+the number of colors does not match the shorter element is recycled to the 
+length of the longer one.
+
+Thus, if n == length(alpha), as in your example, then those functions that 
+can generate all colors with a single call of hsv() do the right thing 
+(rainbow and heat.colors). Those, that need two hsv() calls yield 2 * n 
+colors (cm.colors and terrain.colors). And in topo.colors() where three 
+hsv() calls are used we get 3 * n colors.
+
+My suggested solution would be to do something like alpha <- 
+rep_len(alpha, n) early on in the palette functions and then assure that 
+the correct elements of alpha are passed to hsv().
+
+The same should be done in those functions that work correctly for n = 
+length(alpha) because it will assure that we always get n colors and not 
+more. For example, the case with n < length(alpha) is also unexpected:
+
+hcl.colors(2, alpha = c(0, 0.25, 0.5, 0.75, 1))
+## [1] "#4B005500" "#FDE33340" "#4B005580" "#FDE333BF" "#4B0055FF"
+
+Or even worse:
+
+gray.colors(2, alpha = c(0, 0.25, 0.5, 0.75, 1))
+## Error in gray(seq.int(from = start^gamma, to = end^gamma, length.out = n)^(1/gamma),  :
+##   attempt to set index 2/2 in SET_STRING_ELT
+
+If someone from R Core thinks that my proposed strategy is a good way 
+forward, I'm happy to work on a patch.
+
+Sigbert, if you are looking for a solution: (1) Don't use heat.colors, 
+terrain.colors, topo.colors, cm.colors, they are all quite terribel ;-)
+(2) If you really want to use them, put on the alpha afterwards, e.g., 
+using colorspace::adjust_transparency:
+
+colorspace::adjust_transparency(topo.colors(3), alpha = c(0, 0.5, 1))
+## [1] "#4C00FF00" "#00FF4D80" "#FFFF00FF"
+
+hth,
+Achim
+
+
+On Thu, 23 Feb 2023, Sigbert Klinke wrote:
+
+> Hi,
+>
+> I would have expected that I get always 3 colors as result which is not true:
+>
+> hcl.colors(3, alpha=c(0, 0.5, 1))     # 3 colors
+>
+> rainbow(3, alpha=c(0, 0.5, 1))        # 3 colors
+>
+> heat.colors(3, alpha=c(0, 0.5, 1))    # 3 colors
+>
+> terrain.colors(3, alpha=c(0, 0.5, 1)) # 6 colors
+>
+> cm.colors(3, alpha=c(0, 0.5, 1))      # 6 colors
+>
+> topo.colors(3, alpha=c(0, 0.5, 1))    # 9 colors
+>
+> R-Version and platform:
+> R version 4.2.2 Patched (2022-11-10 r83330) -- "Innocent and Trusting"
+>
+> Copyright (C) 2022 The R Foundation for Statistical Computing
+>
+> Platform: x86_64-pc-linux-gnu (64-bit)
+>
+> Bug or feature?
+>
+> Sigbert
+>
+> -- 
+> https://hu.berlin/sk
+> https://www.stat.de/faqs
+> https://hu.berlin/mmstat
+> https://hu.berlin/mmstat-ar
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From Ach|m@Ze||e|@ @end|ng |rom u|bk@@c@@t  Thu Feb 23 12:09:14 2023
+From: Ach|m@Ze||e|@ @end|ng |rom u|bk@@c@@t (Achim Zeileis)
+Date: Thu, 23 Feb 2023 12:09:14 +0100 (CET)
+Subject: [R] Palettes {grDevices} - wrong number of colors returned?
+In-Reply-To: <021939b8-5757-dd57-a714-fc571f964579@gmail.com>
+References: <af404cb5-5305-ce4b-67db-b1169b3e3e4e@wiwi.hu-berlin.de>
+ <021939b8-5757-dd57-a714-fc571f964579@gmail.com>
+Message-ID: <b91fe56d-2720-c0fb-3a42-7c2e84da7214@uibk.ac.at>
+
+Duncan,
+
+thanks for your feedback. I just received your response after sending out 
+mine. You came to the same conclusion. Should I prepare a patch and send 
+it to you so that you can also have a look? Or view Bugzilla?
+
+Best wishes,
+Achim
+
+On Thu, 23 Feb 2023, Duncan Murdoch wrote:
+
+> On 23/02/2023 4:36 a.m., Sigbert Klinke wrote:
+>> Hi,
+>> 
+>> I would have expected that I get always 3 colors as result which is not
+>> true:
+>> 
+>> hcl.colors(3, alpha=c(0, 0.5, 1))     # 3 colors
+>> 
+>> rainbow(3, alpha=c(0, 0.5, 1))        # 3 colors
+>> 
+>> heat.colors(3, alpha=c(0, 0.5, 1))    # 3 colors
+>> 
+>> terrain.colors(3, alpha=c(0, 0.5, 1)) # 6 colors
+>> 
+>> cm.colors(3, alpha=c(0, 0.5, 1))      # 6 colors
+>> 
+>> topo.colors(3, alpha=c(0, 0.5, 1))    # 9 colors
+>> 
+>> R-Version and platform:
+>> R version 4.2.2 Patched (2022-11-10 r83330) -- "Innocent and Trusting"
+>> 
+>> Copyright (C) 2022 The R Foundation for Statistical Computing
+>> 
+>> Platform: x86_64-pc-linux-gnu (64-bit)
+>> 
+>> Bug or feature?
+>
+> Looks like a bug to me, they should all be length 3.  The reason it happens 
+> in terrain.colors (I didn't look at the others) is that it breaks the range 
+> into two parts, and relies on the number of values of the parameters in each 
+> part to get the length, but passes the full alpha vector in:
+>
+> terrain.colors <- function (n, alpha, rev = FALSE)
+> {
+>    if ((n <- as.integer(n[1L])) > 0) {
+> 	k <- n%/%2
+> 	h <- c(4/12, 2/12, 0/12)
+> 	s <- c(1, 1, 0)
+> 	v <- c(0.65, 0.9, 0.95)
+> 	cols <- c(hsv(h = seq.int(h[1L], h[2L], length.out = k),
+>                      s = seq.int(s[1L], s[2L], length.out = k),
+>                      v = seq.int(v[1L], v[2L], length.out = k), alpha = 
+> alpha),
+>                  hsv(h = seq.int(h[2L], h[3L], length.out = n - k + 1)[-1L],
+>                      s = seq.int(s[2L], s[3L], length.out = n - k + 1)[-1L],
+>                      v = seq.int(v[2L], v[3L], length.out = n - k + 1)[-1L],
+>                      alpha = alpha))
+>        if(rev) rev(cols) else cols
+>    } else character()
+> }
+>
+>
+> A bug fix would be to recycle alpha to the right length and only pass in 
+> portions of it, e.g.
+>
+> terrain.colors <- function (n, alpha, rev = FALSE)
+> {
+>    if ((n <- as.integer(n[1L])) > 0) {
+>        alpha <- rep_len(alpha, length.out = n)
+> 	k <- n%/%2
+> 	h <- c(4/12, 2/12, 0/12)
+> 	s <- c(1, 1, 0)
+> 	v <- c(0.65, 0.9, 0.95)
+> 	cols <- c(hsv(h = seq.int(h[1L], h[2L], length.out = k),
+>                      s = seq.int(s[1L], s[2L], length.out = k),
+>                      v = seq.int(v[1L], v[2L], length.out = k), alpha = 
+> alpha[seq_len(k)]),
+>                  hsv(h = seq.int(h[2L], h[3L], length.out = n - k + 1)[-1L],
+>                      s = seq.int(s[2L], s[3L], length.out = n - k + 1)[-1L],
+>                      v = seq.int(v[2L], v[3L], length.out = n - k + 1)[-1L],
+>                      alpha = alpha[seq_len(n - k) + k]))
+>        if(rev) rev(cols) else cols
+>    } else character()
+> }
+>
+> I'd guess the same sort of approach would fix cm.colors and topo.colors.
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Feb 23 14:19:16 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 23 Feb 2023 08:19:16 -0500
+Subject: [R] Palettes {grDevices} - wrong number of colors returned?
+In-Reply-To: <b91fe56d-2720-c0fb-3a42-7c2e84da7214@uibk.ac.at>
+References: <af404cb5-5305-ce4b-67db-b1169b3e3e4e@wiwi.hu-berlin.de>
+ <021939b8-5757-dd57-a714-fc571f964579@gmail.com>
+ <b91fe56d-2720-c0fb-3a42-7c2e84da7214@uibk.ac.at>
+Message-ID: <00bc7fd1-46b2-f108-1def-7d3e33627adc@gmail.com>
+
+On 23/02/2023 6:09 a.m., Achim Zeileis wrote:
+> Duncan,
+> 
+> thanks for your feedback. I just received your response after sending out
+> mine. You came to the same conclusion. Should I prepare a patch and send
+> it to you so that you can also have a look? Or view Bugzilla?
+
+Copying Sigbert's message to Bugzilla is a good idea so it can be 
+referred to from the NEWS entry.  If you want to submit a patch along 
+with it, let me know and I'll take a look at it.
+
+Duncan
+
+
+From Ach|m@Ze||e|@ @end|ng |rom u|bk@@c@@t  Thu Feb 23 14:42:37 2023
+From: Ach|m@Ze||e|@ @end|ng |rom u|bk@@c@@t (Achim Zeileis)
+Date: Thu, 23 Feb 2023 14:42:37 +0100 (CET)
+Subject: [R] Palettes {grDevices} - wrong number of colors returned?
+In-Reply-To: <00bc7fd1-46b2-f108-1def-7d3e33627adc@gmail.com>
+References: <af404cb5-5305-ce4b-67db-b1169b3e3e4e@wiwi.hu-berlin.de>
+ <021939b8-5757-dd57-a714-fc571f964579@gmail.com>
+ <b91fe56d-2720-c0fb-3a42-7c2e84da7214@uibk.ac.at>
+ <00bc7fd1-46b2-f108-1def-7d3e33627adc@gmail.com>
+Message-ID: <936d4832-e935-ca81-ea2d-3c3ebefbedf0@uibk.ac.at>
+
+On Thu, 23 Feb 2023, Duncan Murdoch wrote:
+
+> On 23/02/2023 6:09 a.m., Achim Zeileis wrote:
+>> Duncan,
+>> 
+>> thanks for your feedback. I just received your response after sending out
+>> mine. You came to the same conclusion. Should I prepare a patch and send
+>> it to you so that you can also have a look? Or view Bugzilla?
+>
+> Copying Sigbert's message to Bugzilla is a good idea so it can be 
+> referred to from the NEWS entry.
+
+Good point. I've written a new description, though, because the are even 
+more problems with the alpha vector handling than suggested by Sigbert.
+
+The bug report is now at: https://bugs.R-project.org/show_bug.cgi?id=18476
+
+> If you want to submit a patch along with it, let me know and I'll take a 
+> look at it.
+
+There is both a patch and a test script in the attachments of the bug 
+report.
+
+Let me know if something needs further fixing.
+
+Best wishes,
+Achim
+
+
