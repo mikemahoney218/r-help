@@ -5528,3 +5528,376 @@ https://search.r-project.org/CRAN/refmans/pillar/html/format_glimpse.html
 https://cran.r-project.org/web/packages/pillar/news/news.html
 
 
+From petr@p|k@| @end|ng |rom prechez@@cz  Wed Mar 22 11:46:03 2023
+From: petr@p|k@| @end|ng |rom prechez@@cz (PIKAL Petr)
+Date: Wed, 22 Mar 2023 10:46:03 +0000
+Subject: [R] 
+ Rprofile.site and automatic installation of missing packages
+In-Reply-To: <8080b0a1-2475-6867-628b-723c76436510@gmail.com>
+References: <61db01a912c449f18fad4015c1310332@SRVEXCHCM1302.precheza.cz>
+ <451e72ed-7f52-1f12-8b22-1198ed1ec111@gmail.com>
+ <75ddf829411f4fd5b323f61dfb550112@SRVEXCHCM1302.precheza.cz>
+ <8080b0a1-2475-6867-628b-723c76436510@gmail.com>
+Message-ID: <bb254ef7719d43af88dffb5f8b080b5c@SRVEXCHCM1302.precheza.cz>
+
+Hallo Duncan
+
+Thanks for your hints, yes, the code in Rprofile.site is not executed. I am not sure, if I understood the startup mechanism correctly and I am a bit puzzled.
+
+Fresh installation (root C:Program files, write protected) has files Rprofile.site and .Rconsole installed in its etc directory.
+After starting R I can see that home directory is
+> Sys.getenv("R_USER")
+[1] "\\\\srvudst01.precheza.cz\\userdata\\PikalP\\Dokumenty"
+
+.Rconsole or .Rprofile in this directory are executed but Rprofile.site located in this directory is not.
+
+After fresh R installation to set all users to have the same startup I have two options:
+Change Rprofile.site in ...R\etc directory
+Put the same .Rprofile file into R_Home directory for each user
+
+Am I right or are there any other options how to set R on startup for all users differently from factory fresh setting?
+
+Sorry for my questions, it is something I never done before but I now need to resolve it in a way which fits to our IT environment.
+
+Best regards.
+Petr
+
+-----Original Message-----
+From: Duncan Murdoch <murdoch.duncan at gmail.com>
+Sent: Tuesday, March 21, 2023 5:43 PM
+To: PIKAL Petr <petr.pikal at precheza.cz>; r-help <r-help at r-project.org>
+Subject: Re: [R] Rprofile.site and automatic installation of missing packages
+
+On 21/03/2023 9:58 a.m., PIKAL Petr wrote:
+> Hallo Duncan
+>
+> Tested but does not work so something other must be wrong.
+>
+> R version 4.2.2.
+>> installed.packages()[,"Package"]
+>            base           boot          class        cluster      codetools       compiler       datasets        foreign       graphics      grDevices           grid     KernSmooth
+>          "base"         "boot"        "class"      "cluster"    "codetools"     "compiler"     "datasets"      "foreign"     "graphics"    "grDevices"         "grid"   "KernSmooth"
+>         lattice           MASS         Matrix        methods           mgcv           nlme           nnet       parallel          rpart        spatial        splines          stats
+>       "lattice"         "MASS"       "Matrix"      "methods"         "mgcv"         "nlme"         "nnet"     "parallel"        "rpart"      "spatial"      "splines"        "stats"
+>          stats4       survival          tcltk          tools   translations          utils
+>        "stats4"     "survival"        "tcltk"        "tools" "translations"        "utils"
+>
+> My Rprofile.site
+> # Things you might want to change
+> options(papersize="a4")
+> options(help_type="html")
+>
+> library(utils)
+> library(MASS)
+>
+> #**********
+> test <-(scan("pack.txt", character(), quote = ""))
+> x<- utils::installed.packages()
+> utils::install.packages(test[!test %in% x],
+> repos="https://cloud.r-project.org")
+>
+> ##**********
+>
+> Options are set and working.
+> MASS should be loaded but is not
+>
+>> search()
+> [1] ".GlobalEnv"        "package:stats"     "package:graphics"  "package:grDevices" "package:utils"     "package:datasets"  "package:methods"   "Autoloads"         "package:base"
+>>
+>
+> Any suggestion where to look?
+
+I'd add code to print the values of x and test to confirm that things are proceeding as you expect.  I don't know if print() or cat() will work there; you might need to use message().
+
+For attaching packages, you should see ?Startup again:  this is done via
+options() or an environment variable, not library() calls in the profile file.
+
+Duncan Murdoch
+
+>
+> Best regards
+> Petr
+>
+> -----Original Message-----
+> From: Duncan Murdoch <murdoch.duncan at gmail.com>
+> Sent: Tuesday, March 21, 2023 1:55 PM
+> To: PIKAL Petr <petr.pikal at precheza.cz>; r-help <r-help at r-project.org>
+> Subject: Re: [R] Rprofile.site and automatic installation of missing
+> packages
+>
+> ?Startup says:  "Note that when the site and user profile files are sourced only the base package is loaded, so objects in other packages need to be referred to by e.g. utils::dump.frames or after explicitly loading the package concerned."
+>
+> So you need utils::installed.packages and utils::install.packages .
+>
+> Duncan Murdoch
+>
+> On 21/03/2023 8:04 a.m., PIKAL Petr wrote:
+>> Dear all.
+>>
+>>
+>>
+>> I am trying to install missing (not installed) packages during
+>> startup of R through code in Rprofile.site but I miserably failed and
+>> I am not sure what I am doing wrong.
+>>
+>>
+>>
+>> R is installed to C:Program files but it is not writable for the
+>> users, therefore I cannot change Rprofile.site located in root etc
+>> directory. I however can put Rprofile.site in users home directory
+>> (Documents) and use it for R startup setting (partly).
+>>
+>> However I want for less experienced users to put a code here to check
+>> installed packages, check if some specified set of packages is
+>> installed and install them, but it is not working.
+>>
+>>
+>>
+>> The code in Rprofile.site is:
+>>
+>>
+>>
+>> #**********
+>>
+>> test <- scan("pack.txt", character(), quote = "")
+>>
+>> inst <- installed.packages()
+>>
+>> install.packages(test[!test %in% inst],
+>> repos="https://cloud.r-project.org")
+>>
+>> #**********
+>>
+>>
+>>
+>> An example of pack.txt is e.g.
+>>
+>> ggplot2
+>>
+>> zoo
+>>
+>>
+>>
+>> but the code is not executed and packages are not installed. If I use
+>> this code after R starts, everything is OK and packages are installed
+>> to
+>>
+>>
+>>
+>>> Sys.getenv("R_LIBS_USER")
+>>
+>> [1] "C:\\Users\\PikalP\\AppData\\Local/R/win-library/4.2"
+>>
+>>>
+>>
+>> The same applies if I put e.g. library(MASS) in the Rprofile.site,
+>> the package is not loaded but after R is live, library(MASS) loads a package.
+>>
+>>
+>>
+>> So my question is What is the best way to check after fresh R
+>> installation if some predefined set of packages is installed and if
+>> not, perform an installation without user intervention in Windows environment?
+>>
+>>
+>>
+>> S pozdravem | Best Regards
+>>
+>> Petr
+>>
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+> Osobn? ?daje: Informace o zpracov?n? a ochran? osobn?ch ?daj?
+> obchodn?ch partner? PRECHEZA a.s. jsou zve?ejn?ny na:
+> https://www.precheza.cz/zasady-ochrany-osobnich-udaju/ | Information
+> about processing and protection of business partner?s personal data
+> are available on website:
+> https://www.precheza.cz/en/personal-data-protection-principles/
+> D?v?rnost: Tento e-mail a jak?koliv k n?mu p?ipojen? dokumenty jsou
+> d?v?rn? a podl?haj? tomuto pr?vn? z?vazn?mu prohl??en? o vylou?en?
+> odpov?dnosti: https://www.precheza.cz/01-dovetek/ | This email and any
+> documents attached to it may be confidential and are subject to the
+> legally binding disclaimer: https://www.precheza.cz/en/01-disclaimer/
+>
+
+Osobn? ?daje: Informace o zpracov?n? a ochran? osobn?ch ?daj? obchodn?ch partner? PRECHEZA a.s. jsou zve?ejn?ny na: https://www.precheza.cz/zasady-ochrany-osobnich-udaju/ | Information about processing and protection of business partner?s personal data are available on website: https://www.precheza.cz/en/personal-data-protection-principles/
+D?v?rnost: Tento e-mail a jak?koliv k n?mu p?ipojen? dokumenty jsou d?v?rn? a podl?haj? tomuto pr?vn? z?vazn?mu prohl??en? o vylou?en? odpov?dnosti: https://www.precheza.cz/01-dovetek/ | This email and any documents attached to it may be confidential and are subject to the legally binding disclaimer: https://www.precheza.cz/en/01-disclaimer/
+
+
+From m@rong|u@|u|g| @end|ng |rom gm@||@com  Wed Mar 22 22:12:23 2023
+From: m@rong|u@|u|g| @end|ng |rom gm@||@com (Luigi Marongiu)
+Date: Wed, 22 Mar 2023 22:12:23 +0100
+Subject: [R] How to test the difference between paired correlations?
+Message-ID: <CAMk+s2S7Ei9yPHtkSMnDUr0RH7N58bEn_uaTd__w_=APrjF1aA@mail.gmail.com>
+
+Hello,
+I have three numerical variables and I would like to test if their
+correlation is significantly different.
+I have seen that there is a package that "Test the difference between
+two (paired or unpaired) correlations".
+[https://www.personality-project.org/r/html/paired.r.html]
+However, there is the need to convert the correlations to "z scores
+using the Fisher r-z transform". I have seen that there is another
+package that does that
+[https://search.r-project.org/CRAN/refmans/DescTools/html/FisherZ.html].
+Yet, I do not understand how to process the data. Shall I pass the raw
+data or the correlations directly?
+
+I have made the following working example:
+```
+# define data
+v1 <- c(62.480,  59.492,  74.060,  88.519,  91.417,  53.907,  64.202,  62.426,
+        54.406,  88.117)
+v2 <- c(56.814, 42.005, 56.074, 65.990, 81.572, 53.855, 50.335, 63.537, 41.713,
+        78.265)
+v3 <- c(54.170,  64.224,  57.569,  85.089, 104.056,  48.713,  61.239,  60.290,
+        67.308,  71.179)
+# visual exploration
+par(mfrow=c(2, 1))
+plot(v2~v1, ylim=c(min(c(v1,v2,v3)), max(c(v1,v2,v3))),
+     xlim=c(min(c(v1,v2,v3)), max(c(v1,v2,v3))),
+     main="V1 vs V2")
+abline(lm(v2~v1))
+plot(v3~v1, ylim=c(min(c(v1,v2,v3)), max(c(v1,v2,v3))),
+     xlim=c(min(c(v1,v2,v3)), max(c(v1,v2,v3))),
+     main="V1 vs V3")
+abline(lm(v3~v1))
+## test differences in correlation
+# convert raw data into z-scores
+library(psych)
+library(DescTools)
+FisherZ(v1) # I cannot convert the raw data into z scores (same for
+the other variables):
+> [1] NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN
+> Warning message:
+> In log((1 + rho)/(1 - rho)) : NaNs produced
+# convert correlations into z scores
+# (the correlation score of 0.79 has been converted into 1.08; is this correct?)
+FisherZ(lm(v2~v1)$coefficients[2])
+>      v1
+> 1.081667
+lm(v2~v1)$coefficients[2]
+>       v1
+> 0.7938164
+# apply test
+v1_v2 = FisherZ(lm(v2~v1)$coefficients[2])
+v1_v3 = FisherZ(lm(v3~v1)$coefficients[2])
+paired.r(v1_v2, v1_v3, yz=NULL, length(v1), n2=NULL, twotailed=TRUE)
+> Call: paired.r(xy = v1_v2, xz = v1_v3, yz = NULL, n = length(v1), n2 = NULL,
+>    twotailed = TRUE)
+> [1] "test of difference between two independent correlations"
+> z = NaN  With probability =  NaNWarning messages:
+> 1: In log((1 + xy)/(1 - xy)) : NaNs produced
+> 2: In log((1 + xz)/(1 - xz)) : NaNs produced
+```
+
+What is the right way to run this test?
+Shall I apply also yz?
+Thank you
+
+-- 
+Best regards,
+Luigi
+
+
+From tebert @end|ng |rom u||@edu  Thu Mar 23 01:23:17 2023
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Thu, 23 Mar 2023 00:23:17 +0000
+Subject: [R] How to test the difference between paired correlations?
+In-Reply-To: <CAMk+s2S7Ei9yPHtkSMnDUr0RH7N58bEn_uaTd__w_=APrjF1aA@mail.gmail.com>
+References: <CAMk+s2S7Ei9yPHtkSMnDUr0RH7N58bEn_uaTd__w_=APrjF1aA@mail.gmail.com>
+Message-ID: <SN4PR22MB2824C2F4970592A0B9F14E5ACF879@SN4PR22MB2824.namprd22.prod.outlook.com>
+
+If you are open to other options:
+The null hypothesis is that there is no difference.
+   If I have two equations y=x and y=z and there is no difference then it would not matter if an observation was from x or z.
+   Randomize the x and z observations. For each randomization calculate a correlation for y=x and for y=z.
+   At each iteration calculate the absolute value of the difference in the correlations.
+   Generate a frequency distribution from 100,000+ randomizations.
+   Find the observed difference in the frequency from random distributions.
+   What proportion of observations are as large or larger than the observed. This is your p-value.
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Luigi Marongiu
+Sent: Wednesday, March 22, 2023 5:12 PM
+To: r-help <r-help at r-project.org>
+Subject: [R] How to test the difference between paired correlations?
+
+[External Email]
+
+Hello,
+I have three numerical variables and I would like to test if their correlation is significantly different.
+I have seen that there is a package that "Test the difference between two (paired or unpaired) correlations".
+[https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fwww.personality-project.org%2Fr%2Fhtml%2Fpaired.r.html&data=05%7C01%7Ctebert%40ufl.edu%7C35f2e7d6d9e844553c6408db2b1a337f%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638151163767327230%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=S5T%2F1r%2BotV2BeL7S8bQFR0Avi4jDOuRX8N7LxACA6jg%3D&reserved=0]
+However, there is the need to convert the correlations to "z scores using the Fisher r-z transform". I have seen that there is another package that does that [https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fsearch.r-project.org%2FCRAN%2Frefmans%2FDescTools%2Fhtml%2FFisherZ.html&data=05%7C01%7Ctebert%40ufl.edu%7C35f2e7d6d9e844553c6408db2b1a337f%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638151163767327230%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=gI3vIHV5UnFbPSmeMyuCVvg9hpFCdF33qNgAXmOQOXU%3D&reserved=0].
+Yet, I do not understand how to process the data. Shall I pass the raw data or the correlations directly?
+
+I have made the following working example:
+```
+# define data
+v1 <- c(62.480,  59.492,  74.060,  88.519,  91.417,  53.907,  64.202,  62.426,
+        54.406,  88.117)
+v2 <- c(56.814, 42.005, 56.074, 65.990, 81.572, 53.855, 50.335, 63.537, 41.713,
+        78.265)
+v3 <- c(54.170,  64.224,  57.569,  85.089, 104.056,  48.713,  61.239,  60.290,
+        67.308,  71.179)
+# visual exploration
+par(mfrow=c(2, 1))
+plot(v2~v1, ylim=c(min(c(v1,v2,v3)), max(c(v1,v2,v3))),
+     xlim=c(min(c(v1,v2,v3)), max(c(v1,v2,v3))),
+     main="V1 vs V2")
+abline(lm(v2~v1))
+plot(v3~v1, ylim=c(min(c(v1,v2,v3)), max(c(v1,v2,v3))),
+     xlim=c(min(c(v1,v2,v3)), max(c(v1,v2,v3))),
+     main="V1 vs V3")
+abline(lm(v3~v1))
+## test differences in correlation
+# convert raw data into z-scores
+library(psych)
+library(DescTools)
+FisherZ(v1) # I cannot convert the raw data into z scores (same for the other variables):
+> [1] NaN NaN NaN NaN NaN NaN NaN NaN NaN NaN Warning message:
+> In log((1 + rho)/(1 - rho)) : NaNs produced
+# convert correlations into z scores
+# (the correlation score of 0.79 has been converted into 1.08; is this correct?)
+FisherZ(lm(v2~v1)$coefficients[2])
+>      v1
+> 1.081667
+lm(v2~v1)$coefficients[2]
+>       v1
+> 0.7938164
+# apply test
+v1_v2 = FisherZ(lm(v2~v1)$coefficients[2])
+v1_v3 = FisherZ(lm(v3~v1)$coefficients[2])
+paired.r(v1_v2, v1_v3, yz=NULL, length(v1), n2=NULL, twotailed=TRUE)
+> Call: paired.r(xy = v1_v2, xz = v1_v3, yz = NULL, n = length(v1), n2 = NULL,
+>    twotailed = TRUE)
+> [1] "test of difference between two independent correlations"
+> z = NaN  With probability =  NaNWarning messages:
+> 1: In log((1 + xy)/(1 - xy)) : NaNs produced
+> 2: In log((1 + xz)/(1 - xz)) : NaNs produced
+```
+
+What is the right way to run this test?
+Shall I apply also yz?
+Thank you
+
+--
+Best regards,
+Luigi
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Ctebert%40ufl.edu%7C35f2e7d6d9e844553c6408db2b1a337f%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638151163767327230%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=C%2FnA51iGPdivPDSPOktAvvb7r%2BjACQCqvcAc5jVMPew%3D&reserved=0
+PLEASE do read the posting guide https://nam10.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C01%7Ctebert%40ufl.edu%7C35f2e7d6d9e844553c6408db2b1a337f%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638151163767327230%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=wKr4mBr%2ByPybzuj1xUzD1a75yfLHQ9uagaUfrE%2F6JDk%3D&reserved=0
+and provide commented, minimal, self-contained, reproducible code.
+
+
