@@ -3442,3 +3442,598 @@ On April 4, 2023 4:53:38 PM PDT, Mark Leeds <markleeds2 at gmail.com> wrote:
 Sent from my phone. Please excuse my brevity.
 
 
+From r@oknz @end|ng |rom gm@||@com  Wed Apr  5 07:00:38 2023
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Wed, 5 Apr 2023 17:00:38 +1200
+Subject: [R] on lexical scoping....
+In-Reply-To: <PU4P216MB15683EBC52825DFE535B9F26C8939@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB15683EBC52825DFE535B9F26C8939@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <CABcYAdKa9SOBLCCRUK4qMHeVQAmgNzrY2_pi82n_6woXC7E2CA@mail.gmail.com>
+
+R *does* search the environment stack.
+
+> search()
+[1] ".GlobalEnv"        "package:stats"     "package:graphics"
+[4] "package:grDevices" "package:utils"     "package:datasets"
+[7] "package:methods"   "Autoloads"         "package:base
+
+What you seem to be missing is that a package may contain
+bindings that it does not export, as the wording of this
+error message reminds us:
+> utils::y
+Error: 'y' is not an exported object from 'namespace:utils'
+
+So when package/namespace goes onto the environment stack,
+it's only the *exported* bindings that become visible.
+
+
+
+On Wed, 5 Apr 2023 at 01:56, akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+
+> Dear Members,
+>                              I have the following code typed at the
+> console prompt:
+>
+> y   <-   x*10
+>
+> X has not been defined and the above code throws an object not found
+> error. That is, the global environment does not contain x. Why doesn't it
+> look further in the environment stack, like that of packages? There are
+> thousands of packages that contain the variable named  x. Of course, that
+> happens if the above code is in a function (or does it?).
+>
+> What concept of R is at work in this dichotomy?
+>
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Apr  5 11:12:52 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 5 Apr 2023 05:12:52 -0400
+Subject: [R] on lexical scoping....
+In-Reply-To: <CAHz+bWbzDUPjrHyXauw07rWkB3mOs4YsQqZTEfWUkb8CtWbHJQ@mail.gmail.com>
+References: <PU4P216MB15683EBC52825DFE535B9F26C8939@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAGxFJbRBjrpo3c8D-vfaye1+Dc5eGb++eCaLQ+sbKojoFURy1A@mail.gmail.com>
+ <CAHz+bWbzDUPjrHyXauw07rWkB3mOs4YsQqZTEfWUkb8CtWbHJQ@mail.gmail.com>
+Message-ID: <e8c9bf61-137e-eef5-adfd-70e000e8c2b0@gmail.com>
+
+It seems mostly correct. Here are a few quibbles:
+
+- I don't think "owner" is a good description of the parent environment. 
+  Usually when I use owner in computing, there's an implication that the 
+owner controls what it owns, is responsible for allocating and 
+destroying it, etc.  Parent environments are targets of a pointer from 
+other environments that list them as their "enclosure", but they have no 
+record of their children.
+
+- The analogy that all roads lead to the search list is wrong.  There's 
+no reason you couldn't create an environment whose parent was the empty 
+environment.  But with the qualifier "when we start in R_GlobalEnv" it's 
+correct, so this complaint is just about the wording.
+
+- The description of what Imports does is wrong.  What is described 
+there is what the `import()` directive in NAMESPACE does.  The Imports 
+line in DESCRIPTION just guarantees that the named package is loaded, it 
+doesn't import anything.  And the `importFrom()` directive in NAMESPACE 
+isn't discussed.
+
+- It gets bad near the end in the "Curveball" section.  I'd just skip 
+that.  It's not at all true that all functions in a package have the 
+package's namespace environment as their environment.  There are lots of 
+real examples where that's not true.  Functions that maintain persistent 
+records (e.g. the base function conflictRules()) often have a private 
+environment, and occasionally packages import functions from other 
+packages by simple assignment, so they end up in the namespace 
+environment of the importer but still have the namespace environment of 
+the exporter associated with them.  And the last diagram (the revised 
+one with all solid lines) is just misleading.
+
+Duncan
+
+On 04/04/2023 7:53 p.m., Mark Leeds wrote:
+> obviously, everyone has different opinions on what's useful but I always
+> found this document quite
+> helpful. I think, in the past, someone said that there are some incorrect
+> statements in but I'm not sure
+> what they are.
+> 
+> https://askming.github.io/study_notes/Stats_Comp/Note-How%20R%20searches%20and%20finds%20stuff.html
+> 
+> 
+> On Tue, Apr 4, 2023 at 7:06?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> 
+>> The following *might* be of use to you. If you can predict what the various
+>> function invocations will do, I think you have a reasonable grasp of how
+>> lexical scoping works in R (contrary or supplementary opinions welcome).
+>> It is the sort of thing you will find in the references also. If this is
+>> all obvious, sorry for wasting your time.
+>> #######################
+>> search()
+>> ls()
+>> dat <- list(x =2)
+>> attach(dat,2)
+>> search()
+>> f <- function(){
+>>     g <- function() x
+>>     x <- 3
+>>     g}
+>> h <- f()
+>> g <- function()x
+>> ls()
+>> h()
+>> g()
+>> detach(dat)
+>> h()
+>> g()
+>>
+>> ##########################
+>> ## Here is what this gives starting with an empty .GlobalEnv.
+>> ##################################
+>>
+>>> search()
+>>   [1] ".GlobalEnv"        "package:tools"     "package:lattice"
+>> "tools:rstudio"
+>>   [5] "package:stats"     "package:graphics"  "package:grDevices"
+>> "package:utils"
+>>   [9] "package:datasets"  "package:methods"   "Autoloads"
+>> "package:base"
+>>> ls()
+>> character(0)
+>>> dat <- list(x =2)
+>>> attach(dat,2)
+>>> search()
+>>   [1] ".GlobalEnv"        "dat"               "package:tools"
+>> "package:lattice"
+>>   [5] "tools:rstudio"     "package:stats"     "package:graphics"
+>>   "package:grDevices"
+>>   [9] "package:utils"     "package:datasets"  "package:methods"
+>> "Autoloads"
+>> [13] "package:base"
+>>> f <- function(){
+>> +    g <- function() x
+>> +    x <- 3
+>> +    g}
+>>> h <- f()
+>>> g <- function()x
+>>> ls()
+>> [1] "dat" "f"   "g"   "h"
+>>> h()
+>> [1] 3
+>>> g()
+>> [1] 2
+>>> detach(dat)
+>>> h()
+>> [1] 3
+>>> g()
+>> Error in g() : object 'x' not found
+>>
+>> -- Bert
+>>
+>>
+>> On Tue, Apr 4, 2023 at 6:56?AM akshay kulkarni <akshay_e4 at hotmail.com>
+>> wrote:
+>>
+>>> Dear Members,
+>>>                               I have the following code typed at the
+>>> console prompt:
+>>>
+>>> y   <-   x*10
+>>>
+>>> X has not been defined and the above code throws an object not found
+>>> error. That is, the global environment does not contain x. Why doesn't it
+>>> look further in the environment stack, like that of packages? There are
+>>> thousands of packages that contain the variable named  x. Of course, that
+>>> happens if the above code is in a function (or does it?).
+>>>
+>>> What concept of R is at work in this dichotomy?
+>>>
+>>> THanking you,
+>>> Yours sincerely,
+>>> AKSHAY M KULKARNI
+>>>
+>>>          [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+>>          [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From m@rk|eed@2 @end|ng |rom gm@||@com  Wed Apr  5 14:52:40 2023
+From: m@rk|eed@2 @end|ng |rom gm@||@com (Mark Leeds)
+Date: Wed, 5 Apr 2023 08:52:40 -0400
+Subject: [R] on lexical scoping....
+In-Reply-To: <e8c9bf61-137e-eef5-adfd-70e000e8c2b0@gmail.com>
+References: <PU4P216MB15683EBC52825DFE535B9F26C8939@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAGxFJbRBjrpo3c8D-vfaye1+Dc5eGb++eCaLQ+sbKojoFURy1A@mail.gmail.com>
+ <CAHz+bWbzDUPjrHyXauw07rWkB3mOs4YsQqZTEfWUkb8CtWbHJQ@mail.gmail.com>
+ <e8c9bf61-137e-eef5-adfd-70e000e8c2b0@gmail.com>
+Message-ID: <CAHz+bWaxQMG59GdLJrj4jhMkT7X3uAEghUr23_-p3zoCwW0o5A@mail.gmail.com>
+
+Hi Duncan. I read it a looooong time ago so it's probably best if
+I read it again ALONG with your corrections. Every detail matters
+with these concepts so thanks a lot.
+
+Mark
+
+On Wed, Apr 5, 2023 at 5:12?AM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> It seems mostly correct. Here are a few quibbles:
+>
+> - I don't think "owner" is a good description of the parent environment.
+>   Usually when I use owner in computing, there's an implication that the
+> owner controls what it owns, is responsible for allocating and
+> destroying it, etc.  Parent environments are targets of a pointer from
+> other environments that list them as their "enclosure", but they have no
+> record of their children.
+>
+> - The analogy that all roads lead to the search list is wrong.  There's
+> no reason you couldn't create an environment whose parent was the empty
+> environment.  But with the qualifier "when we start in R_GlobalEnv" it's
+> correct, so this complaint is just about the wording.
+>
+> - The description of what Imports does is wrong.  What is described
+> there is what the `import()` directive in NAMESPACE does.  The Imports
+> line in DESCRIPTION just guarantees that the named package is loaded, it
+> doesn't import anything.  And the `importFrom()` directive in NAMESPACE
+> isn't discussed.
+>
+> - It gets bad near the end in the "Curveball" section.  I'd just skip
+> that.  It's not at all true that all functions in a package have the
+> package's namespace environment as their environment.  There are lots of
+> real examples where that's not true.  Functions that maintain persistent
+> records (e.g. the base function conflictRules()) often have a private
+> environment, and occasionally packages import functions from other
+> packages by simple assignment, so they end up in the namespace
+> environment of the importer but still have the namespace environment of
+> the exporter associated with them.  And the last diagram (the revised
+> one with all solid lines) is just misleading.
+>
+> Duncan
+>
+> On 04/04/2023 7:53 p.m., Mark Leeds wrote:
+> > obviously, everyone has different opinions on what's useful but I always
+> > found this document quite
+> > helpful. I think, in the past, someone said that there are some incorrect
+> > statements in but I'm not sure
+> > what they are.
+> >
+> >
+> https://askming.github.io/study_notes/Stats_Comp/Note-How%20R%20searches%20and%20finds%20stuff.html
+> >
+> >
+> > On Tue, Apr 4, 2023 at 7:06?PM Bert Gunter <bgunter.4567 at gmail.com>
+> wrote:
+> >
+> >> The following *might* be of use to you. If you can predict what the
+> various
+> >> function invocations will do, I think you have a reasonable grasp of how
+> >> lexical scoping works in R (contrary or supplementary opinions welcome).
+> >> It is the sort of thing you will find in the references also. If this is
+> >> all obvious, sorry for wasting your time.
+> >> #######################
+> >> search()
+> >> ls()
+> >> dat <- list(x =2)
+> >> attach(dat,2)
+> >> search()
+> >> f <- function(){
+> >>     g <- function() x
+> >>     x <- 3
+> >>     g}
+> >> h <- f()
+> >> g <- function()x
+> >> ls()
+> >> h()
+> >> g()
+> >> detach(dat)
+> >> h()
+> >> g()
+> >>
+> >> ##########################
+> >> ## Here is what this gives starting with an empty .GlobalEnv.
+> >> ##################################
+> >>
+> >>> search()
+> >>   [1] ".GlobalEnv"        "package:tools"     "package:lattice"
+> >> "tools:rstudio"
+> >>   [5] "package:stats"     "package:graphics"  "package:grDevices"
+> >> "package:utils"
+> >>   [9] "package:datasets"  "package:methods"   "Autoloads"
+> >> "package:base"
+> >>> ls()
+> >> character(0)
+> >>> dat <- list(x =2)
+> >>> attach(dat,2)
+> >>> search()
+> >>   [1] ".GlobalEnv"        "dat"               "package:tools"
+> >> "package:lattice"
+> >>   [5] "tools:rstudio"     "package:stats"     "package:graphics"
+> >>   "package:grDevices"
+> >>   [9] "package:utils"     "package:datasets"  "package:methods"
+> >> "Autoloads"
+> >> [13] "package:base"
+> >>> f <- function(){
+> >> +    g <- function() x
+> >> +    x <- 3
+> >> +    g}
+> >>> h <- f()
+> >>> g <- function()x
+> >>> ls()
+> >> [1] "dat" "f"   "g"   "h"
+> >>> h()
+> >> [1] 3
+> >>> g()
+> >> [1] 2
+> >>> detach(dat)
+> >>> h()
+> >> [1] 3
+> >>> g()
+> >> Error in g() : object 'x' not found
+> >>
+> >> -- Bert
+> >>
+> >>
+> >> On Tue, Apr 4, 2023 at 6:56?AM akshay kulkarni <akshay_e4 at hotmail.com>
+> >> wrote:
+> >>
+> >>> Dear Members,
+> >>>                               I have the following code typed at the
+> >>> console prompt:
+> >>>
+> >>> y   <-   x*10
+> >>>
+> >>> X has not been defined and the above code throws an object not found
+> >>> error. That is, the global environment does not contain x. Why doesn't
+> it
+> >>> look further in the environment stack, like that of packages? There are
+> >>> thousands of packages that contain the variable named  x. Of course,
+> that
+> >>> happens if the above code is in a function (or does it?).
+> >>>
+> >>> What concept of R is at work in this dichotomy?
+> >>>
+> >>> THanking you,
+> >>> Yours sincerely,
+> >>> AKSHAY M KULKARNI
+> >>>
+> >>>          [[alternative HTML version deleted]]
+> >>>
+> >>> ______________________________________________
+> >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>> PLEASE do read the posting guide
+> >>> http://www.R-project.org/posting-guide.html
+> >>> and provide commented, minimal, self-contained, reproducible code.
+> >>>
+> >>
+> >>          [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide
+> >> http://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+> >>
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Wed Apr  5 18:59:50 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Wed, 5 Apr 2023 16:59:50 +0000
+Subject: [R] on lexical scoping....
+In-Reply-To: <CAGxFJbRBjrpo3c8D-vfaye1+Dc5eGb++eCaLQ+sbKojoFURy1A@mail.gmail.com>
+References: <PU4P216MB15683EBC52825DFE535B9F26C8939@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAGxFJbRBjrpo3c8D-vfaye1+Dc5eGb++eCaLQ+sbKojoFURy1A@mail.gmail.com>
+Message-ID: <PU4P216MB156847667C36C0F819E8A890C8909@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+dear Bert,
+                  I could predict most of them, but,of course, you have not wasted my time!
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Bert Gunter <bgunter.4567 at gmail.com>
+Sent: Wednesday, April 5, 2023 4:36 AM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] on lexical scoping....
+
+The following *might* be of use to you. If you can predict what the various function invocations will do, I think you have a reasonable grasp of how lexical scoping works in R (contrary or supplementary opinions welcome).  It is the sort of thing you will find in the references also. If this is all obvious, sorry for wasting your time.
+#######################
+search()
+ls()
+dat <- list(x =2)
+attach(dat,2)
+search()
+f <- function(){
+   g <- function() x
+   x <- 3
+   g}
+h <- f()
+g <- function()x
+ls()
+h()
+g()
+detach(dat)
+h()
+g()
+
+##########################
+## Here is what this gives starting with an empty .GlobalEnv.
+##################################
+
+> search()
+ [1] ".GlobalEnv"        "package:tools"     "package:lattice"   "tools:rstudio"
+ [5] "package:stats"     "package:graphics"  "package:grDevices" "package:utils"
+ [9] "package:datasets"  "package:methods"   "Autoloads"         "package:base"
+> ls()
+character(0)
+> dat <- list(x =2)
+> attach(dat,2)
+> search()
+ [1] ".GlobalEnv"        "dat"               "package:tools"     "package:lattice"
+ [5] "tools:rstudio"     "package:stats"     "package:graphics"  "package:grDevices"
+ [9] "package:utils"     "package:datasets"  "package:methods"   "Autoloads"
+[13] "package:base"
+> f <- function(){
++    g <- function() x
++    x <- 3
++    g}
+> h <- f()
+> g <- function()x
+> ls()
+[1] "dat" "f"   "g"   "h"
+> h()
+[1] 3
+> g()
+[1] 2
+> detach(dat)
+> h()
+[1] 3
+> g()
+Error in g() : object 'x' not found
+
+-- Bert
+
+
+On Tue, Apr 4, 2023 at 6:56?AM akshay kulkarni <akshay_e4 at hotmail.com<mailto:akshay_e4 at hotmail.com>> wrote:
+Dear Members,
+                             I have the following code typed at the console prompt:
+
+y   <-   x*10
+
+X has not been defined and the above code throws an object not found error. That is, the global environment does not contain x. Why doesn't it look further in the environment stack, like that of packages? There are thousands of packages that contain the variable named  x. Of course, that happens if the above code is in a function (or does it?).
+
+What concept of R is at work in this dichotomy?
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Wed Apr  5 19:04:04 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Wed, 5 Apr 2023 17:04:04 +0000
+Subject: [R] on lexical scoping....
+In-Reply-To: <CABcYAdKa9SOBLCCRUK4qMHeVQAmgNzrY2_pi82n_6woXC7E2CA@mail.gmail.com>
+References: <PU4P216MB15683EBC52825DFE535B9F26C8939@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CABcYAdKa9SOBLCCRUK4qMHeVQAmgNzrY2_pi82n_6woXC7E2CA@mail.gmail.com>
+Message-ID: <PU4P216MB15686DB38EB6408C3C8C55FEC8909@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear richard,
+                        Bulls eye! thanks for your pointed reply...!
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Richard O'Keefe <raoknz at gmail.com>
+Sent: Wednesday, April 5, 2023 10:30 AM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] on lexical scoping....
+
+R *does* search the environment stack.
+
+> search()
+[1] ".GlobalEnv"        "package:stats"     "package:graphics"
+[4] "package:grDevices" "package:utils"     "package:datasets"
+[7] "package:methods"   "Autoloads"         "package:base
+
+What you seem to be missing is that a package may contain
+bindings that it does not export, as the wording of this
+error message reminds us:
+> utils::y
+Error: 'y' is not an exported object from 'namespace:utils'
+
+So when package/namespace goes onto the environment stack,
+it's only the *exported* bindings that become visible.
+
+
+
+On Wed, 5 Apr 2023 at 01:56, akshay kulkarni <akshay_e4 at hotmail.com<mailto:akshay_e4 at hotmail.com>> wrote:
+Dear Members,
+                             I have the following code typed at the console prompt:
+
+y   <-   x*10
+
+X has not been defined and the above code throws an object not found error. That is, the global environment does not contain x. Why doesn't it look further in the environment stack, like that of packages? There are thousands of packages that contain the variable named  x. Of course, that happens if the above code is in a function (or does it?).
+
+What concept of R is at work in this dichotomy?
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
