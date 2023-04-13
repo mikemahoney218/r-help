@@ -6178,3 +6178,2226 @@ On 4/10/23 11:31, Roger Bivand wrote:
 >
 
 
+From @zh@ng @end|ng |rom ng@@gen-|n|o@o@@k@-u@@c@jp  Wed Apr 12 04:21:12 2023
+From: @zh@ng @end|ng |rom ng@@gen-|n|o@o@@k@-u@@c@jp (Shunran Zhang)
+Date: Wed, 12 Apr 2023 11:21:12 +0900
+Subject: [R] Matrix scalar operation that saves memory?
+Message-ID: <fc9ea9b9-f224-6de2-e184-dd9126c56f18@ngs.gen-info.osaka-u.ac.jp>
+
+Hi all,
+
+I am currently working with a quite large matrix that takes 300G of 
+memory. My computer only has 512G of memory. I would need to do a few 
+arithmetic on it with a scalar value. My current code looks like this:
+
+mat <- 100 - mat
+
+However such code quickly uses up all of the remaining memory and got 
+the R script killed by OOM killer.
+
+Are there any more memory-efficient way of doing such operation?
+
+Thanks,
+
+S. Zhang
+
+	[[alternative HTML version deleted]]
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Wed Apr 12 05:39:58 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Tue, 11 Apr 2023 23:39:58 -0400
+Subject: [R] Matrix scalar operation that saves memory?
+In-Reply-To: <fc9ea9b9-f224-6de2-e184-dd9126c56f18@ngs.gen-info.osaka-u.ac.jp>
+References: <fc9ea9b9-f224-6de2-e184-dd9126c56f18@ngs.gen-info.osaka-u.ac.jp>
+Message-ID: <000401d96cf0$74cf6500$5e6e2f00$@gmail.com>
+
+The example given does not leave room for even a single copy of your matrix
+so, yes, you need alternatives.
+
+Your example was fairly trivial as all you wanted to do is subtract each
+value from 100 and replace it. Obviously something like squaring a matrix
+has no trivial way to do without multiple copies out there that won't fit.
+
+One technique that might work is a nested loop that changes one cell of the
+matrix at a time and in-place. A variant of this might be a singe loop that
+changes a single row (or column) at a time and in place.
+
+Another odd concept is to save your matrix in a file with some format you
+can read back in such as a line or row at a time, and then do the
+subtraction from 100 and write it back to disk in another file. If you need
+it again, I assume you can read it in but perhaps you should consider how to
+increase some aspects of your "memory".
+
+Is your matrix a real matrix type or something like a list of lists or a
+data.frame? You may do better with some data structures that are more
+efficient than others.
+
+Some OS allow you to use virtual memory that is mapped in and out from the
+disk that allows larger things to be done, albeit often much slower. I also
+note that you can remove some things you are not using and hope garbage
+collection happens soon enough.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Shunran Zhang
+Sent: Tuesday, April 11, 2023 10:21 PM
+To: r-help at r-project.org
+Subject: [R] Matrix scalar operation that saves memory?
+
+Hi all,
+
+I am currently working with a quite large matrix that takes 300G of 
+memory. My computer only has 512G of memory. I would need to do a few 
+arithmetic on it with a scalar value. My current code looks like this:
+
+mat <- 100 - mat
+
+However such code quickly uses up all of the remaining memory and got 
+the R script killed by OOM killer.
+
+Are there any more memory-efficient way of doing such operation?
+
+Thanks,
+
+S. Zhang
+
+	[[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From @zh@ng @end|ng |rom ng@@gen-|n|o@o@@k@-u@@c@jp  Wed Apr 12 05:54:17 2023
+From: @zh@ng @end|ng |rom ng@@gen-|n|o@o@@k@-u@@c@jp (Shunran Zhang)
+Date: Wed, 12 Apr 2023 12:54:17 +0900
+Subject: [R] Matrix scalar operation that saves memory?
+In-Reply-To: <000401d96cf0$74cf6500$5e6e2f00$@gmail.com>
+References: <fc9ea9b9-f224-6de2-e184-dd9126c56f18@ngs.gen-info.osaka-u.ac.jp>
+ <000401d96cf0$74cf6500$5e6e2f00$@gmail.com>
+Message-ID: <ffb42d6c-b3b5-ac6d-f06e-1e6b0506cff1@ngs.gen-info.osaka-u.ac.jp>
+
+Thanks for the info.
+
+For the data type, my matrix as of now is indeed a matrix in a perfect 
+square shape filled in a previous segment of code, but I believe I could 
+extract one row/column at a time to do some processing. I can also 
+change that previous part of code to change the data type of it to 
+something else if that helps.
+
+Saving it to a file for manipulation and reading it back seems to be 
+quite IO intensive - writing 600G of data and reading 300G back from a 
+hard drive would make the code extremely heavy as well as wear my disk 
+quite badly.
+
+For now I'll try the row-by-row method and hope it works...
+
+Sincerely,
+S. Zhang
+
+
+On 2023/04/12 12:39, avi.e.gross at gmail.com wrote:
+> The example given does not leave room for even a single copy of your matrix
+> so, yes, you need alternatives.
+>
+> Your example was fairly trivial as all you wanted to do is subtract each
+> value from 100 and replace it. Obviously something like squaring a matrix
+> has no trivial way to do without multiple copies out there that won't fit.
+>
+> One technique that might work is a nested loop that changes one cell of the
+> matrix at a time and in-place. A variant of this might be a singe loop that
+> changes a single row (or column) at a time and in place.
+>
+> Another odd concept is to save your matrix in a file with some format you
+> can read back in such as a line or row at a time, and then do the
+> subtraction from 100 and write it back to disk in another file. If you need
+> it again, I assume you can read it in but perhaps you should consider how to
+> increase some aspects of your "memory".
+>
+> Is your matrix a real matrix type or something like a list of lists or a
+> data.frame? You may do better with some data structures that are more
+> efficient than others.
+>
+> Some OS allow you to use virtual memory that is mapped in and out from the
+> disk that allows larger things to be done, albeit often much slower. I also
+> note that you can remove some things you are not using and hope garbage
+> collection happens soon enough.
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Shunran Zhang
+> Sent: Tuesday, April 11, 2023 10:21 PM
+> To: r-help at r-project.org
+> Subject: [R] Matrix scalar operation that saves memory?
+>
+> Hi all,
+>
+> I am currently working with a quite large matrix that takes 300G of
+> memory. My computer only has 512G of memory. I would need to do a few
+> arithmetic on it with a scalar value. My current code looks like this:
+>
+> mat <- 100 - mat
+>
+> However such code quickly uses up all of the remaining memory and got
+> the R script killed by OOM killer.
+>
+> Are there any more memory-efficient way of doing such operation?
+>
+> Thanks,
+>
+> S. Zhang
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Wed Apr 12 06:34:14 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 11 Apr 2023 21:34:14 -0700
+Subject: [R] Matrix scalar operation that saves memory?
+In-Reply-To: <fc9ea9b9-f224-6de2-e184-dd9126c56f18@ngs.gen-info.osaka-u.ac.jp>
+References: <fc9ea9b9-f224-6de2-e184-dd9126c56f18@ngs.gen-info.osaka-u.ac.jp>
+Message-ID: <CAGxFJbRmX=tERZX8wwgktYfaDQ5ztOi7X7q=Gq_zBAxLX1kueg@mail.gmail.com>
+
+I doubt that R's basic matrix capabilities can handle this, but have a look
+at the Matrix package, especially if your matrix is some special form.
+
+Bert
+
+On Tue, Apr 11, 2023, 19:21 Shunran Zhang <szhang at ngs.gen-info.osaka-u.ac.jp>
+wrote:
+
+> Hi all,
+>
+> I am currently working with a quite large matrix that takes 300G of
+> memory. My computer only has 512G of memory. I would need to do a few
+> arithmetic on it with a scalar value. My current code looks like this:
+>
+> mat <- 100 - mat
+>
+> However such code quickly uses up all of the remaining memory and got
+> the R script killed by OOM killer.
+>
+> Are there any more memory-efficient way of doing such operation?
+>
+> Thanks,
+>
+> S. Zhang
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From er|cjberger @end|ng |rom gm@||@com  Wed Apr 12 08:38:36 2023
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Wed, 12 Apr 2023 09:38:36 +0300
+Subject: [R] Matrix scalar operation that saves memory?
+In-Reply-To: <CAGxFJbRmX=tERZX8wwgktYfaDQ5ztOi7X7q=Gq_zBAxLX1kueg@mail.gmail.com>
+References: <fc9ea9b9-f224-6de2-e184-dd9126c56f18@ngs.gen-info.osaka-u.ac.jp>
+ <CAGxFJbRmX=tERZX8wwgktYfaDQ5ztOi7X7q=Gq_zBAxLX1kueg@mail.gmail.com>
+Message-ID: <CAGgJW74=r-BnB0C4Nu9+fcJ=A4gNk4pn1LKwyYw9wm=37UvVSQ@mail.gmail.com>
+
+One possibility might be to use Rcpp.
+An R matrix is stored in contiguous memory, which can be considered as a
+vector.
+Define a C++ function which operates on a vector in place, as in the
+following:
+
+library(Rcpp)
+cppFunction(
+  'void subtractConst(NumericVector x, double c) {
+  for ( int i = 0; i < x.size(); ++i)
+    x[i] = x[i] - c;
+}')
+
+Try this function out on a matrix. Here we define a 5x2 matrix
+
+m <- matrix(150.5 + 1:10, nrow=5)
+print(m)
+
+      [,1]  [,2]
+[1,] 151.5 156.5
+[2,] 152.5 157.5
+[3,] 153.5 158.5
+[4,] 154.5 159.5
+[5,] 155.5 160.5
+
+Now call the C++ function
+
+subtractConst(m,100.0)
+print(m)
+
+    [,1] [,2]
+[1,] 51.5 56.5
+[2,] 52.5 57.5
+[3,] 53.5 58.5
+[4,] 54.5 59.5
+[5,] 55.5 60.5
+
+HTH,
+Eric
+
+
+On Wed, Apr 12, 2023 at 7:34?AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> I doubt that R's basic matrix capabilities can handle this, but have a look
+> at the Matrix package, especially if your matrix is some special form.
+>
+> Bert
+>
+> On Tue, Apr 11, 2023, 19:21 Shunran Zhang <
+> szhang at ngs.gen-info.osaka-u.ac.jp>
+> wrote:
+>
+> > Hi all,
+> >
+> > I am currently working with a quite large matrix that takes 300G of
+> > memory. My computer only has 512G of memory. I would need to do a few
+> > arithmetic on it with a scalar value. My current code looks like this:
+> >
+> > mat <- 100 - mat
+> >
+> > However such code quickly uses up all of the remaining memory and got
+> > the R script killed by OOM killer.
+> >
+> > Are there any more memory-efficient way of doing such operation?
+> >
+> > Thanks,
+> >
+> > S. Zhang
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> > http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |@go@g|ne @end|ng |rom @jd@e@  Wed Apr 12 08:55:46 2023
+From: |@go@g|ne @end|ng |rom @jd@e@ (=?utf-8?B?SWFnbyBHaW7DqSBWw6F6cXVleg==?=)
+Date: Wed, 12 Apr 2023 06:55:46 +0000
+Subject: [R] Matrix scalar operation that saves memory?
+In-Reply-To: <CAGgJW74=r-BnB0C4Nu9+fcJ=A4gNk4pn1LKwyYw9wm=37UvVSQ@mail.gmail.com>
+References: <fc9ea9b9-f224-6de2-e184-dd9126c56f18@ngs.gen-info.osaka-u.ac.jp>
+ <CAGxFJbRmX=tERZX8wwgktYfaDQ5ztOi7X7q=Gq_zBAxLX1kueg@mail.gmail.com>
+ <CAGgJW74=r-BnB0C4Nu9+fcJ=A4gNk4pn1LKwyYw9wm=37UvVSQ@mail.gmail.com>
+Message-ID: <AM6PR02MB44230D3E28AA894FC62A2ED7949B9@AM6PR02MB4423.eurprd02.prod.outlook.com>
+
+You may take a look at the bigmemory package or other which deal with large memory data in https://cran.r-project.org/web/views/HighPerformanceComputing.html#large-memory-and-out-of-memory-data
+Some extra explanation is in https://stackoverflow.com/a/11127229/997979
+
+Iago
+
+________________________________
+De: R-help <r-help-bounces at r-project.org> de part de Eric Berger <ericjberger at gmail.com>
+Enviat el: dimecres, 12 d?abril de 2023 8:38
+Per a: Bert Gunter <bgunter.4567 at gmail.com>
+A/c: R-help <r-help at r-project.org>
+Tema: Re: [R] Matrix scalar operation that saves memory?
+
+One possibility might be to use Rcpp.
+An R matrix is stored in contiguous memory, which can be considered as a
+vector.
+Define a C++ function which operates on a vector in place, as in the
+following:
+
+library(Rcpp)
+cppFunction(
+  'void subtractConst(NumericVector x, double c) {
+  for ( int i = 0; i < x.size(); ++i)
+    x[i] = x[i] - c;
+}')
+
+Try this function out on a matrix. Here we define a 5x2 matrix
+
+m <- matrix(150.5 + 1:10, nrow=5)
+print(m)
+
+      [,1]  [,2]
+[1,] 151.5 156.5
+[2,] 152.5 157.5
+[3,] 153.5 158.5
+[4,] 154.5 159.5
+[5,] 155.5 160.5
+
+Now call the C++ function
+
+subtractConst(m,100.0)
+print(m)
+
+    [,1] [,2]
+[1,] 51.5 56.5
+[2,] 52.5 57.5
+[3,] 53.5 58.5
+[4,] 54.5 59.5
+[5,] 55.5 60.5
+
+HTH,
+Eric
+
+
+On Wed, Apr 12, 2023 at 7:34?AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> I doubt that R's basic matrix capabilities can handle this, but have a look
+> at the Matrix package, especially if your matrix is some special form.
+>
+> Bert
+>
+> On Tue, Apr 11, 2023, 19:21 Shunran Zhang <
+> szhang at ngs.gen-info.osaka-u.ac.jp>
+> wrote:
+>
+> > Hi all,
+> >
+> > I am currently working with a quite large matrix that takes 300G of
+> > memory. My computer only has 512G of memory. I would need to do a few
+> > arithmetic on it with a scalar value. My current code looks like this:
+> >
+> > mat <- 100 - mat
+> >
+> > However such code quickly uses up all of the remaining memory and got
+> > the R script killed by OOM killer.
+> >
+> > Are there any more memory-efficient way of doing such operation?
+> >
+> > Thanks,
+> >
+> > S. Zhang
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> > http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From m@pjg @end|ng |rom br|@to|@@c@uk  Wed Apr 12 10:18:21 2023
+From: m@pjg @end|ng |rom br|@to|@@c@uk (Peter Green)
+Date: Wed, 12 Apr 2023 09:18:21 +0100
+Subject: [R] [R-pkgs] DNAmixturesLite and KinMixLite
+Message-ID: <68d2e035-6cba-b6dd-71e8-872dc2ed1f12@bristol.ac.uk>
+
+Dear all,
+
+We are pleased to announce that CRAN now hosts our packages 
+DNAmixturesLite and KinMixLite.
+
+These are fully R-based versions of our packages DNAmixtures and KinMix, 
+which rely on a commercial software, HUGIN, for performing efficient 
+computations in Bayesian networks. The lite versions rely instead on 
+gRain for such computations.
+
+DNAmixtures provides statistical methods for DNA mixture analysis and 
+has been used to provide statistical evidence pertaining to DNA in 
+several criminal cases in the UK and Denmark. The purpose of the newly 
+released lite version is to allow users without a HUGIN software license 
+to experiment with the statistical methodology. While the lite version 
+aims to provide full functionality, it is noticeably less efficient than 
+the original DNAmixtures package. For details on implementation and 
+methodology see <https://dnamixtures.r-forge.r-project.org/>.
+
+KinMix builds upon DNAmixtures and is a toolbox of methods for inference 
+about relationships between contributors to a DNA mixture and other 
+individuals of known genotype: a basic example would be testing whether 
+a contributor to a mixture is the father of a child of known genotype. 
+KinMixLite builds upon DNAmixturesLite and provides most of the 
+functionality of the KinMix package, but with some loss of efficiency. 
+The package implements the methods introduced in Green, P. J. and 
+Mortera, J. (2017) <doi:10.1016/j.fsigen.2017.02.001> and Green, P. J. 
+and Mortera, J. (2021) <doi:10.1111/rssc.12498>.
+
+Regards,
+Therese Graversen and Peter Green
+
+_______________________________________________
+R-packages mailing list
+R-packages at r-project.org
+https://stat.ethz.ch/mailman/listinfo/r-packages
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Wed Apr 12 13:03:12 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Wed, 12 Apr 2023 11:03:12 +0000
+Subject: [R] aborting the execution of a script...
+Message-ID: <PU4P216MB15680A122BC54694F680420EC89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear members,
+                            I have a script which I source it interactively. I have the following questions:
+
+
+  1.  If there is an error in an expression, an error message is printed, but the execution continues till the end of the script. I am sourcing with echo. Is there any way to abort the execution when the first error occurs? This happens with R CMD BATCH. If there is an error midway, an error message is printed in the output file and the execution aborts. Is there a way to mimic this with source()?
+  2.  I am trying to abort the execution with ESC key, but again the same thing happens: it aborts the current expression but continues on. How to abort an R script with source()? I am using RStudio in windows.
+
+Please help,
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Apr 12 14:05:26 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 12 Apr 2023 08:05:26 -0400
+Subject: [R] aborting the execution of a script...
+In-Reply-To: <PU4P216MB15680A122BC54694F680420EC89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB15680A122BC54694F680420EC89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <19c10227-c64d-897d-e676-bdbb996727cc@gmail.com>
+
+On 12/04/2023 7:03 a.m., akshay kulkarni wrote:
+> Dear members,
+>                              I have a script which I source it interactively. I have the following questions:
+> 
+> 
+>    1.  If there is an error in an expression, an error message is printed, but the execution continues till the end of the script. I am sourcing with echo. Is there any way to abort the execution when the first error occurs? This happens with R CMD BATCH. If there is an error midway, an error message is printed in the output file and the execution aborts. Is there a way to mimic this with source()?
+>    2.  I am trying to abort the execution with ESC key, but again the same thing happens: it aborts the current expression but continues on. How to abort an R script with source()? I am using RStudio in windows.
+
+I don't see this behaviour.  If I put this in a script:
+
+  print(1)
+  stop("here")
+  print(2)
+
+then execution stops at the "stop" line if I use source(), or R CMD 
+BATCH <file>, or in RStudio, Run or Source gives the same behaviour.  I 
+think older versions of RStudio would have run all three lines using 
+Run, but all the other methods have stopped at the stop() line.
+
+Duncan Murdoch
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Wed Apr 12 14:13:30 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Wed, 12 Apr 2023 12:13:30 +0000
+Subject: [R] aborting the execution of a script...
+In-Reply-To: <19c10227-c64d-897d-e676-bdbb996727cc@gmail.com>
+References: <PU4P216MB15680A122BC54694F680420EC89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <19c10227-c64d-897d-e676-bdbb996727cc@gmail.com>
+Message-ID: <PU4P216MB15680540C8F0AA922AA6E09EC89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Duncan,
+                         What if I use source() with echo? I am using that in RStudio.
+
+THanking you,
+Yours sincerely
+AKSHAY M KULKARNI
+________________________________
+From: Duncan Murdoch <murdoch.duncan at gmail.com>
+Sent: Wednesday, April 12, 2023 5:35 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] aborting the execution of a script...
+
+On 12/04/2023 7:03 a.m., akshay kulkarni wrote:
+> Dear members,
+>                              I have a script which I source it interactively. I have the following questions:
+>
+>
+>    1.  If there is an error in an expression, an error message is printed, but the execution continues till the end of the script. I am sourcing with echo. Is there any way to abort the execution when the first error occurs? This happens with R CMD BATCH. If there is an error midway, an error message is printed in the output file and the execution aborts. Is there a way to mimic this with source()?
+>    2.  I am trying to abort the execution with ESC key, but again the same thing happens: it aborts the current expression but continues on. How to abort an R script with source()? I am using RStudio in windows.
+
+I don't see this behaviour.  If I put this in a script:
+
+  print(1)
+  stop("here")
+  print(2)
+
+then execution stops at the "stop" line if I use source(), or R CMD
+BATCH <file>, or in RStudio, Run or Source gives the same behaviour.  I
+think older versions of RStudio would have run all three lines using
+Run, but all the other methods have stopped at the stop() line.
+
+Duncan Murdoch
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Apr 12 14:16:17 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 12 Apr 2023 08:16:17 -0400
+Subject: [R] aborting the execution of a script...
+In-Reply-To: <PU4P216MB15680540C8F0AA922AA6E09EC89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB15680A122BC54694F680420EC89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <19c10227-c64d-897d-e676-bdbb996727cc@gmail.com>
+ <PU4P216MB15680540C8F0AA922AA6E09EC89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <8bdfb8a7-4ad4-7bd4-629c-a8c60ecf83fa@gmail.com>
+
+This is what I get:
+
+ > source("~/temp/test.R", echo = TRUE)
+
+ > print(1)
+[1] 1
+
+ > stop("here")
+Error in eval(ei, envir) : here
+
+I get similar output in every variation I tried.  It never prints the 2.
+
+On 12/04/2023 8:13 a.m., akshay kulkarni wrote:
+> Dear Duncan,
+>  ? ? ? ? ? ? ? ? ? ? ? ? ?What if I use source() with echo? I am using 
+> that in RStudio.
+> 
+> THanking you,
+> Yours sincerely
+> AKSHAY M KULKARNI
+> ------------------------------------------------------------------------
+> *From:* Duncan Murdoch <murdoch.duncan at gmail.com>
+> *Sent:* Wednesday, April 12, 2023 5:35 PM
+> *To:* akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list 
+> <r-help at r-project.org>
+> *Subject:* Re: [R] aborting the execution of a script...
+> On 12/04/2023 7:03 a.m., akshay kulkarni wrote:
+>> Dear members,
+>>????????????????????????????? I have a script which I source it interactively. I have the following questions:
+>> 
+>> 
+>>??? 1.? If there is an error in an expression, an error message is printed, but the execution continues till the end of the script. I am sourcing with echo. Is there any way to abort the execution when the first error occurs? This happens with R CMD BATCH.  If there is an error midway, an error message is printed in the output 
+> file and the execution aborts. Is there a way to mimic this with source()?
+>>??? 2.? I am trying to abort the execution with ESC key, but again the same thing happens: it aborts the current expression but continues on. How to abort an R script with source()? I am using RStudio in windows.
+> 
+> I don't see this behaviour.? If I put this in a script:
+> 
+>  ? print(1)
+>  ? stop("here")
+>  ? print(2)
+> 
+> then execution stops at the "stop" line if I use source(), or R CMD
+> BATCH <file>, or in RStudio, Run or Source gives the same behaviour.? I
+> think older versions of RStudio would have run all three lines using
+> Run, but all the other methods have stopped at the stop() line.
+> 
+> Duncan Murdoch
+> 
+> 
+>
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Wed Apr 12 15:48:44 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Wed, 12 Apr 2023 13:48:44 +0000
+Subject: [R] aborting the execution of a script...
+In-Reply-To: <8bdfb8a7-4ad4-7bd4-629c-a8c60ecf83fa@gmail.com>
+References: <PU4P216MB15680A122BC54694F680420EC89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <19c10227-c64d-897d-e676-bdbb996727cc@gmail.com>
+ <PU4P216MB15680540C8F0AA922AA6E09EC89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <8bdfb8a7-4ad4-7bd4-629c-a8c60ecf83fa@gmail.com>
+Message-ID: <PU4P216MB1568BC1399B950CA1EB2ADE0C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Duncan,
+                         But it is entirely different in my case...! As you said, the problem may be with my version of RStudio. The main point is that it doesn't pose any serious problems...
+
+Thanks any way for your reply...
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Duncan Murdoch <murdoch.duncan at gmail.com>
+Sent: Wednesday, April 12, 2023 5:46 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] aborting the execution of a script...
+
+This is what I get:
+
+ > source("~/temp/test.R", echo = TRUE)
+
+ > print(1)
+[1] 1
+
+ > stop("here")
+Error in eval(ei, envir) : here
+
+I get similar output in every variation I tried.  It never prints the 2.
+
+On 12/04/2023 8:13 a.m., akshay kulkarni wrote:
+> Dear Duncan,
+>                           What if I use source() with echo? I am using
+> that in RStudio.
+>
+> THanking you,
+> Yours sincerely
+> AKSHAY M KULKARNI
+> ------------------------------------------------------------------------
+> *From:* Duncan Murdoch <murdoch.duncan at gmail.com>
+> *Sent:* Wednesday, April 12, 2023 5:35 PM
+> *To:* akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list
+> <r-help at r-project.org>
+> *Subject:* Re: [R] aborting the execution of a script...
+> On 12/04/2023 7:03 a.m., akshay kulkarni wrote:
+>> Dear members,
+>>                              I have a script which I source it interactively. I have the following questions:
+>>
+>>
+>>    1.  If there is an error in an expression, an error message is printed, but the execution continues till the end of the script. I am sourcing with echo. Is there any way to abort the execution when the first error occurs? This happens with R CMD BATCH.  If there is an error midway, an error message is printed in the output
+> file and the execution aborts. Is there a way to mimic this with source()?
+>>    2.  I am trying to abort the execution with ESC key, but again the same thing happens: it aborts the current expression but continues on. How to abort an R script with source()? I am using RStudio in windows.
+>
+> I don't see this behaviour.  If I put this in a script:
+>
+>    print(1)
+>    stop("here")
+>    print(2)
+>
+> then execution stops at the "stop" line if I use source(), or R CMD
+> BATCH <file>, or in RStudio, Run or Source gives the same behaviour.  I
+> think older versions of RStudio would have run all three lines using
+> Run, but all the other methods have stopped at the stop() line.
+>
+> Duncan Murdoch
+>
+>
+>
+
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Wed Apr 12 16:34:26 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Wed, 12 Apr 2023 14:34:26 +0000
+Subject: [R] converting to date object...
+Message-ID: <PU4P216MB1568D10BC50C770D456412F6C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+dear members,
+                            I want to convert "12 APR 2023" into a Date object. I tried as_Date() from lubridate, but it is not working:
+
+> as_date("12 APR 2023")
+[1] NA
+Warning message:
+All formats failed to parse. No formats found.
+> as_date("12-APR-2023")
+[1] NA
+Warning message:
+All formats failed to parse. No formats found.
+
+I am looking for a shorthand way of doing it. Of course, one can convert APR to 4 and get the job done, but I ma looking for a short and elegant code
+
+please help...
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+	[[alternative HTML version deleted]]
+
+
+From er|cjberger @end|ng |rom gm@||@com  Wed Apr 12 16:50:53 2023
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Wed, 12 Apr 2023 17:50:53 +0300
+Subject: [R] converting to date object...
+In-Reply-To: <PU4P216MB1568D10BC50C770D456412F6C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB1568D10BC50C770D456412F6C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <CAGgJW74TgEDuFtqKSDGU0XyEO5jOQ0ErkMseT3wU_vZOrOwV4Q@mail.gmail.com>
+
+lubridate::dmy("12 APR 2023")
+
+
+On Wed, Apr 12, 2023 at 5:34?PM akshay kulkarni <akshay_e4 at hotmail.com>
+wrote:
+
+> dear members,
+>                             I want to convert "12 APR 2023" into a Date
+> object. I tried as_Date() from lubridate, but it is not working:
+>
+> > as_date("12 APR 2023")
+> [1] NA
+> Warning message:
+> All formats failed to parse. No formats found.
+> > as_date("12-APR-2023")
+> [1] NA
+> Warning message:
+> All formats failed to parse. No formats found.
+>
+> I am looking for a shorthand way of doing it. Of course, one can convert
+> APR to 4 and get the job done, but I ma looking for a short and elegant code
+>
+> please help...
+>
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@rc_@chw@rtz @end|ng |rom me@com  Wed Apr 12 17:03:19 2023
+From: m@rc_@chw@rtz @end|ng |rom me@com (Marc Schwartz)
+Date: Wed, 12 Apr 2023 11:03:19 -0400
+Subject: [R] converting to date object...
+In-Reply-To: <PU4P216MB1568D10BC50C770D456412F6C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB1568D10BC50C770D456412F6C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <etPan.6436c837.6cb1a7f0.508@me.com>
+
+Hi,
+
+You do not need to use third party packages for date or date/time objects in R.
+
+If you review ?as.Date, you will see that there are two default formats for Date objects that are specified in the 'tryFormats' argument:
+
+??tryFormats = c("%Y-%m-%d", "%Y/%m/%d")
+
+If your date character vector does not conform to either one, which it does not in this case, then you need to explicitly specify the input format, the details of which are specified in ?strptime.
+
+Thus:
+
+> as.Date("12 APR 2023", format = "%d %b %Y")
+[1] "2023-04-12"
+
+> str(as.Date("12 APR 2023", format = "%d %b %Y"))
+?Date[1:1], format: "2023-04-12"
+
+> class(as.Date("12 APR 2023", format = "%d %b %Y"))
+[1] "Date"
+
+where the %d defines the day of the month number, %b defines the abbreviated month and %Y defines the four digit year. The spaces in between each specifier in the format argument reflect that there are spaces in the source vector, as opposed to hyphens (e.g. 12-APR-2023) or slashes (e.g. 12/APR/2023).
+
+Note that once your vector is a Date class object, you can then manipulate them as dates and perform various operations on them. You can then use format() to alter the output format as you may need for other purposes, in which case, the formatted output is coerced back to a character vector, even though the internal storage is still a Date class object.
+
+Regards,
+
+Marc Schwartz
+
+
+
+On April 12, 2023 at 10:34:26 AM, akshay kulkarni (akshay_e4 at hotmail.com (mailto:akshay_e4 at hotmail.com)) wrote:
+
+> dear members,
+> I want to convert "12 APR 2023" into a Date object. I tried as_Date() from lubridate, but it is not working:
+>
+> > as_date("12 APR 2023")
+> [1] NA
+> Warning message:
+> All formats failed to parse. No formats found.
+> > as_date("12-APR-2023")
+> [1] NA
+> Warning message:
+> All formats failed to parse. No formats found.
+>
+> I am looking for a shorthand way of doing it. Of course, one can convert APR to 4 and get the job done, but I ma looking for a short and elegant code
+>
+> please help...
+>
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+> [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From edd @end|ng |rom deb|@n@org  Wed Apr 12 17:08:09 2023
+From: edd @end|ng |rom deb|@n@org (Dirk Eddelbuettel)
+Date: Wed, 12 Apr 2023 10:08:09 -0500
+Subject: [R] converting to date object...
+In-Reply-To: <PU4P216MB1568D10BC50C770D456412F6C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB1568D10BC50C770D456412F6C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <25654.51545.755495.929646@rob.eddelbuettel.com>
+
+
+That is what I wrote the anytime package for: effortless automatic
+parsing.  Also works for dates:
+
+   > library(anytime)
+   > anydate("12 APR 2023")
+   [1] "2023-04-12"
+   > 
+
+Dirk
+
+-- 
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+
+From w@ngdezh|@tudy @end|ng |rom 163@com  Wed Apr 12 10:04:55 2023
+From: w@ngdezh|@tudy @end|ng |rom 163@com (Dezhi Wang)
+Date: Wed, 12 Apr 2023 16:04:55 +0800 (GMT+08:00)
+Subject: [R] R-error
+Message-ID: <53f79172.f98b.187747f08bf.Coremail.wangdezhistudy@163.com>
+
+Hello,
+I run R 4.2.2 on CentOS-7.6. I install  package through install.packages("sf").It threw the above error:
+
+
+> install.packages('sf')
+--- Please select a CRAN mirror for use in this session ---
+ *** caught segfault ***
+address 0x60, cause 'memory not mapped'
+Traceback:
+ 1: download.file(url, destfile = f, quiet = TRUE)
+ 2: doTryCatch(return(expr), name, parentenv, handler)
+ 3: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+ 4: tryCatchList(expr, classes, parentenv, handlers)
+ 5: tryCatch({ m <- download.file(url, destfile = f, quiet = TRUE) if (m != 0L) stop(gettextf("'download.file()' error code '%d'", m)) read.csv(f, as.is = TRUE, encoding = "UTF-8")}, error = function(err) { warning(gettextf("failed to download mirrors file (%s); using local file '%s'", conditionMessage(err), local.file), call. = FALSE, immediate. = TRUE) NULL})
+ 6: .getMirrors("https://cran.r-project.org/CRAN_mirrors.csv", file.path(R.home("doc"), "CRAN_mirrors.csv"), all = all, local.only = local.only)
+ 7: getCRANmirrors(all = FALSE, local.only = local.only)
+ 8: chooseCRANmirror()
+ 9: contrib.url(repos, type)
+10: startsWith(contriburl, "file:")
+11: install.packages("sf")
+Possible actions:
+1: abort (with core dump, if enabled)
+2: normal R exit
+3: exit R without saving workspace
+4: exit R saving workspace
+Selection:
+
+
+
+
+| |
+Dezhi Wang
+|
+|
+wangdezhistudy at 163.com
+|
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: R-error.png
+Type: image/png
+Size: 73929 bytes
+Desc: not available
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20230412/7df82b04/attachment.png>
+
+From em||yb@kker @end|ng |rom out|ook@com  Wed Apr 12 10:29:50 2023
+From: em||yb@kker @end|ng |rom out|ook@com (Emily Bakker)
+Date: Wed, 12 Apr 2023 08:29:50 +0000
+Subject: [R] Split String in regex while Keeping Delimiter
+Message-ID: <AM9P195MB096556D9607BF3E2A42B2E68BC969@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+
+Hello List,
+?
+I have a dataset consisting of strings that I want to split while saving the delimiter.
+?
+Some example data:
+?leucocyten + gramnegatieve staven +++ grampositieve staven ++?
+?leucocyten ? grampositieve coccen +?
+?
+I want to split the strings such that I get the following result:
+c(?leucocyten +?, ??gramnegatieve staven +++?, ??grampositieve staven ++?)
+c(?leucocyten ??, ?grampositieve coccen +?)
+?
+I have tried strsplit with a regular expression with a positive lookahead, but I am not able to achieve the results that I want.
+?
+I have tried:
+as.list(strsplit(x, split = ?(?=[\\+-]{1,3}\\s)+, perl=TRUE)
+?
+Which results in:
+c(?leucocyten ?, ?+?, ??gramnegatieve staven ?, ?+?, ?+?, ?+?, ??grampositieve staven ++?)
+c(?leucocyten ?, ???, ?grampositieve coccen +?)
+?
+?
+Is there a function or regular expression that will make this possible?
+?
+Kind regards,
+Emily 
+?
+
+From er|cjberger @end|ng |rom gm@||@com  Wed Apr 12 19:32:53 2023
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Wed, 12 Apr 2023 20:32:53 +0300
+Subject: [R] Split String in regex while Keeping Delimiter
+In-Reply-To: <AM9P195MB096556D9607BF3E2A42B2E68BC969@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+References: <AM9P195MB096556D9607BF3E2A42B2E68BC969@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+Message-ID: <CAGgJW77CaMFrpYPgf-UGcRRQRpRsF9cr571UrXJkG22Sx+3cxw@mail.gmail.com>
+
+This seems to do the job but there are probably more elegant solutions:
+
+f <- function(s) { sub("^ ","",unlist(strsplit(gsub("\\+ ","+@ ",s),"@"))) }
+g <- function(s) { sub("^ ","",unlist(strsplit(gsub("- ","-@ ",s),"@"))) }
+h <- function(s) { g(f(s)) }
+
+To try it out:
+s <- ?leucocyten + gramnegatieve staven +++ grampositieve staven ++?
+t <- ?leucocyten ? grampositieve coccen +?
+
+h(s)
+h(t)
+
+HTH,
+Eric
+
+
+On Wed, Apr 12, 2023 at 7:56?PM Emily Bakker <emilybakker at outlook.com>
+wrote:
+
+> Hello List,
+>
+> I have a dataset consisting of strings that I want to split while saving
+> the delimiter.
+>
+> Some example data:
+> ?leucocyten + gramnegatieve staven +++ grampositieve staven ++?
+> ?leucocyten ? grampositieve coccen +?
+>
+> I want to split the strings such that I get the following result:
+> c(?leucocyten +?,  ?gramnegatieve staven +++?,  ?grampositieve staven ++?)
+> c(?leucocyten ??, ?grampositieve coccen +?)
+>
+> I have tried strsplit with a regular expression with a positive lookahead,
+> but I am not able to achieve the results that I want.
+>
+> I have tried:
+> as.list(strsplit(x, split = ?(?=[\\+-]{1,3}\\s)+, perl=TRUE)
+>
+> Which results in:
+> c(?leucocyten ?, ?+?,  ?gramnegatieve staven ?, ?+?, ?+?, ?+?,
+>  ?grampositieve staven ++?)
+> c(?leucocyten ?, ???, ?grampositieve coccen +?)
+>
+>
+> Is there a function or regular expression that will make this possible?
+>
+> Kind regards,
+> Emily
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Wed Apr 12 19:42:25 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Wed, 12 Apr 2023 17:42:25 +0000
+Subject: [R] converting to date object...
+In-Reply-To: <25654.51545.755495.929646@rob.eddelbuettel.com>
+References: <PU4P216MB1568D10BC50C770D456412F6C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <25654.51545.755495.929646@rob.eddelbuettel.com>
+Message-ID: <PU4P216MB1568000A948D91464E751521C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Dirk,
+                   Thaks a lot...
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Dirk Eddelbuettel <edd at debian.org>
+Sent: Wednesday, April 12, 2023 8:38 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] converting to date object...
+
+
+That is what I wrote the anytime package for: effortless automatic
+parsing.  Also works for dates:
+
+   > library(anytime)
+   > anydate("12 APR 2023")
+   [1] "2023-04-12"
+   >
+
+Dirk
+
+--
+dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Wed Apr 12 19:44:08 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Wed, 12 Apr 2023 17:44:08 +0000
+Subject: [R] converting to date object...
+In-Reply-To: <etPan.6436c837.6cb1a7f0.508@me.com>
+References: <PU4P216MB1568D10BC50C770D456412F6C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <etPan.6436c837.6cb1a7f0.508@me.com>
+Message-ID: <PU4P216MB1568BF493639B75E6CFDD286C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Hi Mark,
+                 Thanks a lot...
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Marc Schwartz <marc_schwartz at me.com>
+Sent: Wednesday, April 12, 2023 8:33 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] converting to date object...
+
+Hi,
+
+You do not need to use third party packages for date or date/time objects in R.
+
+If you review ?as.Date, you will see that there are two default formats for Date objects that are specified in the 'tryFormats' argument:
+
+  tryFormats = c("%Y-%m-%d", "%Y/%m/%d")
+
+If your date character vector does not conform to either one, which it does not in this case, then you need to explicitly specify the input format, the details of which are specified in ?strptime.
+
+Thus:
+
+> as.Date("12 APR 2023", format = "%d %b %Y")
+[1] "2023-04-12"
+
+> str(as.Date("12 APR 2023", format = "%d %b %Y"))
+ Date[1:1], format: "2023-04-12"
+
+> class(as.Date("12 APR 2023", format = "%d %b %Y"))
+[1] "Date"
+
+where the %d defines the day of the month number, %b defines the abbreviated month and %Y defines the four digit year. The spaces in between each specifier in the format argument reflect that there are spaces in the source vector, as opposed to hyphens (e.g. 12-APR-2023) or slashes (e.g. 12/APR/2023).
+
+Note that once your vector is a Date class object, you can then manipulate them as dates and perform various operations on them. You can then use format() to alter the output format as you may need for other purposes, in which case, the formatted output is coerced back to a character vector, even though the internal storage is still a Date class object.
+
+Regards,
+
+Marc Schwartz
+
+
+
+On April 12, 2023 at 10:34:26 AM, akshay kulkarni (akshay_e4 at hotmail.com (mailto:akshay_e4 at hotmail.com)) wrote:
+
+> dear members,
+> I want to convert "12 APR 2023" into a Date object. I tried as_Date() from lubridate, but it is not working:
+>
+> > as_date("12 APR 2023")
+> [1] NA
+> Warning message:
+> All formats failed to parse. No formats found.
+> > as_date("12-APR-2023")
+> [1] NA
+> Warning message:
+> All formats failed to parse. No formats found.
+>
+> I am looking for a shorthand way of doing it. Of course, one can convert APR to 4 and get the job done, but I ma looking for a short and elegant code
+>
+> please help...
+>
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+> [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+	[[alternative HTML version deleted]]
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Wed Apr 12 19:45:12 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Wed, 12 Apr 2023 17:45:12 +0000
+Subject: [R] converting to date object...
+In-Reply-To: <CAGgJW74TgEDuFtqKSDGU0XyEO5jOQ0ErkMseT3wU_vZOrOwV4Q@mail.gmail.com>
+References: <PU4P216MB1568D10BC50C770D456412F6C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAGgJW74TgEDuFtqKSDGU0XyEO5jOQ0ErkMseT3wU_vZOrOwV4Q@mail.gmail.com>
+Message-ID: <PU4P216MB15685792DD619444B5F6254BC89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Hi Eric,
+              THanks a lot..
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Eric Berger <ericjberger at gmail.com>
+Sent: Wednesday, April 12, 2023 8:20 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] converting to date object...
+
+lubridate::dmy("12 APR 2023")
+
+
+On Wed, Apr 12, 2023 at 5:34?PM akshay kulkarni <akshay_e4 at hotmail.com<mailto:akshay_e4 at hotmail.com>> wrote:
+dear members,
+                            I want to convert "12 APR 2023" into a Date object. I tried as_Date() from lubridate, but it is not working:
+
+> as_date("12 APR 2023")
+[1] NA
+Warning message:
+All formats failed to parse. No formats found.
+> as_date("12-APR-2023")
+[1] NA
+Warning message:
+All formats failed to parse. No formats found.
+
+I am looking for a shorthand way of doing it. Of course, one can convert APR to 4 and get the job done, but I ma looking for a short and elegant code
+
+please help...
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Apr 12 19:47:58 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 12 Apr 2023 20:47:58 +0300
+Subject: [R] Split String in regex while Keeping Delimiter
+In-Reply-To: <AM9P195MB096556D9607BF3E2A42B2E68BC969@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+References: <AM9P195MB096556D9607BF3E2A42B2E68BC969@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+Message-ID: <20230412204758.71af832c@Tarkus>
+
+On Wed, 12 Apr 2023 08:29:50 +0000
+Emily Bakker <emilybakker at outlook.com> wrote:
+
+> Some example data:
+> ?leucocyten + gramnegatieve staven +++ grampositieve staven ++?
+> ?leucocyten ? grampositieve coccen +?
+> ?
+> I want to split the strings such that I get the following result:
+> c(?leucocyten +?, ??gramnegatieve staven +++?,
+> ??grampositieve staven ++?)
+> c(?leucocyten ??, ?grampositieve coccen +?)
+> ?
+> I have tried strsplit with a regular expression with a positive
+> lookahead, but I am not able to achieve the results that I want.
+
+It sounds like you need positive look-behind, not look-ahead: split on
+spaces only if they _follow_ one to three of '+' or '-'. Unfortunately,
+repetition quantifiers like {n,m} or + are not directly supported in
+look-behind expressions (nor in Perl itself). As a special case, you
+can use \K, where anything to the left of \K is a zero-width positive
+match:
+
+x <- c(
+ 'leucocyten + gramnegatieve staven +++ grampositieve staven ++',
+ 'leucocyten - grampositieve coccen +'
+)
+strsplit(x, '[+-]{1,3}+\\K ', perl = TRUE)
+# [[1]]
+# [1] "leucocyten +"             "gramnegatieve staven +++"
+#     "grampositieve staven ++" 
+# 
+# [[2]]
+# [1] "leucocyten -"           "grampositieve coccen +"
+
+-- 
+Best regards,
+Ivan
+
+P.S. It looks like your e-mail client has transformed every quote
+character into typographically-correct Unicode quotes ?? and every
+minus into an en dash, which makes it slightly harder to work with your
+code, since typographically correct Unicode quotes are not R string
+delimiters. Is it really ? that you'd like to split upon, or is it -?
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Apr 12 20:04:55 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 12 Apr 2023 21:04:55 +0300
+Subject: [R] R-error
+In-Reply-To: <53f79172.f98b.187747f08bf.Coremail.wangdezhistudy@163.com>
+References: <53f79172.f98b.187747f08bf.Coremail.wangdezhistudy@163.com>
+Message-ID: <20230412210455.5812baea@Tarkus>
+
+On Wed, 12 Apr 2023 16:04:55 +0800 (GMT+08:00)
+"Dezhi Wang" <wangdezhistudy at 163.com> wrote:
+
+> I run R 4.2.2 on CentOS-7.6.
+
+Thank you for this useful information. Could you tell us how this build
+of R was installed on this machine?
+
+> > install.packages('sf')  
+> --- Please select a CRAN mirror for use in this session ---
+>  *** caught segfault ***
+> address 0x60, cause 'memory not mapped'
+> Traceback:
+>  1: download.file(url, destfile = f, quiet = TRUE)
+
+The text error is fine, there's no need for an additional screenshot.
+
+Can you install the R development files (in particular, I'm interested
+in the debugging symbols, which must live in the R-debuginfo package,
+assuming you have installed R from a package) and the GNU debugger (gdb)
+on this machine? Once you have done that, run R using the command 
+R -d gdb, start R using the "r" command, reproduce the crash and then
+post the backtrace that results from the "bt" command.
+
+-- 
+Best regards,
+Ivan
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Wed Apr 12 20:57:48 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Wed, 12 Apr 2023 18:57:48 +0000
+Subject: [R] converting a character matrix into numeric....
+Message-ID: <PU4P216MB156855073CBA03421F338B06C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear members,
+                            I have an xts object:
+
+> head(INFYTX)
+           INFY Historical Data INFY Historical Data.1 INFY Historical Data.2
+2003-04-16 "47.26"              "44.28"                "47.56"
+2003-04-17 "46.30"              "44.92"                "46.53"
+2003-04-21 "45.82"              "47.27"                "47.50"
+2003-04-22 "45.62"              "46.06"                "46.16"
+2003-04-23 "45.05"              "46.28"                "46.50"
+2003-04-24 "45.28"              "44.80"                "46.84"
+           INFY Historical Data.3 INFY Historical Data.4
+2003-04-16 "44.28"                "1805267"              "5.77%"
+2003-04-17 "44.06"                "1536300"              "-2.03%"
+2003-04-21 "45.63"                "887774"               "-1.04%"
+2003-04-22 "44.73"                "944036"               "-0.44%"
+2003-04-23 "44.77"                "759898"               "-1.25%"
+2003-04-24 "44.53"                "1185402"              "0.51%"
+
+But it is populated with character values and I want to convert them to numeric. THe following code doesn't work:
+
+> head(coredata(INFYTX))
+     INFY Historical Data INFY Historical Data.1 INFY Historical Data.2 INFY Historical Data.3
+[1,] "47.26"              "44.28"                "47.56"                "44.28"
+[2,] "46.30"              "44.92"                "46.53"                "44.06"
+[3,] "45.82"              "47.27"                "47.50"                "45.63"
+[4,] "45.62"              "46.06"                "46.16"                "44.73"
+[5,] "45.05"              "46.28"                "46.50"                "44.77"
+[6,] "45.28"              "44.80"                "46.84"                "44.53"
+     INFY Historical Data.4
+[1,] "1805267"              "5.77%"
+[2,] "1536300"              "-2.03%"
+[3,] "887774"               "-1.04%"
+[4,] "944036"               "-0.44%"
+[5,] "759898"               "-1.25%"
+[6,] "1185402"              "0.51%"
+
+> class(coredata(INFYTX))
+[1] "matrix" "array"
+> class(coredata(INFYTX)) <- "numeric"
+Warning message:
+In class(coredata(INFYTX)) <- "numeric" : NAs introduced by coercion
+> class(coredata(INFYTX))
+[1] "matrix" "array"
+> head(coredata(INFYTX))
+     INFY Historical Data INFY Historical Data.1 INFY Historical Data.2 INFY Historical Data.3
+[1,] "47.26"              "44.28"                "47.56"                "44.28"
+[2,] "46.3"               "44.92"                "46.53"                "44.06"
+[3,] "45.82"              "47.27"                "47.5"                 "45.63"
+[4,] "45.62"              "46.06"                "46.16"                "44.73"
+[5,] "45.05"              "46.28"                "46.5"                 "44.77"
+[6,] "45.28"              "44.8"                 "46.84"                "44.53"
+     INFY Historical Data.4
+[1,] "1805267"              NA
+[2,] "1536300"              NA
+[3,] "887774"               NA
+[4,] "944036"               NA
+[5,] "759898"               NA
+[6,] "1185402"              NA
+
+Why is the coredata matrix not changing to numeric when the class is changed to numeric? How else to convert coredata into numeric?
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Wed Apr 12 21:16:29 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Wed, 12 Apr 2023 20:16:29 +0100
+Subject: [R] converting a character matrix into numeric....
+In-Reply-To: <PU4P216MB156855073CBA03421F338B06C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB156855073CBA03421F338B06C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <8f9ae35e-9351-d796-09e5-cd0aff10f37a@sapo.pt>
+
+?s 19:57 de 12/04/2023, akshay kulkarni escreveu:
+> Dear members,
+>                              I have an xts object:
+> 
+>> head(INFYTX)
+>             INFY Historical Data INFY Historical Data.1 INFY Historical Data.2
+> 2003-04-16 "47.26"              "44.28"                "47.56"
+> 2003-04-17 "46.30"              "44.92"                "46.53"
+> 2003-04-21 "45.82"              "47.27"                "47.50"
+> 2003-04-22 "45.62"              "46.06"                "46.16"
+> 2003-04-23 "45.05"              "46.28"                "46.50"
+> 2003-04-24 "45.28"              "44.80"                "46.84"
+>             INFY Historical Data.3 INFY Historical Data.4
+> 2003-04-16 "44.28"                "1805267"              "5.77%"
+> 2003-04-17 "44.06"                "1536300"              "-2.03%"
+> 2003-04-21 "45.63"                "887774"               "-1.04%"
+> 2003-04-22 "44.73"                "944036"               "-0.44%"
+> 2003-04-23 "44.77"                "759898"               "-1.25%"
+> 2003-04-24 "44.53"                "1185402"              "0.51%"
+> 
+> But it is populated with character values and I want to convert them to numeric. THe following code doesn't work:
+> 
+>> head(coredata(INFYTX))
+>       INFY Historical Data INFY Historical Data.1 INFY Historical Data.2 INFY Historical Data.3
+> [1,] "47.26"              "44.28"                "47.56"                "44.28"
+> [2,] "46.30"              "44.92"                "46.53"                "44.06"
+> [3,] "45.82"              "47.27"                "47.50"                "45.63"
+> [4,] "45.62"              "46.06"                "46.16"                "44.73"
+> [5,] "45.05"              "46.28"                "46.50"                "44.77"
+> [6,] "45.28"              "44.80"                "46.84"                "44.53"
+>       INFY Historical Data.4
+> [1,] "1805267"              "5.77%"
+> [2,] "1536300"              "-2.03%"
+> [3,] "887774"               "-1.04%"
+> [4,] "944036"               "-0.44%"
+> [5,] "759898"               "-1.25%"
+> [6,] "1185402"              "0.51%"
+> 
+>> class(coredata(INFYTX))
+> [1] "matrix" "array"
+>> class(coredata(INFYTX)) <- "numeric"
+> Warning message:
+> In class(coredata(INFYTX)) <- "numeric" : NAs introduced by coercion
+>> class(coredata(INFYTX))
+> [1] "matrix" "array"
+>> head(coredata(INFYTX))
+>       INFY Historical Data INFY Historical Data.1 INFY Historical Data.2 INFY Historical Data.3
+> [1,] "47.26"              "44.28"                "47.56"                "44.28"
+> [2,] "46.3"               "44.92"                "46.53"                "44.06"
+> [3,] "45.82"              "47.27"                "47.5"                 "45.63"
+> [4,] "45.62"              "46.06"                "46.16"                "44.73"
+> [5,] "45.05"              "46.28"                "46.5"                 "44.77"
+> [6,] "45.28"              "44.8"                 "46.84"                "44.53"
+>       INFY Historical Data.4
+> [1,] "1805267"              NA
+> [2,] "1536300"              NA
+> [3,] "887774"               NA
+> [4,] "944036"               NA
+> [5,] "759898"               NA
+> [6,] "1185402"              NA
+> 
+> Why is the coredata matrix not changing to numeric when the class is changed to numeric? How else to convert coredata into numeric?
+> 
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Those NA come from trying to coerce character strings with "%" to numeric.
+
+Try instead to first remove the unwanted characters.
+
+
+
+mat <- matrix(c(0.1, 0.2, "5.77%", "-2.03%"), ncol = 2L)
+
+mat[] <- apply(mat, 2, \(x) sub("%", "", x))
+class(mat) <- "numeric"
+mat
+#>      [,1]  [,2]
+#> [1,]  0.1  5.77
+#> [2,]  0.2 -2.03
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Wed Apr 12 21:29:49 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Wed, 12 Apr 2023 19:29:49 +0000
+Subject: [R] converting a character matrix into numeric....
+In-Reply-To: <8f9ae35e-9351-d796-09e5-cd0aff10f37a@sapo.pt>
+References: <PU4P216MB156855073CBA03421F338B06C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <8f9ae35e-9351-d796-09e5-cd0aff10f37a@sapo.pt>
+Message-ID: <PU4P216MB156816EED7246F52DDBCBE4FC89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Rui,
+                 Not working. I have entirely removed the column containing % but am still bootless:
+
+> head(coredata(INFYTX))
+     INFY Historical Data INFY Historical Data INFY Historical Data INFY Historical Data
+[1,] "47.26"              "44.28"              "47.56"              "44.28"
+[2,] "46.30"              "44.92"              "46.53"              "44.06"
+[3,] "45.82"              "47.27"              "47.50"              "45.63"
+[4,] "45.62"              "46.06"              "46.16"              "44.73"
+[5,] "45.05"              "46.28"              "46.50"              "44.77"
+[6,] "45.28"              "44.80"              "46.84"              "44.53"
+     INFY Historical Data
+[1,] "1805267"
+[2,] "1536300"
+[3,] "887774"
+[4,] "944036"
+[5,] "759898"
+[6,] "1185402"
+> class(coredata(INFYTX)) <- "numeric"
+> head(coredata(INFYTX))
+     INFY Historical Data INFY Historical Data INFY Historical Data INFY Historical Data
+[1,] "47.26"              "44.28"              "47.56"              "44.28"
+[2,] "46.3"               "44.92"              "46.53"              "44.06"
+[3,] "45.82"              "47.27"              "47.5"               "45.63"
+[4,] "45.62"              "46.06"              "46.16"              "44.73"
+[5,] "45.05"              "46.28"              "46.5"               "44.77"
+[6,] "45.28"              "44.8"               "46.84"              "44.53"
+     INFY Historical Data
+[1,] "1805267"
+[2,] "1536300"
+[3,] "887774"
+[4,] "944036"
+[5,] "759898"
+[6,] "1185402"
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+________________________________
+From: Rui Barradas <ruipbarradas at sapo.pt>
+Sent: Thursday, April 13, 2023 12:46 AM
+To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] converting a character matrix into numeric....
+
+?s 19:57 de 12/04/2023, akshay kulkarni escreveu:
+> Dear members,
+>                              I have an xts object:
+>
+>> head(INFYTX)
+>             INFY Historical Data INFY Historical Data.1 INFY Historical Data.2
+> 2003-04-16 "47.26"              "44.28"                "47.56"
+> 2003-04-17 "46.30"              "44.92"                "46.53"
+> 2003-04-21 "45.82"              "47.27"                "47.50"
+> 2003-04-22 "45.62"              "46.06"                "46.16"
+> 2003-04-23 "45.05"              "46.28"                "46.50"
+> 2003-04-24 "45.28"              "44.80"                "46.84"
+>             INFY Historical Data.3 INFY Historical Data.4
+> 2003-04-16 "44.28"                "1805267"              "5.77%"
+> 2003-04-17 "44.06"                "1536300"              "-2.03%"
+> 2003-04-21 "45.63"                "887774"               "-1.04%"
+> 2003-04-22 "44.73"                "944036"               "-0.44%"
+> 2003-04-23 "44.77"                "759898"               "-1.25%"
+> 2003-04-24 "44.53"                "1185402"              "0.51%"
+>
+> But it is populated with character values and I want to convert them to numeric. THe following code doesn't work:
+>
+>> head(coredata(INFYTX))
+>       INFY Historical Data INFY Historical Data.1 INFY Historical Data.2 INFY Historical Data.3
+> [1,] "47.26"              "44.28"                "47.56"                "44.28"
+> [2,] "46.30"              "44.92"                "46.53"                "44.06"
+> [3,] "45.82"              "47.27"                "47.50"                "45.63"
+> [4,] "45.62"              "46.06"                "46.16"                "44.73"
+> [5,] "45.05"              "46.28"                "46.50"                "44.77"
+> [6,] "45.28"              "44.80"                "46.84"                "44.53"
+>       INFY Historical Data.4
+> [1,] "1805267"              "5.77%"
+> [2,] "1536300"              "-2.03%"
+> [3,] "887774"               "-1.04%"
+> [4,] "944036"               "-0.44%"
+> [5,] "759898"               "-1.25%"
+> [6,] "1185402"              "0.51%"
+>
+>> class(coredata(INFYTX))
+> [1] "matrix" "array"
+>> class(coredata(INFYTX)) <- "numeric"
+> Warning message:
+> In class(coredata(INFYTX)) <- "numeric" : NAs introduced by coercion
+>> class(coredata(INFYTX))
+> [1] "matrix" "array"
+>> head(coredata(INFYTX))
+>       INFY Historical Data INFY Historical Data.1 INFY Historical Data.2 INFY Historical Data.3
+> [1,] "47.26"              "44.28"                "47.56"                "44.28"
+> [2,] "46.3"               "44.92"                "46.53"                "44.06"
+> [3,] "45.82"              "47.27"                "47.5"                 "45.63"
+> [4,] "45.62"              "46.06"                "46.16"                "44.73"
+> [5,] "45.05"              "46.28"                "46.5"                 "44.77"
+> [6,] "45.28"              "44.8"                 "46.84"                "44.53"
+>       INFY Historical Data.4
+> [1,] "1805267"              NA
+> [2,] "1536300"              NA
+> [3,] "887774"               NA
+> [4,] "944036"               NA
+> [5,] "759898"               NA
+> [6,] "1185402"              NA
+>
+> Why is the coredata matrix not changing to numeric when the class is changed to numeric? How else to convert coredata into numeric?
+>
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>        [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Those NA come from trying to coerce character strings with "%" to numeric.
+
+Try instead to first remove the unwanted characters.
+
+
+
+mat <- matrix(c(0.1, 0.2, "5.77%", "-2.03%"), ncol = 2L)
+
+mat[] <- apply(mat, 2, \(x) sub("%", "", x))
+class(mat) <- "numeric"
+mat
+#>      [,1]  [,2]
+#> [1,]  0.1  5.77
+#> [2,]  0.2 -2.03
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Apr 12 21:38:41 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Wed, 12 Apr 2023 12:38:41 -0700
+Subject: [R] converting a character matrix into numeric....
+In-Reply-To: <PU4P216MB156816EED7246F52DDBCBE4FC89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB156855073CBA03421F338B06C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <8f9ae35e-9351-d796-09e5-cd0aff10f37a@sapo.pt>
+ <PU4P216MB156816EED7246F52DDBCBE4FC89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <CBC09008-18DF-454F-8DC5-25EDBEF63F38@dcn.davis.ca.us>
+
+Isn't this like trying to tie up the horse after it has left the barn? Why not figure all this out _before_ converting to xts?
+
+On April 12, 2023 12:29:49 PM PDT, akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>Dear Rui,
+>                 Not working. I have entirely removed the column containing % but am still bootless:
+>
+>> head(coredata(INFYTX))
+>     INFY Historical Data INFY Historical Data INFY Historical Data INFY Historical Data
+>[1,] "47.26"              "44.28"              "47.56"              "44.28"
+>[2,] "46.30"              "44.92"              "46.53"              "44.06"
+>[3,] "45.82"              "47.27"              "47.50"              "45.63"
+>[4,] "45.62"              "46.06"              "46.16"              "44.73"
+>[5,] "45.05"              "46.28"              "46.50"              "44.77"
+>[6,] "45.28"              "44.80"              "46.84"              "44.53"
+>     INFY Historical Data
+>[1,] "1805267"
+>[2,] "1536300"
+>[3,] "887774"
+>[4,] "944036"
+>[5,] "759898"
+>[6,] "1185402"
+>> class(coredata(INFYTX)) <- "numeric"
+>> head(coredata(INFYTX))
+>     INFY Historical Data INFY Historical Data INFY Historical Data INFY Historical Data
+>[1,] "47.26"              "44.28"              "47.56"              "44.28"
+>[2,] "46.3"               "44.92"              "46.53"              "44.06"
+>[3,] "45.82"              "47.27"              "47.5"               "45.63"
+>[4,] "45.62"              "46.06"              "46.16"              "44.73"
+>[5,] "45.05"              "46.28"              "46.5"               "44.77"
+>[6,] "45.28"              "44.8"               "46.84"              "44.53"
+>     INFY Historical Data
+>[1,] "1805267"
+>[2,] "1536300"
+>[3,] "887774"
+>[4,] "944036"
+>[5,] "759898"
+>[6,] "1185402"
+>
+>THanking you,
+>Yours sincerely,
+>AKSHAY M KULKARNI
+>
+>________________________________
+>From: Rui Barradas <ruipbarradas at sapo.pt>
+>Sent: Thursday, April 13, 2023 12:46 AM
+>To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+>Subject: Re: [R] converting a character matrix into numeric....
+>
+>?s 19:57 de 12/04/2023, akshay kulkarni escreveu:
+>> Dear members,
+>>                              I have an xts object:
+>>
+>>> head(INFYTX)
+>>             INFY Historical Data INFY Historical Data.1 INFY Historical Data.2
+>> 2003-04-16 "47.26"              "44.28"                "47.56"
+>> 2003-04-17 "46.30"              "44.92"                "46.53"
+>> 2003-04-21 "45.82"              "47.27"                "47.50"
+>> 2003-04-22 "45.62"              "46.06"                "46.16"
+>> 2003-04-23 "45.05"              "46.28"                "46.50"
+>> 2003-04-24 "45.28"              "44.80"                "46.84"
+>>             INFY Historical Data.3 INFY Historical Data.4
+>> 2003-04-16 "44.28"                "1805267"              "5.77%"
+>> 2003-04-17 "44.06"                "1536300"              "-2.03%"
+>> 2003-04-21 "45.63"                "887774"               "-1.04%"
+>> 2003-04-22 "44.73"                "944036"               "-0.44%"
+>> 2003-04-23 "44.77"                "759898"               "-1.25%"
+>> 2003-04-24 "44.53"                "1185402"              "0.51%"
+>>
+>> But it is populated with character values and I want to convert them to numeric. THe following code doesn't work:
+>>
+>>> head(coredata(INFYTX))
+>>       INFY Historical Data INFY Historical Data.1 INFY Historical Data.2 INFY Historical Data.3
+>> [1,] "47.26"              "44.28"                "47.56"                "44.28"
+>> [2,] "46.30"              "44.92"                "46.53"                "44.06"
+>> [3,] "45.82"              "47.27"                "47.50"                "45.63"
+>> [4,] "45.62"              "46.06"                "46.16"                "44.73"
+>> [5,] "45.05"              "46.28"                "46.50"                "44.77"
+>> [6,] "45.28"              "44.80"                "46.84"                "44.53"
+>>       INFY Historical Data.4
+>> [1,] "1805267"              "5.77%"
+>> [2,] "1536300"              "-2.03%"
+>> [3,] "887774"               "-1.04%"
+>> [4,] "944036"               "-0.44%"
+>> [5,] "759898"               "-1.25%"
+>> [6,] "1185402"              "0.51%"
+>>
+>>> class(coredata(INFYTX))
+>> [1] "matrix" "array"
+>>> class(coredata(INFYTX)) <- "numeric"
+>> Warning message:
+>> In class(coredata(INFYTX)) <- "numeric" : NAs introduced by coercion
+>>> class(coredata(INFYTX))
+>> [1] "matrix" "array"
+>>> head(coredata(INFYTX))
+>>       INFY Historical Data INFY Historical Data.1 INFY Historical Data.2 INFY Historical Data.3
+>> [1,] "47.26"              "44.28"                "47.56"                "44.28"
+>> [2,] "46.3"               "44.92"                "46.53"                "44.06"
+>> [3,] "45.82"              "47.27"                "47.5"                 "45.63"
+>> [4,] "45.62"              "46.06"                "46.16"                "44.73"
+>> [5,] "45.05"              "46.28"                "46.5"                 "44.77"
+>> [6,] "45.28"              "44.8"                 "46.84"                "44.53"
+>>       INFY Historical Data.4
+>> [1,] "1805267"              NA
+>> [2,] "1536300"              NA
+>> [3,] "887774"               NA
+>> [4,] "944036"               NA
+>> [5,] "759898"               NA
+>> [6,] "1185402"              NA
+>>
+>> Why is the coredata matrix not changing to numeric when the class is changed to numeric? How else to convert coredata into numeric?
+>>
+>> THanking you,
+>> Yours sincerely,
+>> AKSHAY M KULKARNI
+>>
+>>        [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>Hello,
+>
+>Those NA come from trying to coerce character strings with "%" to numeric.
+>
+>Try instead to first remove the unwanted characters.
+>
+>
+>
+>mat <- matrix(c(0.1, 0.2, "5.77%", "-2.03%"), ncol = 2L)
+>
+>mat[] <- apply(mat, 2, \(x) sub("%", "", x))
+>class(mat) <- "numeric"
+>mat
+>#>      [,1]  [,2]
+>#> [1,]  0.1  5.77
+>#> [2,]  0.2 -2.03
+>
+>
+>Hope this helps,
+>
+>Rui Barradas
+>
+>
+>	[[alternative HTML version deleted]]
+>
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Wed Apr 12 21:44:35 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Wed, 12 Apr 2023 19:44:35 +0000
+Subject: [R] converting a character matrix into numeric....
+In-Reply-To: <CBC09008-18DF-454F-8DC5-25EDBEF63F38@dcn.davis.ca.us>
+References: <PU4P216MB156855073CBA03421F338B06C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <8f9ae35e-9351-d796-09e5-cd0aff10f37a@sapo.pt>
+ <PU4P216MB156816EED7246F52DDBCBE4FC89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CBC09008-18DF-454F-8DC5-25EDBEF63F38@dcn.davis.ca.us>
+Message-ID: <PU4P216MB1568D87243763774AD76CE67C89B9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Jeff,
+                 Regrets for not trying that before...never knew that % was the culprit...!
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+Sent: Thursday, April 13, 2023 1:08 AM
+To: r-help at r-project.org <r-help at r-project.org>; akshay kulkarni <akshay_e4 at hotmail.com>; Rui Barradas <ruipbarradas at sapo.pt>; R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] converting a character matrix into numeric....
+
+Isn't this like trying to tie up the horse after it has left the barn? Why not figure all this out _before_ converting to xts?
+
+On April 12, 2023 12:29:49 PM PDT, akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>Dear Rui,
+>                 Not working. I have entirely removed the column containing % but am still bootless:
+>
+>> head(coredata(INFYTX))
+>     INFY Historical Data INFY Historical Data INFY Historical Data INFY Historical Data
+>[1,] "47.26"              "44.28"              "47.56"              "44.28"
+>[2,] "46.30"              "44.92"              "46.53"              "44.06"
+>[3,] "45.82"              "47.27"              "47.50"              "45.63"
+>[4,] "45.62"              "46.06"              "46.16"              "44.73"
+>[5,] "45.05"              "46.28"              "46.50"              "44.77"
+>[6,] "45.28"              "44.80"              "46.84"              "44.53"
+>     INFY Historical Data
+>[1,] "1805267"
+>[2,] "1536300"
+>[3,] "887774"
+>[4,] "944036"
+>[5,] "759898"
+>[6,] "1185402"
+>> class(coredata(INFYTX)) <- "numeric"
+>> head(coredata(INFYTX))
+>     INFY Historical Data INFY Historical Data INFY Historical Data INFY Historical Data
+>[1,] "47.26"              "44.28"              "47.56"              "44.28"
+>[2,] "46.3"               "44.92"              "46.53"              "44.06"
+>[3,] "45.82"              "47.27"              "47.5"               "45.63"
+>[4,] "45.62"              "46.06"              "46.16"              "44.73"
+>[5,] "45.05"              "46.28"              "46.5"               "44.77"
+>[6,] "45.28"              "44.8"               "46.84"              "44.53"
+>     INFY Historical Data
+>[1,] "1805267"
+>[2,] "1536300"
+>[3,] "887774"
+>[4,] "944036"
+>[5,] "759898"
+>[6,] "1185402"
+>
+>THanking you,
+>Yours sincerely,
+>AKSHAY M KULKARNI
+>
+>________________________________
+>From: Rui Barradas <ruipbarradas at sapo.pt>
+>Sent: Thursday, April 13, 2023 12:46 AM
+>To: akshay kulkarni <akshay_e4 at hotmail.com>; R help Mailing list <r-help at r-project.org>
+>Subject: Re: [R] converting a character matrix into numeric....
+>
+>?s 19:57 de 12/04/2023, akshay kulkarni escreveu:
+>> Dear members,
+>>                              I have an xts object:
+>>
+>>> head(INFYTX)
+>>             INFY Historical Data INFY Historical Data.1 INFY Historical Data.2
+>> 2003-04-16 "47.26"              "44.28"                "47.56"
+>> 2003-04-17 "46.30"              "44.92"                "46.53"
+>> 2003-04-21 "45.82"              "47.27"                "47.50"
+>> 2003-04-22 "45.62"              "46.06"                "46.16"
+>> 2003-04-23 "45.05"              "46.28"                "46.50"
+>> 2003-04-24 "45.28"              "44.80"                "46.84"
+>>             INFY Historical Data.3 INFY Historical Data.4
+>> 2003-04-16 "44.28"                "1805267"              "5.77%"
+>> 2003-04-17 "44.06"                "1536300"              "-2.03%"
+>> 2003-04-21 "45.63"                "887774"               "-1.04%"
+>> 2003-04-22 "44.73"                "944036"               "-0.44%"
+>> 2003-04-23 "44.77"                "759898"               "-1.25%"
+>> 2003-04-24 "44.53"                "1185402"              "0.51%"
+>>
+>> But it is populated with character values and I want to convert them to numeric. THe following code doesn't work:
+>>
+>>> head(coredata(INFYTX))
+>>       INFY Historical Data INFY Historical Data.1 INFY Historical Data.2 INFY Historical Data.3
+>> [1,] "47.26"              "44.28"                "47.56"                "44.28"
+>> [2,] "46.30"              "44.92"                "46.53"                "44.06"
+>> [3,] "45.82"              "47.27"                "47.50"                "45.63"
+>> [4,] "45.62"              "46.06"                "46.16"                "44.73"
+>> [5,] "45.05"              "46.28"                "46.50"                "44.77"
+>> [6,] "45.28"              "44.80"                "46.84"                "44.53"
+>>       INFY Historical Data.4
+>> [1,] "1805267"              "5.77%"
+>> [2,] "1536300"              "-2.03%"
+>> [3,] "887774"               "-1.04%"
+>> [4,] "944036"               "-0.44%"
+>> [5,] "759898"               "-1.25%"
+>> [6,] "1185402"              "0.51%"
+>>
+>>> class(coredata(INFYTX))
+>> [1] "matrix" "array"
+>>> class(coredata(INFYTX)) <- "numeric"
+>> Warning message:
+>> In class(coredata(INFYTX)) <- "numeric" : NAs introduced by coercion
+>>> class(coredata(INFYTX))
+>> [1] "matrix" "array"
+>>> head(coredata(INFYTX))
+>>       INFY Historical Data INFY Historical Data.1 INFY Historical Data.2 INFY Historical Data.3
+>> [1,] "47.26"              "44.28"                "47.56"                "44.28"
+>> [2,] "46.3"               "44.92"                "46.53"                "44.06"
+>> [3,] "45.82"              "47.27"                "47.5"                 "45.63"
+>> [4,] "45.62"              "46.06"                "46.16"                "44.73"
+>> [5,] "45.05"              "46.28"                "46.5"                 "44.77"
+>> [6,] "45.28"              "44.8"                 "46.84"                "44.53"
+>>       INFY Historical Data.4
+>> [1,] "1805267"              NA
+>> [2,] "1536300"              NA
+>> [3,] "887774"               NA
+>> [4,] "944036"               NA
+>> [5,] "759898"               NA
+>> [6,] "1185402"              NA
+>>
+>> Why is the coredata matrix not changing to numeric when the class is changed to numeric? How else to convert coredata into numeric?
+>>
+>> THanking you,
+>> Yours sincerely,
+>> AKSHAY M KULKARNI
+>>
+>>        [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>Hello,
+>
+>Those NA come from trying to coerce character strings with "%" to numeric.
+>
+>Try instead to first remove the unwanted characters.
+>
+>
+>
+>mat <- matrix(c(0.1, 0.2, "5.77%", "-2.03%"), ncol = 2L)
+>
+>mat[] <- apply(mat, 2, \(x) sub("%", "", x))
+>class(mat) <- "numeric"
+>mat
+>#>      [,1]  [,2]
+>#> [1,]  0.1  5.77
+>#> [2,]  0.2 -2.03
+>
+>
+>Hope this helps,
+>
+>Rui Barradas
+>
+>
+>       [[alternative HTML version deleted]]
+>
+
+--
+Sent from my phone. Please excuse my brevity.
+
+	[[alternative HTML version deleted]]
+
+
+From dw|n@em|u@ @end|ng |rom comc@@t@net  Thu Apr 13 00:03:29 2023
+From: dw|n@em|u@ @end|ng |rom comc@@t@net (David Winsemius)
+Date: Wed, 12 Apr 2023 16:03:29 -0600
+Subject: [R] Split String in regex while Keeping Delimiter
+In-Reply-To: <AM9P195MB096556D9607BF3E2A42B2E68BC969@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+References: <AM9P195MB096556D9607BF3E2A42B2E68BC969@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+Message-ID: <B50FD948-EA7D-4C7D-A81C-146F057D6B72@comcast.net>
+
+I thought replacing the spaces following instances of +++,++,+,- with "\n" and then reading with scan should succeed. Like Ivan Krylov I was fairly sure that you meant the minus sign to be "-" rather than "?", but perhaps your were using MS Word as an editor which is inconsistent with effective use of R. If so, learn to use a proper programming editor, and in any case learn to post to rhelp in plain text.
+
+-- 
+David
+
+scan(text=gsub("([-+]){1}\\s", "\\1\n", dat), what="", sep="\n")
+
+
+
+> On Apr 12, 2023, at 2:29 AM, Emily Bakker <emilybakker at outlook.com> wrote:
+> 
+> Hello List,
+>  
+> I have a dataset consisting of strings that I want to split while saving the delimiter.
+>  
+> Some example data:
+> ?leucocyten + gramnegatieve staven +++ grampositieve staven ++?
+> ?leucocyten ? grampositieve coccen +?
+>  
+> I want to split the strings such that I get the following result:
+> c(?leucocyten +?,  ?gramnegatieve staven +++?,  ?grampositieve staven ++?)
+> c(?leucocyten ??, ?grampositieve coccen +?)
+>  
+> I have tried strsplit with a regular expression with a positive lookahead, but I am not able to achieve the results that I want.
+>  
+> I have tried:
+> as.list(strsplit(x, split = ?(?=[\\+-]{1,3}\\s)+, perl=TRUE)
+>  
+> Which results in:
+> c(?leucocyten ?, ?+?,  ?gramnegatieve staven ?, ?+?, ?+?, ?+?,  ?grampositieve staven ++?)
+> c(?leucocyten ?, ???, ?grampositieve coccen +?)
+>  
+>  
+> Is there a function or regular expression that will make this possible?
+>  
+> Kind regards,
+> Emily 
+>  
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Thu Apr 13 01:12:28 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Wed, 12 Apr 2023 19:12:28 -0400
+Subject: [R] Split String in regex while Keeping Delimiter
+In-Reply-To: <B50FD948-EA7D-4C7D-A81C-146F057D6B72@comcast.net>
+References: <AM9P195MB096556D9607BF3E2A42B2E68BC969@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+ <B50FD948-EA7D-4C7D-A81C-146F057D6B72@comcast.net>
+Message-ID: <005801d96d94$40d50530$c27f0f90$@gmail.com>
+
+Sometimes you need to NOT use a regular expression and do things simpler. You have a fairly simple example that not only does not need great power but may be a pain to do using a very powerful technique, especially if you want to play with look-ahead and look behind.
+
+Assuming you have a line with repeated runs on non-plussed text followed by one to three contiguous runs of a plus sign, can you write a short function that scans along till it finds a plus sign, then looks ahead till it sees a space or the end of the line. It then wraps up all the text till the last plus and adds a copy to a growing list or other structure. It then continues from the space(s) it ignores and repeats.
+
+When done, you have what you want in the format you want.
+
+A variant on this is to start from the end and scan backwards and stop at any plus sign. Keep what follows but strip any whitespace to the left of it. The result is the list in backwards order unless you used a stack to hold it.
+
+There are quite a few variants that might apply and perhaps use of functions in modules. A dumb example might be to preprocess the string and replace all instances of 1 to 3 plus signs and an optional space  with itself and an added letter like a ":" and then a second pass using a regular expression becomes trivial as the colons disappear.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of David Winsemius
+Sent: Wednesday, April 12, 2023 6:03 PM
+To: Emily Bakker <emilybakker at outlook.com>
+Cc: r-help at r-project.org
+Subject: Re: [R] Split String in regex while Keeping Delimiter
+
+I thought replacing the spaces following instances of +++,++,+,- with "\n" and then reading with scan should succeed. Like Ivan Krylov I was fairly sure that you meant the minus sign to be "-" rather than "?", but perhaps your were using MS Word as an editor which is inconsistent with effective use of R. If so, learn to use a proper programming editor, and in any case learn to post to rhelp in plain text.
+
+-- 
+David
+
+scan(text=gsub("([-+]){1}\\s", "\\1\n", dat), what="", sep="\n")
+
+
+
+> On Apr 12, 2023, at 2:29 AM, Emily Bakker <emilybakker at outlook.com> wrote:
+> 
+> Hello List,
+>  
+> I have a dataset consisting of strings that I want to split while saving the delimiter.
+>  
+> Some example data:
+> ?leucocyten + gramnegatieve staven +++ grampositieve staven ++?
+> ?leucocyten ? grampositieve coccen +?
+>  
+> I want to split the strings such that I get the following result:
+> c(?leucocyten +?,  ?gramnegatieve staven +++?,  ?grampositieve staven ++?)
+> c(?leucocyten ??, ?grampositieve coccen +?)
+>  
+> I have tried strsplit with a regular expression with a positive lookahead, but I am not able to achieve the results that I want.
+>  
+> I have tried:
+> as.list(strsplit(x, split = ?(?=[\\+-]{1,3}\\s)+, perl=TRUE)
+>  
+> Which results in:
+> c(?leucocyten ?, ?+?,  ?gramnegatieve staven ?, ?+?, ?+?, ?+?,  ?grampositieve staven ++?)
+> c(?leucocyten ?, ???, ?grampositieve coccen +?)
+>  
+>  
+> Is there a function or regular expression that will make this possible?
+>  
+> Kind regards,
+> Emily 
+>  
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Thu Apr 13 01:19:32 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Wed, 12 Apr 2023 16:19:32 -0700
+Subject: [R] Split String in regex while Keeping Delimiter
+In-Reply-To: <B50FD948-EA7D-4C7D-A81C-146F057D6B72@comcast.net>
+References: <AM9P195MB096556D9607BF3E2A42B2E68BC969@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+ <B50FD948-EA7D-4C7D-A81C-146F057D6B72@comcast.net>
+Message-ID: <CAGxFJbTcFA2Vxgb-BBYqERJ02ouK4GRpCUgRe0Pa789X0JnQpw@mail.gmail.com>
+
+I always find regex puzzles amusing, so after changing the unicode
+typo quotes and dashes to ascii, the following simple prescription,
+similar to those proffered by others, seems to produce what you
+requested with your example:
+
+x <- c("leucocyten + gramnegatieve staven +++ grampositieve staven ++",
+ "leucocyten - grampositieve coccen +")
+
+strsplit(gsub("([^[:alnum:]]) ","\\1>>",x),">>")
+
+(You can use unlist on this if you wish).
+
+My slight variant uses character classes and a backreference to
+identify where you want to split. The substitute '>>' split expression
+is purely arbitrary of course. Instead of [^[:alnum:]] you could
+probably use [+-], but I only wished to assume some sort of
+non-alphanumeric.
+
+I mention in passing that the above also seemed to work when I kept
+the en dash instead of a minus sign, but I make no claim for
+superiority -- or even noninferiority --  to the solutions proposed by
+others.
+
+Cheers,
+Bert
+
+
+On Wed, Apr 12, 2023 at 2:52?PM David Winsemius <dwinsemius at comcast.net> wrote:
+>
+> I thought replacing the spaces following instances of +++,++,+,- with "\n" and then reading with scan should succeed. Like Ivan Krylov I was fairly sure that you meant the minus sign to be "-" rather than "?", but perhaps your were using MS Word as an editor which is inconsistent with effective use of R. If so, learn to use a proper programming editor, and in any case learn to post to rhelp in plain text.
+>
+> --
+> David
+>
+> scan(text=gsub("([-+]){1}\\s", "\\1\n", dat), what="", sep="\n")
+>
+>
+>
+> > On Apr 12, 2023, at 2:29 AM, Emily Bakker <emilybakker at outlook.com> wrote:
+> >
+> > Hello List,
+> >
+> > I have a dataset consisting of strings that I want to split while saving the delimiter.
+> >
+> > Some example data:
+> > ?leucocyten + gramnegatieve staven +++ grampositieve staven ++?
+> > ?leucocyten ? grampositieve coccen +?
+> >
+> > I want to split the strings such that I get the following result:
+> > c(?leucocyten +?,  ?gramnegatieve staven +++?,  ?grampositieve staven ++?)
+> > c(?leucocyten ??, ?grampositieve coccen +?)
+> >
+> > I have tried strsplit with a regular expression with a positive lookahead, but I am not able to achieve the results that I want.
+> >
+> > I have tried:
+> > as.list(strsplit(x, split = ?(?=[\\+-]{1,3}\\s)+, perl=TRUE)
+> >
+> > Which results in:
+> > c(?leucocyten ?, ?+?,  ?gramnegatieve staven ?, ?+?, ?+?, ?+?,  ?grampositieve staven ++?)
+> > c(?leucocyten ?, ???, ?grampositieve coccen +?)
+> >
+> >
+> > Is there a function or regular expression that will make this possible?
+> >
+> > Kind regards,
+> > Emily
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
