@@ -8401,3 +8401,440 @@ On Wed, Apr 12, 2023 at 2:52?PM David Winsemius <dwinsemius at comcast.net> wrot
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Apr 13 09:27:10 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 13 Apr 2023 10:27:10 +0300
+Subject: [R] R-error
+In-Reply-To: <110993f6.3006.1877963c748.Coremail.wangdezhistudy@163.com>
+References: <53f79172.f98b.187747f08bf.Coremail.wangdezhistudy@163.com>
+ <20230412210455.5812baea@Tarkus>
+ <110993f6.3006.1877963c748.Coremail.wangdezhistudy@163.com>
+Message-ID: <20230413102710.0f4f6f98@Tarkus>
+
+On Thu, 13 Apr 2023 14:53:14 +0800 (GMT+08:00)
+"Dezhi Wang" <wangdezhistudy at 163.com> wrote:
+
+> [New Thread 0x7fffe660a700 (LWP 3791)]
+> [Thread 0x7fffe660a700 (LWP 3791) exited]
+> Program received signal SIGSEGV, Segmentation fault.
+> 0x00007fffe50c0fe5 in intel_aes_gcmAAD () from
+> /lib64/libfreeblpriv3.so
+
+You didn't post the backtrace, so I don't have the full picture, but
+the crash seems to be happening in your TLS implementation (NSS), most
+likely because the AES GCM context pointer somehow turned out to be
+NULL. Is there a way to install a libcurl build linked with a different
+TLS back-end (e.g. OpenSSL)?
+
+How exactly did you install R?
+
+Please keep the Cc: r-help at R-project.org header in your e-mails (in
+order to let others find their solutions through the publicly available
+R-help archive).
+
+Please post in plain text, not HTML:
+https://www.r-project.org/mail.html#general-instructions
+
+-- 
+Best regards,
+Ivan
+
+
+From r@oknz @end|ng |rom gm@||@com  Thu Apr 13 13:57:04 2023
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Thu, 13 Apr 2023 23:57:04 +1200
+Subject: [R] Matrix scalar operation that saves memory?
+In-Reply-To: <ffb42d6c-b3b5-ac6d-f06e-1e6b0506cff1@ngs.gen-info.osaka-u.ac.jp>
+References: <fc9ea9b9-f224-6de2-e184-dd9126c56f18@ngs.gen-info.osaka-u.ac.jp>
+ <000401d96cf0$74cf6500$5e6e2f00$@gmail.com>
+ <ffb42d6c-b3b5-ac6d-f06e-1e6b0506cff1@ngs.gen-info.osaka-u.ac.jp>
+Message-ID: <CABcYAdK38AAKzBpD41Xci+9kyANBQMSeEG3U5MMSfW4Mqfqo0A@mail.gmail.com>
+
+"wear your disc quite badly"?
+If you can afford a computer with 512 GB of memory,
+you can afford to pay $100 for a 2 TB external SSD,
+use it as scratch space, and throw it away after a
+month of use.  A hard drive is expected to last for
+more than 40,000 hours of constant use.  Are you
+sure that your own disc is so fragile?  Hard drives
+are pretty cheap these days.  You could afford to
+pay $50 for a 2 TB external hard drive, use it as
+scratch space, and throw it away.
+
+I've been around long enough to remember when the idea
+of processing a 1000x1000 matrix in memory was greeted
+with hysterical laughter and a recommendation to stop
+smoking whatever I was smoking.   (But not old enough
+to remember shuffling matrices around on tape.  Shudder.)
+
+If you want to work on two 300GB matrices using a machine
+with 512GB of RAM, you are going to be using a disc or
+SSD, like it or not.  You can leave it up to the paging
+subsystem of your OS, which will do its poor best, or you
+can explicitly schedule reads and writes in your program,
+and if you use asynchronous I/O it might overlap quite nicely.
+
+Assuming for the sake of arithmetic that your matrix
+elements are complex numbers represented as pairs of
+double precision floats, that's 16 bytes per element,
+or 300e9/16 = 1.975e10 elements = n^2 elements where n = 136,930.
+Other than adding, subtracting, and multiplying by a scalar,
+there's not much you can do with an nxn matrix that won't take
+time proportional to n^3.
+
+Is there any way you can divide the matrix into (possibly
+overlapping) blocks and do the work on a cluster?  Or a
+block at a time?
+
+
+On Wed, 12 Apr 2023 at 15:54, Shunran Zhang <
+szhang at ngs.gen-info.osaka-u.ac.jp> wrote:
+
+> Thanks for the info.
+>
+> For the data type, my matrix as of now is indeed a matrix in a perfect
+> square shape filled in a previous segment of code, but I believe I could
+> extract one row/column at a time to do some processing. I can also
+> change that previous part of code to change the data type of it to
+> something else if that helps.
+>
+> Saving it to a file for manipulation and reading it back seems to be
+> quite IO intensive - writing 600G of data and reading 300G back from a
+> hard drive would make the code extremely heavy as well as wear my disk
+> quite badly.
+>
+> For now I'll try the row-by-row method and hope it works...
+>
+> Sincerely,
+> S. Zhang
+>
+>
+> On 2023/04/12 12:39, avi.e.gross at gmail.com wrote:
+> > The example given does not leave room for even a single copy of your
+> matrix
+> > so, yes, you need alternatives.
+> >
+> > Your example was fairly trivial as all you wanted to do is subtract each
+> > value from 100 and replace it. Obviously something like squaring a matrix
+> > has no trivial way to do without multiple copies out there that won't
+> fit.
+> >
+> > One technique that might work is a nested loop that changes one cell of
+> the
+> > matrix at a time and in-place. A variant of this might be a singe loop
+> that
+> > changes a single row (or column) at a time and in place.
+> >
+> > Another odd concept is to save your matrix in a file with some format you
+> > can read back in such as a line or row at a time, and then do the
+> > subtraction from 100 and write it back to disk in another file. If you
+> need
+> > it again, I assume you can read it in but perhaps you should consider
+> how to
+> > increase some aspects of your "memory".
+> >
+> > Is your matrix a real matrix type or something like a list of lists or a
+> > data.frame? You may do better with some data structures that are more
+> > efficient than others.
+> >
+> > Some OS allow you to use virtual memory that is mapped in and out from
+> the
+> > disk that allows larger things to be done, albeit often much slower. I
+> also
+> > note that you can remove some things you are not using and hope garbage
+> > collection happens soon enough.
+> >
+> > -----Original Message-----
+> > From: R-help <r-help-bounces at r-project.org> On Behalf Of Shunran Zhang
+> > Sent: Tuesday, April 11, 2023 10:21 PM
+> > To: r-help at r-project.org
+> > Subject: [R] Matrix scalar operation that saves memory?
+> >
+> > Hi all,
+> >
+> > I am currently working with a quite large matrix that takes 300G of
+> > memory. My computer only has 512G of memory. I would need to do a few
+> > arithmetic on it with a scalar value. My current code looks like this:
+> >
+> > mat <- 100 - mat
+> >
+> > However such code quickly uses up all of the remaining memory and got
+> > the R script killed by OOM killer.
+> >
+> > Are there any more memory-efficient way of doing such operation?
+> >
+> > Thanks,
+> >
+> > S. Zhang
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From 538280 @end|ng |rom gm@||@com  Thu Apr 13 18:09:03 2023
+From: 538280 @end|ng |rom gm@||@com (Greg Snow)
+Date: Thu, 13 Apr 2023 10:09:03 -0600
+Subject: [R] Split String in regex while Keeping Delimiter
+In-Reply-To: <20230412204758.71af832c@Tarkus>
+References: <AM9P195MB096556D9607BF3E2A42B2E68BC969@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+ <20230412204758.71af832c@Tarkus>
+Message-ID: <CAFEqCdwdAGQp84ziid6SDZaXrvijh3rBG0aeay5iGLzqBgtrcQ@mail.gmail.com>
+
+Since any space that follows 2 or 3 + signs (or - signs) also follows
+a single + (or -), this can be done with positive look behind, which
+may be a little simpler:
+
+x <- c(
+  'leucocyten + gramnegatieve staven +++ grampositieve staven ++',
+  'leucocyten - grampositieve coccen +'
+)
+strsplit(x, "(?<=[+-])\\s+", perl=TRUE)
+
+An alternative is to use the strapply function(s) in the gsubfn
+package which focus on what you want to keep for each piece rather
+than what to split on.
+
+Here is an example that says to keep a sequence of characters that are
+not + or -, followed by 1 to 3 + or - characters:
+
+library(gsubfn)
+strapplyc(x, "[^+-]+[+-]{1,3}")
+
+This includes the spaces at the beginning of the return strings after
+the first, a couple of options that drop these spaces as well are:
+
+strapply(x, "([^+-]+[+-]{1,3}) *", backref = -1)
+strapply(x, "[^ +-][^+-]+[+-]{1,3}")
+
+On Wed, Apr 12, 2023 at 11:54?AM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>
+> On Wed, 12 Apr 2023 08:29:50 +0000
+> Emily Bakker <emilybakker at outlook.com> wrote:
+>
+> > Some example data:
+> > ?leucocyten + gramnegatieve staven +++ grampositieve staven ++?
+> > ?leucocyten ? grampositieve coccen +?
+> >
+> > I want to split the strings such that I get the following result:
+> > c(?leucocyten +?,  ?gramnegatieve staven +++?,
+> >  ?grampositieve staven ++?)
+> > c(?leucocyten ??, ?grampositieve coccen +?)
+> >
+> > I have tried strsplit with a regular expression with a positive
+> > lookahead, but I am not able to achieve the results that I want.
+>
+> It sounds like you need positive look-behind, not look-ahead: split on
+> spaces only if they _follow_ one to three of '+' or '-'. Unfortunately,
+> repetition quantifiers like {n,m} or + are not directly supported in
+> look-behind expressions (nor in Perl itself). As a special case, you
+> can use \K, where anything to the left of \K is a zero-width positive
+> match:
+>
+> x <- c(
+>  'leucocyten + gramnegatieve staven +++ grampositieve staven ++',
+>  'leucocyten - grampositieve coccen +'
+> )
+> strsplit(x, '[+-]{1,3}+\\K ', perl = TRUE)
+> # [[1]]
+> # [1] "leucocyten +"             "gramnegatieve staven +++"
+> #     "grampositieve staven ++"
+> #
+> # [[2]]
+> # [1] "leucocyten -"           "grampositieve coccen +"
+>
+> --
+> Best regards,
+> Ivan
+>
+> P.S. It looks like your e-mail client has transformed every quote
+> character into typographically-correct Unicode quotes ?? and every
+> minus into an en dash, which makes it slightly harder to work with your
+> code, since typographically correct Unicode quotes are not R string
+> delimiters. Is it really ? that you'd like to split upon, or is it -?
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Gregory (Greg) L. Snow Ph.D.
+538280 at gmail.com
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Thu Apr 13 20:40:24 2023
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Thu, 13 Apr 2023 21:40:24 +0300
+Subject: [R] Split String in regex while Keeping Delimiter
+Message-ID: <40adca2d-6412-934f-9a47-977537641e93@syonic.eu>
+
+Dear Emily,
+
+Using a look-behind solves the split problem in this case. (Note: Using 
+Regex is in most/many cases the simplest solution.)
+
+str = c("leucocyten + gramnegatieve staven +++ grampositieve staven ++",
+"leucocyten ? grampositieve coccen +")
+
+tokens = strsplit(str, "(?<=[-+])\\s++", perl=TRUE)
+
+PROBLEM
+The current expression does NOT work for a different reason: the "-" is 
+coded using a NON-ASCII character.
+
+I have written a small utility function to approximately extract 
+"non-standard" characters:
+### Identify non-ASCII Characters
+# beware: the filtering and the sorting may break the codes;
+extract.nonLetters = function(x, rm.space = TRUE, sort=FALSE) {
+ ?? ?code = as.numeric(unique(unlist(lapply(x, charToRaw))));
+ ?? ?isLetter =
+ ?? ???? (code >= 97 & code <= 122) |
+ ?? ???? (code >= 65 & code <= 90);
+ ?? ?code = code[ ! isLetter];
+ ?? ?if(rm.space) {
+ ?? ???? # removes only simple space!
+ ?? ???? code = code[code != 32];
+ ?? ?}
+ ?? ?if(sort) code = sort(code);
+ ?? ?return(code);
+}
+extract.nonLetters(str, sort = FALSE)
+# 43 226 128 147
+
+Note:
+- the code for "+" is 43, and for simple "-" is 45: as.numeric 
+(charToRaw("+-"));
+- "226 128 147" codes something else, but it is not trivial to get the 
+Unicode code Point;
+https://www.utf8-chartable.de/unicode-utf8-table.pl?start=8192&number=128&utf8=dec
+
+The following is a more comprehensive Regex expression, which accepts 
+many variants of "-":
+tokens = strsplit(str, "(?<=[-+\u2010-\u2014])\\s++", perl=TRUE)
+
+Sincerely,
+
+Leonard
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Thu Apr 13 21:15:32 2023
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Thu, 13 Apr 2023 22:15:32 +0300
+Subject: [R] Split String in regex while Keeping Delimiter
+In-Reply-To: <40adca2d-6412-934f-9a47-977537641e93@syonic.eu>
+References: <40adca2d-6412-934f-9a47-977537641e93@syonic.eu>
+Message-ID: <e0d3a471-7c07-43ca-cfba-a4abcb065ad9@syonic.eu>
+
+Dear Emily,
+
+I have written a more robust version of the function:
+extract.nonLetters = function(x, rm.space = TRUE, normalize=TRUE, 
+sort=TRUE) {
+ ?? ?if(normalize) str = stringi::stri_trans_nfc(str);
+ ?? ?ch = strsplit(str, "", fixed = TRUE);
+ ?? ?ch = unique(unlist(ch));
+ ?? ?if(sort) ch = sort(ch);
+ ?? ?pat = if(rm.space) "^[a-zA-Z ]" else "^[a-zA-Z]";
+ ?? ?isLetter = grepl(pat, ch);
+ ?? ?ch = ch[ ! isLetter];
+ ?? ?return(stringi::stri_escape_unicode(ch));
+}
+extract.nonLetters(str)
+# "\\u2013" "+"
+
+This code ("\u2013") is included in the expanded Regex expression:
+tokens = strsplit(str, "(?<=[-+\u2010-\u2014])\\s++", perl=TRUE)
+
+
+Sincerely,
+
+Leonard
+
+
+On 4/13/2023 9:40 PM, Leonard Mada wrote:
+> Dear Emily,
+>
+> Using a look-behind solves the split problem in this case. (Note: 
+> Using Regex is in most/many cases the simplest solution.)
+>
+> str = c("leucocyten + gramnegatieve staven +++ grampositieve staven ++",
+> "leucocyten ? grampositieve coccen +")
+>
+> tokens = strsplit(str, "(?<=[-+])\\s++", perl=TRUE)
+>
+> PROBLEM
+> The current expression does NOT work for a different reason: the "-" 
+> is coded using a NON-ASCII character.
+>
+> I have written a small utility function to approximately extract 
+> "non-standard" characters:
+> ### Identify non-ASCII Characters
+> # beware: the filtering and the sorting may break the codes;
+> extract.nonLetters = function(x, rm.space = TRUE, sort=FALSE) {
+> ?? ?code = as.numeric(unique(unlist(lapply(x, charToRaw))));
+> ?? ?isLetter =
+> ?? ???? (code >= 97 & code <= 122) |
+> ?? ???? (code >= 65 & code <= 90);
+> ?? ?code = code[ ! isLetter];
+> ?? ?if(rm.space) {
+> ?? ???? # removes only simple space!
+> ?? ???? code = code[code != 32];
+> ?? ?}
+> ?? ?if(sort) code = sort(code);
+> ?? ?return(code);
+> }
+> extract.nonLetters(str, sort = FALSE)
+> # 43 226 128 147
+>
+> Note:
+> - the code for "+" is 43, and for simple "-" is 45: as.numeric 
+> (charToRaw("+-"));
+> - "226 128 147" codes something else, but it is not trivial to get the 
+> Unicode code Point;
+> https://www.utf8-chartable.de/unicode-utf8-table.pl?start=8192&number=128&utf8=dec 
+>
+>
+> The following is a more comprehensive Regex expression, which accepts 
+> many variants of "-":
+> tokens = strsplit(str, "(?<=[-+\u2010-\u2014])\\s++", perl=TRUE)
+>
+> Sincerely,
+>
+> Leonard
+>
+>
+
+
+From @erk@nd|ngec @end|ng |rom gm@||@com  Thu Apr 13 22:40:47 2023
+From: @erk@nd|ngec @end|ng |rom gm@||@com (=?utf-8?B?U0VSS0FOIETEsE5HRcOH?=)
+Date: Thu, 13 Apr 2023 23:40:47 +0300
+Subject: [R] Dowland mistake
+Message-ID: <52D3C9AC-B0BC-4BED-A699-A2A0CFB66DE2@gmail.com>
+
+I am having difficulty downloading the R software program to my macbook(ventura) personal computer.
+Looking at the information on your download page, I could not download the xquartz program separately.
+
+Additional info=R studio program is now installed on my computer
+Thank you - thank you.
+
