@@ -1484,3 +1484,283 @@ PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From @zz@||n| @end|ng |rom @t@t@un|pd@|t  Thu May  4 10:05:10 2023
+From: @zz@||n| @end|ng |rom @t@t@un|pd@|t (Adelchi Azzalini)
+Date: Thu, 4 May 2023 10:05:10 +0200
+Subject: [R] question about update()
+Message-ID: <545716BA-05C4-4C53-92BC-40B23555AF69@stat.unipd.it>
+
+Hi. There must be something about the use of update() which I do not grasp,
+as the next exercise indicates.
+
+Suppose that obj is an object returned by a call to lm() or glm().
+Next, a new variable xf is constructed using the same dataframe used 
+for producing obj. Then
+
+obj$data <- cbind(obj$data, xf=xf)
+new.obj <- update(obj, . ~ . + xf) 
+
+generates
+
+Error in eval(predvars, data, env) : object 'xf' not found
+
+Could somebody explain what I got wrong, and how to fix it?
+
+Best regards,
+
+Adelchi Azzalini
+
+
+From @zz@||n| @end|ng |rom @t@t@un|pd@|t  Thu May  4 10:34:00 2023
+From: @zz@||n| @end|ng |rom @t@t@un|pd@|t (Adelchi Azzalini)
+Date: Thu, 4 May 2023 10:34:00 +0200
+Subject: [R] question about update()
+In-Reply-To: <309026bc-6401-4a4c-4912-c06ba71026dd@gmail.com>
+References: <545716BA-05C4-4C53-92BC-40B23555AF69@stat.unipd.it>
+ <309026bc-6401-4a4c-4912-c06ba71026dd@gmail.com>
+Message-ID: <0B6085C3-2530-45D6-B9A1-E16460BE04FF@stat.unipd.it>
+
+
+
+> On 4 May 2023, at 10:26, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> 
+> On 04/05/2023 4:05 a.m., Adelchi Azzalini via R-help wrote:
+>> Hi. There must be something about the use of update() which I do not grasp,
+>> as the next exercise indicates.
+>> Suppose that obj is an object returned by a call to lm() or glm().
+>> Next, a new variable xf is constructed using the same dataframe used
+>> for producing obj. Then
+>> obj$data <- cbind(obj$data, xf=xf)
+>> new.obj <- update(obj, . ~ . + xf)
+>> generates
+>> Error in eval(predvars, data, env) : object 'xf' not found
+>> Could somebody explain what I got wrong, and how to fix it?
+> 
+> I don't think you should be modifying the obj$data element:  as far as I can see, it's not used during the update, which will just re-evaluate the original call to glm().  So you should modify the dataframe that you passed in when creating obj.
+> 
+
+Thanks, Duncan. What you indicate is surely the ideal route. Unfortunately, in my case this is not feasible, because the construction of xf and the update call are within an iterative procedure where xf is changed at each iteration, so that the steps 
+
+obj$data <- cbind(obj$data, xf=xf)
+new.obj <- update(obj, . ~ . + xf)
+ 
+must be repeated hundreds of times, each with a different xf.
+
+Adelchi
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu May  4 10:49:06 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 4 May 2023 04:49:06 -0400
+Subject: [R] question about update()
+In-Reply-To: <0B6085C3-2530-45D6-B9A1-E16460BE04FF@stat.unipd.it>
+References: <545716BA-05C4-4C53-92BC-40B23555AF69@stat.unipd.it>
+ <309026bc-6401-4a4c-4912-c06ba71026dd@gmail.com>
+ <0B6085C3-2530-45D6-B9A1-E16460BE04FF@stat.unipd.it>
+Message-ID: <eca72687-d7b6-334e-16d6-44f86a2129c8@gmail.com>
+
+On 04/05/2023 4:34 a.m., Adelchi Azzalini wrote:
+> 
+> 
+>> On 4 May 2023, at 10:26, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>
+>> On 04/05/2023 4:05 a.m., Adelchi Azzalini via R-help wrote:
+>>> Hi. There must be something about the use of update() which I do not grasp,
+>>> as the next exercise indicates.
+>>> Suppose that obj is an object returned by a call to lm() or glm().
+>>> Next, a new variable xf is constructed using the same dataframe used
+>>> for producing obj. Then
+>>> obj$data <- cbind(obj$data, xf=xf)
+>>> new.obj <- update(obj, . ~ . + xf)
+>>> generates
+>>> Error in eval(predvars, data, env) : object 'xf' not found
+>>> Could somebody explain what I got wrong, and how to fix it?
+>>
+>> I don't think you should be modifying the obj$data element:  as far as I can see, it's not used during the update, which will just re-evaluate the original call to glm().  So you should modify the dataframe that you passed in when creating obj.
+>>
+> 
+> Thanks, Duncan. What you indicate is surely the ideal route. Unfortunately, in my case this is not feasible, because the construction of xf and the update call are within an iterative procedure where xf is changed at each iteration, so that the steps
+> 
+> obj$data <- cbind(obj$data, xf=xf)
+> new.obj <- update(obj, . ~ . + xf)
+>   
+> must be repeated hundreds of times, each with a different xf.
+
+Sorry, that doesn't make sense.
+
+You didn't show us complete code, but presumably it's preceded by 
+something like this:
+
+   obj <- glm( ..., data = somedata)
+
+So change your modification to this:
+
+   somedata$xf <- xf
+
+That can be done hundreds of times.  This will need to be more elaborate 
+if the function doing the iteration has a copy of obj but doesn't have a 
+copy of somedata, but there are lots of ways to resolve that.  Without 
+seeing complete code, I can't recommend which one to use.
+
+Duncan Murdoch
+
+
+From berw|n@tur|@ch @end|ng |rom gm@||@com  Thu May  4 11:44:10 2023
+From: berw|n@tur|@ch @end|ng |rom gm@||@com (Berwin A Turlach)
+Date: Thu, 4 May 2023 17:44:10 +0800
+Subject: [R] question about update()
+In-Reply-To: <0B6085C3-2530-45D6-B9A1-E16460BE04FF@stat.unipd.it>
+References: <545716BA-05C4-4C53-92BC-40B23555AF69@stat.unipd.it>
+ <309026bc-6401-4a4c-4912-c06ba71026dd@gmail.com>
+ <0B6085C3-2530-45D6-B9A1-E16460BE04FF@stat.unipd.it>
+Message-ID: <20230504174410.1b8d0abd@dep59159.uniwa.uwa.edu.au>
+
+G'day Adelchi,
+
+hope all is well with you.
+
+On Thu, 4 May 2023 10:34:00 +0200
+Adelchi Azzalini via R-help <r-help at r-project.org> wrote:
+
+> Thanks, Duncan. What you indicate is surely the ideal route.
+> Unfortunately, in my case this is not feasible, because the
+> construction of xf and the update call are within an iterative
+> procedure where xf is changed at each iteration, so that the steps 
+> 
+> obj$data <- cbind(obj$data, xf=xf)
+> new.obj <- update(obj, . ~ . + xf)
+>  
+> must be repeated hundreds of times, each with a different xf.
+
+If memory serves correctly, update() takes the object that is passed to
+it, looks at what the call was that created that object, modifies that
+call according to the additional arguments, and finally executes the
+modified call.
+
+So there is a lot of manipulations going on in update().  In particular
+it would result each time in a call to lm(), glm() or whatever call was
+used to create the object.  Inside any of these modelling functions a
+lot of symbolic manipulations/calculations are needed too (parsing the
+formula, creating the design matrix and response vector from the parsed
+formula and data frame, checking if weights are used &c).
+
+If you do the same calculation essentially over and over again, just
+with minor modification, all these symbolic manipulations are just time
+consuming.
+
+IMHO, you will be better off to bypass update() and just use lm.fit()
+(for which lm() is a nice front-end) and glm.fit() (for which glm() is a
+nice front-end), or whatever routine does the grunt work of fitting the
+model to the data in your application (hopefully, the package creator
+used a set up of XXX.fit() to fit the model, called by XXX() that does
+all the fancy formula handling).
+
+Cheers,
+
+	Berwin
+
+
+From @zz@||n| @end|ng |rom @t@t@un|pd@|t  Thu May  4 14:56:02 2023
+From: @zz@||n| @end|ng |rom @t@t@un|pd@|t (Adelchi Azzalini)
+Date: Thu, 4 May 2023 14:56:02 +0200
+Subject: [R] question about update()
+In-Reply-To: <20230504174410.1b8d0abd@dep59159.uniwa.uwa.edu.au>
+References: <545716BA-05C4-4C53-92BC-40B23555AF69@stat.unipd.it>
+ <309026bc-6401-4a4c-4912-c06ba71026dd@gmail.com>
+ <0B6085C3-2530-45D6-B9A1-E16460BE04FF@stat.unipd.it>
+ <20230504174410.1b8d0abd@dep59159.uniwa.uwa.edu.au>
+Message-ID: <8596EA98-2A49-4EF1-B1E9-E36C85765F6A@stat.unipd.it>
+
+Hi, Berwin, good to hear from you, and thanks for the detailed comments and suggestion.
+
+Actually, my current experimental code works in the way that you suggest, calling directly lm.fit and glm.fit.  What I am trying to develop is an ?improved? version of the code for distribution to other people. Hence I wanted to streamline the code, in particular avoiding branches for each fitting procedure (lm.fit, glm.fit and possibly more).  But I am now considering to drop the idea of the ?improved? version, and stick to the direct calls to the fitting functions.
+
+Duncan, thanks for your additional comments. It is true that my original message presented a very simplified picture of the problem, possibly over-simplistic.  If I present the problem in the full version of the code, it would look quite long and messy. If I manage to construct a reasonably simplified version of the code, I shall post the question again.
+
+Best wishes,
+
+Adelchi
+ 
+
+> On 4 May 2023, at 11:44, Berwin A Turlach <berwin.turlach at gmail.com> wrote:
+> 
+> G'day Adelchi,
+> 
+> hope all is well with you.
+> 
+> On Thu, 4 May 2023 10:34:00 +0200
+> Adelchi Azzalini via R-help <r-help at r-project.org> wrote:
+> 
+>> Thanks, Duncan. What you indicate is surely the ideal route.
+>> Unfortunately, in my case this is not feasible, because the
+>> construction of xf and the update call are within an iterative
+>> procedure where xf is changed at each iteration, so that the steps 
+>> 
+>> obj$data <- cbind(obj$data, xf=xf)
+>> new.obj <- update(obj, . ~ . + xf)
+>> 
+>> must be repeated hundreds of times, each with a different xf.
+> 
+> If memory serves correctly, update() takes the object that is passed to
+> it, looks at what the call was that created that object, modifies that
+> call according to the additional arguments, and finally executes the
+> modified call.
+> 
+> So there is a lot of manipulations going on in update().  In particular
+> it would result each time in a call to lm(), glm() or whatever call was
+> used to create the object.  Inside any of these modelling functions a
+> lot of symbolic manipulations/calculations are needed too (parsing the
+> formula, creating the design matrix and response vector from the parsed
+> formula and data frame, checking if weights are used &c).
+> 
+> If you do the same calculation essentially over and over again, just
+> with minor modification, all these symbolic manipulations are just time
+> consuming.
+> 
+> IMHO, you will be better off to bypass update() and just use lm.fit()
+> (for which lm() is a nice front-end) and glm.fit() (for which glm() is a
+> nice front-end), or whatever routine does the grunt work of fitting the
+> model to the data in your application (hopefully, the package creator
+> used a set up of XXX.fit() to fit the model, called by XXX() that does
+> all the fancy formula handling).
+> 
+> Cheers,
+> 
+> Berwin
+> 
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Thu May  4 22:59:33 2023
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Thu, 4 May 2023 23:59:33 +0300
+Subject: [R] Regex Split?
+Message-ID: <7b1cdbe7-0086-24b4-9da6-369296eadfdc@syonic.eu>
+
+Dear R-Users,
+
+I tried the following 3 Regex expressions in R 4.3:
+strsplit("a bc,def, adef ,,gh", " |(?=,)|(?<=,)(?![ ])", perl=T)
+# "a"??? "bc"?? ","??? "def"? ","??? ""???? "adef" ","??? "," "gh"
+
+strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?![ ])", perl=T)
+# "a"??? "bc"?? ","??? "def"? ","??? ""???? "adef" ","??? "," "gh"
+
+strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?=[^ ])", perl=T)
+# "a"??? "bc"?? ","??? "def"? ","??? ""???? "adef" ","??? "," "gh"
+
+
+Is this correct?
+
+
+I feel that:
+- none should return (after "def"): ",", "";
+- the first one could also return "", "," (but probably not; not fully 
+sure about this);
+
+
+Sincerely,
+
+
+Leonard
+
+
