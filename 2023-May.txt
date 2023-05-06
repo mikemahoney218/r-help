@@ -1764,3 +1764,1453 @@ Sincerely,
 Leonard
 
 
+From @@@h@@w@ng2017 @end|ng |rom y@ndex@com  Fri May  5 08:24:04 2023
+From: @@@h@@w@ng2017 @end|ng |rom y@ndex@com (Jiayue Wang)
+Date: Fri, 5 May 2023 14:24:04 +0800
+Subject: [R] rgl not plotting properly
+Message-ID: <dedac47f-7bcf-ca27-4df6-1ee7027aa10d@yandex.com>
+
+Hi
+
+I can't get rgl working. I installed rgl, loaded it, but it seems all 
+plot3d codes have failed:
+
+remotes::install_github("dmurdoch/rgl")
+library(rgl)
+open3d()
+x <- sort(rnorm(1000))
+y <- rnorm(1000)
+z <- rnorm(1000) + atan2(x, y)
+plot3d(x, y, z, col = rainbow(1000))
+
+I see no plotting at all. Am I missing some important system library or 
+whatever? I'm using Linux Mint 23. Thanks!
+
+Thanks,
+Jiayue
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri May  5 10:45:54 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 5 May 2023 04:45:54 -0400
+Subject: [R] rgl not plotting properly
+In-Reply-To: <dedac47f-7bcf-ca27-4df6-1ee7027aa10d@yandex.com>
+References: <dedac47f-7bcf-ca27-4df6-1ee7027aa10d@yandex.com>
+Message-ID: <e109bad1-6099-0a7f-3026-c573b4e6a103@gmail.com>
+
+On 05/05/2023 2:24 a.m., Jiayue Wang wrote:
+> Hi
+> 
+> I can't get rgl working. I installed rgl, loaded it, but it seems all
+> plot3d codes have failed:
+> 
+> remotes::install_github("dmurdoch/rgl")
+> library(rgl)
+> open3d()
+> x <- sort(rnorm(1000))
+> y <- rnorm(1000)
+> z <- rnorm(1000) + atan2(x, y)
+> plot3d(x, y, z, col = rainbow(1000))
+> 
+> I see no plotting at all. Am I missing some important system library or
+> whatever? I'm using Linux Mint 23. Thanks!
+> 
+
+If you install the version from CRAN, do you get the same results?
+
+rgl needs X11 on your system.  Do other programs using it work, e.g. try 
+running "glxgears" at the terminal, and try running 
+"tcltk::tktoplevel()" in R.
+
+BTW, this list isn't for contributed package support, so if it turns out 
+that only rgl is failing, it may be best to move the discussion to 
+https://github.com/dmurdoch/rgl/issues .
+
+Duncan Murdoch
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri May  5 12:24:36 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 5 May 2023 13:24:36 +0300
+Subject: [R] Regex Split?
+In-Reply-To: <7b1cdbe7-0086-24b4-9da6-369296eadfdc@syonic.eu>
+References: <7b1cdbe7-0086-24b4-9da6-369296eadfdc@syonic.eu>
+Message-ID: <20230505132436.3dedf9ba@parabola>
+
+On Thu, 4 May 2023 23:59:33 +0300
+Leonard Mada via R-help <r-help at r-project.org> wrote:
+
+> strsplit("a bc,def, adef ,,gh", " |(?=,)|(?<=,)(?![ ])", perl=T)
+> # "a"??? "bc"?? ","??? "def"? ","??? ""???? "adef" ","??? "," "gh"
+> 
+> strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?![ ])", perl=T)
+> # "a"??? "bc"?? ","??? "def"? ","??? ""???? "adef" ","??? "," "gh"
+> 
+> strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?=[^ ])",
+> perl=T)
+> # "a"??? "bc"?? ","??? "def"? ","??? ""???? "adef" ","??? "," "gh"
+> 
+> 
+> Is this correct?
+
+Perl seems to return the results you expect:
+
+$ perl -E '
+ say("$_:\n ", join " ", map qq["$_"], split $_, q[a bc,def, adef ,,gh])
+ for (
+  qr[ |(?=,)|(?<=,)(?![ ])],
+  qr[ |(?<! )(?=,)|(?<=,)(?![ ])],
+  qr[ |(?<! )(?=,)|(?<=,)(?=[^ ])]
+)'
+(?^u: |(?=,)|(?<=,)(?![ ])):
+ "a" "bc" "," "def" "," "adef" "," "," "gh"
+(?^u: |(?<! )(?=,)|(?<=,)(?![ ])):
+ "a" "bc" "," "def" "," "adef" "," "," "gh"
+(?^u: |(?<! )(?=,)|(?<=,)(?=[^ ])):
+ "a" "bc" "," "def" "," "adef" "," "," "gh"
+
+The same thing happens when I ask R to replace the separators instead
+of splitting by them:
+
+sapply(setNames(nm = c(
+ " |(?=,)|(?<=,)(?![ ])",
+ " |(?<! )(?=,)|(?<=,)(?![ ])",
+ " |(?<! )(?=,)|(?<=,)(?=[^ ])")
+), gsub, '[]', "a bc,def, adef ,,gh", perl = TRUE)
+#               |(?=,)|(?<=,)(?![ ])         |(?<! )(?=,)|(?<=,)(?![ ]) 
+# "a[]bc[],[]def[],[]adef[],[],[]gh" "a[]bc[],[]def[],[]adef[],[],[]gh" 
+#        |(?<! )(?=,)|(?<=,)(?=[^ ]) 
+# "a[]bc[],[]def[],[]adef[],[],[]gh" 
+
+I think that something strange happens when the delimeter pattern
+matches more than once in the same place:
+
+gsub(
+ '(?=<--)|(?<=-->)', '[]', 'split here --><-- split here',
+ perl = TRUE
+)
+# [1] "split here -->[]<-- split here"
+
+(Both Perl's split() and s///g agree with R's gsub() here, although I
+would have accepted "split here -->[][]<-- split here" too.)
+
+On the other hand, the following doesn't look right:
+
+strsplit(
+ 'split here --><-- split here', '(?=<--)|(?<=-->)',
+ perl = TRUE
+)
+# [[1]]
+# [1] "split here -->" "<"              "-- split here"
+
+The "<" is definitely not followed by "<--", and the rightmost "--" is
+definitely not preceded by "-->".
+
+Perhaps strsplit() incorrectly advances the match position after one
+match?
+
+-- 
+Best regards,
+Ivan
+
+
+From @@@h@@w@ng2017 @end|ng |rom y@ndex@com  Fri May  5 12:48:45 2023
+From: @@@h@@w@ng2017 @end|ng |rom y@ndex@com (Jiayue Wang)
+Date: Fri, 5 May 2023 18:48:45 +0800
+Subject: [R] rgl not plotting properly
+In-Reply-To: <e109bad1-6099-0a7f-3026-c573b4e6a103@gmail.com>
+References: <dedac47f-7bcf-ca27-4df6-1ee7027aa10d@yandex.com>
+ <e109bad1-6099-0a7f-3026-c573b4e6a103@gmail.com>
+Message-ID: <3da8b46f-9215-411f-4ce4-577ee68a3962@yandex.com>
+
+Thanks Duncan. glxgears works at the terminal; tcltk::tktoplevel() 
+outputs the following:
+
+$ID
+[1] ".1"
+
+$env
+<environment: 0x55b4401d9718>
+
+attr(,"class")
+[1] "tkwin"
+
+Jiayue
+
+? 5/5/23 16:45, Duncan Murdoch ??:
+> On 05/05/2023 2:24 a.m., Jiayue Wang wrote:
+>> Hi
+>>
+>> I can't get rgl working. I installed rgl, loaded it, but it seems all
+>> plot3d codes have failed:
+>>
+>> remotes::install_github("dmurdoch/rgl")
+>> library(rgl)
+>> open3d()
+>> x <- sort(rnorm(1000))
+>> y <- rnorm(1000)
+>> z <- rnorm(1000) + atan2(x, y)
+>> plot3d(x, y, z, col = rainbow(1000))
+>>
+>> I see no plotting at all. Am I missing some important system library or
+>> whatever? I'm using Linux Mint 23. Thanks!
+>>
+> 
+> If you install the version from CRAN, do you get the same results?
+> 
+> rgl needs X11 on your system.? Do other programs using it work, e.g. try 
+> running "glxgears" at the terminal, and try running 
+> "tcltk::tktoplevel()" in R.
+> 
+> BTW, this list isn't for contributed package support, so if it turns out 
+> that only rgl is failing, it may be best to move the discussion to 
+> https://github.com/dmurdoch/rgl/issues .
+> 
+> Duncan Murdoch
+
+
+From t|m@how@rd @end|ng |rom dec@ny@gov  Fri May  5 12:50:37 2023
+From: t|m@how@rd @end|ng |rom dec@ny@gov (Howard, Tim G (DEC))
+Date: Fri, 5 May 2023 10:50:37 +0000
+Subject: [R] Regex Split?
+In-Reply-To: <mailman.369326.1.1683280801.26089.r-help@r-project.org>
+References: <mailman.369326.1.1683280801.26089.r-help@r-project.org>
+Message-ID: <SA1PR09MB7792A61E1F6BC945EC89537FA8729@SA1PR09MB7792.namprd09.prod.outlook.com>
+
+If you only want the character strings, this seems a little simpler:
+
+> strsplit("a bc,def, adef ,,gh", "[ ,]+", perl=T)
+[[1]]
+[1] "a"    "bc"   "def"  "adef" "gh"  
+
+
+If you need delimeters (the commas) you could then add them back in again afterwards. 
+Tim
+
+------------------------------
+
+Message: 2
+Date: Thu, 4 May 2023 23:59:33 +0300
+From: Leonard Mada <leo.mada at syonic.eu>
+To: R-help Mailing List <r-help at r-project.org>
+Subject: [R] Regex Split?
+Message-ID: <7b1cdbe7-0086-24b4-9da6-369296eadfdc at syonic.eu>
+Content-Type: text/plain; charset="utf-8"; Format="flowed"
+
+Dear R-Users,
+
+I tried the following 3 Regex expressions in R 4.3:
+strsplit("a bc,def, adef ,,gh", " |(?=,)|(?<=,)(?![ ])", perl=T)
+# "a"??? "bc"?? ","??? "def"? ","??? ""???? "adef" ","??? "," "gh"
+
+strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?![ ])", perl=T)
+# "a"??? "bc"?? ","??? "def"? ","??? ""???? "adef" ","??? "," "gh"
+
+strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?=[^ ])", perl=T)
+# "a"??? "bc"?? ","??? "def"? ","??? ""???? "adef" ","??? "," "gh"
+
+
+Is this correct?
+
+
+I feel that:
+- none should return (after "def"): ",", "";
+- the first one could also return "", "," (but probably not; not fully
+sure about this);
+
+
+Sincerely,
+
+
+Leonard
+
+
+
+
+------------------------------
+
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri May  5 13:15:19 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 5 May 2023 07:15:19 -0400
+Subject: [R] rgl not plotting properly
+In-Reply-To: <3da8b46f-9215-411f-4ce4-577ee68a3962@yandex.com>
+References: <dedac47f-7bcf-ca27-4df6-1ee7027aa10d@yandex.com>
+ <e109bad1-6099-0a7f-3026-c573b4e6a103@gmail.com>
+ <3da8b46f-9215-411f-4ce4-577ee68a3962@yandex.com>
+Message-ID: <37bb448f-5b57-8f2d-2d20-0b8b8a6dbdd3@gmail.com>
+
+On 05/05/2023 6:48 a.m., Jiayue Wang wrote:
+> Thanks Duncan. glxgears works at the terminal; tcltk::tktoplevel()
+> outputs the following:
+> 
+> $ID
+> [1] ".1"
+> 
+> $env
+> <environment: 0x55b4401d9718>
+> 
+> attr(,"class")
+> [1] "tkwin"
+> 
+> Jiayue
+
+But no window opens for tcltk::tktoplevel()?  Sounds like R isn't seeing 
+your DISPLAY variable.  Does Sys.getenv("DISPLAY") show the same thing 
+in R as you see when printing that environment variable (using e.g. 
+`echo $DISPLAY`) in the terminal?
+
+Duncan Murdoch
+
+> 
+> ? 5/5/23 16:45, Duncan Murdoch ??:
+>> On 05/05/2023 2:24 a.m., Jiayue Wang wrote:
+>>> Hi
+>>>
+>>> I can't get rgl working. I installed rgl, loaded it, but it seems all
+>>> plot3d codes have failed:
+>>>
+>>> remotes::install_github("dmurdoch/rgl")
+>>> library(rgl)
+>>> open3d()
+>>> x <- sort(rnorm(1000))
+>>> y <- rnorm(1000)
+>>> z <- rnorm(1000) + atan2(x, y)
+>>> plot3d(x, y, z, col = rainbow(1000))
+>>>
+>>> I see no plotting at all. Am I missing some important system library or
+>>> whatever? I'm using Linux Mint 23. Thanks!
+>>>
+>>
+>> If you install the version from CRAN, do you get the same results?
+>>
+>> rgl needs X11 on your system.? Do other programs using it work, e.g. try
+>> running "glxgears" at the terminal, and try running
+>> "tcltk::tktoplevel()" in R.
+>>
+>> BTW, this list isn't for contributed package support, so if it turns out
+>> that only rgl is failing, it may be best to move the discussion to
+>> https://github.com/dmurdoch/rgl/issues .
+>>
+>> Duncan Murdoch
+
+
+From @@@h@@w@ng2017 @end|ng |rom y@ndex@com  Fri May  5 13:41:58 2023
+From: @@@h@@w@ng2017 @end|ng |rom y@ndex@com (Jiayue Wang)
+Date: Fri, 5 May 2023 19:41:58 +0800
+Subject: [R] rgl not plotting properly
+In-Reply-To: <37bb448f-5b57-8f2d-2d20-0b8b8a6dbdd3@gmail.com>
+References: <dedac47f-7bcf-ca27-4df6-1ee7027aa10d@yandex.com>
+ <e109bad1-6099-0a7f-3026-c573b4e6a103@gmail.com>
+ <3da8b46f-9215-411f-4ce4-577ee68a3962@yandex.com>
+ <37bb448f-5b57-8f2d-2d20-0b8b8a6dbdd3@gmail.com>
+Message-ID: <de70de12-6bf3-f064-3f7b-0d63dee6456d@yandex.com>
+
+
+
+? 5/5/23 19:15, Duncan Murdoch ??:
+> On 05/05/2023 6:48 a.m., Jiayue Wang wrote:
+>> Thanks Duncan. glxgears works at the terminal; tcltk::tktoplevel()
+>> outputs the following:
+>>
+>> $ID
+>> [1] ".1"
+>>
+>> $env
+>> <environment: 0x55b4401d9718>
+>>
+>> attr(,"class")
+>> [1] "tkwin"
+>>
+>> Jiayue
+> 
+> But no window opens for tcltk::tktoplevel()?? Sounds like R isn't seeing 
+> your DISPLAY variable.? Does Sys.getenv("DISPLAY") show the same thing 
+> in R as you see when printing that environment variable (using e.g. 
+> `echo $DISPLAY`) in the terminal?
+
+Oh yes, a window did open for tcltk::tktoplevel(), I forgot to mention 
+it, sorry.
+With Sys.getenv("DISPLAY"), I got
+
+[1] ":0"
+
+Jiayue
+
+> Duncan Murdoch
+> 
+>>
+>> ? 5/5/23 16:45, Duncan Murdoch ??:
+>>> On 05/05/2023 2:24 a.m., Jiayue Wang wrote:
+>>>> Hi
+>>>>
+>>>> I can't get rgl working. I installed rgl, loaded it, but it seems all
+>>>> plot3d codes have failed:
+>>>>
+>>>> remotes::install_github("dmurdoch/rgl")
+>>>> library(rgl)
+>>>> open3d()
+>>>> x <- sort(rnorm(1000))
+>>>> y <- rnorm(1000)
+>>>> z <- rnorm(1000) + atan2(x, y)
+>>>> plot3d(x, y, z, col = rainbow(1000))
+>>>>
+>>>> I see no plotting at all. Am I missing some important system library or
+>>>> whatever? I'm using Linux Mint 23. Thanks!
+>>>>
+>>>
+>>> If you install the version from CRAN, do you get the same results?
+>>>
+>>> rgl needs X11 on your system.? Do other programs using it work, e.g. try
+>>> running "glxgears" at the terminal, and try running
+>>> "tcltk::tktoplevel()" in R.
+>>>
+>>> BTW, this list isn't for contributed package support, so if it turns out
+>>> that only rgl is failing, it may be best to move the discussion to
+>>> https://github.com/dmurdoch/rgl/issues .
+>>>
+>>> Duncan Murdoch
+>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri May  5 15:08:55 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 5 May 2023 09:08:55 -0400
+Subject: [R] rgl not plotting properly
+In-Reply-To: <de70de12-6bf3-f064-3f7b-0d63dee6456d@yandex.com>
+References: <dedac47f-7bcf-ca27-4df6-1ee7027aa10d@yandex.com>
+ <e109bad1-6099-0a7f-3026-c573b4e6a103@gmail.com>
+ <3da8b46f-9215-411f-4ce4-577ee68a3962@yandex.com>
+ <37bb448f-5b57-8f2d-2d20-0b8b8a6dbdd3@gmail.com>
+ <de70de12-6bf3-f064-3f7b-0d63dee6456d@yandex.com>
+Message-ID: <14ea542e-7516-66e6-b31a-940b8223421f@gmail.com>
+
+On 05/05/2023 7:41 a.m., Jiayue Wang wrote:
+> 
+> 
+> ? 5/5/23 19:15, Duncan Murdoch ??:
+>> On 05/05/2023 6:48 a.m., Jiayue Wang wrote:
+>>> Thanks Duncan. glxgears works at the terminal; tcltk::tktoplevel()
+>>> outputs the following:
+>>>
+>>> $ID
+>>> [1] ".1"
+>>>
+>>> $env
+>>> <environment: 0x55b4401d9718>
+>>>
+>>> attr(,"class")
+>>> [1] "tkwin"
+>>>
+>>> Jiayue
+>>
+>> But no window opens for tcltk::tktoplevel()?? Sounds like R isn't seeing
+>> your DISPLAY variable.? Does Sys.getenv("DISPLAY") show the same thing
+>> in R as you see when printing that environment variable (using e.g.
+>> `echo $DISPLAY`) in the terminal?
+> 
+> Oh yes, a window did open for tcltk::tktoplevel(), I forgot to mention
+> it, sorry.
+> With Sys.getenv("DISPLAY"), I got
+> 
+> [1] ":0"
+
+In that case, it sounds like it's purely an rgl issue, but I don't 
+really have anything else to suggest about how to fix it.  There is a 
+workaround:  Run the `rglwidget()` function whenever you want to see a 
+plot, and it should open in your browser.
+
+Duncan Murdoch
+
+
+From @@@h@@w@ng2017 @end|ng |rom y@ndex@com  Fri May  5 15:27:03 2023
+From: @@@h@@w@ng2017 @end|ng |rom y@ndex@com (Jiayue Wang)
+Date: Fri, 5 May 2023 21:27:03 +0800
+Subject: [R] rgl not plotting properly
+In-Reply-To: <14ea542e-7516-66e6-b31a-940b8223421f@gmail.com>
+References: <dedac47f-7bcf-ca27-4df6-1ee7027aa10d@yandex.com>
+ <e109bad1-6099-0a7f-3026-c573b4e6a103@gmail.com>
+ <3da8b46f-9215-411f-4ce4-577ee68a3962@yandex.com>
+ <37bb448f-5b57-8f2d-2d20-0b8b8a6dbdd3@gmail.com>
+ <de70de12-6bf3-f064-3f7b-0d63dee6456d@yandex.com>
+ <14ea542e-7516-66e6-b31a-940b8223421f@gmail.com>
+Message-ID: <aa8530dd-aef0-feb9-5a44-e888e74b6fae@yandex.com>
+
+
+
+? 5/5/23 21:08, Duncan Murdoch ??:
+> On 05/05/2023 7:41 a.m., Jiayue Wang wrote:
+>>
+>>
+>> ? 5/5/23 19:15, Duncan Murdoch ??:
+>>> On 05/05/2023 6:48 a.m., Jiayue Wang wrote:
+>>>> Thanks Duncan. glxgears works at the terminal; tcltk::tktoplevel()
+>>>> outputs the following:
+>>>>
+>>>> $ID
+>>>> [1] ".1"
+>>>>
+>>>> $env
+>>>> <environment: 0x55b4401d9718>
+>>>>
+>>>> attr(,"class")
+>>>> [1] "tkwin"
+>>>>
+>>>> Jiayue
+>>>
+>>> But no window opens for tcltk::tktoplevel()?? Sounds like R isn't seeing
+>>> your DISPLAY variable.? Does Sys.getenv("DISPLAY") show the same thing
+>>> in R as you see when printing that environment variable (using e.g.
+>>> `echo $DISPLAY`) in the terminal?
+>>
+>> Oh yes, a window did open for tcltk::tktoplevel(), I forgot to mention
+>> it, sorry.
+>> With Sys.getenv("DISPLAY"), I got
+>>
+>> [1] ":0"
+> 
+> In that case, it sounds like it's purely an rgl issue, but I don't 
+> really have anything else to suggest about how to fix it.? There is a 
+> workaround:? Run the `rglwidget()` function whenever you want to see a 
+> plot, and it should open in your browser.
+> 
+
+Thanks all the same, Duncan!
+
+Jiayue
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Fri May  5 17:19:21 2023
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Fri, 5 May 2023 08:19:21 -0700
+Subject: [R] Regex Split?
+In-Reply-To: <20230505132436.3dedf9ba@parabola>
+References: <7b1cdbe7-0086-24b4-9da6-369296eadfdc@syonic.eu>
+ <20230505132436.3dedf9ba@parabola>
+Message-ID: <CAHqSRuQGLRCF+yGNJ_WqK+jcx1JPmAA-Hf3yJNYALqdHAEi=+g@mail.gmail.com>
+
+https://bugs.r-project.org/show_bug.cgi?id=16745 (from 2016, still labelled
+'UNCONFIRMED") contains some other examples of strsplit misbehaving when
+using 0-length perl look-behinds.  E.g.,
+
+> strsplit(split="[[:<:]]", "One, two; three!", perl=TRUE)[[1]]
+ [1] "O"  "n"  "e"  ", " "t"  "w"  "o"  "; " "t"  "h"  "r"  "e"  "e"  "!"
+> gsub(pattern="[[:<:]]", "#", "One, two; three!", perl=TRUE)
+[1] "#One, #two; #three!"
+
+The bug report includes the comment
+
+It may be possible that strsplit is not using the startoffset argument
+to pcre_exec
+
+  pcre/pcre/doc/html/pcreapi.html
+    A non-zero starting offset is useful when searching for another match
+    in the same subject by calling pcre_exec() again after a previous
+    success. Setting startoffset differs from just passing over a
+    shortened string and setting PCRE_NOTBOL in the case of a pattern that
+    begins with any kind of lookbehind.
+
+or it could be something else.
+
+
+
+On Fri, May 5, 2023 at 3:25?AM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> On Thu, 4 May 2023 23:59:33 +0300
+> Leonard Mada via R-help <r-help at r-project.org> wrote:
+>
+> > strsplit("a bc,def, adef ,,gh", " |(?=,)|(?<=,)(?![ ])", perl=T)
+> > # "a"    "bc"   ","    "def"  ","    ""     "adef" ","    "," "gh"
+> >
+> > strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?![ ])", perl=T)
+> > # "a"    "bc"   ","    "def"  ","    ""     "adef" ","    "," "gh"
+> >
+> > strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?=[^ ])",
+> > perl=T)
+> > # "a"    "bc"   ","    "def"  ","    ""     "adef" ","    "," "gh"
+> >
+> >
+> > Is this correct?
+>
+> Perl seems to return the results you expect:
+>
+> $ perl -E '
+>  say("$_:\n ", join " ", map qq["$_"], split $_, q[a bc,def, adef ,,gh])
+>  for (
+>   qr[ |(?=,)|(?<=,)(?![ ])],
+>   qr[ |(?<! )(?=,)|(?<=,)(?![ ])],
+>   qr[ |(?<! )(?=,)|(?<=,)(?=[^ ])]
+> )'
+> (?^u: |(?=,)|(?<=,)(?![ ])):
+>  "a" "bc" "," "def" "," "adef" "," "," "gh"
+> (?^u: |(?<! )(?=,)|(?<=,)(?![ ])):
+>  "a" "bc" "," "def" "," "adef" "," "," "gh"
+> (?^u: |(?<! )(?=,)|(?<=,)(?=[^ ])):
+>  "a" "bc" "," "def" "," "adef" "," "," "gh"
+>
+> The same thing happens when I ask R to replace the separators instead
+> of splitting by them:
+>
+> sapply(setNames(nm = c(
+>  " |(?=,)|(?<=,)(?![ ])",
+>  " |(?<! )(?=,)|(?<=,)(?![ ])",
+>  " |(?<! )(?=,)|(?<=,)(?=[^ ])")
+> ), gsub, '[]', "a bc,def, adef ,,gh", perl = TRUE)
+> #               |(?=,)|(?<=,)(?![ ])         |(?<! )(?=,)|(?<=,)(?![ ])
+> # "a[]bc[],[]def[],[]adef[],[],[]gh" "a[]bc[],[]def[],[]adef[],[],[]gh"
+> #        |(?<! )(?=,)|(?<=,)(?=[^ ])
+> # "a[]bc[],[]def[],[]adef[],[],[]gh"
+>
+> I think that something strange happens when the delimeter pattern
+> matches more than once in the same place:
+>
+> gsub(
+>  '(?=<--)|(?<=-->)', '[]', 'split here --><-- split here',
+>  perl = TRUE
+> )
+> # [1] "split here -->[]<-- split here"
+>
+> (Both Perl's split() and s///g agree with R's gsub() here, although I
+> would have accepted "split here -->[][]<-- split here" too.)
+>
+> On the other hand, the following doesn't look right:
+>
+> strsplit(
+>  'split here --><-- split here', '(?=<--)|(?<=-->)',
+>  perl = TRUE
+> )
+> # [[1]]
+> # [1] "split here -->" "<"              "-- split here"
+>
+> The "<" is definitely not followed by "<--", and the rightmost "--" is
+> definitely not preceded by "-->".
+>
+> Perhaps strsplit() incorrectly advances the match position after one
+> match?
+>
+> --
+> Best regards,
+> Ivan
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Fri May  5 18:30:33 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Fri, 5 May 2023 18:30:33 +0200
+Subject: [R] Regex Split?
+In-Reply-To: <CAHqSRuQGLRCF+yGNJ_WqK+jcx1JPmAA-Hf3yJNYALqdHAEi=+g@mail.gmail.com>
+References: <7b1cdbe7-0086-24b4-9da6-369296eadfdc@syonic.eu>
+ <20230505132436.3dedf9ba@parabola>
+ <CAHqSRuQGLRCF+yGNJ_WqK+jcx1JPmAA-Hf3yJNYALqdHAEi=+g@mail.gmail.com>
+Message-ID: <25685.12073.69777.205774@stat.math.ethz.ch>
+
+>>>>> Bill Dunlap on Fri, 5 May 2023 08:19:21 -0700 writes:
+
+    https://bugs.r-project.org/show_bug.cgi?id=16745 (from 2016, still labelled
+     'UNCONFIRMED") contains some other examples of strsplit misbehaving when
+    using 0-length perl look-behinds.  E.g.,
+
+Thank you, Bill -- yes, uhmm, ... a bit embarrassing.
+
+I've finally changed the R bugzilla report's state to "CONFIRMED" now,
+and also added the "HELPWANTED" keyword.
+I think we (R Core) should be sorry to have (forgotten / not
+cared about) the issue completely.
+
+It's not hard to at least agree that the current behavior is buggy,
+e.g., in the example you show here :
+
+    >> strsplit(split="[[:<:]]", "One, two; three!", perl=TRUE)[[1]]
+    > [1] "O"  "n"  "e"  ", " "t"  "w"  "o"  "; " "t"  "h"  "r"  "e"  "e"  "!"
+    >> gsub(pattern="[[:<:]]", "#", "One, two; three!", perl=TRUE)
+    > [1] "#One, #two; #three!"
+
+[...]
+[...]
+
+Maybe this should be continued either on Bugzilla (i.e., the URL above),
+or if needed, additionally  on R-devel.
+
+Yes, I also added that we'd grateful for (tested) patches and/or
+code reviewers.
+
+Martin
+
+
+--
+Martin Maechler
+ETH Zurich  and  R Core team
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Fri May  5 21:25:15 2023
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Fri, 5 May 2023 22:25:15 +0300
+Subject: [R] Regex Split?
+In-Reply-To: <CAHqSRuQGLRCF+yGNJ_WqK+jcx1JPmAA-Hf3yJNYALqdHAEi=+g@mail.gmail.com>
+References: <7b1cdbe7-0086-24b4-9da6-369296eadfdc@syonic.eu>
+ <20230505132436.3dedf9ba@parabola>
+ <CAHqSRuQGLRCF+yGNJ_WqK+jcx1JPmAA-Hf3yJNYALqdHAEi=+g@mail.gmail.com>
+Message-ID: <7dd8f04f-ff99-36e2-22ec-7854c133bc27@syonic.eu>
+
+Dear Bill,
+
+
+Indeed, there are other cases as well - as documented.
+
+
+Various Regex sites give the warning to avoid the legacy syntax 
+"[[:<:]]", so this is the alternative syntax:
+strsplit(split="\\b(?=\\w)", "One, two; three!", perl=TRUE)
+# "O"? "n"? "e"? ", " "t"? "w"? "o"? "; " "t"? "h"? "r"? "e"? "e" "!"
+
+gsub("\\b(?=\\w)", "#", "One, two; three!", perl=TRUE)
+# "#One, #two; #three!"
+
+
+Sincerely,
+
+
+Leonard
+
+
+On 5/5/2023 6:19 PM, Bill Dunlap wrote:
+> https://eu01.z.antigena.com/l/BgIBOxsm88PwDTBiTTrQ784MFk2oGZVOA3RMHiarAZuyoEemKrcnpfJeD8X0FgxRDG33qHZho~NriRCbhv9_Ffr3EOfqn2vpaNUAlCDjQ8nOyVUgPM2iGnHi-qpN54kl1YVO_gHimn0m2ZJ68ntGtysras~0mRMDuAgwbTXsQcQ~ 
+> (from 2016, still labelled 'UNCONFIRMED") contains some other examples 
+> of strsplit misbehaving?when using 0-length perl look-behinds.? E.g.,
+>
+> > strsplit(split="[[:<:]]", "One, two; three!", perl=TRUE)[[1]]
+> ?[1] "O" ?"n" ?"e" ?", " "t" ?"w" ?"o" ?"; " "t" ?"h" ?"r" ?"e" ?"e" ?"!"
+> > gsub(pattern="[[:<:]]", "#", "One, two; three!", perl=TRUE)
+> [1] "#One, #two; #three!"
+>
+> The bug report includes the comment
+> It may be possible that strsplit is not using the startoffset argument
+> to pcre_exec
+>
+>    pcre/pcre/doc/html/pcreapi.html
+>      A non-zero starting offset is useful when searching for another match
+>      in the same subject by calling pcre_exec() again after a previous
+>      success. Setting startoffset differs from just passing over a
+>      shortened string and setting PCRE_NOTBOL in the case of a pattern that
+>      begins with any kind of lookbehind.
+>
+> or it could be something else.
+>
+>
+> On Fri, May 5, 2023 at 3:25?AM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>
+>     On Thu, 4 May 2023 23:59:33 +0300
+>     Leonard Mada via R-help <r-help at r-project.org> wrote:
+>
+>     > strsplit("a bc,def, adef ,,gh", " |(?=,)|(?<=,)(?![ ])", perl=T)
+>     > # "a"??? "bc"?? ","??? "def"? ","??? ""???? "adef" "," "," "gh"
+>     >
+>     > strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?![ ])",
+>     perl=T)
+>     > # "a"??? "bc"?? ","??? "def"? ","??? ""???? "adef" "," "," "gh"
+>     >
+>     > strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?=[^ ])",
+>     > perl=T)
+>     > # "a"??? "bc"?? ","??? "def"? ","??? ""???? "adef" "," "," "gh"
+>     >
+>     >
+>     > Is this correct?
+>
+>     Perl seems to return the results you expect:
+>
+>     $ perl -E '
+>     ?say("$_:\n ", join " ", map qq["$_"], split $_, q[a bc,def, adef
+>     ,,gh])
+>     ?for (
+>     ? qr[ |(?=,)|(?<=,)(?![ ])],
+>     ? qr[ |(?<! )(?=,)|(?<=,)(?![ ])],
+>     ? qr[ |(?<! )(?=,)|(?<=,)(?=[^ ])]
+>     )'
+>     (?^u: |(?=,)|(?<=,)(?![ ])):
+>     ?"a" "bc" "," "def" "," "adef" "," "," "gh"
+>     (?^u: |(?<! )(?=,)|(?<=,)(?![ ])):
+>     ?"a" "bc" "," "def" "," "adef" "," "," "gh"
+>     (?^u: |(?<! )(?=,)|(?<=,)(?=[^ ])):
+>     ?"a" "bc" "," "def" "," "adef" "," "," "gh"
+>
+>     The same thing happens when I ask R to replace the separators instead
+>     of splitting by them:
+>
+>     sapply(setNames(nm = c(
+>     ?" |(?=,)|(?<=,)(?![ ])",
+>     ?" |(?<! )(?=,)|(?<=,)(?![ ])",
+>     ?" |(?<! )(?=,)|(?<=,)(?=[^ ])")
+>     ), gsub, '[]', "a bc,def, adef ,,gh", perl = TRUE)
+>     #? ? ? ? ? ? ? ?|(?=,)|(?<=,)(?![ ])? ? ? ? ?|(?<!
+>     )(?=,)|(?<=,)(?![ ])
+>     # "a[]bc[],[]def[],[]adef[],[],[]gh"
+>     "a[]bc[],[]def[],[]adef[],[],[]gh"
+>     #? ? ? ? |(?<! )(?=,)|(?<=,)(?=[^ ])
+>     # "a[]bc[],[]def[],[]adef[],[],[]gh"
+>
+>     I think that something strange happens when the delimeter pattern
+>     matches more than once in the same place:
+>
+>     gsub(
+>     ?'(?=<--)|(?<=-->)', '[]', 'split here --><-- split here',
+>     ?perl = TRUE
+>     )
+>     # [1] "split here -->[]<-- split here"
+>
+>     (Both Perl's split() and s///g agree with R's gsub() here, although I
+>     would have accepted "split here -->[][]<-- split here" too.)
+>
+>     On the other hand, the following doesn't look right:
+>
+>     strsplit(
+>     ?'split here --><-- split here', '(?=<--)|(?<=-->)',
+>     ?perl = TRUE
+>     )
+>     # [[1]]
+>     # [1] "split here -->" "<"? ? ? ? ? ? ? "-- split here"
+>
+>     The "<" is definitely not followed by "<--", and the rightmost "--" is
+>     definitely not preceded by "-->".
+>
+>     Perhaps strsplit() incorrectly advances the match position after one
+>     match?
+>
+>     -- 
+>     Best regards,
+>     Ivan
+>
+>     ______________________________________________
+>     R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>     https://eu01.z.antigena.com/l/WZma5cGVT7M3Pi1uuAoPo_edV2O7qj81C7uavPIJ3LEMXNUs9d2H6DCGBB12hJA-6tmSLDAJFSwSMeHfx9~UdkUSOMRYZx7tgL1P4G1w4VXdaEBqiHCYYXMGh59CijZYZiIc53dOO~~YTK7T17MIVg-A4Mj5av2VVOt4XNt
+>
+>     PLEASE do read the posting guide
+>     https://eu01.z.antigena.com/l/boS91wizs77ZHW7jjYQJGhwKWDd7jhs-Bz84RKSuLO6Wr42WQEw~jCTfuUJGa_hsJ~G48rDp4Yd3YqBk~W12~24~eoBAwV8FTFmlNLCyjnyym8S-Ebcq0yz2IaH5TEYHyBIe7Z52GHo7s2sQIpyl93Js_4_UaWCcc2uXHZs1
+>
+>     and provide commented, minimal, self-contained, reproducible code.
+>
+	[[alternative HTML version deleted]]
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Fri May  5 22:20:45 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Fri, 5 May 2023 16:20:45 -0400
+Subject: [R] Regex Split?
+In-Reply-To: <7b1cdbe7-0086-24b4-9da6-369296eadfdc@syonic.eu>
+References: <7b1cdbe7-0086-24b4-9da6-369296eadfdc@syonic.eu>
+Message-ID: <007901d97f8f$12c68030$38538090$@gmail.com>
+
+Leonard,
+
+It can be helpful to spell out your intent in English or some of us have to go back to the documentation to remember what some of the operators do.
+
+Your text being searched seems to be an example of items between comas with an optional space after some commas and in one case, nothing between commas.
+
+So what is your goal for the example, and in general? You mention a bit unclearly at the end some of what you expect and I think it would be clearer if you also showed exactly the output you would want.
+
+I saw some other replies that addressed what you wanted and am going to reply in another direction.
+
+Why do things the hard way using things like lookahead or look behind? Would several steps get you the result way more clearly?
+
+For the sake of argument, you either want what reading in a CSV file would supply, or something else. Since you are not simply splitting on commas, it sounds like something else. But what exactly else? Something as simple as this on just a comma produces results including empty strings and embedded leading or trailing spaces:
+
+strsplit("a bc,def, adef ,,gh", ",")
+[[1]]
+[1] "a bc"   "def"    " adef " ""       "gh"  
+
+That can of course be handled by, for example, trimming the result after unlisting the odd way strsplit returns results:
+
+library("stringr") 
+str_squish(unlist(strsplit("a bc,def, adef ,,gh", ",")))
+
+[1] "a bc" "def"  "adef" ""     "gh"  
+
+Now do you want the empty string to be something else, such as an NA? That can be done too with another step.
+
+And a completely different variant can be used to read in your one-line CSV as text using standard overkill tools:
+
+> read.table(text="a bc,def, adef ,,gh", sep=",")
+    V1  V2     V3 V4 V5
+1 a bc def  adef  NA gh
+
+The above is a vector of texts. But if you simply want to reassemble your initial string cleaned up a bit, you can use paste to put back commas, as in a variation of the earlier example:
+
+> paste(str_squish(unlist(strsplit("a bc,def, adef ,,gh", ","))), collapse=",")
+[1] "a bc,def,adef,,gh"
+
+So my question is whether using advanced methods is really necessary for your case, or even particularly efficient. If efficiency matters, often, it is better to use tools without regular expressions such as paste0() when they meet your needs.
+
+Of course, unless I know what you are actually trying to do, my remarks may be not useful. 
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Leonard Mada via R-help
+Sent: Thursday, May 4, 2023 5:00 PM
+To: R-help Mailing List <r-help at r-project.org>
+Subject: [R] Regex Split?
+
+Dear R-Users,
+
+I tried the following 3 Regex expressions in R 4.3:
+strsplit("a bc,def, adef ,,gh", " |(?=,)|(?<=,)(?![ ])", perl=T)
+# "a"    "bc"   ","    "def"  ","    ""     "adef" ","    "," "gh"
+
+strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?![ ])", perl=T)
+# "a"    "bc"   ","    "def"  ","    ""     "adef" ","    "," "gh"
+
+strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?=[^ ])", perl=T)
+# "a"    "bc"   ","    "def"  ","    ""     "adef" ","    "," "gh"
+
+
+Is this correct?
+
+
+I feel that:
+- none should return (after "def"): ",", "";
+- the first one could also return "", "," (but probably not; not fully 
+sure about this);
+
+
+Sincerely,
+
+
+Leonard
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Fri May  5 23:53:58 2023
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Sat, 6 May 2023 00:53:58 +0300
+Subject: [R] Regex Split?
+In-Reply-To: <007901d97f8f$12c68030$38538090$@gmail.com>
+References: <7b1cdbe7-0086-24b4-9da6-369296eadfdc@syonic.eu>
+ <007901d97f8f$12c68030$38538090$@gmail.com>
+Message-ID: <1bf9e2a6-db5f-a3ca-0bc4-70d31bb9778c@syonic.eu>
+
+Dear Avi,
+
+Punctuation marks are used in various NLP language models. Preserving 
+the "," is therefore useful in such scenarios and Regex are useful to 
+accomplish this (especially if you have sufficient experience with such 
+expressions).
+
+I observed only an odd behaviour using strsplit: the example string is 
+constructed; but it is always wise to test a Regex expression against 
+various scenarios. It is usually hard to predict what special cases will 
+occur in a specific corpus.
+
+strsplit("a bc,def, adef ,,gh", " |(?=,)|(?<=,)(?![ ])", perl=T)
+# "a"? "bc"? ","? "def"? ","? ""? "adef"? ","? ","? "gh"
+
+stringi::stri_split("a bc,def, adef ,,gh", regex=" |(?=,)|(?<=,)(?![ ])")
+# "a"??? "bc"?? ","??? "def"? ","??? "adef"? ""???? ","??? "," "gh"
+
+stringi::stri_split("a bc,def, adef ,,gh", regex=" |(?<! 
+)(?=,)|(?<=,)(?![ ])")
+# "a"??? "bc"?? ","??? "def"? ","??? "adef"? ","??? ","??? "gh"
+
+# Expected:
+# "a"? "bc" ? ","? "def" ? ","? "adef"? "," ? ","? "gh"
+# see 2nd instance of stringi::stri_split
+
+
+Sincerely,
+
+
+Leonard
+
+
+On 5/5/2023 11:20 PM, avi.e.gross at gmail.com wrote:
+> Leonard,
+>
+> It can be helpful to spell out your intent in English or some of us have to go back to the documentation to remember what some of the operators do.
+>
+> Your text being searched seems to be an example of items between comas with an optional space after some commas and in one case, nothing between commas.
+>
+> So what is your goal for the example, and in general? You mention a bit unclearly at the end some of what you expect and I think it would be clearer if you also showed exactly the output you would want.
+>
+> I saw some other replies that addressed what you wanted and am going to reply in another direction.
+>
+> Why do things the hard way using things like lookahead or look behind? Would several steps get you the result way more clearly?
+>
+> For the sake of argument, you either want what reading in a CSV file would supply, or something else. Since you are not simply splitting on commas, it sounds like something else. But what exactly else? Something as simple as this on just a comma produces results including empty strings and embedded leading or trailing spaces:
+>
+> strsplit("a bc,def, adef ,,gh", ",")
+> [[1]]
+> [1] "a bc"   "def"    " adef " ""       "gh"
+>
+> That can of course be handled by, for example, trimming the result after unlisting the odd way strsplit returns results:
+>
+> library("stringr")
+> str_squish(unlist(strsplit("a bc,def, adef ,,gh", ",")))
+>
+> [1] "a bc" "def"  "adef" ""     "gh"
+>
+> Now do you want the empty string to be something else, such as an NA? That can be done too with another step.
+>
+> And a completely different variant can be used to read in your one-line CSV as text using standard overkill tools:
+>
+>> read.table(text="a bc,def, adef ,,gh", sep=",")
+>      V1  V2     V3 V4 V5
+> 1 a bc def  adef  NA gh
+>
+> The above is a vector of texts. But if you simply want to reassemble your initial string cleaned up a bit, you can use paste to put back commas, as in a variation of the earlier example:
+>
+>> paste(str_squish(unlist(strsplit("a bc,def, adef ,,gh", ","))), collapse=",")
+> [1] "a bc,def,adef,,gh"
+>
+> So my question is whether using advanced methods is really necessary for your case, or even particularly efficient. If efficiency matters, often, it is better to use tools without regular expressions such as paste0() when they meet your needs.
+>
+> Of course, unless I know what you are actually trying to do, my remarks may be not useful.
+>
+>
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Leonard Mada via R-help
+> Sent: Thursday, May 4, 2023 5:00 PM
+> To: R-help Mailing List <r-help at r-project.org>
+> Subject: [R] Regex Split?
+>
+> Dear R-Users,
+>
+> I tried the following 3 Regex expressions in R 4.3:
+> strsplit("a bc,def, adef ,,gh", " |(?=,)|(?<=,)(?![ ])", perl=T)
+> # "a"    "bc"   ","    "def"  ","    ""     "adef" ","    "," "gh"
+>
+> strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?![ ])", perl=T)
+> # "a"    "bc"   ","    "def"  ","    ""     "adef" ","    "," "gh"
+>
+> strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?=[^ ])", perl=T)
+> # "a"    "bc"   ","    "def"  ","    ""     "adef" ","    "," "gh"
+>
+>
+> Is this correct?
+>
+>
+> I feel that:
+> - none should return (after "def"): ",", "";
+> - the first one could also return "", "," (but probably not; not fully
+> sure about this);
+>
+>
+> Sincerely,
+>
+>
+> Leonard
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://eu01.z.antigena.com/l/boS91wizs77ZHrpn6fDgE-TZu7JxUnjyNg_9mZDUsLWLylcL-dhQytfeUHheLHZnKJw-VwwfCd_W4XdAukyKenqYPFzSJmP5FrWmF_wepejCrBByUVa66jUF7wKGiA8LnqB49ZUVq-urjKs272Rl-mj-SE1q7--Xj1UXRol3
+> PLEASE do read the posting guide https://eu01.z.antigena.com/l/rUS82cEKjOa3tTqQ7yTAXLpuOWG1NttoMdEKDQkk3EZhrLW63rsvJ77vuFxoc44Nwo7BGuQyBzF3bNlYLccamhXBk0shpe_1ZhOeonqIbTm59I58PKOPwwqUt6gLF2fLg3OmstDk7ueraKARO4qpUToOguMdYKyE2_LZnBk7QR
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat May  6 00:35:24 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Fri, 5 May 2023 15:35:24 -0700
+Subject: [R] Regex Split?
+In-Reply-To: <1bf9e2a6-db5f-a3ca-0bc4-70d31bb9778c@syonic.eu>
+References: <7b1cdbe7-0086-24b4-9da6-369296eadfdc@syonic.eu>
+ <007901d97f8f$12c68030$38538090$@gmail.com>
+ <1bf9e2a6-db5f-a3ca-0bc4-70d31bb9778c@syonic.eu>
+Message-ID: <CAGxFJbTaspRSnfUEM_Pe3JezmzZF1OE3oj8Pgvd1LKMzpyhDiw@mail.gmail.com>
+
+Primarily for my own amusement, here is a way to do what I think you wanted
+without look-aheads/behinds
+
+strsplit(gsub("([[:punct:]])"," \\1 ","a bc,def, adef,x; ,,gh"), " +")
+[[1]]
+ [1] "a"    "bc"   ","    "def"  ","    "adef" ","    "x"    ";"
+[10] ","    ","    "gh"
+
+I certainly would *not* claim that it is in any way superior to anything
+that has already been suggested -- indeed, probably the contrary. But it's
+simple (as am I).
+
+Cheers,
+Bert
+
+On Fri, May 5, 2023 at 2:54?PM Leonard Mada via R-help <r-help at r-project.org>
+wrote:
+
+> Dear Avi,
+>
+> Punctuation marks are used in various NLP language models. Preserving
+> the "," is therefore useful in such scenarios and Regex are useful to
+> accomplish this (especially if you have sufficient experience with such
+> expressions).
+>
+> I observed only an odd behaviour using strsplit: the example string is
+> constructed; but it is always wise to test a Regex expression against
+> various scenarios. It is usually hard to predict what special cases will
+> occur in a specific corpus.
+>
+> strsplit("a bc,def, adef ,,gh", " |(?=,)|(?<=,)(?![ ])", perl=T)
+> # "a"  "bc"  ","  "def"  ","  ""  "adef"  ","  ","  "gh"
+>
+> stringi::stri_split("a bc,def, adef ,,gh", regex=" |(?=,)|(?<=,)(?![ ])")
+> # "a"    "bc"   ","    "def"  ","    "adef"  ""     ","    "," "gh"
+>
+> stringi::stri_split("a bc,def, adef ,,gh", regex=" |(?<!
+> )(?=,)|(?<=,)(?![ ])")
+> # "a"    "bc"   ","    "def"  ","    "adef"  ","    ","    "gh"
+>
+> # Expected:
+> # "a"  "bc"   ","  "def"   ","  "adef"  ","   ","  "gh"
+> # see 2nd instance of stringi::stri_split
+>
+>
+> Sincerely,
+>
+>
+> Leonard
+>
+>
+> On 5/5/2023 11:20 PM, avi.e.gross at gmail.com wrote:
+> > Leonard,
+> >
+> > It can be helpful to spell out your intent in English or some of us have
+> to go back to the documentation to remember what some of the operators do.
+> >
+> > Your text being searched seems to be an example of items between comas
+> with an optional space after some commas and in one case, nothing between
+> commas.
+> >
+> > So what is your goal for the example, and in general? You mention a bit
+> unclearly at the end some of what you expect and I think it would be
+> clearer if you also showed exactly the output you would want.
+> >
+> > I saw some other replies that addressed what you wanted and am going to
+> reply in another direction.
+> >
+> > Why do things the hard way using things like lookahead or look behind?
+> Would several steps get you the result way more clearly?
+> >
+> > For the sake of argument, you either want what reading in a CSV file
+> would supply, or something else. Since you are not simply splitting on
+> commas, it sounds like something else. But what exactly else? Something as
+> simple as this on just a comma produces results including empty strings and
+> embedded leading or trailing spaces:
+> >
+> > strsplit("a bc,def, adef ,,gh", ",")
+> > [[1]]
+> > [1] "a bc"   "def"    " adef " ""       "gh"
+> >
+> > That can of course be handled by, for example, trimming the result after
+> unlisting the odd way strsplit returns results:
+> >
+> > library("stringr")
+> > str_squish(unlist(strsplit("a bc,def, adef ,,gh", ",")))
+> >
+> > [1] "a bc" "def"  "adef" ""     "gh"
+> >
+> > Now do you want the empty string to be something else, such as an NA?
+> That can be done too with another step.
+> >
+> > And a completely different variant can be used to read in your one-line
+> CSV as text using standard overkill tools:
+> >
+> >> read.table(text="a bc,def, adef ,,gh", sep=",")
+> >      V1  V2     V3 V4 V5
+> > 1 a bc def  adef  NA gh
+> >
+> > The above is a vector of texts. But if you simply want to reassemble
+> your initial string cleaned up a bit, you can use paste to put back commas,
+> as in a variation of the earlier example:
+> >
+> >> paste(str_squish(unlist(strsplit("a bc,def, adef ,,gh", ","))),
+> collapse=",")
+> > [1] "a bc,def,adef,,gh"
+> >
+> > So my question is whether using advanced methods is really necessary for
+> your case, or even particularly efficient. If efficiency matters, often, it
+> is better to use tools without regular expressions such as paste0() when
+> they meet your needs.
+> >
+> > Of course, unless I know what you are actually trying to do, my remarks
+> may be not useful.
+> >
+> >
+> >
+> > -----Original Message-----
+> > From: R-help <r-help-bounces at r-project.org> On Behalf Of Leonard Mada
+> via R-help
+> > Sent: Thursday, May 4, 2023 5:00 PM
+> > To: R-help Mailing List <r-help at r-project.org>
+> > Subject: [R] Regex Split?
+> >
+> > Dear R-Users,
+> >
+> > I tried the following 3 Regex expressions in R 4.3:
+> > strsplit("a bc,def, adef ,,gh", " |(?=,)|(?<=,)(?![ ])", perl=T)
+> > # "a"    "bc"   ","    "def"  ","    ""     "adef" ","    "," "gh"
+> >
+> > strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?![ ])", perl=T)
+> > # "a"    "bc"   ","    "def"  ","    ""     "adef" ","    "," "gh"
+> >
+> > strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?=[^ ])", perl=T)
+> > # "a"    "bc"   ","    "def"  ","    ""     "adef" ","    "," "gh"
+> >
+> >
+> > Is this correct?
+> >
+> >
+> > I feel that:
+> > - none should return (after "def"): ",", "";
+> > - the first one could also return "", "," (but probably not; not fully
+> > sure about this);
+> >
+> >
+> > Sincerely,
+> >
+> >
+> > Leonard
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >
+> https://eu01.z.antigena.com/l/boS91wizs77ZHrpn6fDgE-TZu7JxUnjyNg_9mZDUsLWLylcL-dhQytfeUHheLHZnKJw-VwwfCd_W4XdAukyKenqYPFzSJmP5FrWmF_wepejCrBByUVa66jUF7wKGiA8LnqB49ZUVq-urjKs272Rl-mj-SE1q7--Xj1UXRol3
+> > PLEASE do read the posting guide
+> https://eu01.z.antigena.com/l/rUS82cEKjOa3tTqQ7yTAXLpuOWG1NttoMdEKDQkk3EZhrLW63rsvJ77vuFxoc44Nwo7BGuQyBzF3bNlYLccamhXBk0shpe_1ZhOeonqIbTm59I58PKOPwwqUt6gLF2fLg3OmstDk7ueraKARO4qpUToOguMdYKyE2_LZnBk7QR
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Sat May  6 01:05:56 2023
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Sat, 6 May 2023 02:05:56 +0300
+Subject: [R] Regex Split?
+In-Reply-To: <CAGxFJbTaspRSnfUEM_Pe3JezmzZF1OE3oj8Pgvd1LKMzpyhDiw@mail.gmail.com>
+References: <7b1cdbe7-0086-24b4-9da6-369296eadfdc@syonic.eu>
+ <007901d97f8f$12c68030$38538090$@gmail.com>
+ <1bf9e2a6-db5f-a3ca-0bc4-70d31bb9778c@syonic.eu>
+ <CAGxFJbTaspRSnfUEM_Pe3JezmzZF1OE3oj8Pgvd1LKMzpyhDiw@mail.gmail.com>
+Message-ID: <0d777887-d9e6-a96a-2261-67a702bd8939@syonic.eu>
+
+Dear Bert,
+
+Thank you for the suggestion. Indeed, there are various solutions and 
+workarounds. However, there is still a bug in strsplit.
+
+2.) gsub
+I would try to avoid gsub on a Wikipedia-sized corpus: using strsplit 
+directly should be far more efficient.
+
+3.) Punctuation marks
+Abbreviations and "word1-word2" may be a problem:
+gsub("(?<ThePunct>[[:punct:]])", "\\1 ", "A.B.C.", perl=T)
+# "A. B. C. "
+
+I do not yet have an intuition if the spaces in "A. B. C. " would 
+adversely affect the language model. But this goes off-topic.
+
+Sincerely,
+
+Leonard
+
+
+On 5/6/2023 1:35 AM, Bert Gunter wrote:
+> Primarily for my own amusement, here is a way to do what I think you 
+> wanted without look-aheads/behinds
+>
+> strsplit(gsub("([[:punct:]])"," \\1 ","a bc,def, adef,x; ,,gh"), " +")
+> [[1]]
+> ?[1] "a" ? ?"bc" ? "," ? ?"def" ?"," ? ?"adef" "," ? ?"x" ?";"
+> [10] "," ? ?"," ? ?"gh"
+>
+> I certainly would *not* claim that it is in any way superior to 
+> anything that has already been suggested -- indeed, probably the 
+> contrary. But it's simple (as am I).
+>
+> Cheers,
+> Bert
+>
+> On Fri, May 5, 2023 at 2:54?PM Leonard Mada via R-help 
+> <r-help at r-project.org> wrote:
+>
+>     Dear Avi,
+>
+>     Punctuation marks are used in various NLP language models. Preserving
+>     the "," is therefore useful in such scenarios and Regex are useful to
+>     accomplish this (especially if you have sufficient experience with
+>     such
+>     expressions).
+>
+>     I observed only an odd behaviour using strsplit: the example
+>     string is
+>     constructed; but it is always wise to test a Regex expression against
+>     various scenarios. It is usually hard to predict what special
+>     cases will
+>     occur in a specific corpus.
+>
+>     strsplit("a bc,def, adef ,,gh", " |(?=,)|(?<=,)(?![ ])", perl=T)
+>     # "a"? "bc"? ","? "def"? ","? ""? "adef"? ","? ","? "gh"
+>
+>     stringi::stri_split("a bc,def, adef ,,gh", regex="
+>     |(?=,)|(?<=,)(?![ ])")
+>     # "a"??? "bc"?? ","??? "def"? ","??? "adef"? ""???? ","??? "," "gh"
+>
+>     stringi::stri_split("a bc,def, adef ,,gh", regex=" |(?<!
+>     )(?=,)|(?<=,)(?![ ])")
+>     # "a"??? "bc"?? ","??? "def"? ","??? "adef"? ","??? "," "gh"
+>
+>     # Expected:
+>     # "a"? "bc" ? ","? "def" ? ","? "adef"? "," ? ","? "gh"
+>     # see 2nd instance of stringi::stri_split
+>
+>
+>     Sincerely,
+>
+>
+>     Leonard
+>
+>
+>     On 5/5/2023 11:20 PM, avi.e.gross at gmail.com wrote:
+>     > Leonard,
+>     >
+>     > It can be helpful to spell out your intent in English or some of
+>     us have to go back to the documentation to remember what some of
+>     the operators do.
+>     >
+>     > Your text being searched seems to be an example of items between
+>     comas with an optional space after some commas and in one case,
+>     nothing between commas.
+>     >
+>     > So what is your goal for the example, and in general? You
+>     mention a bit unclearly at the end some of what you expect and I
+>     think it would be clearer if you also showed exactly the output
+>     you would want.
+>     >
+>     > I saw some other replies that addressed what you wanted and am
+>     going to reply in another direction.
+>     >
+>     > Why do things the hard way using things like lookahead or look
+>     behind? Would several steps get you the result way more clearly?
+>     >
+>     > For the sake of argument, you either want what reading in a CSV
+>     file would supply, or something else. Since you are not simply
+>     splitting on commas, it sounds like something else. But what
+>     exactly else? Something as simple as this on just a comma produces
+>     results including empty strings and embedded leading or trailing
+>     spaces:
+>     >
+>     > strsplit("a bc,def, adef ,,gh", ",")
+>     > [[1]]
+>     > [1] "a bc"? ?"def"? ? " adef " ""? ? ? ?"gh"
+>     >
+>     > That can of course be handled by, for example, trimming the
+>     result after unlisting the odd way strsplit returns results:
+>     >
+>     > library("stringr")
+>     > str_squish(unlist(strsplit("a bc,def, adef ,,gh", ",")))
+>     >
+>     > [1] "a bc" "def"? "adef" ""? ? ?"gh"
+>     >
+>     > Now do you want the empty string to be something else, such as
+>     an NA? That can be done too with another step.
+>     >
+>     > And a completely different variant can be used to read in your
+>     one-line CSV as text using standard overkill tools:
+>     >
+>     >> read.table(text="a bc,def, adef ,,gh", sep=",")
+>     >? ? ? V1? V2? ? ?V3 V4 V5
+>     > 1 a bc def? adef? NA gh
+>     >
+>     > The above is a vector of texts. But if you simply want to
+>     reassemble your initial string cleaned up a bit, you can use paste
+>     to put back commas, as in a variation of the earlier example:
+>     >
+>     >> paste(str_squish(unlist(strsplit("a bc,def, adef ,,gh", ","))),
+>     collapse=",")
+>     > [1] "a bc,def,adef,,gh"
+>     >
+>     > So my question is whether using advanced methods is really
+>     necessary for your case, or even particularly efficient. If
+>     efficiency matters, often, it is better to use tools without
+>     regular expressions such as paste0() when they meet your needs.
+>     >
+>     > Of course, unless I know what you are actually trying to do, my
+>     remarks may be not useful.
+>     >
+>     >
+>     >
+>     > -----Original Message-----
+>     > From: R-help <r-help-bounces at r-project.org> On Behalf Of Leonard
+>     Mada via R-help
+>     > Sent: Thursday, May 4, 2023 5:00 PM
+>     > To: R-help Mailing List <r-help at r-project.org>
+>     > Subject: [R] Regex Split?
+>     >
+>     > Dear R-Users,
+>     >
+>     > I tried the following 3 Regex expressions in R 4.3:
+>     > strsplit("a bc,def, adef ,,gh", " |(?=,)|(?<=,)(?![ ])", perl=T)
+>     > # "a"? ? "bc"? ?","? ? "def"? ","? ? ""? ? ?"adef" "," "," "gh"
+>     >
+>     > strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?![ ])",
+>     perl=T)
+>     > # "a"? ? "bc"? ?","? ? "def"? ","? ? ""? ? ?"adef" "," "," "gh"
+>     >
+>     > strsplit("a bc,def, adef ,,gh", " |(?<! )(?=,)|(?<=,)(?=[^ ])",
+>     perl=T)
+>     > # "a"? ? "bc"? ?","? ? "def"? ","? ? ""? ? ?"adef" "," "," "gh"
+>     >
+>     >
+>     > Is this correct?
+>     >
+>     >
+>     > I feel that:
+>     > - none should return (after "def"): ",", "";
+>     > - the first one could also return "", "," (but probably not; not
+>     fully
+>     > sure about this);
+>     >
+>     >
+>     > Sincerely,
+>     >
+>     >
+>     > Leonard
+>     >
+>     > ______________________________________________
+>     > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>     >
+>     https://eu01.z.antigena.com/l/boS91wizs77ZHrpn6fDgE-TZu7JxUnjyNg_9mZDUsLWLylcL-dhQytfeUHheLHZnKJw-VwwfCd_W4XdAukyKenqYPFzSJmP5FrWmF_wepejCrBByUVa66jUF7wKGiA8LnqB49ZUVq-urjKs272Rl-mj-SE1q7--Xj1UXRol3
+>     > PLEASE do read the posting guide
+>     https://eu01.z.antigena.com/l/rUS82cEKjOa3tTqQ7yTAXLpuOWG1NttoMdEKDQkk3EZhrLW63rsvJ77vuFxoc44Nwo7BGuQyBzF3bNlYLccamhXBk0shpe_1ZhOeonqIbTm59I58PKOPwwqUt6gLF2fLg3OmstDk7ueraKARO4qpUToOguMdYKyE2_LZnBk7QR
+>     > and provide commented, minimal, self-contained, reproducible code.
+>
+>     ______________________________________________
+>     R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>     https://stat.ethz.ch/mailman/listinfo/r-help
+>     PLEASE do read the posting guide
+>     http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>     and provide commented, minimal, self-contained, reproducible code.
+>
+	[[alternative HTML version deleted]]
+
+
