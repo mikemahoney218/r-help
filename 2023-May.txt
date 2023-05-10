@@ -3415,3 +3415,1007 @@ rf_gridsearch$bestTune
 #################################################
 
 
+From er|cjberger @end|ng |rom gm@||@com  Tue May  9 05:40:56 2023
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Tue, 9 May 2023 06:40:56 +0300
+Subject: [R] RandomForest tuning the parameters
+In-Reply-To: <176227066.1386345.1683576625666@mail.yahoo.com>
+References: <176227066.1386345.1683576625666.ref@mail.yahoo.com>
+ <176227066.1386345.1683576625666@mail.yahoo.com>
+Message-ID: <CAGgJW76ie4u3B=U=jaKuOQ6gNt70uKLUt7b=2ocrGitwTAaWVw@mail.gmail.com>
+
+Hi,
+One problem you have is with the command:
+regr<-randomForest(y~x1+x2, data=X_train, proximity=TRUE)
+
+What you need is something like this:
+
+X2 <- cbind(X,y)
+regr<-randomForest(y~x1+x2, data=X2, proximity=TRUE)
+
+HTH,
+Eric
+
+
+On Mon, May 8, 2023 at 11:11?PM varin sacha via R-help
+<r-help at r-project.org> wrote:
+>
+> Dear R-experts,
+>
+> Here below a toy example with some error messages, especially at the end of the code (Tuning the parameters). Your help to correct my R code would be highly appreciated.
+>
+>
+> #######################################
+> #libraries
+> library(lattice)
+> library(ggplot2)
+> library(caret)
+> library(randomForest)
+>
+> #Data
+> y=c(23,34,32,12,24,35,45,56,76,87,54,34,23,45,41,13,16,98,35,65,56,67,78,89,87,64,53,31,14,34,45,46,57,69,90,80,70,65,50,45,60,56,87,79,64,34,25,47,61,24,10,13,12,15,46,58,76,89,90,98)
+> x1=c(4,5,6,7,1,10,19,20,21,14,23,6,5,32,15,12,16,14,2,3,4,5,3,2,1,2,6,7,5,4,3,2,1,3,4,6,7,9,5,4,3,7,10,11,12,13,10,3,2,5,6,9,8,7,4,12,15,16,2,3)
+> x2=c(0,0,0,1,1,0,1,1,0,1,1,0,0,1,0,0,0,0,0,1,1,1,1,1,0,0,0,1,0,0,1,0,0,0,1,1,0,1,0,0,0,1,1,1,1,0,1,0,1,0,0,1,1,0,0,1,0,0,1,1)
+>
+> y=as.numeric(y)
+> x1=as.numeric(x1)
+> x2=as.factor(x2)
+>
+> X=data.frame(x1,x2)
+> y=y
+>
+> #Split data into training and test sets
+> index=createDataPartition(y, p=0.75, list=FALSE)
+> X_train = X[index, ]
+> X_test = X[-index, ]
+> y_train= y[index ]
+> y_test = y[-index ]
+>
+> #Train de model
+> regr=randomForest (x=X_train, y=y_train, maxnodes=10, ntree=10)
+>
+> regr<-randomForest(y~x1+x2, data=X_train, proximity=TRUE)
+> regr
+>
+> #Make prediction
+> predictions= predict(regr, X_test)
+>
+> result= X_test
+> result['y'] = y_test
+> result['prediction'] = predictions
+> result
+>
+> # Import library for Metrics
+> library(Metrics)
+>
+> print(paste0('MAE: ' , mae(y_test,predictions) ))
+> print(paste0('MSE: ' ,caret::postResample(predictions , y_test)['RMSE']^2 ))
+> print(paste0('R2: ' ,caret::postResample(predictions , y_test)['Rsquared'] ))
+>
+>
+> #Tuning the parameters
+> N=500 #length(X_train)
+> X_train_ = X_train[1:N , ]
+> y_train_ = y_train[1:N]
+>
+> seed <-7
+> metric<-'RMSE'
+>
+> customRF <- list(type = "Regression", library = "randomForest", loop = NULL)
+>
+> customRF$parameters <- data.frame(parameter = c("maxnodes", "ntree"), class = rep("numeric", 2), label = c("maxnodes", "ntree"))
+>
+> customRF$grid <- function(x, y, len = NULL, search = "grid") {}
+>
+> customRF$fit <- function(x, y, wts, param, lev, last, weights, classProbs, ...) {
+>
+>  randomForest(x, y, maxnodes = param$maxnodes, ntree=param$ntree, ...)
+>
+> }
+>
+> customRF$predict <- function(modelFit, newdata, preProc = NULL, submodels = NULL)
+>
+> predict(modelFit, newdata)
+>
+> customRF$prob <- function(modelFit, newdata, preProc = NULL, submodels = NULL)
+>
+>   predict(modelFit, newdata, type = "prob")
+>
+> customRF$sort <- function(x) x[order(x[,1]),]
+>
+> customRF$levels <- function(x) x$classes
+>
+>
+> # Set grid search parameters
+> control <- trainControl(method="repeatedcv", number=10, repeats=3, search='grid')
+>
+> # Outline the grid of parameters
+> tunegrid <- expand.grid(.maxnodes=c(10,20,30,50), .ntree=c(100, 200, 300))
+> set.seed(seed)
+>
+> # Train the model
+> rf_gridsearch <- train(x=X_train_, y=y_train_, method=customRF, metric=metric, tuneGrid=tunegrid, trControl=control)
+>
+> plot(rf_gridsearch)
+>
+> rf_gridsearch$bestTune
+>
+> #################################################
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From Georg@K|nderm@nn @end|ng |rom gmx@@t  Mon May  8 12:52:59 2023
+From: Georg@K|nderm@nn @end|ng |rom gmx@@t (Georg Kindermann)
+Date: Mon, 8 May 2023 12:52:59 +0200
+Subject: [R] data.frame with a column containing an array
+Message-ID: <trinity-2eda1037-de24-4b26-849a-41f0a1104f03-1683543179774@3c-app-gmx-bap03>
+
+Dear list members,
+
+when I create a data.frame containing an array I had expected, that I get a similar result, when subsetting it, like having a matrix in a data.frame. But instead I get only the first element and not all values of the remaining dimensions. Differences are already when creating the data.frame, where I can use `I` in case of a matrix but for an array I am only able to insert it in a second step.
+
+DFA <- data.frame(id = 1:2)
+DFA[["ar"]] <- array(1:8, c(2,2,2))
+
+DFA[1,]
+#  id ar
+#1  1  1
+
+DFM <- data.frame(id = 1:2, M = I(matrix(1:4, 2)))
+
+DFM[1,]
+#  id M.1 M.2
+#1  1   1   3
+
+The same when trying to use merge, where only the first value is kept.
+
+merge(DFA, data.frame(id = 1))
+#  id ar
+#1  1  1
+
+merge(DFM, data.frame(id = 1))
+#  id M.1 M.2
+#1  1   1   3
+
+Is there a way to use an array in a data.frame like I can use a matrix in a data.frame?
+
+I am using R version 4.3.0.
+
+Kind regards,
+Georg
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Tue May  9 09:32:56 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 9 May 2023 08:32:56 +0100
+Subject: [R] data.frame with a column containing an array
+In-Reply-To: <trinity-2eda1037-de24-4b26-849a-41f0a1104f03-1683543179774@3c-app-gmx-bap03>
+References: <trinity-2eda1037-de24-4b26-849a-41f0a1104f03-1683543179774@3c-app-gmx-bap03>
+Message-ID: <7daa5b29-0958-eed7-47f2-0b9928ef17b1@sapo.pt>
+
+?s 11:52 de 08/05/2023, Georg Kindermann escreveu:
+> Dear list members,
+> 
+> when I create a data.frame containing an array I had expected, that I get a similar result, when subsetting it, like having a matrix in a data.frame. But instead I get only the first element and not all values of the remaining dimensions. Differences are already when creating the data.frame, where I can use `I` in case of a matrix but for an array I am only able to insert it in a second step.
+> 
+> DFA <- data.frame(id = 1:2)
+> DFA[["ar"]] <- array(1:8, c(2,2,2))
+> 
+> DFA[1,]
+> #  id ar
+> #1  1  1
+> 
+> DFM <- data.frame(id = 1:2, M = I(matrix(1:4, 2)))
+> 
+> DFM[1,]
+> #  id M.1 M.2
+> #1  1   1   3
+> 
+> The same when trying to use merge, where only the first value is kept.
+> 
+> merge(DFA, data.frame(id = 1))
+> #  id ar
+> #1  1  1
+> 
+> merge(DFM, data.frame(id = 1))
+> #  id M.1 M.2
+> #1  1   1   3
+> 
+> Is there a way to use an array in a data.frame like I can use a matrix in a data.frame?
+> 
+> I am using R version 4.3.0.
+> 
+> Kind regards,
+> Georg
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Are you looking for something like this?
+
+
+DFA <- data.frame(id = 1:2)
+DFA[["ar"]] <- array(1:8, c(2,2,2))
+
+DFA$ar[1, , ]
+#>      [,1] [,2]
+#> [1,]    1    5
+#> [2,]    3    7
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+From er|cjberger @end|ng |rom gm@||@com  Tue May  9 09:44:25 2023
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Tue, 9 May 2023 10:44:25 +0300
+Subject: [R] RandomForest tuning the parameters
+In-Reply-To: <CAGgJW76ie4u3B=U=jaKuOQ6gNt70uKLUt7b=2ocrGitwTAaWVw@mail.gmail.com>
+References: <176227066.1386345.1683576625666.ref@mail.yahoo.com>
+ <176227066.1386345.1683576625666@mail.yahoo.com>
+ <CAGgJW76ie4u3B=U=jaKuOQ6gNt70uKLUt7b=2ocrGitwTAaWVw@mail.gmail.com>
+Message-ID: <CAGgJW75-_zC7YEG+JbKodaU5=c3r7NsVdUymOL0qy4pY+SbtiQ@mail.gmail.com>
+
+Hi Sacha,
+On second thought, perhaps this is more the direction that you want ...
+
+X2 = cbind(X_train,y_train)
+colnames(X2)[3] = "y"
+regr2<-randomForest(y~x1+x2, data=X2,maxnodes=10, ntree=10)
+regr
+regr2
+
+#Make prediction
+predictions= predict(regr, X_test)
+predictions2= predict(regr2, X_test)
+
+HTH,
+Eric
+
+
+On Tue, May 9, 2023 at 6:40?AM Eric Berger <ericjberger at gmail.com> wrote:
+
+> Hi,
+> One problem you have is with the command:
+> regr<-randomForest(y~x1+x2, data=X_train, proximity=TRUE)
+>
+> What you need is something like this:
+>
+> X2 <- cbind(X,y)
+> regr<-randomForest(y~x1+x2, data=X2, proximity=TRUE)
+>
+> HTH,
+> Eric
+>
+>
+> On Mon, May 8, 2023 at 11:11?PM varin sacha via R-help
+> <r-help at r-project.org> wrote:
+> >
+> > Dear R-experts,
+> >
+> > Here below a toy example with some error messages, especially at the end
+> of the code (Tuning the parameters). Your help to correct my R code would
+> be highly appreciated.
+> >
+> >
+> > #######################################
+> > #libraries
+> > library(lattice)
+> > library(ggplot2)
+> > library(caret)
+> > library(randomForest)
+> >
+> > #Data
+> >
+> y=c(23,34,32,12,24,35,45,56,76,87,54,34,23,45,41,13,16,98,35,65,56,67,78,89,87,64,53,31,14,34,45,46,57,69,90,80,70,65,50,45,60,56,87,79,64,34,25,47,61,24,10,13,12,15,46,58,76,89,90,98)
+> >
+> x1=c(4,5,6,7,1,10,19,20,21,14,23,6,5,32,15,12,16,14,2,3,4,5,3,2,1,2,6,7,5,4,3,2,1,3,4,6,7,9,5,4,3,7,10,11,12,13,10,3,2,5,6,9,8,7,4,12,15,16,2,3)
+> >
+> x2=c(0,0,0,1,1,0,1,1,0,1,1,0,0,1,0,0,0,0,0,1,1,1,1,1,0,0,0,1,0,0,1,0,0,0,1,1,0,1,0,0,0,1,1,1,1,0,1,0,1,0,0,1,1,0,0,1,0,0,1,1)
+> >
+> > y=as.numeric(y)
+> > x1=as.numeric(x1)
+> > x2=as.factor(x2)
+> >
+> > X=data.frame(x1,x2)
+> > y=y
+> >
+> > #Split data into training and test sets
+> > index=createDataPartition(y, p=0.75, list=FALSE)
+> > X_train = X[index, ]
+> > X_test = X[-index, ]
+> > y_train= y[index ]
+> > y_test = y[-index ]
+> >
+> > #Train de model
+> > regr=randomForest (x=X_train, y=y_train, maxnodes=10, ntree=10)
+> >
+> > regr<-randomForest(y~x1+x2, data=X_train, proximity=TRUE)
+> > regr
+> >
+> > #Make prediction
+> > predictions= predict(regr, X_test)
+> >
+> > result= X_test
+> > result['y'] = y_test
+> > result['prediction'] = predictions
+> > result
+> >
+> > # Import library for Metrics
+> > library(Metrics)
+> >
+> > print(paste0('MAE: ' , mae(y_test,predictions) ))
+> > print(paste0('MSE: ' ,caret::postResample(predictions ,
+> y_test)['RMSE']^2 ))
+> > print(paste0('R2: ' ,caret::postResample(predictions ,
+> y_test)['Rsquared'] ))
+> >
+> >
+> > #Tuning the parameters
+> > N=500 #length(X_train)
+> > X_train_ = X_train[1:N , ]
+> > y_train_ = y_train[1:N]
+> >
+> > seed <-7
+> > metric<-'RMSE'
+> >
+> > customRF <- list(type = "Regression", library = "randomForest", loop =
+> NULL)
+> >
+> > customRF$parameters <- data.frame(parameter = c("maxnodes", "ntree"),
+> class = rep("numeric", 2), label = c("maxnodes", "ntree"))
+> >
+> > customRF$grid <- function(x, y, len = NULL, search = "grid") {}
+> >
+> > customRF$fit <- function(x, y, wts, param, lev, last, weights,
+> classProbs, ...) {
+> >
+> >  randomForest(x, y, maxnodes = param$maxnodes, ntree=param$ntree, ...)
+> >
+> > }
+> >
+> > customRF$predict <- function(modelFit, newdata, preProc = NULL,
+> submodels = NULL)
+> >
+> > predict(modelFit, newdata)
+> >
+> > customRF$prob <- function(modelFit, newdata, preProc = NULL, submodels =
+> NULL)
+> >
+> >   predict(modelFit, newdata, type = "prob")
+> >
+> > customRF$sort <- function(x) x[order(x[,1]),]
+> >
+> > customRF$levels <- function(x) x$classes
+> >
+> >
+> > # Set grid search parameters
+> > control <- trainControl(method="repeatedcv", number=10, repeats=3,
+> search='grid')
+> >
+> > # Outline the grid of parameters
+> > tunegrid <- expand.grid(.maxnodes=c(10,20,30,50), .ntree=c(100, 200,
+> 300))
+> > set.seed(seed)
+> >
+> > # Train the model
+> > rf_gridsearch <- train(x=X_train_, y=y_train_, method=customRF,
+> metric=metric, tuneGrid=tunegrid, trControl=control)
+> >
+> > plot(rf_gridsearch)
+> >
+> > rf_gridsearch$bestTune
+> >
+> > #################################################
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From Georg@K|nderm@nn @end|ng |rom gmx@@t  Tue May  9 10:50:42 2023
+From: Georg@K|nderm@nn @end|ng |rom gmx@@t (Georg Kindermann)
+Date: Tue, 9 May 2023 10:50:42 +0200
+Subject: [R] data.frame with a column containing an array
+In-Reply-To: <7daa5b29-0958-eed7-47f2-0b9928ef17b1@sapo.pt>
+References: <trinity-2eda1037-de24-4b26-849a-41f0a1104f03-1683543179774@3c-app-gmx-bap03>
+ <7daa5b29-0958-eed7-47f2-0b9928ef17b1@sapo.pt>
+Message-ID: <trinity-00875706-f414-441a-8594-358db7d8f23c-1683622242413@3c-app-gmx-bap56>
+
+Thanks!
+?
+No, to be consistent with what I get with a matrix I think it should be like:
+
+x <- data.frame(id = DFA$id[1])
+x$ar <- DFA$ar[1, , , drop = FALSE]
+
+str(x)
+#'data.frame': 1 obs. of 2 variables:
+# $ id: int 1
+# $ ar: int [1, 1:2, 1:2] 1 3 5 7
+
+Georg
+?
+?
+
+Gesendet:?Dienstag, 09. Mai 2023 um 09:32 Uhr
+Von:?"Rui Barradas" <ruipbarradas at sapo.pt>
+An:?"Georg Kindermann" <Georg.Kindermann at gmx.at>, r-help at r-project.org
+Betreff:?Re: [R] data.frame with a column containing an array
+?s 11:52 de 08/05/2023, Georg Kindermann escreveu:
+> Dear list members,
+>
+> when I create a data.frame containing an array I had expected, that I get a similar result, when subsetting it, like having a matrix in a data.frame. But instead I get only the first element and not all values of the remaining dimensions. Differences are already when creating the data.frame, where I can use `I` in case of a matrix but for an array I am only able to insert it in a second step.
+>
+> DFA <- data.frame(id = 1:2)
+> DFA[["ar"]] <- array(1:8, c(2,2,2))
+>
+> DFA[1,]
+> # id ar
+> #1 1 1
+>
+> DFM <- data.frame(id = 1:2, M = I(matrix(1:4, 2)))
+>
+> DFM[1,]
+> # id M.1 M.2
+> #1 1 1 3
+>
+> The same when trying to use merge, where only the first value is kept.
+>
+> merge(DFA, data.frame(id = 1))
+> # id ar
+> #1 1 1
+>
+> merge(DFM, data.frame(id = 1))
+> # id M.1 M.2
+> #1 1 1 3
+>
+> Is there a way to use an array in a data.frame like I can use a matrix in a data.frame?
+>
+> I am using R version 4.3.0.
+>
+> Kind regards,
+> Georg
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html[http://www.R-project.org/posting-guide.html]
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Are you looking for something like this?
+
+
+DFA <- data.frame(id = 1:2)
+DFA[["ar"]] <- array(1:8, c(2,2,2))
+
+DFA$ar[1, , ]
+#> [,1] [,2]
+#> [1,] 1 5
+#> [2,] 3 7
+
+
+Hope this helps,
+
+Rui Barradas
+?
+
+
+From z|oto_kruk @end|ng |rom hotm@||@com  Mon May  8 18:24:39 2023
+From: z|oto_kruk @end|ng |rom hotm@||@com (=?iso-8859-1?Q?Sebasti=E1n_Kruk_Gencarelli?=)
+Date: Mon, 8 May 2023 16:24:39 +0000
+Subject: [R] win110 + R 4.3.0 dowload only when method = "wininet"
+Message-ID: <IA0PR19MB72890261CF953C010DE9E381F5719@IA0PR19MB7289.namprd19.prod.outlook.com>
+
+Dear R-users,
+
+I updated my R. I installed 4.3.0.
+
+I have Windows 10 Pro.
+
+I can only install/update packages/files if I select method wininet.
+
+For example:
+
+> update.packages(ask='graphics',checkBuilt=TRUE)
+--- Please select a CRAN mirror for use in this session ---
+Warning message:
+In download.file(url, destfile = f, quiet = TRUE) :
+  the 'wininet' method is deprecated for http:// and https:// URLs
+
+What can i do?
+
+Thanks in advance,
+
+Sebas.
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue May  9 16:56:24 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 9 May 2023 07:56:24 -0700
+Subject: [R] data.frame with a column containing an array
+In-Reply-To: <trinity-00875706-f414-441a-8594-358db7d8f23c-1683622242413@3c-app-gmx-bap56>
+References: <trinity-2eda1037-de24-4b26-849a-41f0a1104f03-1683543179774@3c-app-gmx-bap03>
+ <7daa5b29-0958-eed7-47f2-0b9928ef17b1@sapo.pt>
+ <trinity-00875706-f414-441a-8594-358db7d8f23c-1683622242413@3c-app-gmx-bap56>
+Message-ID: <CAGxFJbS0kn+g+hk7v_NJ+tsKsnEMuxBaHy6yhBkZ1FFKcB=8_Q@mail.gmail.com>
+
+Right ... that's what I thought you meant.
+
+I'm pretty sure -- but not certain -- that columns of matrices are treated
+specially by [.data.frame, so that you have to explicitly index a higher
+dimensional array, e.g. like this:
+
+
+subs <- c(1,3)
+DFA <- data.frame(id = 1:3)
+DFA[["ar"]] <- array(1:12, c(3,2,2))
+
+DFA$ar[match(subs,DFA$id),,]
+##yielding:
+, , 1
+
+     [,1] [,2]
+[1,]    1    4
+[2,]    3    6
+
+, , 2
+
+     [,1] [,2]
+[1,]    7   10
+[2,]    9   12
+
+You might check, e.g. the "data.table" package, to see if it indexes as you
+would like with columns that contain arrays.
+
+Alternatively, and perhaps preferably depending on your use case, you may
+wish to create a wholly different data structure or just treat the data
+frame as a list from the start. Data frames/matrix-like data structures are
+convenient and appropriate a lot of the time, but not always. R, like any
+flexible programming language, allows you -- even encourages you -- to
+create other data structures that fit your needs.
+
+Cheers,
+Bert
+
+On Tue, May 9, 2023 at 3:39?AM Georg Kindermann <Georg.Kindermann at gmx.at>
+wrote:
+
+> Thanks!
+>
+> No, to be consistent with what I get with a matrix I think it should be
+> like:
+>
+> x <- data.frame(id = DFA$id[1])
+> x$ar <- DFA$ar[1, , , drop = FALSE]
+>
+> str(x)
+> #'data.frame': 1 obs. of 2 variables:
+> # $ id: int 1
+> # $ ar: int [1, 1:2, 1:2] 1 3 5 7
+>
+> Georg
+>
+>
+>
+> Gesendet: Dienstag, 09. Mai 2023 um 09:32 Uhr
+> Von: "Rui Barradas" <ruipbarradas at sapo.pt>
+> An: "Georg Kindermann" <Georg.Kindermann at gmx.at>, r-help at r-project.org
+> Betreff: Re: [R] data.frame with a column containing an array
+> ?s 11:52 de 08/05/2023, Georg Kindermann escreveu:
+> > Dear list members,
+> >
+> > when I create a data.frame containing an array I had expected, that I
+> get a similar result, when subsetting it, like having a matrix in a
+> data.frame. But instead I get only the first element and not all values of
+> the remaining dimensions. Differences are already when creating the
+> data.frame, where I can use `I` in case of a matrix but for an array I am
+> only able to insert it in a second step.
+> >
+> > DFA <- data.frame(id = 1:2)
+> > DFA[["ar"]] <- array(1:8, c(2,2,2))
+> >
+> > DFA[1,]
+> > # id ar
+> > #1 1 1
+> >
+> > DFM <- data.frame(id = 1:2, M = I(matrix(1:4, 2)))
+> >
+> > DFM[1,]
+> > # id M.1 M.2
+> > #1 1 1 3
+> >
+> > The same when trying to use merge, where only the first value is kept.
+> >
+> > merge(DFA, data.frame(id = 1))
+> > # id ar
+> > #1 1 1
+> >
+> > merge(DFM, data.frame(id = 1))
+> > # id M.1 M.2
+> > #1 1 1 3
+> >
+> > Is there a way to use an array in a data.frame like I can use a matrix
+> in a data.frame?
+> >
+> > I am using R version 4.3.0.
+> >
+> > Kind regards,
+> > Georg
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html[http://www.R-project.org/posting-guide.html]
+> > and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+>
+> Are you looking for something like this?
+>
+>
+> DFA <- data.frame(id = 1:2)
+> DFA[["ar"]] <- array(1:8, c(2,2,2))
+>
+> DFA$ar[1, , ]
+> #> [,1] [,2]
+> #> [1,] 1 5
+> #> [2,] 3 7
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue May  9 19:28:21 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 9 May 2023 10:28:21 -0700
+Subject: [R] data.frame with a column containing an array
+In-Reply-To: <CAGxFJbS0kn+g+hk7v_NJ+tsKsnEMuxBaHy6yhBkZ1FFKcB=8_Q@mail.gmail.com>
+References: <trinity-2eda1037-de24-4b26-849a-41f0a1104f03-1683543179774@3c-app-gmx-bap03>
+ <7daa5b29-0958-eed7-47f2-0b9928ef17b1@sapo.pt>
+ <trinity-00875706-f414-441a-8594-358db7d8f23c-1683622242413@3c-app-gmx-bap56>
+ <CAGxFJbS0kn+g+hk7v_NJ+tsKsnEMuxBaHy6yhBkZ1FFKcB=8_Q@mail.gmail.com>
+Message-ID: <CAGxFJbRo3pDD2dLPy4WwM-nbZiLsUKqoDVYAv4ri=FLwyyQAfg@mail.gmail.com>
+
+I think the following may provide a clearer explanation:
+
+subs <- c(1,3)
+DFA <- data.frame(id = 1:3)
+ar <- array(1:12, c(3,2,2))
+## yielding
+> ar
+, , 1
+
+     [,1] [,2]
+[1,]    1    4
+[2,]    2    5
+[3,]    3    6
+
+, , 2
+
+     [,1] [,2]
+[1,]    7   10
+[2,]    8   11
+[3,]    9   12
+
+## array subscripting gives
+> ar[subs,,]
+, , 1
+
+     [,1] [,2]
+[1,]    1    4
+[2,]    3    6
+
+, , 2
+
+     [,1] [,2]
+[1,]    7   10
+[2,]    9   12
+
+## Now with df's
+> DFA[["ar"]] <- ar
+>
+> DFM <- data.frame(id = 1:3)
+> DFM[["M"]] <- matrix(1:6, nc =2)
+>
+> str(DFM)
+'data.frame': 3 obs. of  2 variables:
+ $ id: int  1 2 3
+ $ M : int [1:3, 1:2] 1 2 3 4 5 6
+> str(DFA)
+'data.frame': 3 obs. of  2 variables:
+ $ id: int  1 2 3
+ $ ar: int [1:3, 1:2, 1:2] 1 2 3 4 5 6 7 8 9 10 ...
+>
+> ## But the data frame print method for these give
+> DFM
+  id M.1 M.2
+1  1   1   4
+2  2   2   5
+3  3   3   6
+> DFA
+  id ar.1 ar.2 ar.3 ar.4
+1  1    1    4    7   10
+2  2    2    5    8   11
+3  3    3    6    9   12
+>
+> ## [.data.frame subscripting gives
+> DFA[subs,]
+  id ar
+1  1  1
+3  3  3
+> DFM[subs,]
+  id M.1 M.2
+1  1   1   4
+3  3   3   6
+>
+> ## but  explicit array subscripting of course works
+> DFA$ar[match(subs,DFA$id),,]
+, , 1
+
+     [,1] [,2]
+[1,]    1    4
+[2,]    3    6
+
+, , 2
+
+     [,1] [,2]
+[1,]    7   10
+[2,]    9   12
+
+
+Cheers,
+Bert
+
+On Tue, May 9, 2023 at 7:56?AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> Right ... that's what I thought you meant.
+>
+> I'm pretty sure -- but not certain -- that columns of matrices are treated
+> specially by [.data.frame, so that you have to explicitly index a higher
+> dimensional array, e.g. like this:
+>
+>
+> subs <- c(1,3)
+> DFA <- data.frame(id = 1:3)
+> DFA[["ar"]] <- array(1:12, c(3,2,2))
+>
+> DFA$ar[match(subs,DFA$id),,]
+> ##yielding:
+> , , 1
+>
+>      [,1] [,2]
+> [1,]    1    4
+> [2,]    3    6
+>
+> , , 2
+>
+>      [,1] [,2]
+> [1,]    7   10
+> [2,]    9   12
+>
+> You might check, e.g. the "data.table" package, to see if it indexes as
+> you would like with columns that contain arrays.
+>
+> Alternatively, and perhaps preferably depending on your use case, you may
+> wish to create a wholly different data structure or just treat the data
+> frame as a list from the start. Data frames/matrix-like data structures are
+> convenient and appropriate a lot of the time, but not always. R, like any
+> flexible programming language, allows you -- even encourages you -- to
+> create other data structures that fit your needs.
+>
+> Cheers,
+> Bert
+>
+> On Tue, May 9, 2023 at 3:39?AM Georg Kindermann <Georg.Kindermann at gmx.at>
+> wrote:
+>
+>> Thanks!
+>>
+>> No, to be consistent with what I get with a matrix I think it should be
+>> like:
+>>
+>> x <- data.frame(id = DFA$id[1])
+>> x$ar <- DFA$ar[1, , , drop = FALSE]
+>>
+>> str(x)
+>> #'data.frame': 1 obs. of 2 variables:
+>> # $ id: int 1
+>> # $ ar: int [1, 1:2, 1:2] 1 3 5 7
+>>
+>> Georg
+>>
+>>
+>>
+>> Gesendet: Dienstag, 09. Mai 2023 um 09:32 Uhr
+>> Von: "Rui Barradas" <ruipbarradas at sapo.pt>
+>> An: "Georg Kindermann" <Georg.Kindermann at gmx.at>, r-help at r-project.org
+>> Betreff: Re: [R] data.frame with a column containing an array
+>> ?s 11:52 de 08/05/2023, Georg Kindermann escreveu:
+>> > Dear list members,
+>> >
+>> > when I create a data.frame containing an array I had expected, that I
+>> get a similar result, when subsetting it, like having a matrix in a
+>> data.frame. But instead I get only the first element and not all values of
+>> the remaining dimensions. Differences are already when creating the
+>> data.frame, where I can use `I` in case of a matrix but for an array I am
+>> only able to insert it in a second step.
+>> >
+>> > DFA <- data.frame(id = 1:2)
+>> > DFA[["ar"]] <- array(1:8, c(2,2,2))
+>> >
+>> > DFA[1,]
+>> > # id ar
+>> > #1 1 1
+>> >
+>> > DFM <- data.frame(id = 1:2, M = I(matrix(1:4, 2)))
+>> >
+>> > DFM[1,]
+>> > # id M.1 M.2
+>> > #1 1 1 3
+>> >
+>> > The same when trying to use merge, where only the first value is kept.
+>> >
+>> > merge(DFA, data.frame(id = 1))
+>> > # id ar
+>> > #1 1 1
+>> >
+>> > merge(DFM, data.frame(id = 1))
+>> > # id M.1 M.2
+>> > #1 1 1 3
+>> >
+>> > Is there a way to use an array in a data.frame like I can use a matrix
+>> in a data.frame?
+>> >
+>> > I am using R version 4.3.0.
+>> >
+>> > Kind regards,
+>> > Georg
+>> >
+>> > ______________________________________________
+>> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > https://stat.ethz.ch/mailman/listinfo/r-help
+>> > PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html[http://www.R-project.org/posting-guide.html]
+>> > and provide commented, minimal, self-contained, reproducible code.
+>> Hello,
+>>
+>> Are you looking for something like this?
+>>
+>>
+>> DFA <- data.frame(id = 1:2)
+>> DFA[["ar"]] <- array(1:8, c(2,2,2))
+>>
+>> DFA$ar[1, , ]
+>> #> [,1] [,2]
+>> #> [1,] 1 5
+>> #> [2,] 3 7
+>>
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From Georg@K|nderm@nn @end|ng |rom gmx@@t  Tue May  9 19:26:45 2023
+From: Georg@K|nderm@nn @end|ng |rom gmx@@t (Georg Kindermann)
+Date: Tue, 9 May 2023 19:26:45 +0200
+Subject: [R] data.frame with a column containing an array
+In-Reply-To: <CAGxFJbS0kn+g+hk7v_NJ+tsKsnEMuxBaHy6yhBkZ1FFKcB=8_Q@mail.gmail.com>
+References: <trinity-2eda1037-de24-4b26-849a-41f0a1104f03-1683543179774@3c-app-gmx-bap03>
+ <7daa5b29-0958-eed7-47f2-0b9928ef17b1@sapo.pt>
+ <trinity-00875706-f414-441a-8594-358db7d8f23c-1683622242413@3c-app-gmx-bap56>
+ <CAGxFJbS0kn+g+hk7v_NJ+tsKsnEMuxBaHy6yhBkZ1FFKcB=8_Q@mail.gmail.com>
+Message-ID: <trinity-a85ebf26-b258-4213-9e7b-b4b7636a3f2c-1683653205292@3c-app-gmx-bs49>
+
+Thanks!
+With data.table I'm not able to create it.
+
+DT <- data.table::data.table(id = 1:2)
+DT$ar <- array(1:8, c(2,2,2))
+#Error in set(x, j = name, value = value) : 
+#  Supplied 8 items to be assigned to 2 items of column 'ar'. If you wish to 'recycle' the RHS please use rep() to make this intent clear to readers of your code.
+
+DFA <- data.frame(id = 1:2)
+DFA[["ar"]] <- array(1:8, c(2,2,2))
+data.table::as.data.table(DFA)
+#Error in setDT(ans, key = key) : 
+#  All elements in argument 'x' to 'setDT' must be of same length, but the profile of input lengths (length:frequency) is: [0:1, 2:2]
+#The first entry with fewer than 2 entries is 3
+
+But with tibble it works as expected.
+
+TI <- tibble::tibble(id = 1:2, ar = array(1:8, c(2,2,2)))
+str(TI[1,])
+#tibble [1 ? 2] (S3: tbl_df/tbl/data.frame)
+# $ id: int 1
+# $ ar: int [1, 1:2, 1:2] 1 3 5 7
+
+But it would be nice if something similar would also work with data.frame.
+
+Georg
+?
+?
+?
+
+Gesendet:?Dienstag, 09. Mai 2023 um 16:56 Uhr
+Von:?"Bert Gunter" <bgunter.4567 at gmail.com>
+An:?"Georg Kindermann" <Georg.Kindermann at gmx.at>
+Cc:?"Rui Barradas" <ruipbarradas at sapo.pt>, r-help at r-project.org
+Betreff:?Re: [R] data.frame with a column containing an array
+
+Right ... that's what I thought you meant.
+?
+I'm pretty sure -- but not certain -- that columns of matrices are treated specially by [.data.frame, so that you have to explicitly index a higher dimensional array, e.g. like this:
+?
+subs <- c(1,3)
+DFA <- data.frame(id = 1:3)
+DFA[["ar"]] <- array(1:12, c(3,2,2))
+
+DFA$ar[match(subs,DFA$id),,]
+##yielding:
+, , 1
+
+? ? ?[,1] [,2]
+[1,] ? ?1 ? ?4
+[2,] ? ?3 ? ?6
+
+, , 2
+
+? ? ?[,1] [,2]
+[1,] ? ?7 ? 10
+[2,] ? ?9 ? 12
+?
+You might check, e.g. the "data.table" package, to see if it indexes as you would like with columns that contain arrays.
+?
+Alternatively, and perhaps preferably depending on your use case, you may wish to create a wholly different data structure or just treat the data frame as a list from the start. Data frames/matrix-like data structures are convenient and appropriate a lot of the time, but not always. R, like any flexible programming language, allows you -- even encourages you -- to create other data structures that fit your needs.
+?
+Cheers,
+Bert?
+
+
