@@ -4443,3 +4443,765 @@ Best regards,
 Ivan
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu May 11 08:39:25 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 11 May 2023 09:39:25 +0300
+Subject: [R] win110 + R 4.3.0 dowload only when method = "wininet"
+In-Reply-To: <IA0PR19MB7289B691DF3A0AA0E2B79141F5779@IA0PR19MB7289.namprd19.prod.outlook.com>
+References: <IA0PR19MB72890261CF953C010DE9E381F5719@IA0PR19MB7289.namprd19.prod.outlook.com>
+ <20230510111342.21544331@Tarkus>
+ <IA0PR19MB7289B691DF3A0AA0E2B79141F5779@IA0PR19MB7289.namprd19.prod.outlook.com>
+Message-ID: <20230511090040.2015ff59@Tarkus>
+
+On Wed, 10 May 2023 22:13:15 +0000
+Sebasti?n Kruk Gencarelli <zloto_kruk at hotmail.com> wrote:
+
+> I don?t know what kind of proxy is used by my system.
+
+Do you at least know whether it's an HTTP proxy, a SOCKS proxy, or
+something completely different? Do you need to authenticate to the
+proxy?
+
+> How I can add my proxy and port to my R configuration?
+
+libcurl recognises the "http_proxy" environment variable, which can
+include the protocol, the address and the port of the proxy server:
+https://curl.se/libcurl/c/CURLOPT_PROXY.html
+
+For example, if you have a SOCKS5 hostname-resolving proxy on address
+192.2.0.1 and port 1080, you can try calling Sys.setenv('http_proxy' =
+'socks5h://192.2.0.1:1080'). For a different example, an HTTP proxy on
+198.51.100.2, port 8080 can be set up as Sys.setenv('http_proxy' =
+'http://198.51.100.2:8080'). (In both cases, the proxy will be used by
+curl for HTTP and HTTPS access, but not, say, FTP or other protocols.
+For HTTPS via HTTP proxy, curl will be using the CONNECT verb.)
+
+Detecting the right proxy for a given address (and yes, it's expected
+to do that per-address) is hard?. It's been a "nice to have" feature in
+curl for years: https://curl.se/docs/todo.html#auto_detect_proxy, so
+I'm afraid it won't happen any time soon. It's unfortunate that the
+curl back-end will break something that used to work with wininet.
+
+I wonder whether it could make sense to call
+WinHttpGetIEProxyConfigForCurrentUser() [*] when setting up connections
+on Windows. There's no simple way to deal with the proxy
+auto-configuration file [**], but we could at least call
+curl_easy_setopt(handle, CURLOPT_PROXY,
+wchar_to_current_locale(proxy_config->lpszProxy)); to make the
+transition from wininet to curl slightly less painful. Or would that
+break even more installations? This won't help in the more complicated
+cases [***], though.
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://learn.microsoft.com/en-us/windows/win32/api/winhttp/nf-winhttp-winhttpgetieproxyconfigforcurrentuser
+
+[**]
+https://developer.mozilla.org/en-US/docs/Web/HTTP/Proxy_servers_and_tunneling/Proxy_Auto-Configuration_PAC_file
+Then again, library(V8) is nowadays more or less required for R package
+development if not R development proper.
+
+[***]
+https://stat.ethz.ch/pipermail/r-help/2022-September/475917.html
+
+
+From j@zh@o @end|ng |rom ye@h@net  Thu May 11 10:56:41 2023
+From: j@zh@o @end|ng |rom ye@h@net (Jinsong Zhao)
+Date: Thu, 11 May 2023 16:56:41 +0800
+Subject: [R] Error in as.POSIXlt.character(x, tz, ...)
+Message-ID: <cd5a1c6a-7f97-f22a-8626-13f8637bce64@yeah.net>
+
+Hi there,
+
+When I run the following code in R 4.3.0 on FreeBSD, I got error.
+
+ > as.POSIXct("1970-01-01 00:00.00 UTC")
+Error in as.POSIXlt.character(x, tz, ...) :
+   character string is not in a standard unambiguous format
+
+The same code could give correct answer in R 4.3.0 on Windows, and R 
+4.1.2 on a old CentOS.
+
+ > as.POSIXct("1970-01-01 00:00.00 UTC")
+[1] "1970-01-01 CST"
+
+I confirmed that all the 3 OSes give the same time zone:
+ > Sys.timezone()
+[1] "Asia/Shanghai"
+
+What's wrong with the R on FreeBSD? Any hint? Thanks in advance.
+
+Best,
+Jinsong
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu May 11 11:22:18 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 11 May 2023 12:22:18 +0300
+Subject: [R] Error in as.POSIXlt.character(x, tz, ...)
+In-Reply-To: <cd5a1c6a-7f97-f22a-8626-13f8637bce64@yeah.net>
+References: <cd5a1c6a-7f97-f22a-8626-13f8637bce64@yeah.net>
+Message-ID: <20230511122218.2d92c423@arachnoid>
+
+? Thu, 11 May 2023 16:56:41 +0800
+Jinsong Zhao <jszhao at yeah.net> ?????:
+
+> When I run the following code in R 4.3.0 on FreeBSD, I got error.
+> 
+>  > as.POSIXct("1970-01-01 00:00.00 UTC")  
+> Error in as.POSIXlt.character(x, tz, ...) :
+>    character string is not in a standard unambiguous format
+
+Do strptime("1970-01-01 00:00.00 UTC", "%Y-%m-%d %H:%M", '') and
+strptime("1970-01-01 00:00.00 UTC", "%Y-%m-%d", '') both return NA for
+you on FreeBSD? If not, can you trace the execution using R's debugger
+to see which parts are returned as NA, failing the test in
+as.POSIXlt.character?
+
+I think that strptime() should have discarded the trailing parts of the
+string and matched at least the beginning (though not the ".00 UTC"
+part because it doesn't correspond to the formats tried by strptime()).
+Moreover, there shouldn't be significant difference between the
+platforms, because R seems to always use an internal implementation of
+strptime(). Are you using a multi-byte locale? (What's your
+sessionInfo() on both a system where it works and the system where it
+fails?)
+
+-- 
+Best regards,
+Ivan
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Thu May 11 11:24:30 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Thu, 11 May 2023 02:24:30 -0700
+Subject: [R] Error in as.POSIXlt.character(x, tz, ...)
+In-Reply-To: <cd5a1c6a-7f97-f22a-8626-13f8637bce64@yeah.net>
+References: <cd5a1c6a-7f97-f22a-8626-13f8637bce64@yeah.net>
+Message-ID: <A08C5995-5E9F-4953-AD8D-11765755F3DC@dcn.davis.ca.us>
+
+I find your claim suspect... a period is not interchangeable with a colon.
+
+On May 11, 2023 1:56:41 AM PDT, Jinsong Zhao <jszhao at yeah.net> wrote:
+>Hi there,
+>
+>When I run the following code in R 4.3.0 on FreeBSD, I got error.
+>
+>> as.POSIXct("1970-01-01 00:00.00 UTC")
+>Error in as.POSIXlt.character(x, tz, ...) :
+>  character string is not in a standard unambiguous format
+>
+>The same code could give correct answer in R 4.3.0 on Windows, and R 4.1.2 on a old CentOS.
+>
+>> as.POSIXct("1970-01-01 00:00.00 UTC")
+>[1] "1970-01-01 CST"
+>
+>I confirmed that all the 3 OSes give the same time zone:
+>> Sys.timezone()
+>[1] "Asia/Shanghai"
+>
+>What's wrong with the R on FreeBSD? Any hint? Thanks in advance.
+>
+>Best,
+>Jinsong
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From j@zh@o @end|ng |rom ye@h@net  Thu May 11 11:37:23 2023
+From: j@zh@o @end|ng |rom ye@h@net (Jinsong Zhao)
+Date: Thu, 11 May 2023 17:37:23 +0800
+Subject: [R] Error in as.POSIXlt.character(x, tz, ...)
+In-Reply-To: <A08C5995-5E9F-4953-AD8D-11765755F3DC@dcn.davis.ca.us>
+References: <cd5a1c6a-7f97-f22a-8626-13f8637bce64@yeah.net>
+ <A08C5995-5E9F-4953-AD8D-11765755F3DC@dcn.davis.ca.us>
+Message-ID: <eebd3924-7036-6ab9-c3e0-0b14e5cc2317@yeah.net>
+
+On 2023/5/11 17:24, Jeff Newmiller wrote:
+> I find your claim suspect... a period is not interchangeable with a colon.
+Good catching, but
+
+In R 4.3.0 on FreeBSD, the same error after changing the period to a colon:
+ > as.POSIXct("1970-01-01 00:00:00 UTC")
+Error in as.POSIXlt.character(x, tz, ...) :
+   character string is not in a standard unambiguous format
+
+I copy the code from a web page. It works in R 4.3.0 on Windows and R 
+4.1.2 on an old CentOS.
+
+
+Best,
+Jinsong
+
+> 
+> On May 11, 2023 1:56:41 AM PDT, Jinsong Zhao <jszhao at yeah.net> wrote:
+>> Hi there,
+>>
+>> When I run the following code in R 4.3.0 on FreeBSD, I got error.
+>>
+>>> as.POSIXct("1970-01-01 00:00.00 UTC")
+>> Error in as.POSIXlt.character(x, tz, ...) :
+>>   character string is not in a standard unambiguous format
+>>
+>> The same code could give correct answer in R 4.3.0 on Windows, and R 4.1.2 on a old CentOS.
+>>
+>>> as.POSIXct("1970-01-01 00:00.00 UTC")
+>> [1] "1970-01-01 CST"
+>>
+>> I confirmed that all the 3 OSes give the same time zone:
+>>> Sys.timezone()
+>> [1] "Asia/Shanghai"
+>>
+>> What's wrong with the R on FreeBSD? Any hint? Thanks in advance.
+>>
+>> Best,
+>> Jinsong
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From j@zh@o @end|ng |rom ye@h@net  Thu May 11 11:51:33 2023
+From: j@zh@o @end|ng |rom ye@h@net (Jinsong Zhao)
+Date: Thu, 11 May 2023 17:51:33 +0800
+Subject: [R] Error in as.POSIXlt.character(x, tz, ...)
+In-Reply-To: <20230511122218.2d92c423@arachnoid>
+References: <cd5a1c6a-7f97-f22a-8626-13f8637bce64@yeah.net>
+ <20230511122218.2d92c423@arachnoid>
+Message-ID: <f6b91b69-f860-72c7-6b24-5352f94119e7@yeah.net>
+
+On 2023/5/11 17:22, Ivan Krylov wrote:
+> ? Thu, 11 May 2023 16:56:41 +0800
+> Jinsong Zhao <jszhao at yeah.net> ?????:
+> 
+>> When I run the following code in R 4.3.0 on FreeBSD, I got error.
+>>
+>>   > as.POSIXct("1970-01-01 00:00.00 UTC")
+>> Error in as.POSIXlt.character(x, tz, ...) :
+>>     character string is not in a standard unambiguous format
+> 
+> Do strptime("1970-01-01 00:00.00 UTC", "%Y-%m-%d %H:%M", '') and
+> strptime("1970-01-01 00:00.00 UTC", "%Y-%m-%d", '') both return NA for
+> you on FreeBSD? If not, can you trace the execution using R's debugger
+> to see which parts are returned as NA, failing the test in
+> as.POSIXlt.character?
+
+Both codes do not return NA on FreeBSD:
+
+ > strptime("1970-01-01 00:00.00 UTC", "%Y-%m-%d %H:%M", '')
+[1] "1970-01-01 CST"
+ > strptime("1970-01-01 00:00.00 UTC", "%Y-%m-%d", '')
+[1] "1970-01-01 CST"
+
+I do not know how to use R's debugger...
+
+> 
+> I think that strptime() should have discarded the trailing parts of the
+> string and matched at least the beginning (though not the ".00 UTC"
+> part because it doesn't correspond to the formats tried by strptime()).
+> Moreover, there shouldn't be significant difference between the
+> platforms, because R seems to always use an internal implementation of
+> strptime(). Are you using a multi-byte locale? (What's your
+> sessionInfo() on both a system where it works and the system where it
+> fails?)
+> 
+
+The sessionInfo on FreeBSD said:
+tzcode source: system (FreeBSD)
+
+But on Windows it said:
+tzcode source: internal
+
+Could it be because of this?
+
+
+The sessionInfo on FreeBSD is:
+
+ > sessionInfo()
+R version 4.3.0 (2023-04-21)
+Platform: amd64-portbld-freebsd13.1 (64-bit)
+Running under: FreeBSD xw6600 13.2-RELEASE FreeBSD 13.2-RELEASE 
+releng/13.2-n254617-525ecfdad597 GENERIC amd64
+
+Matrix products: default
+LAPACK: /usr/local/lib/R/lib/libRlapack.so.4.3.0;  LAPACK version 3.11.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: Asia/Shanghai
+tzcode source: system (FreeBSD)
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.3.0
+
+The sessionInfo on Windows is:
+ > sessionInfo()
+R version 4.3.0 (2023-04-21 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 11 x64 (build 22621)
+
+Matrix products: default
+
+
+locale:
+[1] LC_COLLATE=Chinese (Simplified)_China.utf8
+[2] LC_CTYPE=Chinese (Simplified)_China.utf8
+[3] LC_MONETARY=Chinese (Simplified)_China.utf8
+[4] LC_NUMERIC=C
+[5] LC_TIME=Chinese (Simplified)_China.utf8
+
+time zone: Asia/Shanghai
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.3.0 tools_4.3.0
+ >
+
+The sessionInfo on CentOS is:
+ > sessionInfo()
+R version 4.1.2 (2021-11-01)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: CentOS Linux 7 (Core)
+
+Matrix products: default
+BLAS:   /home/jszhao/software/lib64/R/lib/libRblas.so
+LAPACK: /home/jszhao/software/lib64/R/lib/libRlapack.so
+
+locale:
+  [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C
+  [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8
+  [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8
+  [7] LC_PAPER=en_US.UTF-8       LC_NAME=C
+  [9] LC_ADDRESS=C               LC_TELEPHONE=C
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+loaded via a namespace (and not attached):
+[1] compiler_4.1.2
+ >
+
+
+From j@zh@o @end|ng |rom ye@h@net  Thu May 11 11:59:18 2023
+From: j@zh@o @end|ng |rom ye@h@net (Jinsong Zhao)
+Date: Thu, 11 May 2023 17:59:18 +0800
+Subject: [R] Error in as.POSIXlt.character(x, tz, ...)
+In-Reply-To: <cd5a1c6a-7f97-f22a-8626-13f8637bce64@yeah.net>
+References: <cd5a1c6a-7f97-f22a-8626-13f8637bce64@yeah.net>
+Message-ID: <c0ea24b8-10fc-990f-2bd4-0e8ecc4cff87@yeah.net>
+
+The origin of this problem is when I try to update rstan package in R 
+4.3.0 on FreeBSD. I get the same error as that 
+https://github.com/stan-dev/rstan/issues/612
+
+However, I did not encounter this problem when using R 4.2.x or 4.1.x on 
+FreeBSD.
+
+Best,
+Jinsong
+
+On 2023/5/11 16:56, Jinsong Zhao wrote:
+> Hi there,
+> 
+> When I run the following code in R 4.3.0 on FreeBSD, I got error.
+> 
+>  > as.POSIXct("1970-01-01 00:00.00 UTC")
+> Error in as.POSIXlt.character(x, tz, ...) :
+>  ? character string is not in a standard unambiguous format
+> 
+> The same code could give correct answer in R 4.3.0 on Windows, and R 
+> 4.1.2 on a old CentOS.
+> 
+>  > as.POSIXct("1970-01-01 00:00.00 UTC")
+> [1] "1970-01-01 CST"
+> 
+> I confirmed that all the 3 OSes give the same time zone:
+>  > Sys.timezone()
+> [1] "Asia/Shanghai"
+> 
+> What's wrong with the R on FreeBSD? Any hint? Thanks in advance.
+> 
+> Best,
+> Jinsong
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu May 11 12:13:48 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 11 May 2023 13:13:48 +0300
+Subject: [R] Error in as.POSIXlt.character(x, tz, ...)
+In-Reply-To: <f6b91b69-f860-72c7-6b24-5352f94119e7@yeah.net>
+References: <cd5a1c6a-7f97-f22a-8626-13f8637bce64@yeah.net>
+ <20230511122218.2d92c423@arachnoid>
+ <f6b91b69-f860-72c7-6b24-5352f94119e7@yeah.net>
+Message-ID: <20230511131348.6880eee4@arachnoid>
+
+? Thu, 11 May 2023 17:51:33 +0800
+Jinsong Zhao <jszhao at yeah.net> ?????:
+
+> Both codes do not return NA on FreeBSD:
+> 
+>  > strptime("1970-01-01 00:00.00 UTC", "%Y-%m-%d %H:%M", '')  
+> [1] "1970-01-01 CST"
+>  > strptime("1970-01-01 00:00.00 UTC", "%Y-%m-%d", '')  
+> [1] "1970-01-01 CST"
+
+I must have misread the code of as.POSIXlt.character then.
+
+> I do not know how to use R's debugger...
+
+In short, debugonce(as.POSIXlt.character) will prepare R to start the
+debugger once the function is called. The debugger prompt is described
+in ?browser; it's mostly like R's prompt (you can call print(variable)
+and other, more complicated expressions), but there are special
+commands like "n" (next statement), "s" (step inside the function call)
+and so on.
+
+Call:
+
+debugonce(as.POSIXlt.character)
+as.POSIXct("1970-01-01 00:00.00 UTC")
+
+Use n to step over function calls and s to step inside for loops. See
+what's returned by strptime() calls inside this function. It's raising
+an exception because all of them contain NAs somewhere; which element is
+NA? What are the exact arguments used to call strptime()?
+
+This doesn't seem to be due to differences in locale: both CentOS and
+FreeBSD use en_US.UTF-8.
+
+-- 
+Best regards,
+Ivan
+
+
+From j@zh@o @end|ng |rom ye@h@net  Thu May 11 16:15:49 2023
+From: j@zh@o @end|ng |rom ye@h@net (Jinsong Zhao)
+Date: Thu, 11 May 2023 22:15:49 +0800
+Subject: [R] is.na(strptime (...)) return TRUE on FreeBSD
+Message-ID: <92b969e2-ddaf-b08e-9cff-918284daf2f8@yeah.net>
+
+Hi there,
+
+The following codes may cause the problem in R 4.3.0 on FreeBSD in my 
+last post: Error in as.POSIXlt.character(x, tz, ...)
+
+ > (d <- strptime("1970-01-01 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz = ""))
+[1] "1970-01-01 12:00:00 CST"
+ > is.na(d)
+[1] TRUE
+
+In R 4.3.0 on windows,
+
+ > (d <- strptime("1970-01-01 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz = ""))
+[1] "1970-01-01 12:00:00 CST"
+ > is.na(d)
+[1] FALSE
+
+The only difference is the result of is.na().
+
+Best,
+Jinsong
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu May 11 16:29:10 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 11 May 2023 17:29:10 +0300
+Subject: [R] win110 + R 4.3.0 dowload only when method = "wininet"
+In-Reply-To: <IA0PR19MB7289388C7E3C0ADBE314FAB1F5749@IA0PR19MB7289.namprd19.prod.outlook.com>
+References: <IA0PR19MB72890261CF953C010DE9E381F5719@IA0PR19MB7289.namprd19.prod.outlook.com>
+ <20230510111342.21544331@Tarkus>
+ <IA0PR19MB7289B691DF3A0AA0E2B79141F5779@IA0PR19MB7289.namprd19.prod.outlook.com>
+ <20230511090040.2015ff59@Tarkus>
+ <IA0PR19MB7289388C7E3C0ADBE314FAB1F5749@IA0PR19MB7289.namprd19.prod.outlook.com>
+Message-ID: <20230511172910.51e01137@arachnoid>
+
+? Thu, 11 May 2023 13:49:43 +0000
+Sebasti?n Kruk Gencarelli <zloto_kruk at hotmail.com> ?????:
+
+> I tried Sys.env(?) but it is forgoted in the next session.
+
+If Sys.setenv() works for you, you can put the line
+http_proxy=http://192.2.0.1:8080/ (or an appropriate equivalent) into
+an environment file that R reads when it starts up. Specifically, this
+environment file could be named ".Renviron" and placed into your
+Documents directory, but there are other options too:
+https://cran.r-project.org/bin/windows/base/rw-FAQ.html#What-are-HOME-and-working-directories_003f
+(see questions 2.13 and 2.14 for what R considers "the home directory"
+and how environment variables can be set).
+
+It could be worth raising a feature request for automatic proxy
+detection on Windows when libcurl download method is used, though I
+don't know whether it would be practical to implement it.
+
+-- 
+Best regards,
+Ivan
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu May 11 17:06:05 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 11 May 2023 18:06:05 +0300
+Subject: [R] is.na(strptime (...)) return TRUE on FreeBSD
+In-Reply-To: <92b969e2-ddaf-b08e-9cff-918284daf2f8@yeah.net>
+References: <92b969e2-ddaf-b08e-9cff-918284daf2f8@yeah.net>
+Message-ID: <20230511180605.0c4bc855@arachnoid>
+
+? Thu, 11 May 2023 22:15:49 +0800
+Jinsong Zhao <jszhao at yeah.net> ?????:
+
+>  > (d <- strptime("1970-01-01 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz
+>  > = ""))  
+> [1] "1970-01-01 12:00:00 CST"
+>  > is.na(d)  
+> [1] TRUE
+
+Glad to see you're making progress! (Sometimes, is.na(strptime(...)) ==
+TRUE is what progress looks like.)
+
+is.na.POSIXlt works by converting the "unpacked" date+time into POSIXct
+(seconds since 1970-01-01 00:00 UTC) and then checking whether it's NA.
+Evidently, as.POSIXct(d) returns NA. (Right?)
+
+What does unclass(d) look like on FreeBSD? Does it contain any NAs
+itself, or do they originate somewhere in as.POSIXct(d)?
+
+My current hypothesis is that FreeBSD mktime() doesn't like something
+about the timezone, but I may be wrong. Is is.na(strptime(
+"1970-01-03 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz = '')) also TRUE?
+
+-- 
+Best regards,
+Ivan
+
+
+From j@zh@o @end|ng |rom ye@h@net  Thu May 11 17:16:45 2023
+From: j@zh@o @end|ng |rom ye@h@net (Jinsong Zhao)
+Date: Thu, 11 May 2023 23:16:45 +0800
+Subject: [R] is.na(strptime (...)) return TRUE on FreeBSD
+In-Reply-To: <20230511180605.0c4bc855@arachnoid>
+References: <92b969e2-ddaf-b08e-9cff-918284daf2f8@yeah.net>
+ <20230511180605.0c4bc855@arachnoid>
+Message-ID: <0e917c86-051b-9750-1aa8-354f5c38b01e@yeah.net>
+
+
+
+On 2023/5/11 23:06, Ivan Krylov wrote:
+> ? Thu, 11 May 2023 22:15:49 +0800
+> Jinsong Zhao <jszhao at yeah.net> ?????:
+>
+>>   > (d <- strptime("1970-01-01 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz
+>>   > = ""))
+>> [1] "1970-01-01 12:00:00 CST"
+>>   > is.na(d)
+>> [1] TRUE
+> Glad to see you're making progress! (Sometimes, is.na(strptime(...)) ==
+> TRUE is what progress looks like.)
+>
+> is.na.POSIXlt works by converting the "unpacked" date+time into POSIXct
+> (seconds since 1970-01-01 00:00 UTC) and then checking whether it's NA.
+> Evidently, as.POSIXct(d) returns NA. (Right?)
+>
+> What does unclass(d) look like on FreeBSD? Does it contain any NAs
+> itself, or do they originate somewhere in as.POSIXct(d)?
+>
+> My current hypothesis is that FreeBSD mktime() doesn't like something
+> about the timezone, but I may be wrong. Is is.na(strptime(
+> "1970-01-03 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz = '')) also TRUE?
+After I post this thread to the mailing list, I dig into 
+.Internal(as.POSIXct(d, "")). I think it may be a bug, so I filed a bug 
+report on R's bugzilla.
+
+Yes, is.na(strptime("1970-01-03 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz 
+= '')) also TRUE.
+
+I am not familiar with any system function. I just notice that 
+datetime.c in src/main/ of R 4.3.0 increase 500+ more lines compared to 
+that of R 4.2.0.
+
+Thank you very much for pointing me to the right direction.
+
+Best,
+Jinsong
+
+
+From rhur||n @end|ng |rom gwdg@de  Thu May 11 19:34:19 2023
+From: rhur||n @end|ng |rom gwdg@de (Rainer Hurling)
+Date: Thu, 11 May 2023 19:34:19 +0200
+Subject: [R] is.na(strptime (...)) return TRUE on FreeBSD
+In-Reply-To: <92b969e2-ddaf-b08e-9cff-918284daf2f8@yeah.net>
+References: <92b969e2-ddaf-b08e-9cff-918284daf2f8@yeah.net>
+Message-ID: <f7ea60b8-db59-8026-d46c-1cc05799cc9f@gwdg.de>
+
+Am 11.05.23 um 16:15 schrieb Jinsong Zhao:
+> Hi there,
+> 
+> The following codes may cause the problem in R 4.3.0 on FreeBSD in my 
+> last post: Error in as.POSIXlt.character(x, tz, ...)
+> 
+>  > (d <- strptime("1970-01-01 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz = 
+> ""))
+> [1] "1970-01-01 12:00:00 CST"
+>  > is.na(d)
+> [1] TRUE
+> 
+> In R 4.3.0 on windows,
+> 
+>  > (d <- strptime("1970-01-01 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz = 
+> ""))
+> [1] "1970-01-01 12:00:00 CST"
+>  > is.na(d)
+> [1] FALSE
+> 
+> The only difference is the result of is.na().
+> 
+> Best,
+> Jinsong
+
+I can't confirm, that is.na(d) returns TRUE on FreeBSD. On my boxes it 
+always gives
+
+   > (d <- strptime("1970-01-01 12:00:00 UTC",
+                    "%Y-%m-%d %H:%M:%OS", tz = ""))
+   [1] "1970-01-01 12:00:00 CET"
+   > is.na(d)
+   [1] FALSE
+
+
+# uname ...
+14.0-CURRENT FreeBSD 14.0-CURRENT #0 main-n262658-b347c2284603: Sat Apr 
+29 11:20:31 CEST 2023
+
+Best wishes,
+Rainer
+
+
+From j@zh@o @end|ng |rom ye@h@net  Fri May 12 00:27:00 2023
+From: j@zh@o @end|ng |rom ye@h@net (Jinsong Zhao)
+Date: Fri, 12 May 2023 06:27:00 +0800
+Subject: [R] is.na(strptime (...)) return TRUE on FreeBSD
+In-Reply-To: <f7ea60b8-db59-8026-d46c-1cc05799cc9f@gwdg.de>
+References: <92b969e2-ddaf-b08e-9cff-918284daf2f8@yeah.net>
+ <f7ea60b8-db59-8026-d46c-1cc05799cc9f@gwdg.de>
+Message-ID: <709938b7-3f7c-9f0f-a52b-1b1a32e21b72@yeah.net>
+
+
+
+On 2023/5/12 1:34, Rainer Hurling wrote:
+> Am 11.05.23 um 16:15 schrieb Jinsong Zhao:
+>> Hi there,
+>>
+>> The following codes may cause the problem in R 4.3.0 on FreeBSD in my 
+>> last post: Error in as.POSIXlt.character(x, tz, ...)
+>>
+>> ?> (d <- strptime("1970-01-01 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz 
+>> = ""))
+>> [1] "1970-01-01 12:00:00 CST"
+>> ?> is.na(d)
+>> [1] TRUE
+>>
+>> In R 4.3.0 on windows,
+>>
+>> ?> (d <- strptime("1970-01-01 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz 
+>> = ""))
+>> [1] "1970-01-01 12:00:00 CST"
+>> ?> is.na(d)
+>> [1] FALSE
+>>
+>> The only difference is the result of is.na().
+>>
+>> Best,
+>> Jinsong
+>
+> I can't confirm, that is.na(d) returns TRUE on FreeBSD. On my boxes it 
+> always gives
+>
+> ? > (d <- strptime("1970-01-01 12:00:00 UTC",
+> ?????????????????? "%Y-%m-%d %H:%M:%OS", tz = ""))
+> ? [1] "1970-01-01 12:00:00 CET"
+> ? > is.na(d)
+> ? [1] FALSE
+>
+>
+> # uname ...
+> 14.0-CURRENT FreeBSD 14.0-CURRENT #0 main-n262658-b347c2284603: Sat 
+> Apr 29 11:20:31 CEST 2023
+>
+> Best wishes,
+> Rainer
+>
+I am on a FreeBSD 13.2-RELEASE.
+
+|> sessionInfo() R version 4.3.0 (2023-04-21) Platform: 
+amd64-portbld-freebsd13.1 (64-bit) Running under: FreeBSD xw6600 
+13.2-RELEASE FreeBSD 13.2-RELEASE releng/13.2-n254617-525ecfdad597 
+GENERIC amd64 ||Matrix products: default LAPACK: 
+/usr/local/lib/R/lib/libRlapack.so.4.3.0; LAPACK version 3.11.0 locale: 
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8 time 
+zone: Asia/Shanghai tzcode source: system (FreeBSD) attached base 
+packages: [1] stats graphics grDevices utils datasets methods base 
+loaded via a namespace (and not attached): [1] compiler_4.3.0|||
+
+
+From j@zh@o @end|ng |rom ye@h@net  Fri May 12 02:47:53 2023
+From: j@zh@o @end|ng |rom ye@h@net (Jinsong Zhao)
+Date: Fri, 12 May 2023 08:47:53 +0800
+Subject: [R] is.na(strptime (...)) return TRUE on FreeBSD
+In-Reply-To: <20230511180605.0c4bc855@arachnoid>
+References: <92b969e2-ddaf-b08e-9cff-918284daf2f8@yeah.net>
+ <20230511180605.0c4bc855@arachnoid>
+Message-ID: <e86f9114-d565-464e-0733-70eece6d5417@yeah.net>
+
+On 2023/5/11 23:06, Ivan Krylov wrote:
+> ? Thu, 11 May 2023 22:15:49 +0800
+> Jinsong Zhao <jszhao at yeah.net> ?????:
+> 
+>>   > (d <- strptime("1970-01-01 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz
+>>   > = ""))
+>> [1] "1970-01-01 12:00:00 CST"
+>>   > is.na(d)
+>> [1] TRUE
+> 
+> Glad to see you're making progress! (Sometimes, is.na(strptime(...)) ==
+> TRUE is what progress looks like.)
+> 
+> is.na.POSIXlt works by converting the "unpacked" date+time into POSIXct
+> (seconds since 1970-01-01 00:00 UTC) and then checking whether it's NA.
+> Evidently, as.POSIXct(d) returns NA. (Right?)
+> 
+> What does unclass(d) look like on FreeBSD? Does it contain any NAs
+> itself, or do they originate somewhere in as.POSIXct(d)?
+
+I just forgot to answer your question.
+
+unclass(d) has $gmtoff with value of NA. However, in R 4.3.0 on Windows 
+this slot also has the value of NA. as.POSIXct(d) on FreeBSD gives NA.
+
+> 
+> My current hypothesis is that FreeBSD mktime() doesn't like something
+> about the timezone, but I may be wrong. Is is.na(strptime(
+> "1970-01-03 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz = '')) also TRUE?
+>
+
+
