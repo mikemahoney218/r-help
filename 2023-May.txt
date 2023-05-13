@@ -5205,3 +5205,455 @@ this slot also has the value of NA. as.POSIXct(d) on FreeBSD gives NA.
 >
 
 
+From jr@| @end|ng |rom po@teo@no  Fri May 12 12:16:28 2023
+From: jr@| @end|ng |rom po@teo@no (Rasmus Liland)
+Date: Fri, 12 May 2023 10:16:28 +0000
+Subject: [R] is.na(strptime (...)) return TRUE on FreeBSD
+In-Reply-To: <e86f9114-d565-464e-0733-70eece6d5417@yeah.net>
+References: <92b969e2-ddaf-b08e-9cff-918284daf2f8@yeah.net>
+ <20230511180605.0c4bc855@arachnoid>
+ <e86f9114-d565-464e-0733-70eece6d5417@yeah.net>
+Message-ID: <ZF4R_GIddc3cIuyc@posteo.no>
+
+Hi!  I ran the code
+
+	(d <- strptime("1970-01-01 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz = ""))
+	is.na(d)
+	dput(unclass(d))
+	as.POSIXct(d)
+	(d <- is.na(strptime("1970-01-03 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz = '')))
+	is.na(d)
+	dput(unclass(d))
+	as.POSIXct(d)
+
+on ?R 4.2.3-1 on Linux 6.2.11-arch1-1? and
+?R 4.1.0 on FreeBSD 13.0-RELEASE #0 releng/13.0-n244733-ea31abc261f,?
+yielding the same result:
+
+	[1] "1970-01-01 12:00:00 CET"
+	[1] FALSE
+	list(sec = 0, min = 0L, hour = 12L, mday = 1L, mon = 0L, year = 70L,
+	    wday = 4L, yday = 0L, isdst = 0L, zone = "CET", gmtoff = NA_integer_)
+	[1] "1970-01-01 12:00:00 CET"
+	[1] FALSE
+	[1] FALSE
+	FALSE
+	Error in as.POSIXct.default(d) :
+	  do not know how to convert 'd' to class ?POSIXct?
+	Calls: as.POSIXct -> as.POSIXct.default
+	Execution halted
+
+Best,
+Rasmus
+
+
+From t|m@how@rd @end|ng |rom dec@ny@gov  Fri May 12 14:01:51 2023
+From: t|m@how@rd @end|ng |rom dec@ny@gov (Howard, Tim G (DEC))
+Date: Fri, 12 May 2023 12:01:51 +0000
+Subject: [R] win110 + R 4.3.0 dowload only when method = "wininet"
+In-Reply-To: <mailman.369360.1.1683799202.14311.r-help@r-project.org>
+References: <mailman.369360.1.1683799202.14311.r-help@r-project.org>
+Message-ID: <SA1PR09MB7792398CAD87DD016C05AE86A8759@SA1PR09MB7792.namprd09.prod.outlook.com>
+
+
+
+Also note that with R version 4.2.1 and later, there's another change for computers within many corporate firewall systems (that monitor network traffic).  The result is that in the default settings R can't connect out to https connections (and thus can't install or update packages). You just get an error that R can't connect, it may be because of the super-special security in your network.
+
+
+I don't know if this is your issue, but it seemed worth pointing out if so. (and worth getting the word out there for others...)
+
+
+
+Here's the discussion of the bug and the patch.
+
+
+
+
+https://bugs.r-project.org/show_bug.cgi?id=18379
+
+
+
+
+If you are in this situation, the fix is to add a new User Environment Variable:
+
+
+
+R_LIBCURL_SSL_REVOKE_BEST_EFFORT and set it to TRUE
+
+
+
+Tim
+
+
+>>>>>>
+Date: Thu, 11 May 2023 09:39:25 +0300
+From: Ivan Krylov <krylov.r00t at gmail.com>
+To: =?UTF-8?B?U2ViYXN0acOhbg==?= Kruk Gencarelli
+        <zloto_kruk at hotmail.com>
+Cc: "r-help at r-project.org" <r-help at r-project.org>
+Subject: Re: [R] win110 + R 4.3.0 dowload only when method = "wininet"
+Message-ID: <20230511090040.2015ff59 at Tarkus>
+Content-Type: text/plain; charset="utf-8"
+
+On Wed, 10 May 2023 22:13:15 +0000
+Sebasti?n Kruk Gencarelli <zloto_kruk at hotmail.com> wrote:
+
+> I don?t know what kind of proxy is used by my system.
+
+Do you at least know whether it's an HTTP proxy, a SOCKS proxy, or
+something completely different? Do you need to authenticate to the
+proxy?
+
+> How I can add my proxy and port to my R configuration?
+
+libcurl recognises the "http_proxy" environment variable, which can
+include the protocol, the address and the port of the proxy server:
+https://gcc02.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcurl.se%2Flibcurl%2Fc%2FCURLOPT_PROXY.html&data=05%7C01%7Ctim.howard%40dec.ny.gov%7Cba9855f6b8bd4d23531e08db52069dd1%7Cf46cb8ea79004d108ceb80e8c1c81ee7%7C0%7C0%7C638193960595128444%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=UHNtHLqF67%2FGq9%2FILSW6pHmuhhaHsdI1qwl%2FVXun5hI%3D&reserved=0<https://curl.se/libcurl/c/CURLOPT_PROXY.html>
+
+For example, if you have a SOCKS5 hostname-resolving proxy on address
+192.2.0.1 and port 1080, you can try calling Sys.setenv('http_proxy' =
+'socks5h://192.2.0.1:1080'). For a different example, an HTTP proxy on
+198.51.100.2, port 8080 can be set up as Sys.setenv('http_proxy' =
+'https://gcc02.safelinks.protection.outlook.com/?url=http%3A%2F%2F198.51.100.2%3A8080%2F&data=05%7C01%7Ctim.howard%40dec.ny.gov%7Cba9855f6b8bd4d23531e08db52069dd1%7Cf46cb8ea79004d108ceb80e8c1c81ee7%7C0%7C0%7C638193960595128444%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=K8Lp3oLzHHA9LxIq6U5QrdQvEV63%2BTVOq930i6HABlw%3D&reserved=0<http://198.51.100.2:8080/>'). (In both cases, the proxy will be used by
+curl for HTTP and HTTPS access, but not, say, FTP or other protocols.
+For HTTPS via HTTP proxy, curl will be using the CONNECT verb.)
+
+Detecting the right proxy for a given address (and yes, it's expected
+to do that per-address) is hard?. It's been a "nice to have" feature in
+curl for years: https://gcc02.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcurl.se%2Fdocs%2Ftodo.html%23auto_detect_proxy&data=05%7C01%7Ctim.howard%40dec.ny.gov%7Cba9855f6b8bd4d23531e08db52069dd1%7Cf46cb8ea79004d108ceb80e8c1c81ee7%7C0%7C0%7C638193960595128444%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=Ucxe4e4OK%2BSUzB9dhhBPrtcb%2FlLF3bcq6tC1OocY8IM%3D&reserved=0<https://curl.se/docs/todo.html#auto_detect_proxy>, so
+I'm afraid it won't happen any time soon. It's unfortunate that the
+curl back-end will break something that used to work with wininet.
+
+I wonder whether it could make sense to call
+WinHttpGetIEProxyConfigForCurrentUser() [*] when setting up connections
+on Windows. There's no simple way to deal with the proxy
+auto-configuration file [**], but we could at least call
+curl_easy_setopt(handle, CURLOPT_PROXY,
+wchar_to_current_locale(proxy_config->lpszProxy)); to make the
+transition from wininet to curl slightly less painful. Or would that
+break even more installations? This won't help in the more complicated
+cases [***], though.
+
+--
+Best regards,
+Ivan
+
+[*]
+https://gcc02.safelinks.protection.outlook.com/?url=https%3A%2F%2Flearn.microsoft.com%2Fen-us%2Fwindows%2Fwin32%2Fapi%2Fwinhttp%2Fnf-winhttp-winhttpgetieproxyconfigforcurrentuser&data=05%7C01%7Ctim.howard%40dec.ny.gov%7Cba9855f6b8bd4d23531e08db52069dd1%7Cf46cb8ea79004d108ceb80e8c1c81ee7%7C0%7C0%7C638193960595128444%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=ERbQZxCXaR4wc8%2F5%2BRiVYdFt3lmFyCQ29tGYalcljqk%3D&reserved=0<https://learn.microsoft.com/en-us/windows/win32/api/winhttp/nf-winhttp-winhttpgetieproxyconfigforcurrentuser>
+
+[**]
+https://gcc02.safelinks.protection.outlook.com/?url=https%3A%2F%2Fdeveloper.mozilla.org%2Fen-US%2Fdocs%2FWeb%2FHTTP%2FProxy_servers_and_tunneling%2FProxy_Auto-Configuration_PAC_file&data=05%7C01%7Ctim.howard%40dec.ny.gov%7Cba9855f6b8bd4d23531e08db52069dd1%7Cf46cb8ea79004d108ceb80e8c1c81ee7%7C0%7C0%7C638193960595128444%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=hFJ6iGbNMzUNZEAvVeFTnjdp%2FKFWBH78nL4HSjoBhlc%3D&reserved=0<https://developer.mozilla.org/en-US/docs/Web/HTTP/Proxy_servers_and_tunneling/Proxy_Auto-Configuration_PAC_file>
+Then again, library(V8) is nowadays more or less required for R package
+development if not R development proper.
+
+[***]
+https://gcc02.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fpipermail%2Fr-help%2F2022-September%2F475917.html&data=05%7C01%7Ctim.howard%40dec.ny.gov%7Cba9855f6b8bd4d23531e08db52069dd1%7Cf46cb8ea79004d108ceb80e8c1c81ee7%7C0%7C0%7C638193960595128444%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=cD%2F0IvD1AIjH1PNDdiW3%2B0u6bKRWMpLMgl4ZH4cGD%2F0%3D&reserved=0<https://stat.ethz.ch/pipermail/r-help/2022-September/475917.html>
+
+
+
+
+
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From j@zh@o @end|ng |rom ye@h@net  Fri May 12 14:16:26 2023
+From: j@zh@o @end|ng |rom ye@h@net (Jinsong Zhao)
+Date: Fri, 12 May 2023 20:16:26 +0800
+Subject: [R] is.na(strptime (...)) return TRUE on FreeBSD
+In-Reply-To: <ZF4R_GIddc3cIuyc@posteo.no>
+References: <92b969e2-ddaf-b08e-9cff-918284daf2f8@yeah.net>
+ <20230511180605.0c4bc855@arachnoid>
+ <e86f9114-d565-464e-0733-70eece6d5417@yeah.net> <ZF4R_GIddc3cIuyc@posteo.no>
+Message-ID: <e91c5354-82e7-6968-a817-6198bfb73795@yeah.net>
+
+
+
+On 2023/5/12 18:16, Rasmus Liland wrote:
+> Hi!  I ran the code
+>
+> 	(d <- strptime("1970-01-01 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz = ""))
+> 	is.na(d)
+> 	dput(unclass(d))
+> 	as.POSIXct(d)
+> 	(d <- is.na(strptime("1970-01-03 12:00:00 UTC", "%Y-%m-%d %H:%M:%OS", tz = '')))
+> 	is.na(d)
+> 	dput(unclass(d))
+> 	as.POSIXct(d)
+>
+> on ?R 4.2.3-1 on Linux 6.2.11-arch1-1? and
+> ?R 4.1.0 on FreeBSD 13.0-RELEASE #0 releng/13.0-n244733-ea31abc261f,?
+> yielding the same result:
+>
+> 	[1] "1970-01-01 12:00:00 CET"
+> 	[1] FALSE
+> 	list(sec = 0, min = 0L, hour = 12L, mday = 1L, mon = 0L, year = 70L,
+> 	    wday = 4L, yday = 0L, isdst = 0L, zone = "CET", gmtoff = NA_integer_)
+> 	[1] "1970-01-01 12:00:00 CET"
+> 	[1] FALSE
+> 	[1] FALSE
+> 	FALSE
+> 	Error in as.POSIXct.default(d) :
+> 	  do not know how to convert 'd' to class ?POSIXct?
+> 	Calls: as.POSIXct -> as.POSIXct.default
+> 	Execution halted
+>
+> Best,
+> Rasmus
+>
+Those results were expected. The problem seems to stem from R 4.3.0 on 
+FreeBSD 13.2-RELEASE (I do not have other platforms to test).
+
+Best,
+Jinsong
+
+
+From tg@77m @end|ng |rom y@hoo@com  Fri May 12 14:33:25 2023
+From: tg@77m @end|ng |rom y@hoo@com (Thomas Subia)
+Date: Fri, 12 May 2023 12:33:25 +0000 (UTC)
+Subject: [R] Pairwise comparison test
+References: <1952802523.983146.1683894805989.ref@mail.yahoo.com>
+Message-ID: <1952802523.983146.1683894805989@mail.yahoo.com>
+
+Colleague,
+
+smokers? <- c( 83, 90, 129, 70 )
+patients <- c( 86, 93, 136, 82 )
+pairwise.prop.test(smokers, patients)
+
+# Output
+
+????Pairwise comparisons using Pairwise comparison of proportions 
+
+data:??smokers out of patients 
+
+?? 1???? ?????? 2???? ?????? 3????
+2 1.000 ????-???? ??????? -????
+3 1.000 ????1.000 ????-????
+4 0.119 ????0.093 ????0.124
+
+Is there a way to generate a graph which illustrates the pairwise comparison of proportions?
+
+Thomas Subia
+
+
+From kev|n @end|ng |rom zembower@org  Fri May 12 15:24:19 2023
+From: kev|n @end|ng |rom zembower@org (=?UTF-8?Q?Kevin_Zembower?=)
+Date: Fri, 12 May 2023 13:24:19 +0000
+Subject: [R] Newbie: Controlling legends in graphs
+References: <74953c7e-2d73-539a-c3d7-9e150da358ce@zembower.org>
+Message-ID: <0100018810223cbd-464442e8-8a7e-4d74-b466-0ed9a7dbe39d-000000@email.amazonses.com>
+
+Hello, I'm trying to create a line graph with a legend, but have no 
+success controlling the legend. Since nothing I've tried seems to work, 
+I must be doing something systematically wrong. Can anyone point this 
+out to me?
+
+Here's my data:
+ > weights
+# A tibble: 1,246 ? 3
+    Date           J     K
+    <date>     <dbl> <dbl>
+  1 2000-02-13   133  188
+  2 2000-02-20   134  185
+  3 2000-02-27   135  187
+  4 2000-03-05   135  185
+  5 2000-03-12    NA  184
+  6 2000-03-19    NA  184.
+  7 2000-03-26   136  184.
+  8 2000-04-02   134  185
+  9 2000-04-09   133  186
+10 2000-04-16    NA  186
+# ? 1,236 more rows
+# ? Use `print(n = ...)` to see more rows
+ >
+
+Here's my attempts. You can see some of the things I've tried in the 
+commented out sections:
+weights %>%
+     group_by(year(Date)) %>%
+     summarize(
+         m_K = mean(K, na.rm = TRUE),
+         m_J = mean(J, na.rm = TRUE),
+         ) %>%
+     ggplot(aes(x = `year(Date)`)) +
+     geom_point(aes(y = m_K, color = "red")) +
+     geom_smooth(aes(y = m_K, color = "red")) +
+     geom_point(aes(y = m_J, color = "blue")) +
+     geom_smooth(aes(y = m_J, color = "blue")) +
+     guides(size = "legend",
+            shape = "legend")
+     ## scale_shape_discrete(name="Person",
+     ##                      breaks=c("m_K", "m_J"),
+     ##                      labels=c("K", "J"))
+     ## theme(legend.title=element_blank())
+
+When this runs, the blue line for "K" is above the red line for "J", as 
+I expect, but in the legend, the red is shown first, and labeled "blue."
+
+I'd like to be able to create a legend where the first entry shows a 
+blue line and is labeled "K" and the second is red and labeled "J".
+
+On a different but related topic, I'd welcome any advice or suggestions 
+on my methodology in this example. Is this the correct way to summarize 
+with a mean? Do I need the two sets of geom_point and geom_line clauses 
+to create this graph, or is there a better way?
+
+Thanks for all your advice and guidance.
+
+-Kevin
+
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Fri May 12 22:06:22 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Fri, 12 May 2023 21:06:22 +0100
+Subject: [R] Newbie: Controlling legends in graphs
+In-Reply-To: <0100018810223cbd-464442e8-8a7e-4d74-b466-0ed9a7dbe39d-000000@email.amazonses.com>
+References: <74953c7e-2d73-539a-c3d7-9e150da358ce@zembower.org>
+ <0100018810223cbd-464442e8-8a7e-4d74-b466-0ed9a7dbe39d-000000@email.amazonses.com>
+Message-ID: <2f42b428-23f1-861f-8f7f-d3fcf6977b77@sapo.pt>
+
+?s 14:24 de 12/05/2023, Kevin Zembower via R-help escreveu:
+> Hello, I'm trying to create a line graph with a legend, but have no
+> success controlling the legend. Since nothing I've tried seems to work,
+> I must be doing something systematically wrong. Can anyone point this
+> out to me?
+> 
+> Here's my data:
+>   > weights
+> # A tibble: 1,246 ? 3
+>      Date           J     K
+>      <date>     <dbl> <dbl>
+>    1 2000-02-13   133  188
+>    2 2000-02-20   134  185
+>    3 2000-02-27   135  187
+>    4 2000-03-05   135  185
+>    5 2000-03-12    NA  184
+>    6 2000-03-19    NA  184.
+>    7 2000-03-26   136  184.
+>    8 2000-04-02   134  185
+>    9 2000-04-09   133  186
+> 10 2000-04-16    NA  186
+> # ? 1,236 more rows
+> # ? Use `print(n = ...)` to see more rows
+>   >
+> 
+> Here's my attempts. You can see some of the things I've tried in the
+> commented out sections:
+> weights %>%
+>       group_by(year(Date)) %>%
+>       summarize(
+>           m_K = mean(K, na.rm = TRUE),
+>           m_J = mean(J, na.rm = TRUE),
+>           ) %>%
+>       ggplot(aes(x = `year(Date)`)) +
+>       geom_point(aes(y = m_K, color = "red")) +
+>       geom_smooth(aes(y = m_K, color = "red")) +
+>       geom_point(aes(y = m_J, color = "blue")) +
+>       geom_smooth(aes(y = m_J, color = "blue")) +
+>       guides(size = "legend",
+>              shape = "legend")
+>       ## scale_shape_discrete(name="Person",
+>       ##                      breaks=c("m_K", "m_J"),
+>       ##                      labels=c("K", "J"))
+>       ## theme(legend.title=element_blank())
+> 
+> When this runs, the blue line for "K" is above the red line for "J", as
+> I expect, but in the legend, the red is shown first, and labeled "blue."
+> 
+> I'd like to be able to create a legend where the first entry shows a
+> blue line and is labeled "K" and the second is red and labeled "J".
+> 
+> On a different but related topic, I'd welcome any advice or suggestions
+> on my methodology in this example. Is this the correct way to summarize
+> with a mean? Do I need the two sets of geom_point and geom_line clauses
+> to create this graph, or is there a better way?
+> 
+> Thanks for all your advice and guidance.
+> 
+> -Kevin
+> 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+This is mainly a data reshaping problem. Insteadof plotting two 
+variables, J and K, if the data is in the long format you will map the 
+column with these variables names to the color aesthetic and call each 
+geom_* only once. Then, assign the colors you want.
+
+As for placing K above J, note that ggplot places them by alphabetical 
+order unless you coerce to factor with the levels in the order you want.
+
+Also, if you want to compute aggregate statistics for several columns, 
+use ?across. See the code below.
+
+Here is a complete example. I have augmented your data set in order to 
+have more years to plot.
+
+
+
+# augment the data set
+weights <- " Date           J     K
+   1 2000-02-13   133  188
+   2 2000-02-20   134  185
+   3 2000-02-27   135  187
+   4 2000-03-05   135  185
+   5 2000-03-12    NA  184
+   6 2000-03-19    NA  184.
+   7 2000-03-26   136  184.
+   8 2000-04-02   134  185
+   9 2000-04-09   133  186
+10 2000-04-16    NA  186"
+weights <- read.table(text = weights, header = TRUE)
+weights$Date <- as.Date(weights$Date)
+tmp <- weights
+tmp <- lapply(1:10, \(y) {
+   tmp$Date <- years(y) + tmp$Date
+   tmp$J <- tmp$J + sample(-10:10, nrow(weights), TRUE)
+   tmp$K <- tmp$K + sample(-10:10, nrow(weights), TRUE)
+   tmp
+})
+weights <- do.call(rbind, tmp)
+
+#---
+
+# plot code
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+
+weights %>%
+     mutate(Year = year(Date)) %>%
+     group_by(Year) %>%
+     summarize(across(J:K, mean, na.rm = TRUE)) %>%
+     # now reshape the data
+     pivot_longer(-Year) %>%
+     # uncomment the next line if you want K
+     # to show up on top in the legend
+     # mutate(name = factor(name, levels = c("K", "J"))) %>%
+     ggplot(aes(Year, value, color = name)) +
+     geom_smooth(
+         formula = y ~ x,
+         method = lm,
+         se = FALSE
+     ) +
+     geom_point() +
+     scale_color_manual(values = c(J = "red", K = "blue"))
+
+
+
+Hope this helps,
+
+Rui Barradas
+
+
