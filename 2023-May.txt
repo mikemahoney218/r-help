@@ -6924,3 +6924,869 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From kev|n @end|ng |rom zembower@org  Tue May 16 16:22:05 2023
+From: kev|n @end|ng |rom zembower@org (=?UTF-8?Q?Kevin_Zembower?=)
+Date: Tue, 16 May 2023 14:22:05 +0000
+Subject: [R] Newbie: Controlling legends in graphs
+In-Reply-To: <2f42b428-23f1-861f-8f7f-d3fcf6977b77@sapo.pt>
+References: <74953c7e-2d73-539a-c3d7-9e150da358ce@zembower.org> 
+ <0100018810223cbd-464442e8-8a7e-4d74-b466-0ed9a7dbe39d-000000@email.amazonses.com>
+ <2f42b428-23f1-861f-8f7f-d3fcf6977b77@sapo.pt> 
+ <ad29aa37-fa31-1e81-550c-341cac955f28@zembower.org>
+Message-ID: <0100018824f09298-4be76ac1-cf12-48d6-bc7a-96fcd88fc732-000000@email.amazonses.com>
+
+Rui, thanks so much for your help. Your explanation and example were 
+clear and concise. Thanks for taking the time and effort to help me.
+
+-Kevin
+
+On 5/12/23 16:06, Rui Barradas wrote:
+> ?s 14:24 de 12/05/2023, Kevin Zembower via R-help escreveu:
+>> Hello, I'm trying to create a line graph with a legend, but have no
+>> success controlling the legend. Since nothing I've tried seems to work,
+>> I must be doing something systematically wrong. Can anyone point this
+>> out to me?
+>>
+>> Here's my data:
+>> ? > weights
+>> # A tibble: 1,246 ? 3
+>> ???? Date?????????? J???? K
+>> ???? <date>???? <dbl> <dbl>
+>> ?? 1 2000-02-13?? 133? 188
+>> ?? 2 2000-02-20?? 134? 185
+>> ?? 3 2000-02-27?? 135? 187
+>> ?? 4 2000-03-05?? 135? 185
+>> ?? 5 2000-03-12??? NA? 184
+>> ?? 6 2000-03-19??? NA? 184.
+>> ?? 7 2000-03-26?? 136? 184.
+>> ?? 8 2000-04-02?? 134? 185
+>> ?? 9 2000-04-09?? 133? 186
+>> 10 2000-04-16??? NA? 186
+>> # ? 1,236 more rows
+>> # ? Use `print(n = ...)` to see more rows
+>> ? >
+>>
+>> Here's my attempts. You can see some of the things I've tried in the
+>> commented out sections:
+>> weights %>%
+>> ????? group_by(year(Date)) %>%
+>> ????? summarize(
+>> ????????? m_K = mean(K, na.rm = TRUE),
+>> ????????? m_J = mean(J, na.rm = TRUE),
+>> ????????? ) %>%
+>> ????? ggplot(aes(x = `year(Date)`)) +
+>> ????? geom_point(aes(y = m_K, color = "red")) +
+>> ????? geom_smooth(aes(y = m_K, color = "red")) +
+>> ????? geom_point(aes(y = m_J, color = "blue")) +
+>> ????? geom_smooth(aes(y = m_J, color = "blue")) +
+>> ????? guides(size = "legend",
+>> ???????????? shape = "legend")
+>> ????? ## scale_shape_discrete(name="Person",
+>> ????? ##????????????????????? breaks=c("m_K", "m_J"),
+>> ????? ##????????????????????? labels=c("K", "J"))
+>> ????? ## theme(legend.title=element_blank())
+>>
+>> When this runs, the blue line for "K" is above the red line for "J", as
+>> I expect, but in the legend, the red is shown first, and labeled "blue."
+>>
+>> I'd like to be able to create a legend where the first entry shows a
+>> blue line and is labeled "K" and the second is red and labeled "J".
+>>
+>> On a different but related topic, I'd welcome any advice or suggestions
+>> on my methodology in this example. Is this the correct way to summarize
+>> with a mean? Do I need the two sets of geom_point and geom_line clauses
+>> to create this graph, or is there a better way?
+>>
+>> Thanks for all your advice and guidance.
+>>
+>> -Kevin
+>>
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+> 
+> This is mainly a data reshaping problem. Insteadof plotting two 
+> variables, J and K, if the data is in the long format you will map the 
+> column with these variables names to the color aesthetic and call each 
+> geom_* only once. Then, assign the colors you want.
+> 
+> As for placing K above J, note that ggplot places them by alphabetical 
+> order unless you coerce to factor with the levels in the order you want.
+> 
+> Also, if you want to compute aggregate statistics for several columns, 
+> use ?across. See the code below.
+> 
+> Here is a complete example. I have augmented your data set in order to 
+> have more years to plot.
+> 
+> 
+> 
+> # augment the data set
+> weights <- " Date?????????? J???? K
+>  ? 1 2000-02-13?? 133? 188
+>  ? 2 2000-02-20?? 134? 185
+>  ? 3 2000-02-27?? 135? 187
+>  ? 4 2000-03-05?? 135? 185
+>  ? 5 2000-03-12??? NA? 184
+>  ? 6 2000-03-19??? NA? 184.
+>  ? 7 2000-03-26?? 136? 184.
+>  ? 8 2000-04-02?? 134? 185
+>  ? 9 2000-04-09?? 133? 186
+> 10 2000-04-16??? NA? 186"
+> weights <- read.table(text = weights, header = TRUE)
+> weights$Date <- as.Date(weights$Date)
+> tmp <- weights
+> tmp <- lapply(1:10, \(y) {
+>  ? tmp$Date <- years(y) + tmp$Date
+>  ? tmp$J <- tmp$J + sample(-10:10, nrow(weights), TRUE)
+>  ? tmp$K <- tmp$K + sample(-10:10, nrow(weights), TRUE)
+>  ? tmp
+> })
+> weights <- do.call(rbind, tmp)
+> 
+> #---
+> 
+> # plot code
+> library(ggplot2)
+> library(dplyr)
+> library(tidyr)
+> library(lubridate)
+> 
+> weights %>%
+>  ??? mutate(Year = year(Date)) %>%
+>  ??? group_by(Year) %>%
+>  ??? summarize(across(J:K, mean, na.rm = TRUE)) %>%
+>  ??? # now reshape the data
+>  ??? pivot_longer(-Year) %>%
+>  ??? # uncomment the next line if you want K
+>  ??? # to show up on top in the legend
+>  ??? # mutate(name = factor(name, levels = c("K", "J"))) %>%
+>  ??? ggplot(aes(Year, value, color = name)) +
+>  ??? geom_smooth(
+>  ??????? formula = y ~ x,
+>  ??????? method = lm,
+>  ??????? se = FALSE
+>  ??? ) +
+>  ??? geom_point() +
+>  ??? scale_color_manual(values = c(J = "red", K = "blue"))
+> 
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+
+
+
+From kev|n @end|ng |rom zembower@org  Tue May 16 16:29:10 2023
+From: kev|n @end|ng |rom zembower@org (=?UTF-8?Q?Kevin_Zembower?=)
+Date: Tue, 16 May 2023 14:29:10 +0000
+Subject: [R] Newbie: Drawing fitted lines on subset of data
+References: <1e3c20aa-5af3-458e-f8d8-5c1b69af8031@zembower.org>
+Message-ID: <0100018824f70c8c-aaa6ef12-5f89-4759-999e-42b104930c06-000000@email.amazonses.com>
+
+Hello,
+
+I's still working with my tsibble of weight data for the last 20 years. 
+In addition to drawing an overall trend line, using lm, for the whole 
+data set, I'd like to draw short lines that would recompute lm and draw 
+it, say, just for the years from 2010:2015.
+
+Here's a short example that I think illustrates what I'm trying to do. 
+The commented out sections show what I've tried to far:
+
+## Short example to test segments:
+
+w <- tsibble(
+     date = as.Date("2022-01-01") + 0:99,
+     value = rnorm(100)
+)
+
+ggplot(data = w, mapping = aes(date, value)) +
+     geom_smooth(method = "lm", se = FALSE) +
+     geom_point()
+     ## Below gives error about ignoring data
+     ## geom_abline( data = w$date[25:75] )
+     ## Gives error ''data' must be in <data.frame>'
+     ## geom_smooth(data = w$date[25:35],
+     ##             method = lm,
+     ##             color = "black",
+     ##             se = FALSE)
+
+I'm thinking that this is probably easily done, but I'm struggling with 
+how to subset the data in the middle of the pipeline.
+
+Thanks for any advice and help.
+
+-Kevin
+
+
+From cry@n @end|ng |rom b|ngh@mton@edu  Tue May 16 16:52:08 2023
+From: cry@n @end|ng |rom b|ngh@mton@edu (Christopher Ryan)
+Date: Tue, 16 May 2023 10:52:08 -0400
+Subject: [R] [External Email]  Newbie: Controlling legends in graphs
+In-Reply-To: <0100018810223cbd-464442e8-8a7e-4d74-b466-0ed9a7dbe39d-000000@email.amazonses.com>
+References: <74953c7e-2d73-539a-c3d7-9e150da358ce@zembower.org>
+ <0100018810223cbd-464442e8-8a7e-4d74-b466-0ed9a7dbe39d-000000@email.amazonses.com>
+Message-ID: <CAM+rpYmgY3-wVsu8WNfuXeqUSdLHe4nhJcibHQnWB+boaQ+PaA@mail.gmail.com>
+
+I"m more of a lattice guy than a ggplot guy, but perhaps this is part of
+the problem:
+
+.....
+>      geom_point(aes(y = m_K, color = "red")) +  ##### >> you've
+> associated "K" with the color red
+>      geom_smooth(aes(y = m_K, color = "red")) +
+>      geom_point(aes(y = m_J, color = "blue")) +   ###### >> and "J" with
+> the color blue
+>      geom_smooth(aes(y = m_J, color = "blue")) +
+>
+.....
+
+##### >> but you object about a "blue line for K" and a "red line for J"?
+
+When this runs, the blue line for "K" is above the red line for "J", as
+> I expect, but in the legend, the red is shown first, and labeled "blue."
+>
+> I'd like to be able to create a legend where the first entry shows a
+> blue line and is labeled "K" and the second is red and labeled "J".
+> Thanks for all your advice and guidance.
+>
+.......
+
+>
+> -Kevin
+>
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Tue May 16 17:44:16 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 16 May 2023 16:44:16 +0100
+Subject: [R] Newbie: Drawing fitted lines on subset of data
+In-Reply-To: <0100018824f70c8c-aaa6ef12-5f89-4759-999e-42b104930c06-000000@email.amazonses.com>
+References: <1e3c20aa-5af3-458e-f8d8-5c1b69af8031@zembower.org>
+ <0100018824f70c8c-aaa6ef12-5f89-4759-999e-42b104930c06-000000@email.amazonses.com>
+Message-ID: <cad3c4b4-9321-44a8-ad21-41f62c26a135@sapo.pt>
+
+?s 15:29 de 16/05/2023, Kevin Zembower via R-help escreveu:
+> Hello,
+> 
+> I's still working with my tsibble of weight data for the last 20 years.
+> In addition to drawing an overall trend line, using lm, for the whole
+> data set, I'd like to draw short lines that would recompute lm and draw
+> it, say, just for the years from 2010:2015.
+> 
+> Here's a short example that I think illustrates what I'm trying to do.
+> The commented out sections show what I've tried to far:
+> 
+> ## Short example to test segments:
+> 
+> w <- tsibble(
+>       date = as.Date("2022-01-01") + 0:99,
+>       value = rnorm(100)
+> )
+> 
+> ggplot(data = w, mapping = aes(date, value)) +
+>       geom_smooth(method = "lm", se = FALSE) +
+>       geom_point()
+>       ## Below gives error about ignoring data
+>       ## geom_abline( data = w$date[25:75] )
+>       ## Gives error ''data' must be in <data.frame>'
+>       ## geom_smooth(data = w$date[25:35],
+>       ##             method = lm,
+>       ##             color = "black",
+>       ##             se = FALSE)
+> 
+> I'm thinking that this is probably easily done, but I'm struggling with
+> how to subset the data in the middle of the pipeline.
+> 
+> Thanks for any advice and help.
+> 
+> -Kevin
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Try the following.
+In the 2nd geom_smooth you need a subset of the data not of just one of 
+its columns.
+
+
+
+suppressPackageStartupMessages({
+   library(tsibble)
+   library(dplyr)
+   library(ggplot2)
+   library(lubridate)
+})
+
+ggplot(data = w, mapping = aes(date, value)) +
+   geom_smooth(formula = y ~ x, method = "lm", se = FALSE) +
+   geom_point() +
+   geom_smooth(
+     data = w %>% filter(year(date) >= 2010, year(date) <= 2015),
+     mapping = aes(date, value),
+     formula = y ~ x,
+     method = lm,
+     color = "black",
+     se = FALSE
+   )
+
+
+Other ways to subset the data are
+
+
+# dplyr
+data = w %>% filter(year(date) %in% 2010:2015)
+# base R
+data = subset(w, year(date) %in% 2010:2015)
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+From kev|n @end|ng |rom zembower@org  Tue May 16 19:30:41 2023
+From: kev|n @end|ng |rom zembower@org (=?UTF-8?Q?Kevin_Zembower?=)
+Date: Tue, 16 May 2023 17:30:41 +0000
+Subject: [R] Newbie: Drawing fitted lines on subset of data
+In-Reply-To: <cad3c4b4-9321-44a8-ad21-41f62c26a135@sapo.pt>
+References: <1e3c20aa-5af3-458e-f8d8-5c1b69af8031@zembower.org> 
+ <0100018824f70c8c-aaa6ef12-5f89-4759-999e-42b104930c06-000000@email.amazonses.com>
+ <cad3c4b4-9321-44a8-ad21-41f62c26a135@sapo.pt> 
+ <e1442a5a-3cdf-6d57-a73a-115dcd8a24a1@zembower.org>
+Message-ID: <01000188259d3a4e-70d9bdb5-b179-46be-8022-47110d5dab6d-000000@email.amazonses.com>
+
+Yep, that did it. I didn't know that you could have pipelines within 
+pipelines.
+
+Thanks, again, for all your help.
+
+-Kevin
+
+On 5/16/23 11:44, Rui Barradas wrote:
+> ?s 15:29 de 16/05/2023, Kevin Zembower via R-help escreveu:
+>> Hello,
+>>
+>> I's still working with my tsibble of weight data for the last 20 years.
+>> In addition to drawing an overall trend line, using lm, for the whole
+>> data set, I'd like to draw short lines that would recompute lm and draw
+>> it, say, just for the years from 2010:2015.
+>>
+>> Here's a short example that I think illustrates what I'm trying to do.
+>> The commented out sections show what I've tried to far:
+>>
+>> ## Short example to test segments:
+>>
+>> w <- tsibble(
+>> ????? date = as.Date("2022-01-01") + 0:99,
+>> ????? value = rnorm(100)
+>> )
+>>
+>> ggplot(data = w, mapping = aes(date, value)) +
+>> ????? geom_smooth(method = "lm", se = FALSE) +
+>> ????? geom_point()
+>> ????? ## Below gives error about ignoring data
+>> ????? ## geom_abline( data = w$date[25:75] )
+>> ????? ## Gives error ''data' must be in <data.frame>'
+>> ????? ## geom_smooth(data = w$date[25:35],
+>> ????? ##???????????? method = lm,
+>> ????? ##???????????? color = "black",
+>> ????? ##???????????? se = FALSE)
+>>
+>> I'm thinking that this is probably easily done, but I'm struggling with
+>> how to subset the data in the middle of the pipeline.
+>>
+>> Thanks for any advice and help.
+>>
+>> -Kevin
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+> 
+> Try the following.
+> In the 2nd geom_smooth you need a subset of the data not of just one of 
+> its columns.
+> 
+> 
+> 
+> suppressPackageStartupMessages({
+>  ? library(tsibble)
+>  ? library(dplyr)
+>  ? library(ggplot2)
+>  ? library(lubridate)
+> })
+> 
+> ggplot(data = w, mapping = aes(date, value)) +
+>  ? geom_smooth(formula = y ~ x, method = "lm", se = FALSE) +
+>  ? geom_point() +
+>  ? geom_smooth(
+>  ??? data = w %>% filter(year(date) >= 2010, year(date) <= 2015),
+>  ??? mapping = aes(date, value),
+>  ??? formula = y ~ x,
+>  ??? method = lm,
+>  ??? color = "black",
+>  ??? se = FALSE
+>  ? )
+> 
+> 
+> Other ways to subset the data are
+> 
+> 
+> # dplyr
+> data = w %>% filter(year(date) %in% 2010:2015)
+> # base R
+> data = subset(w, year(date) %in% 2010:2015)
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+
+
+
+From kev|n @end|ng |rom zembower@org  Tue May 16 22:26:51 2023
+From: kev|n @end|ng |rom zembower@org (=?UTF-8?Q?Kevin_Zembower?=)
+Date: Tue, 16 May 2023 20:26:51 +0000
+Subject: [R] [External Email]  Newbie: Controlling legends in graphs
+In-Reply-To: <CAM+rpYmgY3-wVsu8WNfuXeqUSdLHe4nhJcibHQnWB+boaQ+PaA@mail.gmail.com>
+References: <74953c7e-2d73-539a-c3d7-9e150da358ce@zembower.org> 
+ <0100018810223cbd-464442e8-8a7e-4d74-b466-0ed9a7dbe39d-000000@email.amazonses.com>
+ <CAM+rpYmgY3-wVsu8WNfuXeqUSdLHe4nhJcibHQnWB+boaQ+PaA@mail.gmail.com> 
+ <01d444dd-4274-d053-5e7d-45c8661dbdb0@zembower.org>
+Message-ID: <01000188263e8589-7cbd029d-e24b-4724-a4e7-471dece8e94a-000000@email.amazonses.com>
+
+See below.
+
+On 5/16/23 10:52, Christopher Ryan wrote:
+> I"m more of a lattice guy than a ggplot guy, but perhaps this is part of 
+> the problem:
+> 
+>     .....
+>      ? ? ?geom_point(aes(y = m_K, color = "red")) +? ##### >> you've
+>     associated "K" with the color red
+>      ? ? ?geom_smooth(aes(y = m_K, color = "red")) +
+>      ? ? ?geom_point(aes(y = m_J, color = "blue")) +? ?###### >> and "J"
+>     with the color blue
+>      ? ? ?geom_smooth(aes(y = m_J, color = "blue")) +
+> 
+> .....
+> 
+Yes, I was confused that I associated  "K" with the color red, yet the 
+line and points for K's data were blue, but in the legend, was labeled 
+with the word "red".
+
+But, I think I've got it straightened out now. Thanks for your help.
+
+-Kevin
+
+
+
+From re|chm@nj @end|ng |rom @bcg|ob@|@net  Tue May 16 22:29:27 2023
+From: re|chm@nj @end|ng |rom @bcg|ob@|@net (Jeff Reichman)
+Date: Tue, 16 May 2023 15:29:27 -0500
+Subject: [R] Recombining Mon and Year values
+References: <00a201d98835$1cf9afb0$56ed0f10$.ref@sbcglobal.net>
+Message-ID: <00a201d98835$1cf9afb0$56ed0f10$@sbcglobal.net>
+
+R Help
+
+ 
+
+I have a data.frame where I've broken out the year <dbl> and an ordered
+month <ord> values. But I need to recombine them so I can graph mon-year in
+order but when I recombine I lose the month order and the results are
+plotted alphabetical.
+
+ 
+
+Year        month  mon_year            
+
+<dbl>     <ord> 
+
+2021     Mar        Mar-2021
+
+2021     Jan         Jan-2021
+
+2021     Apr         Apr-2021
+
+ 
+
+So do I need to convert the months back to an integer then recombine to
+plot.
+
+ 
+
+Jeff Reichman
+
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue May 16 23:44:44 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 16 May 2023 14:44:44 -0700
+Subject: [R] Recombining Mon and Year values
+In-Reply-To: <00a201d98835$1cf9afb0$56ed0f10$@sbcglobal.net>
+References: <00a201d98835$1cf9afb0$56ed0f10$.ref@sbcglobal.net>
+ <00a201d98835$1cf9afb0$56ed0f10$@sbcglobal.net>
+Message-ID: <CAGxFJbSfDgGGc6GvoG5C6F_Lpkj5pK2ySY2vwSVYdSHXaXvVGA@mail.gmail.com>
+
+There are many ways to do this in various R packages. Search on "Plot
+month-year data in R" or the like and choose that which works best for you.
+There may be a learning curve involved, naturally.
+
+(Note: you may wish to check out zoo:yearmon and zoo:autoplot first, as
+these seem like they might be a good fit to your task. You decide, of
+course.)
+
+-- Bert
+
+On Tue, May 16, 2023 at 1:37?PM Jeff Reichman <reichmanj at sbcglobal.net>
+wrote:
+
+> R Help
+>
+>
+>
+> I have a data.frame where I've broken out the year <dbl> and an ordered
+> month <ord> values. But I need to recombine them so I can graph mon-year in
+> order but when I recombine I lose the month order and the results are
+> plotted alphabetical.
+>
+>
+>
+> Year        month  mon_year
+>
+> <dbl>     <ord>
+>
+> 2021     Mar        Mar-2021
+>
+> 2021     Jan         Jan-2021
+>
+> 2021     Apr         Apr-2021
+>
+>
+>
+> So do I need to convert the months back to an integer then recombine to
+> plot.
+>
+>
+>
+> Jeff Reichman
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Wed May 17 00:03:33 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 16 May 2023 23:03:33 +0100
+Subject: [R] Recombining Mon and Year values
+In-Reply-To: <00a201d98835$1cf9afb0$56ed0f10$@sbcglobal.net>
+References: <00a201d98835$1cf9afb0$56ed0f10$.ref@sbcglobal.net>
+ <00a201d98835$1cf9afb0$56ed0f10$@sbcglobal.net>
+Message-ID: <a1f56cce-e41a-77cc-0ad7-09cf04be15a4@sapo.pt>
+
+?s 21:29 de 16/05/2023, Jeff Reichman escreveu:
+> R Help
+> 
+>   
+> 
+> I have a data.frame where I've broken out the year <dbl> and an ordered
+> month <ord> values. But I need to recombine them so I can graph mon-year in
+> order but when I recombine I lose the month order and the results are
+> plotted alphabetical.
+> 
+>   
+> 
+> Year        month  mon_year
+> 
+> <dbl>     <ord>
+> 
+> 2021     Mar        Mar-2021
+> 
+> 2021     Jan         Jan-2021
+> 
+> 2021     Apr         Apr-2021
+> 
+>   
+> 
+> So do I need to convert the months back to an integer then recombine to
+> plot.
+> 
+>   
+> 
+> Jeff Reichman
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+You can use function as.yearmon in package zoo to get the correct 
+month/year order.
+
+
+
+df1 <- data.frame(Year = c(2021, 2021, 2021),
+                   Mon = c("Mar", "Jan", "Apr"))
+
+df1$mon_year <- zoo::as.yearmon(paste(df1$Mon, df1$Year))
+
+sort(df1$mon_year)
+#> [1] "Jan 2021" "Mar 2021" "Apr 2021"
+
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Wed May 17 00:10:45 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Tue, 16 May 2023 22:10:45 +0000
+Subject: [R] mclapply enters into an infinite loop....
+Message-ID: <SL2P216MB1561A54D1EAA956D5D277A55C8799@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+
+Dear members,
+                         I am using arfima in an mclapply construction (from the parallel package):
+
+Browse[2]> LYG <- mclapply(LYGH, FUN = arfima, mc.cores = detectCores())
+^C
+Browse[2]> LYG <- mclapply(LYGH[1:10], FUN = arfima, mc.cores = detectCores())
+^C
+Browse[2]> LYG <- mclapply(LYGH[1:2], FUN = arfima, mc.cores = detectCores())
+^C
+
+You can see that I am aborting the execution of mclapply. It doesn't finish even if I reduce the elements to be iterated over to 2. Why is it entering an infinite loop?
+
+Please exhort me if this is to be posted in HPC list.
+
+THanking you,
+Yours sincerely,
+ALSHAY M KULKARNI
+
+	[[alternative HTML version deleted]]
+
+
+From re|chm@nj @end|ng |rom @bcg|ob@|@net  Wed May 17 01:01:05 2023
+From: re|chm@nj @end|ng |rom @bcg|ob@|@net (Jeff Reichman)
+Date: Tue, 16 May 2023 18:01:05 -0500
+Subject: [R] Recombining Mon and Year values
+In-Reply-To: <a1f56cce-e41a-77cc-0ad7-09cf04be15a4@sapo.pt>
+References: <00a201d98835$1cf9afb0$56ed0f10$.ref@sbcglobal.net>
+ <00a201d98835$1cf9afb0$56ed0f10$@sbcglobal.net>
+ <a1f56cce-e41a-77cc-0ad7-09cf04be15a4@sapo.pt>
+Message-ID: <000401d9884a$4bc4b3c0$e34e1b40$@sbcglobal.net>
+
+Ah the zoo package! I was trying with lubridate package.
+
+-----Original Message-----
+From: Rui Barradas <ruipbarradas at sapo.pt> 
+Sent: Tuesday, May 16, 2023 5:04 PM
+To: Jeff Reichman <reichmanj at sbcglobal.net>; r-help at r-project.org
+Subject: Re: [R] Recombining Mon and Year values
+
+?s 21:29 de 16/05/2023, Jeff Reichman escreveu:
+> R Help
+> 
+>   
+> 
+> I have a data.frame where I've broken out the year <dbl> and an 
+> ordered month <ord> values. But I need to recombine them so I can 
+> graph mon-year in order but when I recombine I lose the month order 
+> and the results are plotted alphabetical.
+> 
+>   
+> 
+> Year        month  mon_year
+> 
+> <dbl>     <ord>
+> 
+> 2021     Mar        Mar-2021
+> 
+> 2021     Jan         Jan-2021
+> 
+> 2021     Apr         Apr-2021
+> 
+>   
+> 
+> So do I need to convert the months back to an integer then recombine 
+> to plot.
+> 
+>   
+> 
+> Jeff Reichman
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+You can use function as.yearmon in package zoo to get the correct month/year order.
+
+
+
+df1 <- data.frame(Year = c(2021, 2021, 2021),
+                   Mon = c("Mar", "Jan", "Apr"))
+
+df1$mon_year <- zoo::as.yearmon(paste(df1$Mon, df1$Year))
+
+sort(df1$mon_year)
+#> [1] "Jan 2021" "Mar 2021" "Apr 2021"
+
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed May 17 01:48:20 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 16 May 2023 16:48:20 -0700
+Subject: [R] Recombining Mon and Year values
+In-Reply-To: <00a201d98835$1cf9afb0$56ed0f10$@sbcglobal.net>
+References: <00a201d98835$1cf9afb0$56ed0f10$.ref@sbcglobal.net>
+ <00a201d98835$1cf9afb0$56ed0f10$@sbcglobal.net>
+Message-ID: <753C30D5-19AF-4FD1-A3A9-FD69B495614E@dcn.davis.ca.us>
+
+I don't use lubridate, but that package works with Date and POSIXt types, which I do use. Just remember to include a day when converting (1st of month is typical), and use an output format to hide the day when you plot.
+
+On May 16, 2023 1:29:27 PM PDT, Jeff Reichman <reichmanj at sbcglobal.net> wrote:
+>R Help
+>
+> 
+>
+>I have a data.frame where I've broken out the year <dbl> and an ordered
+>month <ord> values. But I need to recombine them so I can graph mon-year in
+>order but when I recombine I lose the month order and the results are
+>plotted alphabetical.
+>
+> 
+>
+>Year        month  mon_year            
+>
+><dbl>     <ord> 
+>
+>2021     Mar        Mar-2021
+>
+>2021     Jan         Jan-2021
+>
+>2021     Apr         Apr-2021
+>
+> 
+>
+>So do I need to convert the months back to an integer then recombine to
+>plot.
+>
+> 
+>
+>Jeff Reichman
+>
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed May 17 01:54:58 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 16 May 2023 16:54:58 -0700
+Subject: [R] mclapply enters into an infinite loop....
+In-Reply-To: <SL2P216MB1561A54D1EAA956D5D277A55C8799@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+References: <SL2P216MB1561A54D1EAA956D5D277A55C8799@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <2FE46C63-A797-47F1-9E56-FACBF422BABA@dcn.davis.ca.us>
+
+It does not look to me like you are providing the necessary arguments to arfima.
+
+Try making this work with lapply first... then try mclapply.
+
+On May 16, 2023 3:10:45 PM PDT, akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>Dear members,
+>                         I am using arfima in an mclapply construction (from the parallel package):
+>
+>Browse[2]> LYG <- mclapply(LYGH, FUN = arfima, mc.cores = detectCores())
+>^C
+>Browse[2]> LYG <- mclapply(LYGH[1:10], FUN = arfima, mc.cores = detectCores())
+>^C
+>Browse[2]> LYG <- mclapply(LYGH[1:2], FUN = arfima, mc.cores = detectCores())
+>^C
+>
+>You can see that I am aborting the execution of mclapply. It doesn't finish even if I reduce the elements to be iterated over to 2. Why is it entering an infinite loop?
+>
+>Please exhort me if this is to be posted in HPC list.
+>
+>THanking you,
+>Yours sincerely,
+>ALSHAY M KULKARNI
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
