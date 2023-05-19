@@ -8504,3 +8504,552 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu May 18 09:38:41 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 18 May 2023 10:38:41 +0300
+Subject: [R] mclapply enters into an infinite loop....
+In-Reply-To: <PU4P216MB156832A47B90EB7DCA01B167C87E9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <SL2P216MB1561A54D1EAA956D5D277A55C8799@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+ <2FE46C63-A797-47F1-9E56-FACBF422BABA@dcn.davis.ca.us>
+ <PU4P216MB156832A47B90EB7DCA01B167C87E9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <20230518103841.0d6ca43c@Tarkus>
+
+On Wed, 17 May 2023 13:55:59 +0000
+akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+
+> So that means mclapply should run properly, i.e output a try class
+> object and exit. But it didn't. Can you shed some light on why this
+> happened?
+
+What's your sessionInfo()? Are you using a GUI frontend?
+
+mclapply() relies on the fork() system call, which is tricky to get
+right in a process where other threads may exist at the same time: when
+a process calls fork(), the child process ends up with the same
+contents of virtual memory but no other threads at all. If a thread was
+holding a lock when the process was forked, the lock will never be
+released in the child process, leaving it stuck. Depending on how
+you're running R, it may be threading issues or something else.
+
+More information may be obtained by looking at traceback() after you
+interrupt mclapply() (easy, but low information: did you interrupt
+selectChildren() or some other function?) and attaching a C debugger to
+the child process when you become sure it's stuck (hard, requires
+additional preparation such as installing debugging symbols).
+
+-- 
+Best regards,
+Ivan
+
+
+From |eder|co@c@|bo|| @end|ng |rom |uke@||  Wed May 17 12:42:17 2023
+From: |eder|co@c@|bo|| @end|ng |rom |uke@|| (Calboli Federico (LUKE))
+Date: Wed, 17 May 2023 10:42:17 +0000
+Subject: [R] suprising behaviour of tryCatch()
+Message-ID: <AS4PR07MB84579BE1B83EF94BA79A6965917E9@AS4PR07MB8457.eurprd07.prod.outlook.com>
+
+Hello,
+
+I run a fisher.test() in a loop, with the issue that some of the data will not be useable. To protect the loop I used tryCatch but:
+
+sexsnp = rep(NA, 1750)
+for(i in 1:1750){tryCatch(sexsnp[i] = fisher.test(table(data[,3], data[,i + 38]))$p, error = function(e) print(NA))}
+Error: unexpected '=' in "for(i in 1:1750){tryCatch(sexsnp[i] ="
+
+But this works:
+
+for(i in 1:1750){tryCatch(sexsnp[i] <- fisher.test(table(data[,3], data[,i + 38]))$p, error = function(e) print(NA))}
+[1] NA
+[1] NA
+[1] NA
+
+The only difference is the use of ?=? or ?<-? to assign the p value of the fisher test to the vector.  I stopped using ?<-? eons ago so it took a bit to figure out.
+
+Tested on R 4.1.2 on ContOS 8 , and on  R 4.3.0 on a M1 mac with the same result.  I?d be obliged if someone can explain why tryCatch assigns items with ?<-? and not ?=?.
+
+Cheers
+
+F
+
+Federico Calboli
+Tutkija
+Genomiikka ja jalostus
+Luonnonvarakeskus
+
+	[[alternative HTML version deleted]]
+
+
+From w||||@mwdun|@p @end|ng |rom gm@||@com  Thu May 18 16:50:34 2023
+From: w||||@mwdun|@p @end|ng |rom gm@||@com (Bill Dunlap)
+Date: Thu, 18 May 2023 07:50:34 -0700
+Subject: [R] suprising behaviour of tryCatch()
+In-Reply-To: <AS4PR07MB84579BE1B83EF94BA79A6965917E9@AS4PR07MB8457.eurprd07.prod.outlook.com>
+References: <AS4PR07MB84579BE1B83EF94BA79A6965917E9@AS4PR07MB8457.eurprd07.prod.outlook.com>
+Message-ID: <CAHqSRuRhahvFUeF4Wzz2chH89O0__2Ozoj3-E4SAAFA6MF_+NQ@mail.gmail.com>
+
+>  The only difference is the use of ?=? or ?<-? to assign the p value of
+the fisher test to the vector.  I stopped using ?<-? eons ago so it took a
+bit to figure out.
+
+The '=' has a context-dependent meaning - in a function call it is used to
+name arguments and outside of a function call it is used for assignments.
+This has nothing to do with tryCatch in particular.  E.g.,
+
+> f <- function(x) x + 100
+> f(y <- 10)
+[1] 110
+> y
+[1] 10
+> f(y = 20)
+Error in f(y = 20) : unused argument (y = 20)
+> y
+[1] 10
+
+
+I recommend starting to use <- for assignments again (or not doing
+assignments inside of function calls).
+
+-Bill
+
+On Thu, May 18, 2023 at 7:38?AM Calboli Federico (LUKE) <
+federico.calboli at luke.fi> wrote:
+
+> Hello,
+>
+> I run a fisher.test() in a loop, with the issue that some of the data will
+> not be useable. To protect the loop I used tryCatch but:
+>
+> sexsnp = rep(NA, 1750)
+> for(i in 1:1750){tryCatch(sexsnp[i] = fisher.test(table(data[,3], data[,i
+> + 38]))$p, error = function(e) print(NA))}
+> Error: unexpected '=' in "for(i in 1:1750){tryCatch(sexsnp[i] ="
+>
+> But this works:
+>
+> for(i in 1:1750){tryCatch(sexsnp[i] <- fisher.test(table(data[,3], data[,i
+> + 38]))$p, error = function(e) print(NA))}
+> [1] NA
+> [1] NA
+> [1] NA
+>
+> The only difference is the use of ?=? or ?<-? to assign the p value of the
+> fisher test to the vector.  I stopped using ?<-? eons ago so it took a bit
+> to figure out.
+>
+> Tested on R 4.1.2 on ContOS 8 , and on  R 4.3.0 on a M1 mac with the same
+> result.  I?d be obliged if someone can explain why tryCatch assigns items
+> with ?<-? and not ?=?.
+>
+> Cheers
+>
+> F
+>
+> Federico Calboli
+> Tutkija
+> Genomiikka ja jalostus
+> Luonnonvarakeskus
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From berw|n@tur|@ch @end|ng |rom gm@||@com  Thu May 18 16:55:42 2023
+From: berw|n@tur|@ch @end|ng |rom gm@||@com (Berwin A Turlach)
+Date: Thu, 18 May 2023 22:55:42 +0800
+Subject: [R] suprising behaviour of tryCatch()
+In-Reply-To: <AS4PR07MB84579BE1B83EF94BA79A6965917E9@AS4PR07MB8457.eurprd07.prod.outlook.com>
+References: <AS4PR07MB84579BE1B83EF94BA79A6965917E9@AS4PR07MB8457.eurprd07.prod.outlook.com>
+Message-ID: <20230518225542.501c264b@absentia>
+
+G'day Federico,
+
+On Wed, 17 May 2023 10:42:17 +0000
+"Calboli Federico (LUKE)" <federico.calboli at luke.fi> wrote:
+
+> I_d be obliged if someone can explain why tryCatch assigns items with _<-_ and not _=_.
+
+It is not just tryCatch but any function.  In function calls the "=" is
+used to assign actual arguments to formal arguments, not for
+assignments.  
+
+That is why "plot(fm <- lm(eruptions ~ waiting, faithful)" works but
+"plot(fm = lm(eruptions ~ waiting, faithful)" does not.
+
+The only universal assignment operator, AFAIK, is "<-".  Well, and "->".
+Long time ago "_" used to be one too, but that is long ago.  
+
+The usual advice was that if you do not know when "=" does not work as
+assignment operator then always use "<-" for assignments. :)
+
+The final thing you have to take care of that in function calls you
+have to be sure that the argument is actually evaluated (R has lazy
+evaluation) to ensure that the assignment is actually executed.
+
+Cheers,
+	
+	Berwin
+
+
+From 538280 @end|ng |rom gm@||@com  Thu May 18 16:57:55 2023
+From: 538280 @end|ng |rom gm@||@com (Greg Snow)
+Date: Thu, 18 May 2023 08:57:55 -0600
+Subject: [R] suprising behaviour of tryCatch()
+In-Reply-To: <AS4PR07MB84579BE1B83EF94BA79A6965917E9@AS4PR07MB8457.eurprd07.prod.outlook.com>
+References: <AS4PR07MB84579BE1B83EF94BA79A6965917E9@AS4PR07MB8457.eurprd07.prod.outlook.com>
+Message-ID: <CAFEqCdzShf=p3ib0nRC==6ZydO8+N4vXNEBfaK_CQAL3xW6c-Q@mail.gmail.com>
+
+Because `<-` and `=` do different things (and I am one of the old
+fossils that wish they had not been confounded).
+
+`fun(x <- expr)`  Assigns the value of `expr` to the variable `x` in
+the frame/environment that `fun` is called from.
+`fun(x = expr)` Assigns the value of `expr`to the variable `x` in the
+frame/environment created for and used by `fun` subject to the rules
+of argument matching.
+
+These are very different (see documentation/tutorials on variable
+scoping if you do not already understand how different these are).
+
+As a simple analogy, think of a function like the refrigerator in your house.
+
+refrigerator( topshelf = bottle )  will put the bottle on the top
+shelf inside of the refrigerator
+refrigerator( topshelf <- bottle ) will put the bottle on the top
+shelf in the same room that the refrigerator is in (but not in the
+fridge itself)
+
+
+When you run the code with `<-` it, then the ith element of the global
+variable `sexsnp` is assigned the p-value.  When you run the version
+with `=` then R tries to find an argument to `tryCatch` that matches
+(possibly partially) `sexsnp[i]` and gives the error because it does
+not find a match (not sure why it is not handled by `...`, but
+tryCatch may be parsed special, or non-legal argument names on the RHS
+of `-` may be checked).
+
+Unfortunately allowing `=` in certain common places to mimic `<-`
+hides this difference and leads to these types of errors when the
+difference is important.
+
+
+
+On Thu, May 18, 2023 at 8:38?AM Calboli Federico (LUKE)
+<federico.calboli at luke.fi> wrote:
+>
+> Hello,
+>
+> I run a fisher.test() in a loop, with the issue that some of the data will not be useable. To protect the loop I used tryCatch but:
+>
+> sexsnp = rep(NA, 1750)
+> for(i in 1:1750){tryCatch(sexsnp[i] = fisher.test(table(data[,3], data[,i + 38]))$p, error = function(e) print(NA))}
+> Error: unexpected '=' in "for(i in 1:1750){tryCatch(sexsnp[i] ="
+>
+> But this works:
+>
+> for(i in 1:1750){tryCatch(sexsnp[i] <- fisher.test(table(data[,3], data[,i + 38]))$p, error = function(e) print(NA))}
+> [1] NA
+> [1] NA
+> [1] NA
+>
+> The only difference is the use of ?=? or ?<-? to assign the p value of the fisher test to the vector.  I stopped using ?<-? eons ago so it took a bit to figure out.
+>
+> Tested on R 4.1.2 on ContOS 8 , and on  R 4.3.0 on a M1 mac with the same result.  I?d be obliged if someone can explain why tryCatch assigns items with ?<-? and not ?=?.
+>
+> Cheers
+>
+> F
+>
+> Federico Calboli
+> Tutkija
+> Genomiikka ja jalostus
+> Luonnonvarakeskus
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Gregory (Greg) L. Snow Ph.D.
+538280 at gmail.com
+
+
+From berw|n@tur|@ch @end|ng |rom gm@||@com  Thu May 18 17:22:28 2023
+From: berw|n@tur|@ch @end|ng |rom gm@||@com (Berwin A Turlach)
+Date: Thu, 18 May 2023 23:22:28 +0800
+Subject: [R] suprising behaviour of tryCatch()
+In-Reply-To: <AS4PR07MB84579BE1B83EF94BA79A6965917E9@AS4PR07MB8457.eurprd07.prod.outlook.com>
+References: <AS4PR07MB84579BE1B83EF94BA79A6965917E9@AS4PR07MB8457.eurprd07.prod.outlook.com>
+Message-ID: <20230518232228.7593ca98@absentia>
+
+G'day Federico,
+
+On Wed, 17 May 2023 10:42:17 +0000
+"Calboli Federico (LUKE)" <federico.calboli at luke.fi> wrote:
+
+> sexsnp = rep(NA, 1750)
+> for(i in 1:1750){tryCatch(sexsnp[i] = fisher.test(table(data[,3],
+> data[,i + 38]))$p, error = function(e) print(NA))} Error: unexpected
+> '=' in "for(i in 1:1750){tryCatch(sexsnp[i] ="
+
+Try:
+
+R> for(i in 1:1750){tryCatch(eval(expression("sexsnp[i] = fisher.test(table(data[,3], data[,i+38]))$p")), error=function(e)print(NA))}
+
+or
+
+R> for(i in 1:1750){tryCatch(bquote("sexsnp[i] = fisher.test(table(data[,3], data[,i+38]))$p"), error=function(e) print(NA))}
+
+or 
+
+R> for(i in 1:1750){tryCatch(.("sexsnp[i] = fisher.test(table(data[,3], data[,i+38]))$p"), error=function(e) print(NA))}
+
+If you want to use the '='.
+
+Cheers,
+
+	Berwin
+
+
+From henr|k@bengt@@on @end|ng |rom gm@||@com  Thu May 18 17:35:38 2023
+From: henr|k@bengt@@on @end|ng |rom gm@||@com (Henrik Bengtsson)
+Date: Thu, 18 May 2023 08:35:38 -0700
+Subject: [R] suprising behaviour of tryCatch()
+In-Reply-To: <20230518232228.7593ca98@absentia>
+References: <AS4PR07MB84579BE1B83EF94BA79A6965917E9@AS4PR07MB8457.eurprd07.prod.outlook.com>
+ <20230518232228.7593ca98@absentia>
+Message-ID: <CAFDcVCSxk29orW542Fi=a2F1OyhLGPqvM0Es4V0R+e8QoGC=mA@mail.gmail.com>
+
+... or just put the R expression inside curly brackets, e.g.
+
+tryCatch({
+  sexsnp[i] = fisher.test(table(data[,3], data[,i+38]))$p
+}, error=function(e) print(NA))
+
+Exercise: Compare
+
+> list(a = 2)
+$a
+[1] 2
+
+with
+
+> list({ a = 2 })
+[[1]]
+[1] 2
+
+and
+
+> list(b = { a = 2 })
+$b
+[1] 2
+
+BTW, note how the latter two assigned a <- 2 to the global environment.
+
+/Henrik
+
+On Thu, May 18, 2023 at 8:22?AM Berwin A Turlach
+<berwin.turlach at gmail.com> wrote:
+>
+> G'day Federico,
+>
+> On Wed, 17 May 2023 10:42:17 +0000
+> "Calboli Federico (LUKE)" <federico.calboli at luke.fi> wrote:
+>
+> > sexsnp = rep(NA, 1750)
+> > for(i in 1:1750){tryCatch(sexsnp[i] = fisher.test(table(data[,3],
+> > data[,i + 38]))$p, error = function(e) print(NA))} Error: unexpected
+> > '=' in "for(i in 1:1750){tryCatch(sexsnp[i] ="
+>
+> Try:
+>
+> R> for(i in 1:1750){tryCatch(eval(expression("sexsnp[i] = fisher.test(table(data[,3], data[,i+38]))$p")), error=function(e)print(NA))}
+>
+> or
+>
+> R> for(i in 1:1750){tryCatch(bquote("sexsnp[i] = fisher.test(table(data[,3], data[,i+38]))$p"), error=function(e) print(NA))}
+>
+> or
+>
+> R> for(i in 1:1750){tryCatch(.("sexsnp[i] = fisher.test(table(data[,3], data[,i+38]))$p"), error=function(e) print(NA))}
+>
+> If you want to use the '='.
+>
+> Cheers,
+>
+>         Berwin
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From berw|n@tur|@ch @end|ng |rom gm@||@com  Thu May 18 17:44:31 2023
+From: berw|n@tur|@ch @end|ng |rom gm@||@com (Berwin A Turlach)
+Date: Thu, 18 May 2023 23:44:31 +0800
+Subject: [R] suprising behaviour of tryCatch()
+In-Reply-To: <CAFEqCdzShf=p3ib0nRC==6ZydO8+N4vXNEBfaK_CQAL3xW6c-Q@mail.gmail.com>
+References: <AS4PR07MB84579BE1B83EF94BA79A6965917E9@AS4PR07MB8457.eurprd07.prod.outlook.com>
+ <CAFEqCdzShf=p3ib0nRC==6ZydO8+N4vXNEBfaK_CQAL3xW6c-Q@mail.gmail.com>
+Message-ID: <20230518234431.0c063916@absentia>
+
+G'day Greg,
+
+On Thu, 18 May 2023 08:57:55 -0600
+Greg Snow <538280 at gmail.com> wrote:
+
+[...]
+> `fun(x <- expr)`  Assigns the value of `expr` to the variable `x` in
+> the frame/environment that `fun` is called from.
+
+Only if the argument 'x' is evaluated during the function call AFAIK.
+If it is not, due to lazy evaluation rules, then no assignment takes
+place. 
+
+> When you run the code with `<-` it, then the ith element of the global
+> variable `sexsnp` is assigned the p-value.  When you run the version
+> with `=` then R tries to find an argument to `tryCatch` that matches
+> (possibly partially) `sexsnp[i]` and gives the error because it does
+> not find a match (not sure why it is not handled by `...`, but
+> tryCatch may be parsed special, or non-legal argument names on the RHS
+> of `-` may be checked).
+
+After exact matching on names comes partial matching on names and then
+positional matching.  If after these three rounds there are still
+actual arguments left over, they are assigned to "..." (if it exist as
+formal argument).
+
+So under the usual rules of how actual arguments
+are passed to formal arguments in Federico's call the argument
+"sexsnp[i] = fisher.test(table(data[,3], data[,i + 38]))$p" should be
+assigned to the formal argument "expr" of tryCatch() and "error =
+function(e) print(NA))" should be absorbed by "...".
+
+But it seems, as "=" has a different meaning in function call, the
+expression passed to the "expr" formal argument is not allowed to
+contain a "=".  Not sure why. :-)
+
+I guess that the intended use is actually:
+
+R> for(i in 1:1750){sexsnp[i] = tryCatch(fisher.test(table(data[,3], data[,i + 38]))$p, error = function(e) print(NA))}
+
+I.e. tryCatch() returns the result of the evaluated expression (if
+successful, otherwise the result of an error handler) and that result
+can be assigned.  It is not expected the that expression contains an
+assignment operation.  But I am just guessing. :)
+
+Cheers,
+
+	Berwin
+
+
+From berw|n@tur|@ch @end|ng |rom gm@||@com  Thu May 18 17:55:23 2023
+From: berw|n@tur|@ch @end|ng |rom gm@||@com (Berwin A Turlach)
+Date: Thu, 18 May 2023 23:55:23 +0800
+Subject: [R] suprising behaviour of tryCatch()
+In-Reply-To: <CAFDcVCSxk29orW542Fi=a2F1OyhLGPqvM0Es4V0R+e8QoGC=mA@mail.gmail.com>
+References: <AS4PR07MB84579BE1B83EF94BA79A6965917E9@AS4PR07MB8457.eurprd07.prod.outlook.com>
+ <20230518232228.7593ca98@absentia>
+ <CAFDcVCSxk29orW542Fi=a2F1OyhLGPqvM0Es4V0R+e8QoGC=mA@mail.gmail.com>
+Message-ID: <20230518235523.598d8482@absentia>
+
+G'day Henrik,
+
+On Thu, 18 May 2023 08:35:38 -0700
+Henrik Bengtsson <henrik.bengtsson at gmail.com> wrote:
+
+> ... or just put the R expression inside curly brackets, e.g.
+
+I was wondering whether I was having a fortunes::fortune(106) moment. :-)
+
+Cheers,
+
+	Berwin
+
+
+From @ur|y@26k@nn@n @end|ng |rom gm@||@com  Tue May 16 13:15:06 2023
+From: @ur|y@26k@nn@n @end|ng |rom gm@||@com (Suriya Kannan)
+Date: Tue, 16 May 2023 16:45:06 +0530
+Subject: [R] Count data in random Forest
+Message-ID: <CAN=sKcUyNfn1p=jrLfzzaZWDo54wsXq_XRU1cNJUw0uxauajkQ@mail.gmail.com>
+
+Respected Sir
+Good Evening. My name is V.Suriya, I am a research scholar. Doing my Ph.D
+at University of Madras, Tamil Nadu, India. I need the r code for random
+forest count data. It helps me lot to complete my research work sir.
+
+And also need the r code for comparison of predictors with the help of
+mtry, best size, best node.
+
+Thanks and Regards
+V Suriya
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Thu May 18 20:52:56 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 18 May 2023 11:52:56 -0700
+Subject: [R] Count data in random Forest
+In-Reply-To: <CAN=sKcUyNfn1p=jrLfzzaZWDo54wsXq_XRU1cNJUw0uxauajkQ@mail.gmail.com>
+References: <CAN=sKcUyNfn1p=jrLfzzaZWDo54wsXq_XRU1cNJUw0uxauajkQ@mail.gmail.com>
+Message-ID: <CAGxFJbSDPEqg-AAYAPcghzB7ANm5im1zB+sySw1YU4UqnkiQDw@mail.gmail.com>
+
+This is R-**Help**, not R- **we give you all the answers.** Please
+read and follow the posting guide linked below for what sorts of
+questions are appropriate for this list and what you should include
+when asking them.
+
+Incidentally, there are several packages in R that do (versions of)
+random forests. You can read about at least some of them in the
+**Random Forests** section of the Machine Learning Task View here:
+https://CRAN.R-project.org/view=MachineLearning
+
+Many R packages have, besides extensive Help pages, so-called
+"vignettes", tutorials that help you use them. If available, you
+should consult these before posting here.
+
+Cheers,
+Bert
+
+
+-- Bert
+
+On Thu, May 18, 2023 at 11:00?AM Suriya Kannan <suriya26kannan at gmail.com> wrote:
+>
+> Respected Sir
+> Good Evening. My name is V.Suriya, I am a research scholar. Doing my Ph.D
+> at University of Madras, Tamil Nadu, India. I need the r code for random
+> forest count data. It helps me lot to complete my research work sir.
+>
+> And also need the r code for comparison of predictors with the help of
+> mtry, best size, best node.
+>
+> Thanks and Regards
+> V Suriya
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
