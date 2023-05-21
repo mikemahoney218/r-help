@@ -9213,3 +9213,183 @@ On Fri, May 19, 2023 at 1:30?PM Christopher Ryan via R-help
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sat May 20 12:59:18 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sat, 20 May 2023 10:59:18 +0000
+Subject: [R] mclapply enters into an infinite loop....
+In-Reply-To: <20230518103841.0d6ca43c@Tarkus>
+References: <SL2P216MB1561A54D1EAA956D5D277A55C8799@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+ <2FE46C63-A797-47F1-9E56-FACBF422BABA@dcn.davis.ca.us>
+ <PU4P216MB156832A47B90EB7DCA01B167C87E9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230518103841.0d6ca43c@Tarkus>
+Message-ID: <PU4P216MB1568A0FB21BA77BAA9B71BB1C87D9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Ivan,
+                 REgrets to reply this late...
+
+By "holding a lock", you mean a bug in the process right (I am not a computer science guy, excuse my naivete)?
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Ivan Krylov <krylov.r00t at gmail.com>
+Sent: Thursday, May 18, 2023 1:08 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: r-help at r-project.org <r-help at r-project.org>
+Subject: Re: [R] mclapply enters into an infinite loop....
+
+On Wed, 17 May 2023 13:55:59 +0000
+akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+
+> So that means mclapply should run properly, i.e output a try class
+> object and exit. But it didn't. Can you shed some light on why this
+> happened?
+
+What's your sessionInfo()? Are you using a GUI frontend?
+
+mclapply() relies on the fork() system call, which is tricky to get
+right in a process where other threads may exist at the same time: when
+a process calls fork(), the child process ends up with the same
+contents of virtual memory but no other threads at all. If a thread was
+holding a lock when the process was forked, the lock will never be
+released in the child process, leaving it stuck. Depending on how
+you're running R, it may be threading issues or something else.
+
+More information may be obtained by looking at traceback() after you
+interrupt mclapply() (easy, but low information: did you interrupt
+selectChildren() or some other function?) and attaching a C debugger to
+the child process when you become sure it's stuck (hard, requires
+additional preparation such as installing debugging symbols).
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat May 20 14:30:39 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 20 May 2023 15:30:39 +0300
+Subject: [R] mclapply enters into an infinite loop....
+In-Reply-To: <PU4P216MB1568A0FB21BA77BAA9B71BB1C87D9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <SL2P216MB1561A54D1EAA956D5D277A55C8799@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+ <2FE46C63-A797-47F1-9E56-FACBF422BABA@dcn.davis.ca.us>
+ <PU4P216MB156832A47B90EB7DCA01B167C87E9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230518103841.0d6ca43c@Tarkus>
+ <PU4P216MB1568A0FB21BA77BAA9B71BB1C87D9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <20230520153039.28245977@parabola>
+
+? Sat, 20 May 2023 10:59:18 +0000
+akshay kulkarni <akshay_e4 at hotmail.com> ?????:
+
+> By "holding a lock", you mean a bug in the process right
+
+Well... one person's bug ("your threaded program breaks if I fork() the
+process") is another person's documented behaviour ("of course it
+does, it says 'please do not fork()' right in the manual"). Depending
+on how you're running R (which operating system? are you using a
+front-end? a multi-threaded BLAS?), this may be applicable, hence the
+question about sessionInfo().
+
+A GUI program may need multiple threads in order to stay responsive
+(without looking hung and forgetting to repaint its window or
+something) while doing something significant in the background. A
+multi-threaded linear algebra library may create a thread per CPU core
+in order to take your matrix products faster. Inside a process, some
+resources have to be shared between the threads, like the bathroom in a
+flat rented by multiple people together. "Holding a lock" is like
+taking the key to the bathroom with the intent to occupy it for a
+while: a completely normal action that prevents embarrassing accidents.
+
+When you fork() a process, though, it ends up creating an exact copy of
+the flat (process) just for you (the current thread), with none of the
+flat-mates (other threads). If the bathroom was locked by someone else,
+it stays locked, and there's no key anywhere.
+
+There do exist mechanisms like pthread_atfork() that could be used to
+prevent problems like this, but for that to work, *every* piece of code
+that may be creating threads and taking locks inside your process
+should be using them right. (The flat-mates need to know to give you
+any keys they might be holding before the flat is fork()ed. It's enough
+for one of them to forget one key to cause a problem.) The pragmatic
+solution may be to avoid fork() and threads being used together.
+
+-- 
+Best regards,
+Ivan
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sat May 20 16:04:30 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sat, 20 May 2023 14:04:30 +0000
+Subject: [R] mclapply enters into an infinite loop....
+In-Reply-To: <20230520153039.28245977@parabola>
+References: <SL2P216MB1561A54D1EAA956D5D277A55C8799@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+ <2FE46C63-A797-47F1-9E56-FACBF422BABA@dcn.davis.ca.us>
+ <PU4P216MB156832A47B90EB7DCA01B167C87E9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230518103841.0d6ca43c@Tarkus>
+ <PU4P216MB1568A0FB21BA77BAA9B71BB1C87D9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230520153039.28245977@parabola>
+Message-ID: <PU4P216MB156879F9246EAC3843987BC3C87D9@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Ivan,
+                 I was on RHEL 8 with aws Ec2 z1d instance.
+
+I infer by your words that this "bug" happens only sometimes..But I disagree...I run the same code multiple times within a span of 5 minutes, and the problem persisted....Anyway I have removed the bug in the function and I hope that mclapply runs properly now( if it doesn't you are my only saviour!)
+
+Many thanks for your geekish explanation.
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Ivan Krylov <krylov.r00t at gmail.com>
+Sent: Saturday, May 20, 2023 6:00 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: r-help at r-project.org <r-help at r-project.org>
+Subject: Re: [R] mclapply enters into an infinite loop....
+
+? Sat, 20 May 2023 10:59:18 +0000
+akshay kulkarni <akshay_e4 at hotmail.com> ?????:
+
+> By "holding a lock", you mean a bug in the process right
+
+Well... one person's bug ("your threaded program breaks if I fork() the
+process") is another person's documented behaviour ("of course it
+does, it says 'please do not fork()' right in the manual"). Depending
+on how you're running R (which operating system? are you using a
+front-end? a multi-threaded BLAS?), this may be applicable, hence the
+question about sessionInfo().
+
+A GUI program may need multiple threads in order to stay responsive
+(without looking hung and forgetting to repaint its window or
+something) while doing something significant in the background. A
+multi-threaded linear algebra library may create a thread per CPU core
+in order to take your matrix products faster. Inside a process, some
+resources have to be shared between the threads, like the bathroom in a
+flat rented by multiple people together. "Holding a lock" is like
+taking the key to the bathroom with the intent to occupy it for a
+while: a completely normal action that prevents embarrassing accidents.
+
+When you fork() a process, though, it ends up creating an exact copy of
+the flat (process) just for you (the current thread), with none of the
+flat-mates (other threads). If the bathroom was locked by someone else,
+it stays locked, and there's no key anywhere.
+
+There do exist mechanisms like pthread_atfork() that could be used to
+prevent problems like this, but for that to work, *every* piece of code
+that may be creating threads and taking locks inside your process
+should be using them right. (The flat-mates need to know to give you
+any keys they might be holding before the flat is fork()ed. It's enough
+for one of them to forget one key to cause a problem.) The pragmatic
+solution may be to avoid fork() and threads being used together.
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
