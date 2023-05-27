@@ -10693,3 +10693,2006 @@ Stats. Dep't. (secretaries) phone:
 Home phone: +64-9-480-4619
 
 
+From @vi@e@gross m@iii@g oii gm@ii@com  Fri May 26 03:17:37 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Thu, 25 May 2023 21:17:37 -0400
+Subject: [R] extract parts of a list before symbol
+In-Reply-To: <78207bda-96df-806c-d4f8-cb5b56985e80@gmail.com>
+References: <78207bda-96df-806c-d4f8-cb5b56985e80@gmail.com>
+Message-ID: <01a801d98f6f$dbcb83f0$93628bd0$@gmail.com>
+
+Evan,
+
+List names are less easy than data.frame column names so try this:
+
+> test <- list(a=3,b=5,c=11)
+> colnames(test)
+NULL
+> colnames(as.data.frame(test))
+[1] "a" "b" "c"
+
+But note an entry with no name has one made up for it.
+
+
+> test2 <- list(a=3,b=5, 666, c=11)
+> colnames(data.frame(test2))
+[1] "a"    "b"    "X666" "c"   
+
+But that may be overkill as simply converting to a vector if ALL parts are
+of the same type will work too:
+
+> names(as.vector(test))
+[1] "a" "b" "c"
+
+To get one at a time:
+
+> names(as.vector(test))[1]
+[1] "a"
+
+You can do it even simple by looking at the attributes of your list:
+
+> attributes(test)
+$names
+[1] "a" "b" "c"
+
+> attributes(test)$names
+[1] "a" "b" "c"
+> attributes(test)$names[3]
+[1] "c"
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Evan Cooch
+Sent: Thursday, May 25, 2023 1:30 PM
+To: r-help at r-project.org
+Subject: [R] extract parts of a list before symbol
+
+Suppose I have the following list:
+
+test <- list(a=3,b=5,c=11)
+
+I'm trying to figure out how to extract the characters to the left of 
+the equal sign (i.e., I want to extract a list of the variable names, a, 
+b and c.
+
+I've tried the permutations I know of involving sub - things like 
+sub("\\=.*", "", test), but no matter what I try, sub keeps returning 
+(3, 5, 11). In other words, even though I'm trying to extract the 
+'stuff' before the = sign, I seem to be successful only at grabbing the 
+stuff after the equal sign.
+
+Pointers to the obvious fix? Thanks...
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Fri May 26 04:31:43 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Thu, 25 May 2023 19:31:43 -0700
+Subject: [R] extract parts of a list before symbol
+In-Reply-To: <01a801d98f6f$dbcb83f0$93628bd0$@gmail.com>
+References: <78207bda-96df-806c-d4f8-cb5b56985e80@gmail.com>
+ <01a801d98f6f$dbcb83f0$93628bd0$@gmail.com>
+Message-ID: <29899283-FE32-4C8E-9D56-010AF8659009@dcn.davis.ca.us>
+
+What a remarkable set of detours, Avi, all deriving apparently from a few gaps in your understanding of R.
+
+As Rolf said, "names(test)" is the answer.
+
+a) Lists are vectors. They are not atomic vectors, but they are vectors, so as.vector(test) is a no-op.
+
+test <- list( a = 1, b = 2, c=3 )
+attributes(test)
+attributes(as.vector(test))
+
+(Were you thinking of the unlist function? If so, there is no reason to convert the value of the list to an atomic vector in order to look at the value of an attribute of that list.)
+
+b) Data frames are lists, with the additional constraint that all elements have the same length, and that a names attribute and a row.names attribute are both required. Converting a list to a data frame to get the names is expensive in CPU cycles and breaks as soon as the list elements have a variety of lengths.
+
+c) All data in R is stored as vectors. Worrying about whether a data value is a vector is pointless.
+
+d) All objects can have attributes, including the name attribute. However, not all objects must have a name attribute... including lists. Omitting a name for any of the elements of a list in the constructor will lead to having a zero-length character values in the name attribute where the names were omitted. Omitting all names in the list constructor will cause no names attribute to be created for that list.
+
+test2 <- list( 1, 2, 3 )
+attributes(test2)
+
+e) The names() function returns the value of the names attribute. If that attribute is missing, it returns NULL. For dataframes, the colnames function is equivalent to the names function (I rarely use the colnames function). For lists, colnames returns NULL... there are no "columns" in a list, because there is no constraint on the (lengths of the) contents of a list.
+
+names(test2)
+
+f) The names attribute, if it exists, is just a character vector. It is never necessary to convert the output of names() to a character vector. If the names attribute doesn't exist, then it is up to the user to write code that creates it.
+
+names(test2) <- c( "A", "B", "C" )
+attributes(test2)
+names(test2)
+# or use the argument names in the list function
+
+names(test2) <- 1:3 # integer
+names(test2) # character
+attributes(test2)$names <- 1:3 # integer
+attributes(test2) # character
+test2[[ "2" ]] == 2  # TRUE
+test2$`2`  == 2 # TRUE
+
+
+
+On May 25, 2023 6:17:37 PM PDT, avi.e.gross at gmail.com wrote:
+>Evan,
+>
+>List names are less easy than data.frame column names so try this:
+>
+>> test <- list(a=3,b=5,c=11)
+>> colnames(test)
+>NULL
+>> colnames(as.data.frame(test))
+>[1] "a" "b" "c"
+>
+>But note an entry with no name has one made up for it.
+>
+>
+>> test2 <- list(a=3,b=5, 666, c=11)
+>> colnames(data.frame(test2))
+>[1] "a"    "b"    "X666" "c"   
+>
+>But that may be overkill as simply converting to a vector if ALL parts are
+>of the same type will work too:
+>
+>> names(as.vector(test))
+>[1] "a" "b" "c"
+>
+>To get one at a time:
+>
+>> names(as.vector(test))[1]
+>[1] "a"
+>
+>You can do it even simple by looking at the attributes of your list:
+>
+>> attributes(test)
+>$names
+>[1] "a" "b" "c"
+>
+>> attributes(test)$names
+>[1] "a" "b" "c"
+>> attributes(test)$names[3]
+>[1] "c"
+>
+>
+>-----Original Message-----
+>From: R-help <r-help-bounces at r-project.org> On Behalf Of Evan Cooch
+>Sent: Thursday, May 25, 2023 1:30 PM
+>To: r-help at r-project.org
+>Subject: [R] extract parts of a list before symbol
+>
+>Suppose I have the following list:
+>
+>test <- list(a=3,b=5,c=11)
+>
+>I'm trying to figure out how to extract the characters to the left of 
+>the equal sign (i.e., I want to extract a list of the variable names, a, 
+>b and c.
+>
+>I've tried the permutations I know of involving sub - things like 
+>sub("\\=.*", "", test), but no matter what I try, sub keeps returning 
+>(3, 5, 11). In other words, even though I'm trying to extract the 
+>'stuff' before the = sign, I seem to be successful only at grabbing the 
+>stuff after the equal sign.
+>
+>Pointers to the obvious fix? Thanks...
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Fri May 26 06:02:50 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Fri, 26 May 2023 00:02:50 -0400
+Subject: [R] extract parts of a list before symbol
+In-Reply-To: <29899283-FE32-4C8E-9D56-010AF8659009@dcn.davis.ca.us>
+References: <78207bda-96df-806c-d4f8-cb5b56985e80@gmail.com>
+ <01a801d98f6f$dbcb83f0$93628bd0$@gmail.com>
+ <29899283-FE32-4C8E-9D56-010AF8659009@dcn.davis.ca.us>
+Message-ID: <01d001d98f86$f0e55010$d2aff030$@gmail.com>
+
+All true Jeff, but why do things the easy way! LOL!
+
+My point was that various data structures, besides the list we started with,
+store the names as an attribute. Yes, names(listname) works fine to extract
+whatever parts they want. My original idea of using a data.frame was because
+it creates names when they are absent.  
+
+And you are correct that if the original list was not as shown with only all
+items of length 1, converting to a data.frame fails.
+
+>From what you say, it is a harder think to write a function that returns a
+"name" for column N given a list. As you note, you get a null when there are
+no names.  You get empty strings when one or more (but not all) have no
+names. But it can be done.
+
+The OP initially was looking at a way to get a text version of a variable
+they could use using perhaps regular expressions to parse.  Of course that
+is not as easy as just looking at the names attribute in one of several
+ways. But it may help in a sense to deal with the cases mentioned above.
+The problem is that str() does not return anything except to stdout so it
+must be captured to do silly things.
+
+> test <- list(a=3,b=5,c=11)
+
+> str(test)
+List of 3
+ $ a: num 3
+ $ b: num 5
+ $ c: num 11
+
+> str(test[1])
+List of 1
+ $ a: num 3
+
+> str(test[2])
+List of 1
+ $ b: num 5
+
+> str(list(a=1, 2, c=3))
+List of 3
+ $ a: num 1
+ $  : num 2
+ $ c: num 3
+
+> str(list(1, 2, 3))
+List of 3
+ $ : num 1
+ $ : num 2
+ $ : num 3
+
+> text <- str(list(a=1, 2, c=3)[1])
+List of 1
+ $ a: num 1
+
+> text <- capture.output(str(list(a=1, 2, c=3)))
+> text
+[1] "List of 3"   " $ a: num 1" " $  : num 2" " $ c: num 3"
+So you could use some imaginative code that extracts what you want. I
+repeat, this is not a suggested way nor the best, just something that seems
+to work:
+
+> sub("(^[\\$ ]*)(\\w+|)(:.*$)", "\\2", text[2:length(text)])
+[1] "a" ""  "c"
+
+Obviously the first line of output needs to be removed as it does not fit
+the pattern. 
+
+Perhaps in this case a way less complex way is to use summary() rather than
+str as it does return the output as text.
+
+> summary(list(a=1, 2, c=3)) -> text
+> text
+  Length Class  Mode   
+a 1      -none- numeric
+  1      -none- numeric
+c 1      -none- numeric
+
+This puts the variable name, if any, at the start but parsing that is not
+trivial as it is not plain text. 
+
+Bottom line, try not to do things the hard way. Just carefully use names()
+...
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Jeff Newmiller
+Sent: Thursday, May 25, 2023 10:32 PM
+To: r-help at r-project.org
+Subject: Re: [R] extract parts of a list before symbol
+
+What a remarkable set of detours, Avi, all deriving apparently from a few
+gaps in your understanding of R.
+
+As Rolf said, "names(test)" is the answer.
+
+a) Lists are vectors. They are not atomic vectors, but they are vectors, so
+as.vector(test) is a no-op.
+
+test <- list( a = 1, b = 2, c=3 )
+attributes(test)
+attributes(as.vector(test))
+
+(Were you thinking of the unlist function? If so, there is no reason to
+convert the value of the list to an atomic vector in order to look at the
+value of an attribute of that list.)
+
+b) Data frames are lists, with the additional constraint that all elements
+have the same length, and that a names attribute and a row.names attribute
+are both required. Converting a list to a data frame to get the names is
+expensive in CPU cycles and breaks as soon as the list elements have a
+variety of lengths.
+
+c) All data in R is stored as vectors. Worrying about whether a data value
+is a vector is pointless.
+
+d) All objects can have attributes, including the name attribute. However,
+not all objects must have a name attribute... including lists. Omitting a
+name for any of the elements of a list in the constructor will lead to
+having a zero-length character values in the name attribute where the names
+were omitted. Omitting all names in the list constructor will cause no names
+attribute to be created for that list.
+
+test2 <- list( 1, 2, 3 )
+attributes(test2)
+
+e) The names() function returns the value of the names attribute. If that
+attribute is missing, it returns NULL. For dataframes, the colnames function
+is equivalent to the names function (I rarely use the colnames function).
+For lists, colnames returns NULL... there are no "columns" in a list,
+because there is no constraint on the (lengths of the) contents of a list.
+
+names(test2)
+
+f) The names attribute, if it exists, is just a character vector. It is
+never necessary to convert the output of names() to a character vector. If
+the names attribute doesn't exist, then it is up to the user to write code
+that creates it.
+
+names(test2) <- c( "A", "B", "C" )
+attributes(test2)
+names(test2)
+# or use the argument names in the list function
+
+names(test2) <- 1:3 # integer
+names(test2) # character
+attributes(test2)$names <- 1:3 # integer
+attributes(test2) # character
+test2[[ "2" ]] == 2  # TRUE
+test2$`2`  == 2 # TRUE
+
+
+
+On May 25, 2023 6:17:37 PM PDT, avi.e.gross at gmail.com wrote:
+>Evan,
+>
+>List names are less easy than data.frame column names so try this:
+>
+>> test <- list(a=3,b=5,c=11)
+>> colnames(test)
+>NULL
+>> colnames(as.data.frame(test))
+>[1] "a" "b" "c"
+>
+>But note an entry with no name has one made up for it.
+>
+>
+>> test2 <- list(a=3,b=5, 666, c=11)
+>> colnames(data.frame(test2))
+>[1] "a"    "b"    "X666" "c"   
+>
+>But that may be overkill as simply converting to a vector if ALL parts are
+>of the same type will work too:
+>
+>> names(as.vector(test))
+>[1] "a" "b" "c"
+>
+>To get one at a time:
+>
+>> names(as.vector(test))[1]
+>[1] "a"
+>
+>You can do it even simple by looking at the attributes of your list:
+>
+>> attributes(test)
+>$names
+>[1] "a" "b" "c"
+>
+>> attributes(test)$names
+>[1] "a" "b" "c"
+>> attributes(test)$names[3]
+>[1] "c"
+>
+>
+>-----Original Message-----
+>From: R-help <r-help-bounces at r-project.org> On Behalf Of Evan Cooch
+>Sent: Thursday, May 25, 2023 1:30 PM
+>To: r-help at r-project.org
+>Subject: [R] extract parts of a list before symbol
+>
+>Suppose I have the following list:
+>
+>test <- list(a=3,b=5,c=11)
+>
+>I'm trying to figure out how to extract the characters to the left of 
+>the equal sign (i.e., I want to extract a list of the variable names, a, 
+>b and c.
+>
+>I've tried the permutations I know of involving sub - things like 
+>sub("\\=.*", "", test), but no matter what I try, sub keeps returning 
+>(3, 5, 11). In other words, even though I'm trying to extract the 
+>'stuff' before the = sign, I seem to be successful only at grabbing the 
+>stuff after the equal sign.
+>
+>Pointers to the obvious fix? Thanks...
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide
+http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide
+http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Fri May 26 02:20:56 2023
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Thu, 25 May 2023 20:20:56 -0400
+Subject: [R] extract parts of a list before symbol
+In-Reply-To: <78207bda-96df-806c-d4f8-cb5b56985e80@gmail.com>
+References: <78207bda-96df-806c-d4f8-cb5b56985e80@gmail.com>
+Message-ID: <CADNULg_iBJe0Hhh5OPHTMMYTniwzP0MPte8pUmkmqhOwBtR7jA@mail.gmail.com>
+
+You probably want `names(test)`.
+
+On Thu, May 25, 2023 at 7:58?PM Evan Cooch <evan.cooch at gmail.com> wrote:
+
+> Suppose I have the following list:
+>
+> test <- list(a=3,b=5,c=11)
+>
+> I'm trying to figure out how to extract the characters to the left of
+> the equal sign (i.e., I want to extract a list of the variable names, a,
+> b and c.
+>
+> I've tried the permutations I know of involving sub - things like
+> sub("\\=.*", "", test), but no matter what I try, sub keeps returning
+> (3, 5, 11). In other words, even though I'm trying to extract the
+> 'stuff' before the = sign, I seem to be successful only at grabbing the
+> stuff after the equal sign.
+>
+> Pointers to the obvious fix? Thanks...
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Fri May 26 02:20:04 2023
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Thu, 25 May 2023 20:20:04 -0400
+Subject: [R] environments: functions within functions
+In-Reply-To: <CAM_vjumA6ZaQ0TMPDyhuSZsgL4pmD1P_fU7o=_v5bGVHMyjt8w@mail.gmail.com>
+References: <CAM_vjumA6ZaQ0TMPDyhuSZsgL4pmD1P_fU7o=_v5bGVHMyjt8w@mail.gmail.com>
+Message-ID: <CADNULg_BEitsFL7DJUso5iTadG_vXk_-MHbw2JNaCXdnskJoLQ@mail.gmail.com>
+
+Hi,
+
+
+I think there are two easy ways to fix this. The first is to use a `switch`
+to call the intended function, this should not be a problem since there are
+a small number of print functions in **mixR**
+
+```R
+print.mixfitEM <- function (x, digits = getOption("digits"), ...)
+{
+    switch(x$family,
+    gamma   = printgamma  (x, digits),
+    lnorm   = printlnorm  (x, digits),
+    normal  = printnormal (x, digits),
+    weibull = printweibull(x, digits),
+    stop(gettextf("invalid '%s' value", "x$family", domain = "R")))
+    invisible(x)
+}
+environment(print.mixfitEM) <- getNamespace("mixR")
+print.mixfitEM <- compiler::cmpfun(print.mixfitEM)
+```
+
+This is nice because 'x' is no longer evaluated twice (you could try this
+yourself with something like
+`mixR:::print.mixfitEM(writeLines("testing"))`, you'll see the output
+twice, once for `x$family` and a second for evaluating `match.call()`
+expression), it follows standard evaluation, and 'x' is returned invisibly
+at the end, like most other `print` methods. If you really wanted to
+continue using `eval`, you could instead do something like
+
+```R
+print.mixfitEM <- function (x, digits = getOption("digits"), ...)
+{
+    expr <- quote(printfunction(x, digits))
+    expr[[1L]] <- as.symbol(paste0("print", x$family))
+    eval(expr)
+    invisible(x)
+}
+environment(print.mixfitEM) <- getNamespace("mixR")
+print.mixfitEM <- compiler::cmpfun(print.mixfitEM)
+```
+
+This also solves the same issues, but it's ugly and slower.
+
+At least for now, I would copy one of the functions above into the
+site-wide startup profile file or your user profile, along with
+
+```R
+utils::assignInNamespace("print.mixfitEM", print.mixfitEM, "mixR")
+```
+
+This does have the unfortunate side effect of loading **mixR** every time
+an R session is launched, but you could also put it inside another function
+like:
+
+```R
+fix.mixR.print.mixfitEM <- function ()
+{
+    print.mixfitEM <- function(x, digits = getOption("digits"), ...) {
+        switch(x$family,
+        gamma   = printgamma  (x, digits),
+        lnorm   = printlnorm  (x, digits),
+        normal  = printnormal (x, digits),
+        weibull = printweibull(x, digits),
+        stop(gettextf("invalid '%s' value", "x$family", domain = "R")))
+        invisible(x)
+    }
+    environment(print.mixfitEM) <- getNamespace("mixR")
+    print.mixfitEM <- compiler::cmpfun(print.mixfitEM)
+    utils::assignInNamespace("print.mixfitEM", print.mixfitEM, "mixR")
+}
+```
+
+which you would then call in your scripts before using **mixR**. I hope
+this helps!
+
+On Thu, May 25, 2023 at 10:19?AM Sarah Goslee <sarah.goslee at gmail.com>
+wrote:
+
+> Hi,
+>
+> I ran into a problem with S3 method dispatch and scoping while trying
+> to use functions from the mixR package within my own functions. I know
+> enough to find the problem (I think!), but not enough to fix it
+> myself. The problem isn't really a package-specific problem, so I'm
+> starting here, and will file an issue with the maintainer once I have
+> a solution.
+>
+> Detailed explanation below, but briefly, the S3 methods in this
+> package use match.call() and then eval() to select the correct
+> internal method. This works fine from the command line, but if the
+> method is called from within another function, the use of
+> environment() within eval() means that the objects passed to the
+> wrapper function are no longer visible within the eval() call.
+>
+> I have a two-part question:
+> A. How do I get around this right now?
+> B. What would the correct approach be for the package authors?
+>
+> library(mixR)
+>
+> # first example from ?mixfit
+> ## fitting the normal mixture models
+> set.seed(103)
+> x <- rmixnormal(200, c(0.3, 0.7), c(2, 5), c(1, 1))
+> data <- bin(x, seq(-1, 8, 0.25))
+> fit1 <- mixfit(x, ncomp = 2)  # raw data
+> rm(x, data)
+> ###
+>
+> # simple function
+> funworks <- function(x) {
+>     print(x)
+> }
+>
+> ###
+>
+> # almost identical simple function
+> funfails <- function(thisx) {
+>     print(thisx)
+> }
+>
+> ###
+>
+> funworks(fit1)
+> funfails(fit1)
+>
+> #######
+>
+> The explanation as I understand it...
+>
+> print called on this object gets passed to print.mixfitEM(), which is:
+>
+>
+> function (x, digits = getOption("digits"), ...)
+> {
+>     family <- x$family
+>     mc <- match.call()
+>     mc$digits <- digits
+>     fun.name <- paste0("print", family)
+>     mc[[1]] <- as.name(fun.name)
+>     eval(mc, environment())
+> }
+>
+>
+> Working through the calls, when eval() is called from within funfails(),
+> mc is
+> printnormal(x = thisx, digits = 7)
+> and the calling environment does not contain thisx.
+>
+> In funworks(), it's
+> printnormal(x = x, digits = 7)
+>
+> and x is found.
+>
+> So, I can get around the problem by naming my argument x, as in
+> funworks(), but that's unsatisfying. Is there something else I can do
+> to get my functions to work?
+>
+> And what's the correct way to do what print.mixfitEM() is doing, so
+> that it works regardless? I poked around for a while, but didn't find
+> a clear (to me!) answer.
+>
+> Thanks,
+> Sarah
+>
+> --
+> Sarah Goslee (she/her)
+> http://www.numberwright.com
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ev@n@cooch @end|ng |rom gm@||@com  Fri May 26 16:37:50 2023
+From: ev@n@cooch @end|ng |rom gm@||@com (Evan Cooch)
+Date: Fri, 26 May 2023 10:37:50 -0400
+Subject: [R] extract parts of a list before symbol
+In-Reply-To: <01d001d98f86$f0e55010$d2aff030$@gmail.com>
+References: <78207bda-96df-806c-d4f8-cb5b56985e80@gmail.com>
+ <01a801d98f6f$dbcb83f0$93628bd0$@gmail.com>
+ <29899283-FE32-4C8E-9D56-010AF8659009@dcn.davis.ca.us>
+ <01d001d98f86$f0e55010$d2aff030$@gmail.com>
+Message-ID: <31771dd9-7a30-8873-f7d6-419e5847d2a6@gmail.com>
+
+Many thanks to all. Wasn't even aware of the names function. That does 
+the trick for present purposes.
+
+On 5/26/2023 12:02 AM, avi.e.gross at gmail.com wrote:
+> All true Jeff, but why do things the easy way! LOL!
+>
+> My point was that various data structures, besides the list we started with,
+> store the names as an attribute. Yes, names(listname) works fine to extract
+> whatever parts they want. My original idea of using a data.frame was because
+> it creates names when they are absent.
+>
+> And you are correct that if the original list was not as shown with only all
+> items of length 1, converting to a data.frame fails.
+>
+> >From what you say, it is a harder think to write a function that returns a
+> "name" for column N given a list. As you note, you get a null when there are
+> no names.  You get empty strings when one or more (but not all) have no
+> names. But it can be done.
+>
+> The OP initially was looking at a way to get a text version of a variable
+> they could use using perhaps regular expressions to parse.  Of course that
+> is not as easy as just looking at the names attribute in one of several
+> ways. But it may help in a sense to deal with the cases mentioned above.
+> The problem is that str() does not return anything except to stdout so it
+> must be captured to do silly things.
+>
+>> test <- list(a=3,b=5,c=11)
+>> str(test)
+> List of 3
+>   $ a: num 3
+>   $ b: num 5
+>   $ c: num 11
+>
+>> str(test[1])
+> List of 1
+>   $ a: num 3
+>
+>> str(test[2])
+> List of 1
+>   $ b: num 5
+>
+>> str(list(a=1, 2, c=3))
+> List of 3
+>   $ a: num 1
+>   $  : num 2
+>   $ c: num 3
+>
+>> str(list(1, 2, 3))
+> List of 3
+>   $ : num 1
+>   $ : num 2
+>   $ : num 3
+>
+>> text <- str(list(a=1, 2, c=3)[1])
+> List of 1
+>   $ a: num 1
+>
+>> text <- capture.output(str(list(a=1, 2, c=3)))
+>> text
+> [1] "List of 3"   " $ a: num 1" " $  : num 2" " $ c: num 3"
+> So you could use some imaginative code that extracts what you want. I
+> repeat, this is not a suggested way nor the best, just something that seems
+> to work:
+>
+>> sub("(^[\\$ ]*)(\\w+|)(:.*$)", "\\2", text[2:length(text)])
+> [1] "a" ""  "c"
+>
+> Obviously the first line of output needs to be removed as it does not fit
+> the pattern.
+>
+> Perhaps in this case a way less complex way is to use summary() rather than
+> str as it does return the output as text.
+>
+>> summary(list(a=1, 2, c=3)) -> text
+>> text
+>    Length Class  Mode
+> a 1      -none- numeric
+>    1      -none- numeric
+> c 1      -none- numeric
+>
+> This puts the variable name, if any, at the start but parsing that is not
+> trivial as it is not plain text.
+>
+> Bottom line, try not to do things the hard way. Just carefully use names()
+> ...
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Jeff Newmiller
+> Sent: Thursday, May 25, 2023 10:32 PM
+> To: r-help at r-project.org
+> Subject: Re: [R] extract parts of a list before symbol
+>
+> What a remarkable set of detours, Avi, all deriving apparently from a few
+> gaps in your understanding of R.
+>
+> As Rolf said, "names(test)" is the answer.
+>
+> a) Lists are vectors. They are not atomic vectors, but they are vectors, so
+> as.vector(test) is a no-op.
+>
+> test <- list( a = 1, b = 2, c=3 )
+> attributes(test)
+> attributes(as.vector(test))
+>
+> (Were you thinking of the unlist function? If so, there is no reason to
+> convert the value of the list to an atomic vector in order to look at the
+> value of an attribute of that list.)
+>
+> b) Data frames are lists, with the additional constraint that all elements
+> have the same length, and that a names attribute and a row.names attribute
+> are both required. Converting a list to a data frame to get the names is
+> expensive in CPU cycles and breaks as soon as the list elements have a
+> variety of lengths.
+>
+> c) All data in R is stored as vectors. Worrying about whether a data value
+> is a vector is pointless.
+>
+> d) All objects can have attributes, including the name attribute. However,
+> not all objects must have a name attribute... including lists. Omitting a
+> name for any of the elements of a list in the constructor will lead to
+> having a zero-length character values in the name attribute where the names
+> were omitted. Omitting all names in the list constructor will cause no names
+> attribute to be created for that list.
+>
+> test2 <- list( 1, 2, 3 )
+> attributes(test2)
+>
+> e) The names() function returns the value of the names attribute. If that
+> attribute is missing, it returns NULL. For dataframes, the colnames function
+> is equivalent to the names function (I rarely use the colnames function).
+> For lists, colnames returns NULL... there are no "columns" in a list,
+> because there is no constraint on the (lengths of the) contents of a list.
+>
+> names(test2)
+>
+> f) The names attribute, if it exists, is just a character vector. It is
+> never necessary to convert the output of names() to a character vector. If
+> the names attribute doesn't exist, then it is up to the user to write code
+> that creates it.
+>
+> names(test2) <- c( "A", "B", "C" )
+> attributes(test2)
+> names(test2)
+> # or use the argument names in the list function
+>
+> names(test2) <- 1:3 # integer
+> names(test2) # character
+> attributes(test2)$names <- 1:3 # integer
+> attributes(test2) # character
+> test2[[ "2" ]] == 2  # TRUE
+> test2$`2`  == 2 # TRUE
+>
+>
+>
+> On May 25, 2023 6:17:37 PM PDT, avi.e.gross at gmail.com wrote:
+>> Evan,
+>>
+>> List names are less easy than data.frame column names so try this:
+>>
+>>> test <- list(a=3,b=5,c=11)
+>>> colnames(test)
+>> NULL
+>>> colnames(as.data.frame(test))
+>> [1] "a" "b" "c"
+>>
+>> But note an entry with no name has one made up for it.
+>>
+>>
+>>> test2 <- list(a=3,b=5, 666, c=11)
+>>> colnames(data.frame(test2))
+>> [1] "a"    "b"    "X666" "c"
+>>
+>> But that may be overkill as simply converting to a vector if ALL parts are
+>> of the same type will work too:
+>>
+>>> names(as.vector(test))
+>> [1] "a" "b" "c"
+>>
+>> To get one at a time:
+>>
+>>> names(as.vector(test))[1]
+>> [1] "a"
+>>
+>> You can do it even simple by looking at the attributes of your list:
+>>
+>>> attributes(test)
+>> $names
+>> [1] "a" "b" "c"
+>>
+>>> attributes(test)$names
+>> [1] "a" "b" "c"
+>>> attributes(test)$names[3]
+>> [1] "c"
+>>
+>>
+>> -----Original Message-----
+>> From: R-help <r-help-bounces at r-project.org> On Behalf Of Evan Cooch
+>> Sent: Thursday, May 25, 2023 1:30 PM
+>> To: r-help at r-project.org
+>> Subject: [R] extract parts of a list before symbol
+>>
+>> Suppose I have the following list:
+>>
+>> test <- list(a=3,b=5,c=11)
+>>
+>> I'm trying to figure out how to extract the characters to the left of
+>> the equal sign (i.e., I want to extract a list of the variable names, a,
+>> b and c.
+>>
+>> I've tried the permutations I know of involving sub - things like
+>> sub("\\=.*", "", test), but no matter what I try, sub keeps returning
+>> (3, 5, 11). In other words, even though I'm trying to extract the
+>> 'stuff' before the = sign, I seem to be successful only at grabbing the
+>> stuff after the equal sign.
+>>
+>> Pointers to the obvious fix? Thanks...
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ev@n@cooch @end|ng |rom gm@||@com  Fri May 26 16:49:18 2023
+From: ev@n@cooch @end|ng |rom gm@||@com (Evan Cooch)
+Date: Fri, 26 May 2023 10:49:18 -0400
+Subject: [R] reference generated var name in loop
+Message-ID: <786549bf-b689-dda5-0a6b-84a7c39a0738@gmail.com>
+
+Greetings --
+
+I'm trying to write some code that basically does the following:
+
+1\ user inputs a list of parameter names, and parameter values.
+
+2\ code parses this list, extracting parameter names and values separately
+
+3\ loops over the number of parameters, and for each parameter, 
+generates something (say, rnorm) based on the value corresponding to 
+that parameter.
+
+4\ assigns a new name to the vector of rnorm data, where the name is a 
+permutation of the original parameter name. In the example (below) I 
+simply past "_r" to the original parameter name (to indicate, say, its 
+some rnorm values associated that that variable).
+
+5\the 'I'm stumped' part -- output the newly named vector into something 
+(say, data.frame), which requires being able to reference the newly 
+named vector, which is what can't figure out how to accomplish.
+
+Here is a MWE of sorts -- the starting list of parameter names and 
+values is in a list I call parms.
+
+ ?parms <- c(a=4,b=6,c=11) # list of parms user could pass to a function
+
+ ?nvars <- names(parms)? # extract parameter names
+
+ ?vals <- sub("\\=.*", "", parms) # extract parameter values
+
+ ?n <- length(parms) # determine number of parameters
+
+ ?ranvec <- data.frame() # to store stuff from loop
+
+ ?for (i in 1:n) {
+ ?? pn <- nvars[i]; # get name of parm variable
+ ?? rn <- rnorm(5,as.numeric(vals[i]),0.25) # generate rnorm based on 
+parm value
+ ?? assign(paste(pn, "_r", sep=""),rn) # creates a_r, b_r, c_r...
+ ?? ** here is where I want to output to ranvec, but I can't see how to 
+do it since the loop doesn't know the name of the new var created in 
+preceding step...**
+ ?}
+
+
+In the end, I want to create a data frame containing rnorm deviates for 
+each of a set of user-specified variables, which I can reference in some 
+fashion using a permuted version of the original variable name.
+
+Suggestions?
+
+Many thanks...
+
+
+From 538280 @end|ng |rom gm@||@com  Fri May 26 18:00:45 2023
+From: 538280 @end|ng |rom gm@||@com (Greg Snow)
+Date: Fri, 26 May 2023 10:00:45 -0600
+Subject: [R] reference generated var name in loop
+In-Reply-To: <786549bf-b689-dda5-0a6b-84a7c39a0738@gmail.com>
+References: <786549bf-b689-dda5-0a6b-84a7c39a0738@gmail.com>
+Message-ID: <CAFEqCdx4PXncA+48VwKpeaXKxmk7JuAmvyKEivAs5RdB2vnp=g@mail.gmail.com>
+
+Using the `assign` function is almost always a sign that you are
+making things more complicated than is needed.  It is better to work
+directly with lists, which make it much easier to set and get names.
+
+Your code and description can be done pretty simply using the `lapply
+function (often easier than using a loop if the desire is to save the
+output of each iteration), here is one example:
+
+parms <- c(a=4, b=6, c=11)
+
+tmp1 <- lapply(parms, function(mu){
+  rnorm(5, mu, 0.25)
+})
+
+names(tmp1) <- paste0(names(parms), "_r")
+ranvec <- as.data.frame(tmp1)
+ranvec
+
+We can skip the temporary variable(s) by using pipes like this:
+
+parms |>
+  lapply( rnorm, n=5, sd=0.25 ) |>
+  setNames( paste0(names(parms), "_r")) |>
+  as.data.frame()
+
+Your line using `sub` does not do anything.  While the `=` sign was
+used to create the vector with names, the vector itself does not
+contain any `=` signs and so there is no reason to try to remove
+anything.  The `parms` vector already contains the numbers that you
+are trying to extract (plus a names attribute which will be ignored
+when not needed, so usually there is no reason to remove the names).
+
+The `lapply` function runs the function passed in (an anonymous
+function in the first example, the `rnorm` function in the second) on
+each element of the vector/list passed in as the first argument and
+stores each result as an element in a list, which is then returned
+(and in my examples named then converted to a data frame).
+
+The `sapply` function would combine the resulting vectors into a
+matrix, and would handle the naming automatically, so something as
+simple as:
+
+sapply(parms, rnorm, n=5, sd=0.25)
+
+may do what you want (you could pipe that to `as.data.frame` if you
+really need a data frame).
+
+
+The purrr package (part of the tidyverse) gives some additional
+functions similar to `lapply` and `sapply` but with extra bells and
+whistles.
+
+If you really want to use a loop, then take advantage of the fact that
+the data frame is a special case of a list and try something like:
+
+ranvec <- data.frame(row.names=1:5)
+for(i in seq_along(parms)) {
+  tmp.nm <- paste0(names(parms)[i], '_r')
+  ranvec[[tmp.nm]] <- rnorm(5, parms[i], 0.25)
+}
+
+or
+
+ranvec <- data.frame(row.names=1:5)
+for(nm in names(parms)) {
+  tmp.nm <- paste0(nm, '_r')
+  ranvec[[tmp.nm]] <- rnorm(5, parms[nm], 0.25)
+}
+
+
+On Fri, May 26, 2023 at 8:50?AM Evan Cooch <evan.cooch at gmail.com> wrote:
+>
+> Greetings --
+>
+> I'm trying to write some code that basically does the following:
+>
+> 1\ user inputs a list of parameter names, and parameter values.
+>
+> 2\ code parses this list, extracting parameter names and values separately
+>
+> 3\ loops over the number of parameters, and for each parameter,
+> generates something (say, rnorm) based on the value corresponding to
+> that parameter.
+>
+> 4\ assigns a new name to the vector of rnorm data, where the name is a
+> permutation of the original parameter name. In the example (below) I
+> simply past "_r" to the original parameter name (to indicate, say, its
+> some rnorm values associated that that variable).
+>
+> 5\the 'I'm stumped' part -- output the newly named vector into something
+> (say, data.frame), which requires being able to reference the newly
+> named vector, which is what can't figure out how to accomplish.
+>
+> Here is a MWE of sorts -- the starting list of parameter names and
+> values is in a list I call parms.
+>
+>   parms <- c(a=4,b=6,c=11) # list of parms user could pass to a function
+>
+>   nvars <- names(parms)  # extract parameter names
+>
+>   vals <- sub("\\=.*", "", parms) # extract parameter values
+>
+>   n <- length(parms) # determine number of parameters
+>
+>   ranvec <- data.frame() # to store stuff from loop
+>
+>   for (i in 1:n) {
+>     pn <- nvars[i]; # get name of parm variable
+>     rn <- rnorm(5,as.numeric(vals[i]),0.25) # generate rnorm based on
+> parm value
+>     assign(paste(pn, "_r", sep=""),rn) # creates a_r, b_r, c_r...
+>     ** here is where I want to output to ranvec, but I can't see how to
+> do it since the loop doesn't know the name of the new var created in
+> preceding step...**
+>   }
+>
+>
+> In the end, I want to create a data frame containing rnorm deviates for
+> each of a set of user-specified variables, which I can reference in some
+> fashion using a permuted version of the original variable name.
+>
+> Suggestions?
+>
+> Many thanks...
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Gregory (Greg) L. Snow Ph.D.
+538280 at gmail.com
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Fri May 26 18:09:13 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Fri, 26 May 2023 12:09:13 -0400
+Subject: [R] extract parts of a list before symbol
+In-Reply-To: <31771dd9-7a30-8873-f7d6-419e5847d2a6@gmail.com>
+References: <78207bda-96df-806c-d4f8-cb5b56985e80@gmail.com>
+ <01a801d98f6f$dbcb83f0$93628bd0$@gmail.com>
+ <29899283-FE32-4C8E-9D56-010AF8659009@dcn.davis.ca.us>
+ <01d001d98f86$f0e55010$d2aff030$@gmail.com>
+ <31771dd9-7a30-8873-f7d6-419e5847d2a6@gmail.com>
+Message-ID: <004e01d98fec$6a1bf050$3e53d0f0$@gmail.com>
+
+Evan,
+
+Yes, once you know a bit about the details, all kinds of functions are
+available to solve problems without going the hard way.
+
+But the names() function is taught fairly widely and did you also pick up on
+the fact that it can be used on both sides so it also sets the names?
+
+> # Create a list with mixed case names
+> named <- list(age=69, Month="October", YEAR=1492)
+
+> # Save the names to be reset later
+> old_names <- names(named)
+
+> # Show current names for the items in named
+> print(names(named))
+[1] "age"   "Month" "YEAR" 
+
+> # Replace the current names with an upper case version starting with
+"var_"
+> names(named) <- paste0("var_", toupper(names(named)))
+
+> # Show current namesfor the items in named
+> print(names(named))
+[1] "var_AGE"   "var_MONTH" "var_YEAR" 
+
+> # Reset the names to the original names
+> names(named) <- old_names
+
+> # Show current namesfor the items in named
+> print(names(named))
+[1] "age"   "Month" "YEAR"
+
+Look out for other such functions that work on both the LHS and RHS.
+
+> evens <- seq(0,20,2)
+> evens
+ [1]  0  2  4  6  8 10 12 14 16 18 20
+> length(evens)
+[1] 11
+> length(evens) <- 5
+> evens
+[1] 0 2 4 6 8
+
+If you look just a bit under the hood, R stores all kinds of things about a
+variable that you can change with the right function. You can change the
+dimensions of a vector for example with dim() as well as get the current
+dimensions.
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Evan Cooch
+Sent: Friday, May 26, 2023 10:38 AM
+To: r-help at r-project.org
+Subject: Re: [R] extract parts of a list before symbol
+
+Many thanks to all. Wasn't even aware of the names function. That does 
+the trick for present purposes.
+
+On 5/26/2023 12:02 AM, avi.e.gross at gmail.com wrote:
+> All true Jeff, but why do things the easy way! LOL!
+>
+> My point was that various data structures, besides the list we started
+with,
+> store the names as an attribute. Yes, names(listname) works fine to
+extract
+> whatever parts they want. My original idea of using a data.frame was
+because
+> it creates names when they are absent.
+>
+> And you are correct that if the original list was not as shown with only
+all
+> items of length 1, converting to a data.frame fails.
+>
+> >From what you say, it is a harder think to write a function that returns
+a
+> "name" for column N given a list. As you note, you get a null when there
+are
+> no names.  You get empty strings when one or more (but not all) have no
+> names. But it can be done.
+>
+> The OP initially was looking at a way to get a text version of a variable
+> they could use using perhaps regular expressions to parse.  Of course that
+> is not as easy as just looking at the names attribute in one of several
+> ways. But it may help in a sense to deal with the cases mentioned above.
+> The problem is that str() does not return anything except to stdout so it
+> must be captured to do silly things.
+>
+>> test <- list(a=3,b=5,c=11)
+>> str(test)
+> List of 3
+>   $ a: num 3
+>   $ b: num 5
+>   $ c: num 11
+>
+>> str(test[1])
+> List of 1
+>   $ a: num 3
+>
+>> str(test[2])
+> List of 1
+>   $ b: num 5
+>
+>> str(list(a=1, 2, c=3))
+> List of 3
+>   $ a: num 1
+>   $  : num 2
+>   $ c: num 3
+>
+>> str(list(1, 2, 3))
+> List of 3
+>   $ : num 1
+>   $ : num 2
+>   $ : num 3
+>
+>> text <- str(list(a=1, 2, c=3)[1])
+> List of 1
+>   $ a: num 1
+>
+>> text <- capture.output(str(list(a=1, 2, c=3)))
+>> text
+> [1] "List of 3"   " $ a: num 1" " $  : num 2" " $ c: num 3"
+> So you could use some imaginative code that extracts what you want. I
+> repeat, this is not a suggested way nor the best, just something that
+seems
+> to work:
+>
+>> sub("(^[\\$ ]*)(\\w+|)(:.*$)", "\\2", text[2:length(text)])
+> [1] "a" ""  "c"
+>
+> Obviously the first line of output needs to be removed as it does not fit
+> the pattern.
+>
+> Perhaps in this case a way less complex way is to use summary() rather
+than
+> str as it does return the output as text.
+>
+>> summary(list(a=1, 2, c=3)) -> text
+>> text
+>    Length Class  Mode
+> a 1      -none- numeric
+>    1      -none- numeric
+> c 1      -none- numeric
+>
+> This puts the variable name, if any, at the start but parsing that is not
+> trivial as it is not plain text.
+>
+> Bottom line, try not to do things the hard way. Just carefully use names()
+> ...
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Jeff Newmiller
+> Sent: Thursday, May 25, 2023 10:32 PM
+> To: r-help at r-project.org
+> Subject: Re: [R] extract parts of a list before symbol
+>
+> What a remarkable set of detours, Avi, all deriving apparently from a few
+> gaps in your understanding of R.
+>
+> As Rolf said, "names(test)" is the answer.
+>
+> a) Lists are vectors. They are not atomic vectors, but they are vectors,
+so
+> as.vector(test) is a no-op.
+>
+> test <- list( a = 1, b = 2, c=3 )
+> attributes(test)
+> attributes(as.vector(test))
+>
+> (Were you thinking of the unlist function? If so, there is no reason to
+> convert the value of the list to an atomic vector in order to look at the
+> value of an attribute of that list.)
+>
+> b) Data frames are lists, with the additional constraint that all elements
+> have the same length, and that a names attribute and a row.names attribute
+> are both required. Converting a list to a data frame to get the names is
+> expensive in CPU cycles and breaks as soon as the list elements have a
+> variety of lengths.
+>
+> c) All data in R is stored as vectors. Worrying about whether a data value
+> is a vector is pointless.
+>
+> d) All objects can have attributes, including the name attribute. However,
+> not all objects must have a name attribute... including lists. Omitting a
+> name for any of the elements of a list in the constructor will lead to
+> having a zero-length character values in the name attribute where the
+names
+> were omitted. Omitting all names in the list constructor will cause no
+names
+> attribute to be created for that list.
+>
+> test2 <- list( 1, 2, 3 )
+> attributes(test2)
+>
+> e) The names() function returns the value of the names attribute. If that
+> attribute is missing, it returns NULL. For dataframes, the colnames
+function
+> is equivalent to the names function (I rarely use the colnames function).
+> For lists, colnames returns NULL... there are no "columns" in a list,
+> because there is no constraint on the (lengths of the) contents of a list.
+>
+> names(test2)
+>
+> f) The names attribute, if it exists, is just a character vector. It is
+> never necessary to convert the output of names() to a character vector. If
+> the names attribute doesn't exist, then it is up to the user to write code
+> that creates it.
+>
+> names(test2) <- c( "A", "B", "C" )
+> attributes(test2)
+> names(test2)
+> # or use the argument names in the list function
+>
+> names(test2) <- 1:3 # integer
+> names(test2) # character
+> attributes(test2)$names <- 1:3 # integer
+> attributes(test2) # character
+> test2[[ "2" ]] == 2  # TRUE
+> test2$`2`  == 2 # TRUE
+>
+>
+>
+> On May 25, 2023 6:17:37 PM PDT, avi.e.gross at gmail.com wrote:
+>> Evan,
+>>
+>> List names are less easy than data.frame column names so try this:
+>>
+>>> test <- list(a=3,b=5,c=11)
+>>> colnames(test)
+>> NULL
+>>> colnames(as.data.frame(test))
+>> [1] "a" "b" "c"
+>>
+>> But note an entry with no name has one made up for it.
+>>
+>>
+>>> test2 <- list(a=3,b=5, 666, c=11)
+>>> colnames(data.frame(test2))
+>> [1] "a"    "b"    "X666" "c"
+>>
+>> But that may be overkill as simply converting to a vector if ALL parts
+are
+>> of the same type will work too:
+>>
+>>> names(as.vector(test))
+>> [1] "a" "b" "c"
+>>
+>> To get one at a time:
+>>
+>>> names(as.vector(test))[1]
+>> [1] "a"
+>>
+>> You can do it even simple by looking at the attributes of your list:
+>>
+>>> attributes(test)
+>> $names
+>> [1] "a" "b" "c"
+>>
+>>> attributes(test)$names
+>> [1] "a" "b" "c"
+>>> attributes(test)$names[3]
+>> [1] "c"
+>>
+>>
+>> -----Original Message-----
+>> From: R-help <r-help-bounces at r-project.org> On Behalf Of Evan Cooch
+>> Sent: Thursday, May 25, 2023 1:30 PM
+>> To: r-help at r-project.org
+>> Subject: [R] extract parts of a list before symbol
+>>
+>> Suppose I have the following list:
+>>
+>> test <- list(a=3,b=5,c=11)
+>>
+>> I'm trying to figure out how to extract the characters to the left of
+>> the equal sign (i.e., I want to extract a list of the variable names, a,
+>> b and c.
+>>
+>> I've tried the permutations I know of involving sub - things like
+>> sub("\\=.*", "", test), but no matter what I try, sub keeps returning
+>> (3, 5, 11). In other words, even though I'm trying to extract the
+>> 'stuff' before the = sign, I seem to be successful only at grabbing the
+>> stuff after the equal sign.
+>>
+>> Pointers to the obvious fix? Thanks...
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri May 26 19:19:43 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 26 May 2023 13:19:43 -0400
+Subject: [R] environments: functions within functions
+In-Reply-To: <CADNULg_BEitsFL7DJUso5iTadG_vXk_-MHbw2JNaCXdnskJoLQ@mail.gmail.com>
+References: <CAM_vjumA6ZaQ0TMPDyhuSZsgL4pmD1P_fU7o=_v5bGVHMyjt8w@mail.gmail.com>
+ <CADNULg_BEitsFL7DJUso5iTadG_vXk_-MHbw2JNaCXdnskJoLQ@mail.gmail.com>
+Message-ID: <718d5fb8-0c51-e601-8f52-96f003c8b397@gmail.com>
+
+I agree with Iris:  the switch() solution looks like the best option 
+here.  The only change I'd make is to pass the dots down to the print 
+function (or possibly warn about using them if those functions don't 
+support any other parameters).
+
+Duncan Murdoch
+
+On 25/05/2023 8:20 p.m., Iris Simmons wrote:
+> Hi,
+> 
+> 
+> I think there are two easy ways to fix this. The first is to use a `switch`
+> to call the intended function, this should not be a problem since there are
+> a small number of print functions in **mixR**
+> 
+> ```R
+> print.mixfitEM <- function (x, digits = getOption("digits"), ...)
+> {
+>      switch(x$family,
+>      gamma   = printgamma  (x, digits),
+>      lnorm   = printlnorm  (x, digits),
+>      normal  = printnormal (x, digits),
+>      weibull = printweibull(x, digits),
+>      stop(gettextf("invalid '%s' value", "x$family", domain = "R")))
+>      invisible(x)
+> }
+> environment(print.mixfitEM) <- getNamespace("mixR")
+> print.mixfitEM <- compiler::cmpfun(print.mixfitEM)
+> ```
+> 
+> This is nice because 'x' is no longer evaluated twice (you could try this
+> yourself with something like
+> `mixR:::print.mixfitEM(writeLines("testing"))`, you'll see the output
+> twice, once for `x$family` and a second for evaluating `match.call()`
+> expression), it follows standard evaluation, and 'x' is returned invisibly
+> at the end, like most other `print` methods. If you really wanted to
+> continue using `eval`, you could instead do something like
+> 
+> ```R
+> print.mixfitEM <- function (x, digits = getOption("digits"), ...)
+> {
+>      expr <- quote(printfunction(x, digits))
+>      expr[[1L]] <- as.symbol(paste0("print", x$family))
+>      eval(expr)
+>      invisible(x)
+> }
+> environment(print.mixfitEM) <- getNamespace("mixR")
+> print.mixfitEM <- compiler::cmpfun(print.mixfitEM)
+> ```
+> 
+> This also solves the same issues, but it's ugly and slower.
+> 
+> At least for now, I would copy one of the functions above into the
+> site-wide startup profile file or your user profile, along with
+> 
+> ```R
+> utils::assignInNamespace("print.mixfitEM", print.mixfitEM, "mixR")
+> ```
+> 
+> This does have the unfortunate side effect of loading **mixR** every time
+> an R session is launched, but you could also put it inside another function
+> like:
+> 
+> ```R
+> fix.mixR.print.mixfitEM <- function ()
+> {
+>      print.mixfitEM <- function(x, digits = getOption("digits"), ...) {
+>          switch(x$family,
+>          gamma   = printgamma  (x, digits),
+>          lnorm   = printlnorm  (x, digits),
+>          normal  = printnormal (x, digits),
+>          weibull = printweibull(x, digits),
+>          stop(gettextf("invalid '%s' value", "x$family", domain = "R")))
+>          invisible(x)
+>      }
+>      environment(print.mixfitEM) <- getNamespace("mixR")
+>      print.mixfitEM <- compiler::cmpfun(print.mixfitEM)
+>      utils::assignInNamespace("print.mixfitEM", print.mixfitEM, "mixR")
+> }
+> ```
+> 
+> which you would then call in your scripts before using **mixR**. I hope
+> this helps!
+> 
+> On Thu, May 25, 2023 at 10:19?AM Sarah Goslee <sarah.goslee at gmail.com>
+> wrote:
+> 
+>> Hi,
+>>
+>> I ran into a problem with S3 method dispatch and scoping while trying
+>> to use functions from the mixR package within my own functions. I know
+>> enough to find the problem (I think!), but not enough to fix it
+>> myself. The problem isn't really a package-specific problem, so I'm
+>> starting here, and will file an issue with the maintainer once I have
+>> a solution.
+>>
+>> Detailed explanation below, but briefly, the S3 methods in this
+>> package use match.call() and then eval() to select the correct
+>> internal method. This works fine from the command line, but if the
+>> method is called from within another function, the use of
+>> environment() within eval() means that the objects passed to the
+>> wrapper function are no longer visible within the eval() call.
+>>
+>> I have a two-part question:
+>> A. How do I get around this right now?
+>> B. What would the correct approach be for the package authors?
+>>
+>> library(mixR)
+>>
+>> # first example from ?mixfit
+>> ## fitting the normal mixture models
+>> set.seed(103)
+>> x <- rmixnormal(200, c(0.3, 0.7), c(2, 5), c(1, 1))
+>> data <- bin(x, seq(-1, 8, 0.25))
+>> fit1 <- mixfit(x, ncomp = 2)  # raw data
+>> rm(x, data)
+>> ###
+>>
+>> # simple function
+>> funworks <- function(x) {
+>>      print(x)
+>> }
+>>
+>> ###
+>>
+>> # almost identical simple function
+>> funfails <- function(thisx) {
+>>      print(thisx)
+>> }
+>>
+>> ###
+>>
+>> funworks(fit1)
+>> funfails(fit1)
+>>
+>> #######
+>>
+>> The explanation as I understand it...
+>>
+>> print called on this object gets passed to print.mixfitEM(), which is:
+>>
+>>
+>> function (x, digits = getOption("digits"), ...)
+>> {
+>>      family <- x$family
+>>      mc <- match.call()
+>>      mc$digits <- digits
+>>      fun.name <- paste0("print", family)
+>>      mc[[1]] <- as.name(fun.name)
+>>      eval(mc, environment())
+>> }
+>>
+>>
+>> Working through the calls, when eval() is called from within funfails(),
+>> mc is
+>> printnormal(x = thisx, digits = 7)
+>> and the calling environment does not contain thisx.
+>>
+>> In funworks(), it's
+>> printnormal(x = x, digits = 7)
+>>
+>> and x is found.
+>>
+>> So, I can get around the problem by naming my argument x, as in
+>> funworks(), but that's unsatisfying. Is there something else I can do
+>> to get my functions to work?
+>>
+>> And what's the correct way to do what print.mixfitEM() is doing, so
+>> that it works regardless? I poked around for a while, but didn't find
+>> a clear (to me!) answer.
+>>
+>> Thanks,
+>> Sarah
+>>
+>> --
+>> Sarah Goslee (she/her)
+>> http://www.numberwright.com
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Fri May 26 21:05:44 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Fri, 26 May 2023 12:05:44 -0700
+Subject: [R] data.frame with a column containing an array
+In-Reply-To: <trinity-242ffb27-38cb-4dd9-8dfe-74a1c5c55ed3-1685111017163@3c-app-gmx-bs66>
+References: <trinity-2eda1037-de24-4b26-849a-41f0a1104f03-1683543179774@3c-app-gmx-bap03>
+ <7daa5b29-0958-eed7-47f2-0b9928ef17b1@sapo.pt>
+ <trinity-00875706-f414-441a-8594-358db7d8f23c-1683622242413@3c-app-gmx-bap56>
+ <CAGxFJbS0kn+g+hk7v_NJ+tsKsnEMuxBaHy6yhBkZ1FFKcB=8_Q@mail.gmail.com>
+ <CAGxFJbRo3pDD2dLPy4WwM-nbZiLsUKqoDVYAv4ri=FLwyyQAfg@mail.gmail.com>
+ <trinity-f6eba7c7-46e5-4dbe-a38e-eb30225d69a7-1684986763969@3c-app-gmx-bs05>
+ <CAGxFJbRfR6HGMvXYsDA1GUMpEKpgiAkkkxh8aeG0SyydBQtZ3w@mail.gmail.com>
+ <trinity-242ffb27-38cb-4dd9-8dfe-74a1c5c55ed3-1685111017163@3c-app-gmx-bs66>
+Message-ID: <CAGxFJbTARntXwSb-Ff5ekYuvtDeuf5TBO7i0kemUYvjL0aG2Dw@mail.gmail.com>
+
+Please refer to Jeff Newmiller's response. I believe that your further
+exploration of indexing a data frame containing an array column
+demonstrates his point: don't do it!
+
+As this discussion could now devolve into a morass of personal opinion
+(such as the above), if you or others care to continue, please do so
+**offlist**. However, I have nothing further to say in any case.
+
+Cheers,
+Bert
+
+On Fri, May 26, 2023 at 7:23?AM Georg Kindermann
+<Georg.Kindermann at gmx.at> wrote:
+>
+> Dear Bert!
+>
+> Thanks for the answer.
+> Just let me summarize the current (4.3.0) behavior.
+>
+>
+> DF <- data.frame(id = 1:2)
+> DF[["ar"]] <- array(1:8, c(2,2,2))
+>
+> #Converts array to vector
+> #Removes dim and takes selected elements from first column
+> DF[1,]
+> #  id ar
+> #1  1  1
+>
+> str(DF[1,])
+> #'data.frame':   1 obs. of  2 variables:
+> # $ id: int 1
+> # $ ar: int 1
+>
+>
+> #Converts array to vector
+> #Removes dim and takes selected elements
+> DF[c(TRUE, FALSE),]
+> #  id ar
+> #1  1  1
+> #Warning message:
+> #In format.data.frame(if (omit) x[seq_len(n0), , drop = FALSE] else x,  :
+> #  corrupt data frame: columns will be truncated or padded with NAs
+>
+> str(DF[c(TRUE, FALSE),])
+> #'data.frame':   1 obs. of  2 variables:
+> # $ id: int 1
+> # $ ar: int  1 3 5 7
+>
+>
+> #Converts array to vector
+> #Removes dim and takes selected elements from first column and
+> #adds all elements form the remaining data
+> DF[-2,]
+> #  id ar
+> #1  1  1
+> #Warning message:
+> #In format.data.frame(if (omit) x[seq_len(n0), , drop = FALSE] else x,  :
+> #  corrupt data frame: columns will be truncated or padded with NAs
+>
+> str(DF[-2,])
+> #'data.frame':   1 obs. of  2 variables:
+> # $ id: int 1
+> # $ ar: int  1 3 4 5 6 7 8
+>
+>
+> #Converts array to vector
+> #Removes dim but keeps all elements
+> DF[TRUE,]
+> #  id ar
+> #1  1  1
+> #2  2  2
+> #Warning message:
+> #In format.data.frame(if (omit) x[seq_len(n0), , drop = FALSE] else x,  :
+> #  corrupt data frame: columns will be truncated or padded with NAs
+>
+> str(DF[TRUE,])
+> #'data.frame':   2 obs. of  2 variables:
+> # $ id: int  1 2
+> # $ ar: int  1 2 3 4 5 6 7 8
+>
+>
+> Kind regards,
+> Georg
+>
+>
+> Gesendet: Donnerstag, 25. Mai 2023 um 19:15 Uhr
+> Von: "Bert Gunter" <bgunter.4567 at gmail.com>
+> An: "Georg Kindermann" <Georg.Kindermann at gmx.at>
+> Cc: "Rui Barradas" <ruipbarradas at sapo.pt>, r-help at r-project.org
+> Betreff: Re: Re: [R] data.frame with a column containing an array
+>
+> I really don't know. I would call it a request for extended capabilities of [.data.frame, rather than a feature or bug. But maybe wiser heads than mine who monitor this list can sort it out.
+>
+> -- Bert
+
+
+From @@r@h@go@|ee @end|ng |rom gm@||@com  Fri May 26 21:36:56 2023
+From: @@r@h@go@|ee @end|ng |rom gm@||@com (Sarah Goslee)
+Date: Fri, 26 May 2023 15:36:56 -0400
+Subject: [R] environments: functions within functions
+In-Reply-To: <CADNULg_BEitsFL7DJUso5iTadG_vXk_-MHbw2JNaCXdnskJoLQ@mail.gmail.com>
+References: <CAM_vjumA6ZaQ0TMPDyhuSZsgL4pmD1P_fU7o=_v5bGVHMyjt8w@mail.gmail.com>
+ <CADNULg_BEitsFL7DJUso5iTadG_vXk_-MHbw2JNaCXdnskJoLQ@mail.gmail.com>
+Message-ID: <CAM_vjukeqp=zJAgQtiF4-m+wAwg767Jh5AsA_CW8ZZeWBEP1VA@mail.gmail.com>
+
+Very nice, thank you!
+
+
+Sarah
+
+On Thu, May 25, 2023 at 8:20?PM Iris Simmons <ikwsimmo at gmail.com> wrote:
+>
+> Hi,
+>
+>
+> I think there are two easy ways to fix this. The first is to use a `switch` to call the intended function, this should not be a problem since there are a small number of print functions in **mixR**
+>
+> ```R
+> print.mixfitEM <- function (x, digits = getOption("digits"), ...)
+> {
+>     switch(x$family,
+>     gamma   = printgamma  (x, digits),
+>     lnorm   = printlnorm  (x, digits),
+>     normal  = printnormal (x, digits),
+>     weibull = printweibull(x, digits),
+>     stop(gettextf("invalid '%s' value", "x$family", domain = "R")))
+>     invisible(x)
+> }
+> environment(print.mixfitEM) <- getNamespace("mixR")
+> print.mixfitEM <- compiler::cmpfun(print.mixfitEM)
+> ```
+>
+> This is nice because 'x' is no longer evaluated twice (you could try this yourself with something like `mixR:::print.mixfitEM(writeLines("testing"))`, you'll see the output twice, once for `x$family` and a second for evaluating `match.call()` expression), it follows standard evaluation, and 'x' is returned invisibly at the end, like most other `print` methods. If you really wanted to continue using `eval`, you could instead do something like
+>
+> ```R
+> print.mixfitEM <- function (x, digits = getOption("digits"), ...)
+> {
+>     expr <- quote(printfunction(x, digits))
+>     expr[[1L]] <- as.symbol(paste0("print", x$family))
+>     eval(expr)
+>     invisible(x)
+> }
+> environment(print.mixfitEM) <- getNamespace("mixR")
+> print.mixfitEM <- compiler::cmpfun(print.mixfitEM)
+> ```
+>
+> This also solves the same issues, but it's ugly and slower.
+>
+> At least for now, I would copy one of the functions above into the site-wide startup profile file or your user profile, along with
+>
+> ```R
+> utils::assignInNamespace("print.mixfitEM", print.mixfitEM, "mixR")
+> ```
+>
+> This does have the unfortunate side effect of loading **mixR** every time an R session is launched, but you could also put it inside another function like:
+>
+> ```R
+> fix.mixR.print.mixfitEM <- function ()
+> {
+>     print.mixfitEM <- function(x, digits = getOption("digits"), ...) {
+>         switch(x$family,
+>         gamma   = printgamma  (x, digits),
+>         lnorm   = printlnorm  (x, digits),
+>         normal  = printnormal (x, digits),
+>         weibull = printweibull(x, digits),
+>         stop(gettextf("invalid '%s' value", "x$family", domain = "R")))
+>         invisible(x)
+>     }
+>     environment(print.mixfitEM) <- getNamespace("mixR")
+>     print.mixfitEM <- compiler::cmpfun(print.mixfitEM)
+>     utils::assignInNamespace("print.mixfitEM", print.mixfitEM, "mixR")
+> }
+> ```
+>
+> which you would then call in your scripts before using **mixR**. I hope this helps!
+>
+> On Thu, May 25, 2023 at 10:19?AM Sarah Goslee <sarah.goslee at gmail.com> wrote:
+>>
+>> Hi,
+>>
+>> I ran into a problem with S3 method dispatch and scoping while trying
+>> to use functions from the mixR package within my own functions. I know
+>> enough to find the problem (I think!), but not enough to fix it
+>> myself. The problem isn't really a package-specific problem, so I'm
+>> starting here, and will file an issue with the maintainer once I have
+>> a solution.
+>>
+>> Detailed explanation below, but briefly, the S3 methods in this
+>> package use match.call() and then eval() to select the correct
+>> internal method. This works fine from the command line, but if the
+>> method is called from within another function, the use of
+>> environment() within eval() means that the objects passed to the
+>> wrapper function are no longer visible within the eval() call.
+>>
+>> I have a two-part question:
+>> A. How do I get around this right now?
+>> B. What would the correct approach be for the package authors?
+>>
+>> library(mixR)
+>>
+>> # first example from ?mixfit
+>> ## fitting the normal mixture models
+>> set.seed(103)
+>> x <- rmixnormal(200, c(0.3, 0.7), c(2, 5), c(1, 1))
+>> data <- bin(x, seq(-1, 8, 0.25))
+>> fit1 <- mixfit(x, ncomp = 2)  # raw data
+>> rm(x, data)
+>> ###
+>>
+>> # simple function
+>> funworks <- function(x) {
+>>     print(x)
+>> }
+>>
+>> ###
+>>
+>> # almost identical simple function
+>> funfails <- function(thisx) {
+>>     print(thisx)
+>> }
+>>
+>> ###
+>>
+>> funworks(fit1)
+>> funfails(fit1)
+>>
+>> #######
+>>
+>> The explanation as I understand it...
+>>
+>> print called on this object gets passed to print.mixfitEM(), which is:
+>>
+>>
+>> function (x, digits = getOption("digits"), ...)
+>> {
+>>     family <- x$family
+>>     mc <- match.call()
+>>     mc$digits <- digits
+>>     fun.name <- paste0("print", family)
+>>     mc[[1]] <- as.name(fun.name)
+>>     eval(mc, environment())
+>> }
+>>
+>>
+>> Working through the calls, when eval() is called from within funfails(), mc is
+>> printnormal(x = thisx, digits = 7)
+>> and the calling environment does not contain thisx.
+>>
+>> In funworks(), it's
+>> printnormal(x = x, digits = 7)
+>>
+>> and x is found.
+>>
+>> So, I can get around the problem by naming my argument x, as in
+>> funworks(), but that's unsatisfying. Is there something else I can do
+>> to get my functions to work?
+>>
+>> And what's the correct way to do what print.mixfitEM() is doing, so
+>> that it works regardless? I poked around for a while, but didn't find
+>> a clear (to me!) answer.
+>>
+>> Thanks,
+>> Sarah
+>>
+
+
+From re|chm@nj @end|ng |rom @bcg|ob@|@net  Fri May 26 22:36:59 2023
+From: re|chm@nj @end|ng |rom @bcg|ob@|@net (Jeff Reichman)
+Date: Fri, 26 May 2023 15:36:59 -0500
+Subject: [R] InformationValue package
+References: <00c901d99011$d26e0650$774a12f0$.ref@sbcglobal.net>
+Message-ID: <00c901d99011$d26e0650$774a12f0$@sbcglobal.net>
+
+R Help
+
+ 
+
+ 
+
+There use to be a package called "InformationValue" which was used to
+calculate the optimal probability cutoff for a ROC plot.  That package was
+archived some time ago and I was wondering if there is another function (in
+another package) that would perform the calculation.  I can always recall
+the archived package too.
+
+ 
+
+Jeff
+
+
+	[[alternative HTML version deleted]]
+
+
+From dw|n@em|u@ @end|ng |rom comc@@t@net  Sat May 27 02:45:44 2023
+From: dw|n@em|u@ @end|ng |rom comc@@t@net (David Winsemius)
+Date: Fri, 26 May 2023 17:45:44 -0700
+Subject: [R] InformationValue package
+In-Reply-To: <00c901d99011$d26e0650$774a12f0$@sbcglobal.net>
+References: <00c901d99011$d26e0650$774a12f0$@sbcglobal.net>
+Message-ID: <C6757CC3-B1BD-4665-8EA7-396C721F33A2@comcast.net>
+
+If it was in CRAN you will find it in the Archives. 
+
+Sent from my iPhone
+
+> On May 26, 2023, at 1:37 PM, Jeff Reichman <reichmanj at sbcglobal.net> wrote:
+> 
+> ?R Help
+> 
+> 
+> 
+> 
+> 
+> There use to be a package called "InformationValue" which was used to
+> calculate the optimal probability cutoff for a ROC plot.  That package was
+> archived some time ago and I was wondering if there is another function (in
+> another package) that would perform the calculation.  I can always recall
+> the archived package too.
+> 
+> 
+> 
+> Jeff
+> 
+> 
+>    [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
