@@ -12844,3 +12844,269 @@ I really don't know. I would call it a request for extended capabilities of [.da
 -- Bert?
 
 
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sun May 28 13:46:26 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sun, 28 May 2023 07:46:26 -0400
+Subject: [R] Plotting directly to memory?
+Message-ID: <97b4d018-2c91-238d-17e3-21724398d866@gmail.com>
+
+Is there a way to open a graphics device that plots entirely to an array 
+or raster in memory?  I'd prefer it to use base graphics, but grid would 
+be fine if it makes a difference.
+
+For an explicit example, I'd like to do the equivalent of this:
+
+   filename <- tempfile(fileext = ".png")
+   png(filename)
+   plot(1:10, 1:10)
+   dev.off()
+
+   library(png)
+   img <- readPNG(filename)
+
+   unlink(filename)
+
+
+which puts the desired plot into the array `img`, but I'd like to do it 
+without needing the `png` package or the temporary file.
+
+A possibly slightly simpler request would be to do this only for 
+plotting text, i.e. I'd like to rasterize some text into an array.
+
+Duncan Murdoch
+
+
+From jeroenoom@ @end|ng |rom gm@||@com  Sun May 28 15:24:49 2023
+From: jeroenoom@ @end|ng |rom gm@||@com (Jeroen Ooms)
+Date: Sun, 28 May 2023 15:24:49 +0200
+Subject: [R] Plotting directly to memory?
+In-Reply-To: <97b4d018-2c91-238d-17e3-21724398d866@gmail.com>
+References: <97b4d018-2c91-238d-17e3-21724398d866@gmail.com>
+Message-ID: <CABFfbXugmEBQ6tEUw6EMWQmKJdhYjsEh3Kv1WjNKCsFvCWXYFg@mail.gmail.com>
+
+On Sun, May 28, 2023 at 1:46?PM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>
+> Is there a way to open a graphics device that plots entirely to an array
+> or raster in memory?  I'd prefer it to use base graphics, but grid would
+> be fine if it makes a difference.
+>
+> For an explicit example, I'd like to do the equivalent of this:
+>
+>    filename <- tempfile(fileext = ".png")
+>    png(filename)
+>    plot(1:10, 1:10)
+>    dev.off()
+>
+>    library(png)
+>    img <- readPNG(filename)
+>
+>    unlink(filename)
+>
+
+The magick package has this capability too:
+
+library(magick)
+img <- magick::image_device()
+plot(1:10, 1:10)
+dev.off()
+image_data(img)
+
+
+From rhe|p @end|ng |rom eoo@@dd@@n|  Sun May 28 16:16:30 2023
+From: rhe|p @end|ng |rom eoo@@dd@@n| (Jan van der Laan)
+Date: Sun, 28 May 2023 16:16:30 +0200
+Subject: [R] Plotting directly to memory?
+In-Reply-To: <97b4d018-2c91-238d-17e3-21724398d866@gmail.com>
+References: <97b4d018-2c91-238d-17e3-21724398d866@gmail.com>
+Message-ID: <1320ef96-f8f7-9b81-4769-3cf135ccc923@eoos.dds.nl>
+
+
+Perhaps the ragg package? That has an `agg_capture` device "that lets 
+you access the device buffer directly from your R session." 
+https://github.com/r-lib/ragg
+
+HTH,
+Jan
+
+
+
+
+On 28-05-2023 13:46, Duncan Murdoch wrote:
+> Is there a way to open a graphics device that plots entirely to an array 
+> or raster in memory?? I'd prefer it to use base graphics, but grid would 
+> be fine if it makes a difference.
+> 
+> For an explicit example, I'd like to do the equivalent of this:
+> 
+>  ? filename <- tempfile(fileext = ".png")
+>  ? png(filename)
+>  ? plot(1:10, 1:10)
+>  ? dev.off()
+> 
+>  ? library(png)
+>  ? img <- readPNG(filename)
+> 
+>  ? unlink(filename)
+> 
+> 
+> which puts the desired plot into the array `img`, but I'd like to do it 
+> without needing the `png` package or the temporary file.
+> 
+> A possibly slightly simpler request would be to do this only for 
+> plotting text, i.e. I'd like to rasterize some text into an array.
+> 
+> Duncan Murdoch
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ev@n@cooch @end|ng |rom gm@||@com  Sun May 28 18:28:14 2023
+From: ev@n@cooch @end|ng |rom gm@||@com (Evan Cooch)
+Date: Sun, 28 May 2023 12:28:14 -0400
+Subject: [R] reference generated var name in loop
+In-Reply-To: <CAFEqCdx4PXncA+48VwKpeaXKxmk7JuAmvyKEivAs5RdB2vnp=g@mail.gmail.com>
+References: <786549bf-b689-dda5-0a6b-84a7c39a0738@gmail.com>
+ <CAFEqCdx4PXncA+48VwKpeaXKxmk7JuAmvyKEivAs5RdB2vnp=g@mail.gmail.com>
+Message-ID: <d3c92de0-75b9-d024-87ef-6d24c7f7d2ef@gmail.com>
+
+Thanks very much - that does the trick. Many good suggestions.
+
+On 5/26/2023 12:00 PM, Greg Snow wrote:
+> Using the `assign` function is almost always a sign that you are
+> making things more complicated than is needed.  It is better to work
+> directly with lists, which make it much easier to set and get names.
+>
+> Your code and description can be done pretty simply using the `lapply
+> function (often easier than using a loop if the desire is to save the
+> output of each iteration), here is one example:
+>
+> parms <- c(a=4, b=6, c=11)
+>
+> tmp1 <- lapply(parms, function(mu){
+>    rnorm(5, mu, 0.25)
+> })
+>
+> names(tmp1) <- paste0(names(parms), "_r")
+> ranvec <- as.data.frame(tmp1)
+> ranvec
+>
+> We can skip the temporary variable(s) by using pipes like this:
+>
+> parms |>
+>    lapply( rnorm, n=5, sd=0.25 ) |>
+>    setNames( paste0(names(parms), "_r")) |>
+>    as.data.frame()
+>
+> Your line using `sub` does not do anything.  While the `=` sign was
+> used to create the vector with names, the vector itself does not
+> contain any `=` signs and so there is no reason to try to remove
+> anything.  The `parms` vector already contains the numbers that you
+> are trying to extract (plus a names attribute which will be ignored
+> when not needed, so usually there is no reason to remove the names).
+>
+> The `lapply` function runs the function passed in (an anonymous
+> function in the first example, the `rnorm` function in the second) on
+> each element of the vector/list passed in as the first argument and
+> stores each result as an element in a list, which is then returned
+> (and in my examples named then converted to a data frame).
+>
+> The `sapply` function would combine the resulting vectors into a
+> matrix, and would handle the naming automatically, so something as
+> simple as:
+>
+> sapply(parms, rnorm, n=5, sd=0.25)
+>
+> may do what you want (you could pipe that to `as.data.frame` if you
+> really need a data frame).
+>
+>
+> The purrr package (part of the tidyverse) gives some additional
+> functions similar to `lapply` and `sapply` but with extra bells and
+> whistles.
+>
+> If you really want to use a loop, then take advantage of the fact that
+> the data frame is a special case of a list and try something like:
+>
+> ranvec <- data.frame(row.names=1:5)
+> for(i in seq_along(parms)) {
+>    tmp.nm <- paste0(names(parms)[i], '_r')
+>    ranvec[[tmp.nm]] <- rnorm(5, parms[i], 0.25)
+> }
+>
+> or
+>
+> ranvec <- data.frame(row.names=1:5)
+> for(nm in names(parms)) {
+>    tmp.nm <- paste0(nm, '_r')
+>    ranvec[[tmp.nm]] <- rnorm(5, parms[nm], 0.25)
+> }
+>
+>
+> On Fri, May 26, 2023 at 8:50?AM Evan Cooch <evan.cooch at gmail.com> wrote:
+>> Greetings --
+>>
+>> I'm trying to write some code that basically does the following:
+>>
+>> 1\ user inputs a list of parameter names, and parameter values.
+>>
+>> 2\ code parses this list, extracting parameter names and values separately
+>>
+>> 3\ loops over the number of parameters, and for each parameter,
+>> generates something (say, rnorm) based on the value corresponding to
+>> that parameter.
+>>
+>> 4\ assigns a new name to the vector of rnorm data, where the name is a
+>> permutation of the original parameter name. In the example (below) I
+>> simply past "_r" to the original parameter name (to indicate, say, its
+>> some rnorm values associated that that variable).
+>>
+>> 5\the 'I'm stumped' part -- output the newly named vector into something
+>> (say, data.frame), which requires being able to reference the newly
+>> named vector, which is what can't figure out how to accomplish.
+>>
+>> Here is a MWE of sorts -- the starting list of parameter names and
+>> values is in a list I call parms.
+>>
+>>    parms <- c(a=4,b=6,c=11) # list of parms user could pass to a function
+>>
+>>    nvars <- names(parms)  # extract parameter names
+>>
+>>    vals <- sub("\\=.*", "", parms) # extract parameter values
+>>
+>>    n <- length(parms) # determine number of parameters
+>>
+>>    ranvec <- data.frame() # to store stuff from loop
+>>
+>>    for (i in 1:n) {
+>>      pn <- nvars[i]; # get name of parm variable
+>>      rn <- rnorm(5,as.numeric(vals[i]),0.25) # generate rnorm based on
+>> parm value
+>>      assign(paste(pn, "_r", sep=""),rn) # creates a_r, b_r, c_r...
+>>      ** here is where I want to output to ranvec, but I can't see how to
+>> do it since the loop doesn't know the name of the new var created in
+>> preceding step...**
+>>    }
+>>
+>>
+>> In the end, I want to create a data frame containing rnorm deviates for
+>> each of a set of user-specified variables, which I can reference in some
+>> fashion using a permuted version of the original variable name.
+>>
+>> Suggestions?
+>>
+>> Many thanks...
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+>
+
+
