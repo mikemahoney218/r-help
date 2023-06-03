@@ -1,0 +1,478 @@
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Thu Jun  1 06:04:48 2023
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Thu, 1 Jun 2023 09:34:48 +0530
+Subject: [R] plot level, velocity, acceleration with one x axis
+In-Reply-To: <39decd19-d963-8324-bb2e-7d44a33eaf9c@effectivedefense.org>
+References: <96cad904-56fb-8db5-d909-96ddb037a31a@effectivedefense.org>
+ <CAGgJW75z_KExV7ONJ3tNJJaeZF_6A9HH3qx5+sAFNCdw8_yTrw@mail.gmail.com>
+ <88be9a8e-86bd-cd5f-0d4b-c871d4987bf3@effectivedefense.org>
+ <CAGgJW77unDi9_HCtrX76HtTNDb8sXDv09guGvVw1qJ+yBuRi5g@mail.gmail.com>
+ <CAGgJW76M8K49zrv7o1WR6mhQQVZZoOESBU1j5_QVKbb4LvVtcw@mail.gmail.com>
+ <f6334593-bcfe-3d6e-3195-59ec836fc11f@effectivedefense.org>
+ <CAGgJW747qiznEMdBfAL_v35iwQK1EVWZ3J9JN6UcQL=F-VhESA@mail.gmail.com>
+ <c2df4c1e-319c-b7d4-7576-8233f9bcef0f@effectivedefense.org>
+ <CAGgJW77OREAocxEiphZAtJe-xL79+AhgfzH2mn+2-sHNvUxp-g@mail.gmail.com>
+ <c2885246-ac90-233c-2f37-655f5da9afed@effectivedefense.org>
+ <CAGgJW74Hy4qeyWsFoO+BzGjJm0cBf7UZhFz81EtAS0peTcHdnA@mail.gmail.com>
+ <6c729593-7aeb-030d-c595-e1241d6169d3@effectivedefense.org>
+ <fc519fb7315a4a1f8f4361178a5a5a86@maastrichtuniversity.nl>
+ <39decd19-d963-8324-bb2e-7d44a33eaf9c@effectivedefense.org>
+Message-ID: <CADfFDC67F8ig3sgmZ3Jeu8=3mhGOaLFxtoR76t9aUjM+e-KQqw@mail.gmail.com>
+
+I think your proposal of modifying plot.ts() to allow 'log' to be
+vectorized would be the most natural solution here.
+
+For what it's worth, the details of the implementation and the fact
+that you can supply a panel function allows an ugly hack:
+
+pfun <- function(...) {
+    e <- parent.frame()
+    e$log <- ""
+    lines(...)
+}
+plot(DAX., log = "y", panel = pfun)
+
+This would need to be modified to include a counter in more
+complicated cases; we can do without because only the first panel has
+a log scale in this example.
+
+-Deepayan
+
+On Thu, Jun 1, 2023 at 12:53?AM Spencer Graves
+<spencer.graves at effectivedefense.org> wrote:
+>
+>
+>
+> On 5/31/23 2:12 PM, Viechtbauer, Wolfgang (NP) wrote:
+> > How about using the same 'mar' for all plots, but adding an outer margin?
+> >
+> > DAX <- EuStockMarkets[, 'DAX']
+> > DAX. <- cbind(DAX, diff(log(DAX)), diff(diff(log(DAX))))
+> > colnames(DAX.) <- c("DAX", 'vel (%)', 'accel (%)')
+> > head(DAX.)
+> >
+> > par(mfrow=c(3,1), mar=c(1,4.5,0,2), oma=c(3,0,1,0))
+> >
+> > plot(DAX.[, 1], log='y', ylab='DAX', axes=FALSE)
+> > axis(2)
+> > box(col='grey')
+> >
+> > plot(DAX.[, 2], ylab='vel (%)', axes=FALSE)
+> > axis(2)
+> > box(col='grey')
+> >
+> > plot(DAX.[, 3], ylab='accel (%)', axes=FALSE)
+> > axis(2)
+> > box(col='grey')
+> > axis(1)
+> >
+> > Best,
+> > Wolfgang
+>
+>
+> That's exactly what I needed.
+>
+>
+> Thanks, Spencer
+> >
+>
+> >> -----Original Message-----
+> >> From: R-help [mailto:r-help-bounces at r-project.org] On Behalf Of Spencer Graves
+> >> Sent: Wednesday, 31 May, 2023 17:45
+> >> To: Eric Berger
+> >> Cc: r-help
+> >> Subject: Re: [R] plot level, velocity, acceleration with one x axis
+> >>
+> >> On 5/31/23 9:20 AM, Eric Berger wrote:
+> >>> I sent you an updated response to deal with the redundant copies of the x-axis.
+> >>> Re-sending.
+> >>>
+> >> par(mfrow=c(3,1))
+> >> plot(DAX.[, 1], log='y', ylab='DAX', xaxt="n")
+> >> plot(DAX.[, 2], ylab='vel (%)', xaxt="n")
+> >> plot(DAX.[, 3], ylab='accel (%)')
+> >>
+> >>        I got that.  The primary problem with that is that most of the
+> >> vertical space is reserved for axis labels, whether they are printed or
+> >> not.  If I squeeze the vertical dimension of the plot, I get, "figure
+> >> margins too large".  To control that, I need to set "mar" separately for
+> >> each panel, and then the plot regions for each are not the same size.
+> >> Using the "layout" function instead of "mfrow" is better, but I don't
+> >> see now to make that work consistently without fixing the aspect ratio.
+> >> There may be a way in the tidyverse, but I haven't found it yet.  The
+> >> only solution I've found so far that makes sense to me is to modify the
+> >> code for plot.ts to accept a vector for the log argument, with the
+> >> constraint that length(lot) = either 1 or ncol(x) and returning
+> >> invisibly an object that would make it feasible for a user to call
+> >> axis(2, ...) once for each vertical axis to handle cases where someone
+> >> wanted to a vertical scale different from linear and log.  I'd want to
+> >> make sure that lines.ts also works with this, because I want to add fits
+> >> and predictions.
+> >>
+> >>        Comments?
+> >>        Thanks,
+> >>        Spencer Graves
+> >>
+> >> ** With either of the following plots, if I adjust the aspect ratio by
+> >> enlarging or reducing the vertical dimension of the plot, the relative
+> >> sizes of the plot regions change.
+> >>
+> >> DAX <- EuStockMarkets[, 'DAX']
+> >> DAX. <- cbind(DAX, diff(log(DAX)), diff(diff(log(DAX))))
+> >> colnames(DAX.) <- c("DAX", 'vel (%)', 'accel (%)')
+> >> head(DAX.)
+> >>
+> >> plot(DAX., log='xy')
+> >>
+> >> op <- par(mfrow=c(3,1), mar=c(0, 4.1, 4.1, 2.1))
+> >> plot(DAX.[, 1], log='y', ylab='DAX', axes=FALSE)
+> >> axis(2)
+> >> box(col='grey')
+> >> par(mar=c(0, 4.1, 0, 2.1))
+> >> plot(DAX.[, 2], ylab='vel (%)', axes=FALSE)
+> >> axis(2)
+> >> box(col='grey')
+> >> par(mar=c(5.1, 4.1, 0, 2.1))
+> >> plot(DAX.[, 3], ylab='accel (%)', axes=FALSE)
+> >> axis(2)
+> >> box(col='grey')
+> >> axis(1)
+> >> par(op)
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Jun  1 09:58:32 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 1 Jun 2023 09:58:32 +0200
+Subject: [R] error in arfima...
+In-Reply-To: <PU4P216MB1568160291D547CFE411E1ADC8489@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB1568160291D547CFE411E1ADC8489@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <25720.20392.521283.415199@stat.math.ethz.ch>
+
+>>>>> akshay kulkarni 
+>>>>>     on Wed, 31 May 2023 20:55:33 +0000 writes:
+
+    > dear members,
+
+    > I am using arfima() from forecast package to model a time
+    > series. The following is the code:
+
+    >> LYGH[[202]]
+    > [1] 45.40  3.25  6.50  2.15
+
+    >> arfima(LYGH[[202]])
+    > Error in .fdcov(x, fdf$d, h, nar = nar, nma = nma, hess = hess, fdf.work = fdf$w) :
+    > NA/NaN/Inf in foreign function call (arg 5)
+
+    > I tried viewing .fdcov() with the following code:
+
+    > View(environment(fracdiff)$.fdcov)
+
+    > but I see no stop() with the above mentioned error message.
+
+    > Can you please help?
+
+Well, as I am the maintainer of the *fracdiff* package,
+I'm trying.  OTOH, as we will see below, you did not give us enough
+information to really help you...
+
+    > THanking you,
+    > Yours sincerely,
+    > AKSHAY M KULKARNI
+
+Your problem is not (yet) reproducible (*)
+I've done the following in an "empty" (i.e. freshly started) R
+session, R 4.3.0:
+
+----begin_R_transcript___save_as__arfima-ex.Rout__------------------------------
+> 
+> lN <- loadedNamespaces()
+> library(forecast)
+Registered S3 method overwritten by 'quantmod':
+  method            from
+  as.zoo.data.frame zoo 
+> options(width=75)
+> setdiff(loadedNamespaces(), lN) # -- see all the  *!^@...!   forecast loads:
+ [1] "gtable"     "dplyr"      "tidyselect" "Rcpp"       "parallel"  
+ [6] "scales"     "lattice"    "ggplot2"    "R6"         "generics"  
+[11] "curl"       "lmtest"     "tibble"     "munsell"    "nnet"      
+[16] "forecast"   "timeDate"   "pillar"     "rlang"      "quantmod"  
+[21] "utf8"       "urca"       "quadprog"   "cli"        "magrittr"  
+[26] "xts"        "grid"       "nlme"       "lifecycle"  "fracdiff"  
+[31] "vctrs"      "glue"       "tseries"    "zoo"        "fansi"     
+[36] "colorspace" "TTR"        "pkgconfig" 
+> arfima(c(45.40, 3.25, 6.50, 2.15))
+
+Call:
+  arfima(y = c(45.4, 3.25, 6.5, 2.15)) 
+
+Coefficients:
+           d 
+4.583013e-05 
+sigma[eps] = 18.01252 
+a list with components:
+ [1] "log.likelihood"  "n"               "msg"            
+ [4] "d"               "ar"              "ma"             
+ [7] "covariance.dpq"  "fnormMin"        "sigma"          
+[10] "stderror.dpq"    "correlation.dpq" "h"              
+[13] "d.tol"           "M"               "hessian.dpq"    
+[16] "length.w"        "residuals"       "fitted"         
+[19] "call"            "x"               "series"         
+> 
+> sessionInfo()
+R version 4.3.0 (2023-04-21)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Fedora Linux 36 (Thirty Six)
+
+Matrix products: default
+BLAS:   /usr/local64.sfs/app/R/R-4.3.0-inst/lib/libRblas.so 
+LAPACK: /usr/lib64/liblapack.so.3.10.1
+
+locale:
+ [1] LC_CTYPE=de_CH.UTF-8       LC_NUMERIC=C              
+ [3] LC_TIME=en_US.UTF-8        LC_COLLATE=de_CH.UTF-8    
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=de_CH.UTF-8   
+ [7] LC_PAPER=de_CH.UTF-8       LC_NAME=C                 
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C            
+[11] LC_MEASUREMENT=de_CH.UTF-8 LC_IDENTIFICATION=C       
+
+time zone: Europe/Zurich
+tzcode source: system (glibc)
+
+attached base packages:
+[1] graphics  grDevices datasets  stats     utils     methods   base     
+
+other attached packages:
+[1] forecast_8.21  fortunes_1.5-4 sfsmisc_1.1-15
+
+loaded via a namespace (and not attached):
+ [1] gtable_0.3.3      dplyr_1.1.2       compiler_4.3.0   
+ [4] tidyselect_1.2.0  Rcpp_1.0.10       parallel_4.3.0   
+ [7] scales_1.2.1      lattice_0.21-8    ggplot2_3.4.2    
+[10] R6_2.5.1          generics_0.1.3    curl_5.0.0       
+[13] lmtest_0.9-40     tibble_3.2.1      munsell_0.5.0    
+[16] nnet_7.3-19       timeDate_4022.108 pillar_1.9.0     
+[19] rlang_1.1.1       quantmod_0.4.22   utf8_1.2.3       
+[22] urca_1.3-3        quadprog_1.5-8    cli_3.6.1        
+[25] magrittr_2.0.3    xts_0.13.1        grid_4.3.0       
+[28] nlme_3.1-162      lifecycle_1.0.3   fracdiff_1.5-2   
+[31] vctrs_0.6.2       glue_1.6.2        tseries_0.10-54  
+[34] zoo_1.8-12        fansi_1.0.4       colorspace_2.1-0 
+[37] TTR_0.24.3        tools_4.3.0       pkgconfig_2.0.3  
+> 
+##---end__R_transcript---------------------------------------------------------------
+
+
+Note that your error message pointed me to my (old, but still
+fine) package {fracdiff} with its principal function fracdiff()
+around which   arfima()  is a user-friendly and
+generalization wrapper.
+
+In other words arfima() calls fracdiff::fracdiff() and the error
+happens there --- for you, but not for me, if I try to use the
+same data as you.
+I see that you must have found that too, because you mentioned
+   View(environment(fracdiff)$.fdcov)
+
+Maybe you need to
+
+      update.packages()
+
+{which should re-install R packages you have installed but which
+ have become outdated in the mean time}
+
+If the error persists, please send us the output of
+
+1)
+   dput(LYGH[[202]])
+
+   so we get your exact data
+
+2)
+   sessionInfo()
+
+   so we get much info about your R "setup"
+
+.... last but not least:  If you are really calling arfima()
+with a time series of length 4  (which your LYGH[[202]] above
+seems to suggest)
+then you really need to learn a bit about the tools you are
+using: It really does not make any sense to fit a somewhat
+sophisticated time-series model (or *any* time-series model, I'd say) 
+to a "series" with 4 values.
+
+Best regards,
+Martin
+
+--
+Martin Maechler
+ETH Zurich  and  R Core team
+
+
+From v@r|n@@ch@ @end|ng |rom y@hoo@|r  Thu Jun  1 21:42:21 2023
+From: v@r|n@@ch@ @end|ng |rom y@hoo@|r (varin sacha)
+Date: Thu, 1 Jun 2023 19:42:21 +0000 (UTC)
+Subject: [R] Exact 95% CIs weibull distribution
+References: <1210843777.5136267.1685648541248.ref@mail.yahoo.com>
+Message-ID: <1210843777.5136267.1685648541248@mail.yahoo.com>
+
+R-experts,
+
+I am trying to find the exact 95% confidence intervals of the mean (and the median) for the weibull distribution. Here below I have the exact 95% CIs of the meanlog and the median for a lognormal using EnvStats library (ready-to-run function in library) but I don't find how to get the exact 95% CIs of the mean and median for the weibull. Indeed, the ready-to-run function in EnvStats library is not available for weibull.
+
+Any help would be appreciated.
+
+
+#Exact 95% CIs for the meanlog lognormal distribution
+library(EnvStats)
+x=rlnorm(100000,0,1)
+elnorm(x,method="mvue",ci=TRUE,ci.type="two-sided",ci.method="exact",conf.level=0.95)
+?
+#Exact 95% CIs for the median lognormal distribution
+library(EnvStats)
+x=rlnorm(100000,0,1)
+eqlnorm(x, p=0.5, method="mvue",ci=TRUE,ci.type="two-sided",ci.method="exact",conf.level=0.95)
+?
+
+#Exact 95% CIs for the mean weibull distribution
+library(EnvStats)
+x=rweibull(100000,shape=2, scale=2)
+eqweibull(x, p = 0.925)
+eqweibull(x, p = 0.975)
+
+#Exact 95% CIs for the median weibull distribution
+library(EnvStats)
+x=rweibull(100000,shape=2, scale=2)
+eqweibull(x, p = 0.5, method = "mle", digits = 0)
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Fri Jun  2 11:17:42 2023
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Fri, 2 Jun 2023 11:17:42 +0200
+Subject: [R] Help sourcing datasets (.csv)
+In-Reply-To: <AS8PR10MB6972DEFBA1881BE7DF96B2A7BC459@AS8PR10MB6972.EURPRD10.PROD.OUTLOOK.COM>
+References: <AS8PR10MB6972DEFBA1881BE7DF96B2A7BC459@AS8PR10MB6972.EURPRD10.PROD.OUTLOOK.COM>
+Message-ID: <74c477a0-9a10-2c94-e874-bb101281347d@statistik.tu-dortmund.de>
+
+See ?data
+
+
+On 28.05.2023 10:53, james carrigan wrote:
+> Dear Sir or Madam
+> I?m trying to compile a collection of datasets that require use of the following hypothesis tests.
+> Are there datasets within the R library that I can get access to?
+> Kind regards
+> James Carrigan
+> 
+> Hypothesis Testing
+> t.test(X,Y)
+> ? performs a two sample t-test between X and Y
+> t.test(X,Y,paired=TRUE)
+> ? performs a paired t-test between X and Y
+> prop.test(x = c(a, b), n = c(n1, n2))
+> ? performs a 2-sample test for equality of proportions with continuity correction
+> 
+> Sent from my iPad Sent from my iPhone
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From tebert @end|ng |rom u||@edu  Fri Jun  2 17:55:08 2023
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Fri, 2 Jun 2023 15:55:08 +0000
+Subject: [R] Help sourcing datasets (.csv)
+In-Reply-To: <74c477a0-9a10-2c94-e874-bb101281347d@statistik.tu-dortmund.de>
+References: <AS8PR10MB6972DEFBA1881BE7DF96B2A7BC459@AS8PR10MB6972.EURPRD10.PROD.OUTLOOK.COM>
+ <74c477a0-9a10-2c94-e874-bb101281347d@statistik.tu-dortmund.de>
+Message-ID: <SN4PR22MB28242EE1CCD92411740ADE21CF4EA@SN4PR22MB2824.namprd22.prod.outlook.com>
+
+Another suggestion:
+     The statistics does not care where the numbers come from. The values 1, 2, 3 have a mean of 2 no matter if these are weights of a bird, plant heights, or concrete tensile strength. Your interpretation might change, but the mean is still 2.
+
+Try synthetic data.
+X<-rnorm(1000, mean=4, sd=2)
+Y<-14+12*X
+cor(X,Y)
+
+That is too simple, but it is the start.
+Y<- rnorm(1000, mean=14, sd=2) + 12*X
+cor(X,Y)
+
+look at the result in something like ggplot2
+Dataf <- data.frame(X,Y)
+ggplot(Dataf, aes(X, Y)) + geom.point() + stat_smooth(method=lm, se=FALSE)
+
+
+This approach has a few advantages:
+1) I know that X and Y are samples from the Gaussian (Normal) distribution.
+2) I know that the data are homoscedastic.
+3) I can change 1 and 2 in whatever way I want. Possibly useful if you want to understand how violations in model assumptions influence outcomes.
+4) I can look closely at the influence of sample size when assumptions are met and when they are not.
+
+Note that ANOVA and regression do not assume that the independent or dependent variables are normally distributed. The assumption of Normality is for the error term in the model. However, if both dependent and independent variables are normally distributed then it is likely that the error term will also be normally distributed.
+
+What should I get here?
+Y<- rnorm(1000, mean=14, sd=2) + X*rnorm(1000, mean=12, sd=27)
+
+
+
+Tim
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Uwe Ligges
+Sent: Friday, June 2, 2023 5:18 AM
+To: james carrigan <james5431 at hotmail.com>; r-help at r-project.org
+Subject: Re: [R] Help sourcing datasets (.csv)
+
+[External Email]
+
+See ?data
+
+
+On 28.05.2023 10:53, james carrigan wrote:
+> Dear Sir or Madam
+> I'm trying to compile a collection of datasets that require use of the following hypothesis tests.
+> Are there datasets within the R library that I can get access to?
+> Kind regards
+> James Carrigan
+>
+> Hypothesis Testing
+> t.test(X,Y)
+> - performs a two sample t-test between X and Y
+> t.test(X,Y,paired=TRUE)
+> - performs a paired t-test between X and Y prop.test(x = c(a, b), n =
+> c(n1, n2)) - performs a 2-sample test for equality of proportions with
+> continuity correction
+>
+> Sent from my iPad Sent from my iPhone
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat/
+> .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Ctebert%40ufl.edu
+> %7C5f3292c3315b446b8b9008db634a37cb%7C0d4da0f84a314d76ace60a62331e1b84
+> %7C0%7C0%7C638212942641271785%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAw
+> MDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sda
+> ta=s5NqLzxYTlnA1BHldzka%2F2i%2FoefvsLmU%2FDuLJav5mMc%3D&reserved=0
+> PLEASE do read the posting guide
+> http://www.r/
+> -project.org%2Fposting-guide.html&data=05%7C01%7Ctebert%40ufl.edu%7C5f
+> 3292c3315b446b8b9008db634a37cb%7C0d4da0f84a314d76ace60a62331e1b84%7C0%
+> 7C0%7C638212942641271785%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiL
+> CJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=xG
+> MQDNZksGydmnYDLAFjZ%2BEZp4ne%2Bf5JK%2BO9qrH7zeU%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
