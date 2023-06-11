@@ -4171,3 +4171,1449 @@ Ivan
 	[[alternative HTML version deleted]]
 
 
+From er|cjberger @end|ng |rom gm@||@com  Sat Jun 10 06:16:24 2023
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Sat, 10 Jun 2023 07:16:24 +0300
+Subject: [R] inconsistency in mclapply.....
+In-Reply-To: <PU4P216MB156862A1CD9895B039712741C851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB15680C78ECE99ACE85863DDFC851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230609231300.6a937f88@Tarkus>
+ <PU4P216MB156862A1CD9895B039712741C851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <CAGgJW76gCbVK3gCQv=U9CnRO=f6YPjF-F0oabdHcQTDJ98zumQ@mail.gmail.com>
+
+Hi Akshay,
+You do not have to quit R to run 'top'. You can have, for example, 2
+windows, with R running in one and top running in the oher.
+
+Eric
+
+On Sat, Jun 10, 2023 at 12:19?AM akshay kulkarni <akshay_e4 at hotmail.com>
+wrote:
+
+> Dear Ivan,
+>                   Thanks for the reply. I am pressurised by a fast
+> approaching deadline and your reply calmed me...
+>
+> Take a look at the following code:
+>
+>
+> debug at <tmp>#26: LYG <- mclapply(LYGH, FUN = arfima, mc.cores = 2,
+> mc.preschedule = FALSE)
+> Browse[2]> length(LYGH)
+> [1] 357
+> Browse[2]>
+> ^C
+>
+> Browse[2]> LYG <- pbmclapply(LYGH,FUN = arfima,mc.cores = 2,mc.preschedule
+> = FALSE)
+>   |
+>
+>  |   0%, ETA NA
+>
+> I am debuuging a function FUN wherein the above expressions appear. The
+> pbmclapply code works well if called inside FUN:
+> > FUN(arg)
+> Result..
+>
+> But as you may note, it doesn't work while in debug mode....
+>
+> Also, if I replace pbmclapply by maclapply inside FUN, it hangs....
+>
+> You might be interested in this:
+>
+> [ec2-user at ip-172-31-15-116 ~]$ exit
+> logout
+> There are stopped jobs.
+>
+> THis occurs when I close R and try to exit the shell prompt( I am on an
+> AWS EC2 RHEL 8 Instance). Can this lead you somewhere? As of now I have
+> quit R in my machine, so I can't get session info..but please let me know
+> if you need it necessarily...
+>
+> by the by, how do you run top when running R? I think at least in my
+> machine, you have to quit R to get to the shell prompt...
+>
+> I request you TO PLEASE reply to this mail as early as possible. I am
+> facing an imminent deadline...please excuse my blatant violation of
+> protocol, but deadlines are deadlines, right?
+>
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>
+> ________________________________
+> From: Ivan Krylov <krylov.r00t at gmail.com>
+> Sent: Saturday, June 10, 2023 1:43 AM
+> To: akshay kulkarni <akshay_e4 at hotmail.com>
+> Cc: R help Mailing list <r-help at r-project.org>
+> Subject: Re: [R] inconsistency in mclapply.....
+>
+> On Fri, 9 Jun 2023 18:01:44 +0000
+> akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>
+> > > LYG <- pbmclapply(LYGH,FUN = arfima,mc.cores = 2,mc.preschedule =
+> > > FALSE)
+> >   |
+> >
+>          |
+> >   0%, ETA NA^
+> >
+> > It just hangs.
+>
+> My questions from the last time still stand:
+>
+> 0) What is your sessionInfo()? Maybe you're running a parallel BLAS
+> which doesn't always handle fork() or something. It may be worth
+> disabling BLAS-level parallelism as long as you're already trying to
+> use 100% of your processor by other means.
+>
+> 1) What does traceback() show after you interrupt pbmclapply? Most
+> likely, you would be interrupting selectChildren(), but if not, the
+> problem may lie in a very different place from what I'm expecting.
+>
+> 2) While pbmclapply is hung, without interrupting it, take a look at
+> the state of the system and the processes on it (are you still on RHEL?
+> use `top` or whatever task manager you're comfortable with).
+>
+>  a) Is 100% of the CPU being used? 100% of one core? Is system mostly
+>  idle?
+>
+>  b) Can you find the child processes launched by pbmclapply?
+>
+>  c) Write down the PID of the child process and attach a debugger to
+>  it (If you're on RHEL, try following this guide:
+>  <https://beej.us/guide/bggdb/#attach>. If GDB asks you to install
+>  additional debug symbols by running debuginfo-install, follow its
+>  guidance and then restart GDB.) and obtain a backtrace. (In GDB, the
+>  command to obtain a backtrace is "backtrace".) Which function is the
+>  child process stuck in?
+>
+> --
+> Best regards,
+> Ivan
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Jun 10 09:24:50 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 10 Jun 2023 10:24:50 +0300
+Subject: [R] inconsistency in mclapply.....
+In-Reply-To: <PU4P216MB156862A1CD9895B039712741C851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB15680C78ECE99ACE85863DDFC851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230609231300.6a937f88@Tarkus>
+ <PU4P216MB156862A1CD9895B039712741C851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <20230610102450.7acdbef1@Tarkus>
+
+On Fri, 9 Jun 2023 21:19:11 +0000
+akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+
+> debug at <tmp>#26: LYG <- mclapply(LYGH, FUN = arfima, mc.cores = 2,
+> mc.preschedule = FALSE)
+> Browse[2]> LYG <- pbmclapply(LYGH,FUN = arfima,mc.cores =
+> 2,mc.preschedule = FALSE)
+> |                                                  | 0%, ETA NA
+
+So if you interrupt the code _after_ it hangs at 0%, ETA NA, what's the
+traceback? (We're doing this to confirm that the parent process hangs
+in either selectChildren() or readChild().)
+
+> You might be interested in this:
+> 
+> [ec2-user at ip-172-31-15-116 ~]$ exit
+> logout
+> There are stopped jobs.
+> 
+> THis occurs when I close R and try to exit the shell prompt( I am on
+> an AWS EC2 RHEL 8 Instance). Can this lead you somewhere?
+
+I guess this proves the existence of child processes, probably spawned
+by mclapply, but why would they be _stopped_, I don't know. What's the
+output of jobs -l at this point?
+
+(This suggests trying to send them a SIGCONT and seeing what happens.
+Does mclapply() get unstuck if you run the command killall -SIGCONT R
+from a separate ssh connection? Would be strange if it worked, but
+worth a try.)
+
+> As of now I  have quit R in my machine, so I can't get session
+> info..
+
+Knowing the output of sessionInfo() could still be useful for solving
+the problem. It's best to show the output after loading all the
+packages, ideally just before you reproduce the problem.
+
+> by the by, how do you run top when running R? I think at least in my
+> machine, you have to quit R to get to the shell prompt...
+
+I can think of 3 options:
+
+1) Type Ctrl+Z at the R prompt. R (and the rest of the process group, I
+think) becomes suspended, you return to the command line prompt where
+you can run other commands. At the system command line prompt, type
+"fg" and press Enter in order to continue running R. (Press Enter a
+second time so that R prints its command line prompt again.) This is
+quick, doesn't require preparation, but messes up the state of the
+processes you're interested in. (They become suspended instead of
+running, which may complicate debugging.)
+
+2) Open a second ssh connection to the same machine the same way you
+had opened the first one. You won't be able to (easily) interact with
+the R session running in the first connection, but you'll get a second
+system command line where you'll be able to run top, gdb, and other
+commands, which should let you inspect the state of the system.
+
+3) Before starting R, install a "terminal multiplexer", that is, GNU
+Screen or tmux. If you're still on RHEL, use sudo dnf install screen or
+sudo dnf install tmux. One of these commands needs to be run once per
+computer. Type the name of the program ("screen" or "tmux") to start it.
+Inside screen/tmux, start R.
+
+In Screen, use Ctrl+A then C in order to create a new virtual terminal;
+Ctrl+A then type the number in order to switch between terminals. In
+tmux, use Ctrl+B then C in order to create a new virtual terminal;
+Ctrl+B then type the number in order to switch between them. Terminals
+are numbered from 0 upwards, so the second one will be numbered 1, and
+so on. 
+
+-- 
+Best regards,
+Ivan
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sat Jun 10 10:42:37 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sat, 10 Jun 2023 08:42:37 +0000
+Subject: [R] inconsistency in mclapply.....
+In-Reply-To: <20230610102450.7acdbef1@Tarkus>
+References: <PU4P216MB15680C78ECE99ACE85863DDFC851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230609231300.6a937f88@Tarkus>
+ <PU4P216MB156862A1CD9895B039712741C851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230610102450.7acdbef1@Tarkus>
+Message-ID: <PU4P216MB1568877D25A8BFA7FBF617F6C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Ivan,
+                 here is the comprehensive info you requested:
+
+THis is the output of top when I run a function LOWn() with mclapply in it. It executes succesfully. (the number of cores in my machine is 2)
+
+> LOWn(OHLCDataEP[[63]])
+
+Tasks: 127 total,   3 running, 124 sleeping,   0 stopped,   0 zombie
+%Cpu0  : 82.3 us, 16.7 sy,  0.0 ni,  0.0 id,  0.0 wa,  1.0 hi,  0.0 si,  0.0 st
+%Cpu1  : 74.1 us, 24.9 sy,  0.0 ni,  0.0 id,  0.0 wa,  1.0 hi,  0.0 si,  0.0 st
+MiB Mem :  15531.8 total,  11019.4 free,   3521.8 used,    990.6 buff/cache
+MiB Swap:      0.0 total,      0.0 free,      0.0 used.  11723.8 avail Mem
+
+
+
+
+
+
+This is the output of top when I run function LOWp() with mclapply also in it. it hangs:
+
+
+top - 07:48:08 up 54 min,  2 users,  load average: 0.02, 0.36, 0.34
+Tasks: 127 total,   1 running, 126 sleeping,   0 stopped,   0 zombie
+%Cpu0  :  0.0 us,  0.3 sy,  0.0 ni, 99.7 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+%Cpu1  :  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+MiB Mem :  15531.8 total,  10976.8 free,   3564.4 used,    990.7 buff/cache
+MiB Swap:      0.0 total,      0.0 free,      0.0 used.  11681.2 avail Mem
+
+The mcalpply call only works the first time when I call it after starting an R session
+
+
+TRaceback of after interrupting LOWp:
+
+
+> LOWp(OHLCDataEP[[63]])
+^C
+There were 50 or more warnings (use warnings() to see the first 50)
+> traceback()
+3: selectChildren(jobs[!is.na(jobsp)], -1)
+2: mclapply(LYGH, FUN = arfima, mc.cores = 2, mc.preschedule = FALSE) at <tmp>#26
+1: LOWp(OHLCDataEP[[63]])
+
+
+I think child processes spawned by maclapply in FUN2 doesn't get killed...THis is from the top command AFTER interrupting FUN2 (sometimes there is only one R process)
+
+ 38615 ec2-user  20   0 1016432 400020  13392 S   0.0   2.5   0:02.05 R
+38696 ec2-user  20   0 1016436 400416  13676 S   0.0   2.5   0:02.03 R
+
+THis is the output when FUN2 is running:
+ 1526 ec2-user  20   0 1525784 651628  23040 S   0.0   4.1   0:11.90 R
+ 2616 ec2-user  20   0 1525784 634688   6092 S   0.0   4.0   0:00.03 R
+   2617 ec2-user  20   0 1525784 634884   6288 S   0.0   4.0   0:00.02 R
+
+
+
+THis is AFTER succesful completion of FUN1:
+ 38615 ec2-user  20   0 1016432 400020  13392 S   0.0   2.5   0:02.05 R
+ 38696 ec2-user  20   0 1016436 400416  13676 S   0.0   2.5   0:02.03 R
+
+Please note that PIDs are same between FUN1 and FUN2, and also that when I am not parallelising there is only one R process:
+1526 ec2-user  20   0 1227788 491248  21368 S   0.0   3.1   0:02.95 R
+
+
+
+> sessionInfo()
+R version 4.2.1 (2022-06-23)
+Platform: x86_64-redhat-linux-gnu (64-bit)
+Running under: Red Hat Enterprise Linux 8.6 (Ootpa)
+
+Matrix products: default
+BLAS/LAPACK: /usr/lib64/libopenblaso-r0.3.15.so
+
+locale:
+ [1] LC_CTYPE=en_US.UTF-8       LC_NUMERIC=C
+ [3] LC_TIME=en_US.UTF-8        LC_COLLATE=en_US.UTF-8
+ [5] LC_MONETARY=en_US.UTF-8    LC_MESSAGES=en_US.UTF-8
+ [7] LC_PAPER=en_US.UTF-8       LC_NAME=C
+ [9] LC_ADDRESS=C               LC_TELEPHONE=C
+[11] LC_MEASUREMENT=en_US.UTF-8 LC_IDENTIFICATION=C
+
+attached base packages:
+[1] parallel  stats     graphics  grDevices utils     datasets  methods
+[8] base
+
+other attached packages:
+[1] imputeTS_3.3    pbmcapply_1.5.1 attempt_0.3.1   forecast_8.21
+
+loaded via a namespace (and not attached):
+ [1] Rcpp_1.0.10       urca_1.3-3        pillar_1.9.0      compiler_4.2.1
+ [5] tseries_0.10-54   xts_0.13.1        lifecycle_1.0.3   tibble_3.2.1
+ [9] gtable_0.3.3      nlme_3.1-157      lattice_0.20-45   pkgconfig_2.0.3
+[13] rlang_1.1.1       cli_3.6.1         curl_5.0.0        xml2_1.3.4
+[17] generics_0.1.3    vctrs_0.6.2       lmtest_0.9-40     grid_4.2.1
+[21] nnet_7.3-17       ggtext_0.1.2      gridtext_0.1.5    glue_1.6.2
+[25] R6_2.5.1          fansi_1.0.4       ggplot2_3.4.2     TTR_0.24.3
+[29] magrittr_2.0.3    scales_1.2.1      quantmod_0.4.22   timeDate_4022.108
+[33] colorspace_2.1-0  fracdiff_1.5-2    quadprog_1.5-8    utf8_1.2.3
+[37] stinepack_1.4     munsell_0.5.0     zoo_1.8-12
+
+
+THis is the output of jobs -l: (it doesn't do anything)
+
+[ec2-user at ip-172-31-15-116 ~]$ jobs -l
+[ec2-user at ip-172-31-15-116 ~]$
+
+killall - SIGCONT  R has no effect
+
+
+You had asked me to attach a debugger to the child processes. How do you get the child processes spawned by mclapply? For example, how do i identify, among the listed R processes above, the child processes?
+
+
+Many thanks in advance....
+
+Thanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+
+
+
+
+
+
+
+________________________________
+From: Ivan Krylov <krylov.r00t at gmail.com>
+Sent: Saturday, June 10, 2023 12:54 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] inconsistency in mclapply.....
+
+On Fri, 9 Jun 2023 21:19:11 +0000
+akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+
+> debug at <tmp>#26: LYG <- mclapply(LYGH, FUN = arfima, mc.cores = 2,
+> mc.preschedule = FALSE)
+> Browse[2]> LYG <- pbmclapply(LYGH,FUN = arfima,mc.cores =
+> 2,mc.preschedule = FALSE)
+> |                                                  | 0%, ETA NA
+
+So if you interrupt the code _after_ it hangs at 0%, ETA NA, what's the
+traceback? (We're doing this to confirm that the parent process hangs
+in either selectChildren() or readChild().)
+
+> You might be interested in this:
+>
+> [ec2-user at ip-172-31-15-116 ~]$ exit
+> logout
+> There are stopped jobs.
+>
+> THis occurs when I close R and try to exit the shell prompt( I am on
+> an AWS EC2 RHEL 8 Instance). Can this lead you somewhere?
+
+I guess this proves the existence of child processes, probably spawned
+by mclapply, but why would they be _stopped_, I don't know. What's the
+output of jobs -l at this point?
+
+(This suggests trying to send them a SIGCONT and seeing what happens.
+Does mclapply() get unstuck if you run the command killall -SIGCONT R
+from a separate ssh connection? Would be strange if it worked, but
+worth a try.)
+
+> As of now I  have quit R in my machine, so I can't get session
+> info..
+
+Knowing the output of sessionInfo() could still be useful for solving
+the problem. It's best to show the output after loading all the
+packages, ideally just before you reproduce the problem.
+
+> by the by, how do you run top when running R? I think at least in my
+> machine, you have to quit R to get to the shell prompt...
+
+I can think of 3 options:
+
+1) Type Ctrl+Z at the R prompt. R (and the rest of the process group, I
+think) becomes suspended, you return to the command line prompt where
+you can run other commands. At the system command line prompt, type
+"fg" and press Enter in order to continue running R. (Press Enter a
+second time so that R prints its command line prompt again.) This is
+quick, doesn't require preparation, but messes up the state of the
+processes you're interested in. (They become suspended instead of
+running, which may complicate debugging.)
+
+2) Open a second ssh connection to the same machine the same way you
+had opened the first one. You won't be able to (easily) interact with
+the R session running in the first connection, but you'll get a second
+system command line where you'll be able to run top, gdb, and other
+commands, which should let you inspect the state of the system.
+
+3) Before starting R, install a "terminal multiplexer", that is, GNU
+Screen or tmux. If you're still on RHEL, use sudo dnf install screen or
+sudo dnf install tmux. One of these commands needs to be run once per
+computer. Type the name of the program ("screen" or "tmux") to start it.
+Inside screen/tmux, start R.
+
+In Screen, use Ctrl+A then C in order to create a new virtual terminal;
+Ctrl+A then type the number in order to switch between terminals. In
+tmux, use Ctrl+B then C in order to create a new virtual terminal;
+Ctrl+B then type the number in order to switch between them. Terminals
+are numbered from 0 upwards, so the second one will be numbered 1, and
+so on.
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Jun 10 11:16:24 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 10 Jun 2023 12:16:24 +0300
+Subject: [R] inconsistency in mclapply.....
+In-Reply-To: <PU4P216MB1568877D25A8BFA7FBF617F6C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB15680C78ECE99ACE85863DDFC851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230609231300.6a937f88@Tarkus>
+ <PU4P216MB156862A1CD9895B039712741C851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230610102450.7acdbef1@Tarkus>
+ <PU4P216MB1568877D25A8BFA7FBF617F6C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <20230610121624.042f3d0a@Tarkus>
+
+On Sat, 10 Jun 2023 08:42:37 +0000
+akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+
+> This is the output of top when I run function LOWp() with mclapply
+> also in it. it hangs:
+
+> %Cpu0  :  0.0 us,  0.3 sy,  0.0 ni, 99.7 id,  0.0 wa,  0.0 hi,  0.0
+> si,  0.0 st
+> %Cpu1  :  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa, 0.0 hi,  0.0
+> si,  0.0 st
+
+I see. The system is idle.
+
+> TRaceback of after interrupting LOWp:
+> 
+> 
+> > LOWp(OHLCDataEP[[63]])  
+> ^C
+> There were 50 or more warnings (use warnings() to see the first 50)
+
+What are the warnings()?
+
+> > traceback()  
+> 3: selectChildren(jobs[!is.na(jobsp)], -1)
+> 2: mclapply(LYGH, FUN = arfima, mc.cores = 2, mc.preschedule = FALSE)
+> at <tmp>#26
+> 1: LOWp(OHLCDataEP[[63]])
+
+...and the parent is stuck waiting for at least some of the children.
+The problem must be inside the child processes.
+
+> BLAS/LAPACK: /usr/lib64/libopenblaso-r0.3.15.so
+
+If you start R like this:
+
+OPENBLAS_NUM_THREADS=1 R
+
+...and confirm that Sys.getenv('OPENBLAS_NUM_THREADS') returns 1, then
+try running your analysis, does it still get stuck?
+
+There are reports complaining about OpenBLAS failing fork() tests when
+built with OpenMP support, and this 'o' at the end of the shared
+library name looks suspicious.
+
+> You had asked me to attach a debugger to the child processes. How do
+> you get the child processes spawned by mclapply? For example, how do
+> i identify, among the listed R processes above, the child processes?
+
+Make sure that there's only one R session running. Stray R processes
+can be cleaned up by running killall R or rebooting the AWS virtual
+machine.
+
+Start R and run Sys.getpid(). This is the PID of the parent process.
+Start your analysis and get it stuck. Do not interrupt the function,
+let it keep waiting for the child process.
+
+In a separate ssh connection or virtual terminal, run top. It should be
+possible to type lowercase v to display a process tree, then navigate
+it using arrow keys. Confirm that there is a parent R process with the
+PID you saw above and a number of child processes branching from it with
+different PIDs. If there's more than one child, try them both and see
+if the results are different (hopefully not).
+
+Run gdb and enter the following commands (substitute the value of the
+PID for PID_OF_THE_CHILD_PROCESS):
+
+attach PID_OF_THE_CHILD_PROCESS
+thread apply all backtrace
+
+If there's too much text and you can't copy it out of the terminal, use
+the commands "set logging file gdb.log" and "set logging on", then get
+the text output from the file "gdb.log" that will be created in the
+current directory.
+
+-- 
+Best regards,
+Ivan
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sat Jun 10 13:49:10 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sat, 10 Jun 2023 11:49:10 +0000
+Subject: [R] inconsistency in mclapply.....
+In-Reply-To: <20230610121624.042f3d0a@Tarkus>
+References: <PU4P216MB15680C78ECE99ACE85863DDFC851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230609231300.6a937f88@Tarkus>
+ <PU4P216MB156862A1CD9895B039712741C851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230610102450.7acdbef1@Tarkus>
+ <PU4P216MB1568877D25A8BFA7FBF617F6C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230610121624.042f3d0a@Tarkus>
+Message-ID: <PU4P216MB1568E539ECA035CEE889C950C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Ivan,
+                 I opened R with OPENBLAS_NUM_THREADS=1
+but am bootless....
+
+The parent process id:  2745
+
+Child processes:  3857  and  3858
+
+
+FOR 3857:
+(gdb) backtrace
+#0  0x00007f94b6454053 in gomp_team_barrier_wait_end () from /lib64/libgomp.so.1
+#1  0x00007f94b6452a7d in gomp_team_end () from /lib64/libgomp.so.1
+#2  0x00007f94b3c280cf in exec_blas () from /lib64/libopenblaso.so.0
+#3  0x00007f94b3c263e4 in gemm_thread_n () from /lib64/libopenblaso.so.0
+#4  0x00007f94b3c39077 in dgetrs_N_parallel () from /lib64/libopenblaso.so.0
+#5  0x00007f94b39f7f65 in dgesv_ () from /lib64/libopenblaso.so.0
+#6  0x00007f948556aebe in La_solve () from /usr/lib64/R/modules//lapack.so
+#7  0x00007f948556e555 in mod_do_lapack () from /usr/lib64/R/modules//lapack.so
+#8  0x00007f94b67a9c93 in bcEval () from /usr/lib64/R/lib/libR.so
+#9  0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#10 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#11 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#12 0x00007f94b68045d3 in dispatchMethod.isra.4 () from /usr/lib64/R/lib/libR.so
+#13 0x00007f94b6804a1c in Rf_usemethod () from /usr/lib64/R/lib/libR.so
+#14 0x00007f94b6804db9 in do_usemethod () from /usr/lib64/R/lib/libR.so
+#15 0x00007f94b67ad9b2 in bcEval () from /usr/lib64/R/lib/libR.so
+#16 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#17 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#18 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#19 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#20 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#21 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#22 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#23 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#24 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#25 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#26 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#27 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#28 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#29 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#30 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#31 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#32 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#33 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#34 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#35 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#36 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#37 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#38 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#39 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#40 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#41 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#42 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+--Type <RET> for more, q to quit, c to continue without paging--c
+#43 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#44 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#45 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#46 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#47 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#48 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#49 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#50 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#51 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#52 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#53 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#54 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#55 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#56 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#57 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#58 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#59 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#60 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#61 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#62 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#63 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#64 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#65 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#66 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#67 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#68 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#69 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#70 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#71 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#72 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#73 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#74 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#75 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#76 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#77 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#78 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#79 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#80 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#81 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#82 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#83 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#84 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#85 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#86 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#87 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#88 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#89 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#90 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#91 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#92 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#93 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#94 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#95 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#96 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#97 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#98 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#99 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#100 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#101 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#102 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#103 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#104 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#105 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#106 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#107 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#108 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#109 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#110 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#111 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#112 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#113 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#114 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#115 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#116 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#117 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#118 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#119 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#120 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#121 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#122 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#123 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#124 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#125 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#126 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#127 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#128 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#129 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#130 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#131 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#132 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#133 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#134 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#135 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#136 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#137 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#138 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#139 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#140 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#141 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#142 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#143 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#144 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#145 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#146 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#147 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#148 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#149 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#150 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#151 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#152 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#153 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#154 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#155 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#156 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#157 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#158 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#159 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#160 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#161 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#162 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#163 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#164 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#165 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#166 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#167 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#168 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#169 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#170 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#171 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#172 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#173 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#174 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#175 0x00007f94b67c2255 in R_forceAndCall () from /usr/lib64/R/lib/libR.so
+#176 0x00007f94b66f429f in do_lapply () from /usr/lib64/R/lib/libR.so
+#177 0x00007f94b680232a in do_internal () from /usr/lib64/R/lib/libR.so
+#178 0x00007f94b67ad9b2 in bcEval () from /usr/lib64/R/lib/libR.so
+#179 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#180 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#181 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#182 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#183 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#184 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#185 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#186 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#187 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#188 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#189 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#190 0x00007f94b67bcc20 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#191 0x00007f94b67f192a in Rf_ReplIteration () from /usr/lib64/R/lib/libR.so
+#192 0x00007f94b67f1c71 in R_ReplConsole () from /usr/lib64/R/lib/libR.so
+#193 0x00007f94b67f1d30 in run_Rmainloop () from /usr/lib64/R/lib/libR.so
+#194 0x000055f0700ed8ff in main ()
+
+
+
+
+
+FOR 3858
+(gdb) backtrace
+#0  0x00007f94b6454053 in gomp_team_barrier_wait_end () from /lib64/libgomp.so.1
+#1  0x00007f94b6452a7d in gomp_team_end () from /lib64/libgomp.so.1
+#2  0x00007f94b3c280cf in exec_blas () from /lib64/libopenblaso.so.0
+#3  0x00007f94b3c263e4 in gemm_thread_n () from /lib64/libopenblaso.so.0
+#4  0x00007f94b3c39077 in dgetrs_N_parallel () from /lib64/libopenblaso.so.0
+#5  0x00007f94b39f7f65 in dgesv_ () from /lib64/libopenblaso.so.0
+#6  0x00007f948556aebe in La_solve () from /usr/lib64/R/modules//lapack.so
+#7  0x00007f948556e555 in mod_do_lapack () from /usr/lib64/R/modules//lapack.so
+#8  0x00007f94b67a9c93 in bcEval () from /usr/lib64/R/lib/libR.so
+#9  0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#10 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#11 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#12 0x00007f94b68045d3 in dispatchMethod.isra.4 () from /usr/lib64/R/lib/libR.so
+#13 0x00007f94b6804a1c in Rf_usemethod () from /usr/lib64/R/lib/libR.so
+#14 0x00007f94b6804db9 in do_usemethod () from /usr/lib64/R/lib/libR.so
+#15 0x00007f94b67ad9b2 in bcEval () from /usr/lib64/R/lib/libR.so
+#16 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#17 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#18 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#19 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#20 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#21 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#22 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#23 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#24 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#25 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#26 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#27 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#28 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#29 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#30 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#31 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#32 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#33 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#34 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#35 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#36 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#37 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#38 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#39 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#40 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#41 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#42 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+--Type <RET> for more, q to quit, c to continue without paging--c
+#43 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#44 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#45 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#46 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#47 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#48 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#49 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#50 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#51 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#52 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#53 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#54 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#55 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#56 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#57 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#58 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#59 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#60 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#61 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#62 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#63 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#64 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#65 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#66 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#67 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#68 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#69 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#70 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#71 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#72 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#73 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#74 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#75 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#76 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#77 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#78 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#79 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#80 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#81 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#82 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#83 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#84 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#85 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#86 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#87 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#88 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#89 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#90 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#91 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#92 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#93 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#94 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#95 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#96 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#97 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#98 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#99 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#100 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#101 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#102 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#103 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#104 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#105 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#106 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#107 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#108 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#109 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#110 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#111 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#112 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#113 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#114 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#115 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#116 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#117 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#118 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#119 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#120 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#121 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#122 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#123 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#124 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#125 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#126 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#127 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#128 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#129 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#130 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#131 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#132 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#133 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#134 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#135 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#136 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#137 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#138 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#139 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#140 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#141 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#142 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#143 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#144 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#145 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#146 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#147 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#148 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#149 0x00007f94b67bd44c in forcePromise () from /usr/lib64/R/lib/libR.so
+#150 0x00007f94b67bd8d8 in getvar () from /usr/lib64/R/lib/libR.so
+#151 0x00007f94b67b1325 in bcEval () from /usr/lib64/R/lib/libR.so
+#152 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#153 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#154 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#155 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#156 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#157 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#158 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#159 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#160 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#161 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#162 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#163 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#164 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#165 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#166 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#167 0x00007f94b67c2255 in R_forceAndCall () from /usr/lib64/R/lib/libR.so
+#168 0x00007f94b66f429f in do_lapply () from /usr/lib64/R/lib/libR.so
+#169 0x00007f94b680232a in do_internal () from /usr/lib64/R/lib/libR.so
+#170 0x00007f94b67ad9b2 in bcEval () from /usr/lib64/R/lib/libR.so
+#171 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#172 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#173 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#174 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#175 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#176 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#177 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#178 0x00007f94b67b3834 in bcEval () from /usr/lib64/R/lib/libR.so
+#179 0x00007f94b67bca60 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#180 0x00007f94b67be8af in R_execClosure () from /usr/lib64/R/lib/libR.so
+#181 0x00007f94b67bf837 in Rf_applyClosure () from /usr/lib64/R/lib/libR.so
+#182 0x00007f94b67bcc20 in Rf_eval () from /usr/lib64/R/lib/libR.so
+#183 0x00007f94b67f192a in Rf_ReplIteration () from /usr/lib64/R/lib/libR.so
+#184 0x00007f94b67f1c71 in R_ReplConsole () from /usr/lib64/R/lib/libR.so
+#185 0x00007f94b67f1d30 in run_Rmainloop () from /usr/lib64/R/lib/libR.so
+#186 0x000055f0700ed8ff in main ()
+
+
+I hope this is enough for you to pinpoint the cause of the inconsistency......
+
+WAITING EAGERLY FOR A POSITIVE REPLY....
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+
+
+
+
+________________________________
+From: Ivan Krylov <krylov.r00t at gmail.com>
+Sent: Saturday, June 10, 2023 2:46 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] inconsistency in mclapply.....
+
+On Sat, 10 Jun 2023 08:42:37 +0000
+akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+
+> This is the output of top when I run function LOWp() with mclapply
+> also in it. it hangs:
+
+> %Cpu0  :  0.0 us,  0.3 sy,  0.0 ni, 99.7 id,  0.0 wa,  0.0 hi,  0.0
+> si,  0.0 st
+> %Cpu1  :  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa, 0.0 hi,  0.0
+> si,  0.0 st
+
+I see. The system is idle.
+
+> TRaceback of after interrupting LOWp:
+>
+>
+> > LOWp(OHLCDataEP[[63]])
+> ^C
+> There were 50 or more warnings (use warnings() to see the first 50)
+
+What are the warnings()?
+
+> > traceback()
+> 3: selectChildren(jobs[!is.na(jobsp)], -1)
+> 2: mclapply(LYGH, FUN = arfima, mc.cores = 2, mc.preschedule = FALSE)
+> at <tmp>#26
+> 1: LOWp(OHLCDataEP[[63]])
+
+...and the parent is stuck waiting for at least some of the children.
+The problem must be inside the child processes.
+
+> BLAS/LAPACK: /usr/lib64/libopenblaso-r0.3.15.so
+
+If you start R like this:
+
+OPENBLAS_NUM_THREADS=1 R
+
+...and confirm that Sys.getenv('OPENBLAS_NUM_THREADS') returns 1, then
+try running your analysis, does it still get stuck?
+
+There are reports complaining about OpenBLAS failing fork() tests when
+built with OpenMP support, and this 'o' at the end of the shared
+library name looks suspicious.
+
+> You had asked me to attach a debugger to the child processes. How do
+> you get the child processes spawned by mclapply? For example, how do
+> i identify, among the listed R processes above, the child processes?
+
+Make sure that there's only one R session running. Stray R processes
+can be cleaned up by running killall R or rebooting the AWS virtual
+machine.
+
+Start R and run Sys.getpid(). This is the PID of the parent process.
+Start your analysis and get it stuck. Do not interrupt the function,
+let it keep waiting for the child process.
+
+In a separate ssh connection or virtual terminal, run top. It should be
+possible to type lowercase v to display a process tree, then navigate
+it using arrow keys. Confirm that there is a parent R process with the
+PID you saw above and a number of child processes branching from it with
+different PIDs. If there's more than one child, try them both and see
+if the results are different (hopefully not).
+
+Run gdb and enter the following commands (substitute the value of the
+PID for PID_OF_THE_CHILD_PROCESS):
+
+attach PID_OF_THE_CHILD_PROCESS
+thread apply all backtrace
+
+If there's too much text and you can't copy it out of the terminal, use
+the commands "set logging file gdb.log" and "set logging on", then get
+the text output from the file "gdb.log" that will be created in the
+current directory.
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Jun 10 14:12:42 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 10 Jun 2023 15:12:42 +0300
+Subject: [R] inconsistency in mclapply.....
+In-Reply-To: <PU4P216MB1568E539ECA035CEE889C950C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB15680C78ECE99ACE85863DDFC851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230609231300.6a937f88@Tarkus>
+ <PU4P216MB156862A1CD9895B039712741C851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230610102450.7acdbef1@Tarkus>
+ <PU4P216MB1568877D25A8BFA7FBF617F6C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230610121624.042f3d0a@Tarkus>
+ <PU4P216MB1568E539ECA035CEE889C950C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <20230610151242.38cd3980@Tarkus>
+
+On Sat, 10 Jun 2023 11:49:10 +0000
+akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+
+> (gdb) backtrace
+> #0  0x00007f94b6454053 in gomp_team_barrier_wait_end () from /lib64/libgomp.so.1
+> #1  0x00007f94b6452a7d in gomp_team_end () from /lib64/libgomp.so.1
+> #2  0x00007f94b3c280cf in exec_blas () from /lib64/libopenblaso.so.0
+> #3  0x00007f94b3c263e4 in gemm_thread_n () from /lib64/libopenblaso.so.0
+> #4  0x00007f94b3c39077 in dgetrs_N_parallel () from /lib64/libopenblaso.so.0
+> #5  0x00007f94b39f7f65 in dgesv_ () from /lib64/libopenblaso.so.0
+> #6  0x00007f948556aebe in La_solve () from /usr/lib64/R/modules//lapack.so
+> #7  0x00007f948556e555 in mod_do_lapack () from /usr/lib64/R/modules//lapack.so
+> #8  0x00007f94b67a9c93 in bcEval () from /usr/lib64/R/lib/libR.so
+
+I'm afraid this is exactly OpenBLAS trying to use OpenMP and failing
+because it currently breaks in programs that fork().
+
+Related links are <https://github.com/xianyi/OpenBLAS/issues/294> and
+<https://gcc.gnu.org/bugzilla/show_bug.cgi?id=60035>.
+
+I was hoping that setting OPENBLAS_NUM_THREADS=1 would prevent OpenBLAS
+from trying to use OpenMP, but that doesn't seem to work. If you
+replace OPENBLAS_NUM_THREADS with OMP_NUM_THREADS (in order to limit
+the number on OpenMP side), does it also not work?
+
+How did you install OpenBLAS on this machine? If my environment
+variable adjustments don't work, you'll need to either replace OpenBLAS
+with a different build (for example, one that uses pthreads instead of
+OpenMP, or a pure single-thread build, since you're already using
+mclapply), or even remove OpenBLAS altogether and replace it with a
+different BLAS that is fork()-safe.
+
+-- 
+Best regards,
+Ivan
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sat Jun 10 15:46:12 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sat, 10 Jun 2023 13:46:12 +0000
+Subject: [R] inconsistency in mclapply.....
+In-Reply-To: <20230610151242.38cd3980@Tarkus>
+References: <PU4P216MB15680C78ECE99ACE85863DDFC851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230609231300.6a937f88@Tarkus>
+ <PU4P216MB156862A1CD9895B039712741C851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230610102450.7acdbef1@Tarkus>
+ <PU4P216MB1568877D25A8BFA7FBF617F6C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230610121624.042f3d0a@Tarkus>
+ <PU4P216MB1568E539ECA035CEE889C950C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230610151242.38cd3980@Tarkus>
+Message-ID: <PU4P216MB1568886EF457BDCFACA886B4C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Ivan,
+                   What if I switch to Ubuntu?
+I had a similar ( but not exactly the same) problem way back in 2018 and switching to Ubuntu solved it.
+
+Thanking you,
+Yours sincerely,
+Akshay M Kulkarni
+
+________________________________
+From: Ivan Krylov <krylov.r00t at gmail.com>
+Sent: Saturday, June 10, 2023 5:42 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] inconsistency in mclapply.....
+
+On Sat, 10 Jun 2023 11:49:10 +0000
+akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+
+> (gdb) backtrace
+> #0  0x00007f94b6454053 in gomp_team_barrier_wait_end () from /lib64/libgomp.so.1
+> #1  0x00007f94b6452a7d in gomp_team_end () from /lib64/libgomp.so.1
+> #2  0x00007f94b3c280cf in exec_blas () from /lib64/libopenblaso.so.0
+> #3  0x00007f94b3c263e4 in gemm_thread_n () from /lib64/libopenblaso.so.0
+> #4  0x00007f94b3c39077 in dgetrs_N_parallel () from /lib64/libopenblaso.so.0
+> #5  0x00007f94b39f7f65 in dgesv_ () from /lib64/libopenblaso.so.0
+> #6  0x00007f948556aebe in La_solve () from /usr/lib64/R/modules//lapack.so
+> #7  0x00007f948556e555 in mod_do_lapack () from /usr/lib64/R/modules//lapack.so
+> #8  0x00007f94b67a9c93 in bcEval () from /usr/lib64/R/lib/libR.so
+
+I'm afraid this is exactly OpenBLAS trying to use OpenMP and failing
+because it currently breaks in programs that fork().
+
+Related links are <https://github.com/xianyi/OpenBLAS/issues/294> and
+<https://gcc.gnu.org/bugzilla/show_bug.cgi?id=60035>.
+
+I was hoping that setting OPENBLAS_NUM_THREADS=1 would prevent OpenBLAS
+from trying to use OpenMP, but that doesn't seem to work. If you
+replace OPENBLAS_NUM_THREADS with OMP_NUM_THREADS (in order to limit
+the number on OpenMP side), does it also not work?
+
+How did you install OpenBLAS on this machine? If my environment
+variable adjustments don't work, you'll need to either replace OpenBLAS
+with a different build (for example, one that uses pthreads instead of
+OpenMP, or a pure single-thread build, since you're already using
+mclapply), or even remove OpenBLAS altogether and replace it with a
+different BLAS that is fork()-safe.
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sat Jun 10 16:20:16 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sat, 10 Jun 2023 17:20:16 +0300
+Subject: [R] inconsistency in mclapply.....
+In-Reply-To: <PU4P216MB1568886EF457BDCFACA886B4C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB15680C78ECE99ACE85863DDFC851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230609231300.6a937f88@Tarkus>
+ <PU4P216MB156862A1CD9895B039712741C851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230610102450.7acdbef1@Tarkus>
+ <PU4P216MB1568877D25A8BFA7FBF617F6C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230610121624.042f3d0a@Tarkus>
+ <PU4P216MB1568E539ECA035CEE889C950C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230610151242.38cd3980@Tarkus>
+ <PU4P216MB1568886EF457BDCFACA886B4C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <20230610172016.0fe28e0a@Tarkus>
+
+On Sat, 10 Jun 2023 13:46:12 +0000
+akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+
+>                    What if I switch to Ubuntu?
+> I had a similar ( but not exactly the same) problem way back in 2018
+> and switching to Ubuntu solved it.
+
+You shouldn't have to switch distros for problems like this one.
+
+What you need to switch is your OpenBLAS build: instead of using
+OpenBLAS built with OpenMP support (which isn't even the default
+when compiling OpenBLAS), use OpenBLAS built with pthreads support. It's
+also likely, but not 100% guaranteed, that setting OMP_NUM_THREADS=1
+will avoid the issue by never starting any additional threads for
+OpenBLAS purposes. At least some documentation says that
+OPENBLAS_NUM_THREADS is ignored on OpenMP builds of OpenBLAS, you
+actually have to set OMP_NUM_THREADS=1 for it to take any effect.
+
+I know very little about RHEL, but it seems that you already have a
+pthreads build of OpenBLAS installed in
+/usr/lib64/libopenblasp-r0.3.15.so; you just need to adjust the path to
+the BLAS implementation used by R. If not, install the openblas-threads
+package.
+
+Can you use flexiblas
+<https://cran.r-project.org/bin/linux/fedora/#blaslapack-switching> to
+switch the BLAS implementation to OPENBLAS-THREADS? This should be
+possible by using the flexiblas R package or by setting environment
+variables
+<https://github.com/mpimd-csc/flexiblas#selecting-the-backend-at-runtime>.
+
+That said, I know for sure that on Debian and Ubuntu you get a choice
+between libopenblas0-openmp / libopenblas0-pthread /
+libopenblas0-serial, and installing any one of these packages except
+libopenblas0-openmp should avoid the problem. (And the thread limit
+should be set to 1 if you're running your tasks in parallel by other
+means.)
+
+-- 
+Best regards,
+Ivan
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Sat Jun 10 16:44:12 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Sat, 10 Jun 2023 14:44:12 +0000
+Subject: [R] inconsistency in mclapply.....
+In-Reply-To: <20230610172016.0fe28e0a@Tarkus>
+References: <PU4P216MB15680C78ECE99ACE85863DDFC851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230609231300.6a937f88@Tarkus>
+ <PU4P216MB156862A1CD9895B039712741C851A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230610102450.7acdbef1@Tarkus>
+ <PU4P216MB1568877D25A8BFA7FBF617F6C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230610121624.042f3d0a@Tarkus>
+ <PU4P216MB1568E539ECA035CEE889C950C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230610151242.38cd3980@Tarkus>
+ <PU4P216MB1568886EF457BDCFACA886B4C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <20230610172016.0fe28e0a@Tarkus>
+Message-ID: <PU4P216MB1568D8F3CB328E130A56BC30C856A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Ivan,
+                  A million thanks for your precious time....
+
+Thanking you
+Yours sincerely,
+AkshayMKulkarni
+
+________________________________
+From: Ivan Krylov <krylov.r00t at gmail.com>
+Sent: Saturday, June 10, 2023 7:50 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] inconsistency in mclapply.....
+
+On Sat, 10 Jun 2023 13:46:12 +0000
+akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+
+>                    What if I switch to Ubuntu?
+> I had a similar ( but not exactly the same) problem way back in 2018
+> and switching to Ubuntu solved it.
+
+You shouldn't have to switch distros for problems like this one.
+
+What you need to switch is your OpenBLAS build: instead of using
+OpenBLAS built with OpenMP support (which isn't even the default
+when compiling OpenBLAS), use OpenBLAS built with pthreads support. It's
+also likely, but not 100% guaranteed, that setting OMP_NUM_THREADS=1
+will avoid the issue by never starting any additional threads for
+OpenBLAS purposes. At least some documentation says that
+OPENBLAS_NUM_THREADS is ignored on OpenMP builds of OpenBLAS, you
+actually have to set OMP_NUM_THREADS=1 for it to take any effect.
+
+I know very little about RHEL, but it seems that you already have a
+pthreads build of OpenBLAS installed in
+/usr/lib64/libopenblasp-r0.3.15.so; you just need to adjust the path to
+the BLAS implementation used by R. If not, install the openblas-threads
+package.
+
+Can you use flexiblas
+<https://cran.r-project.org/bin/linux/fedora/#blaslapack-switching> to
+switch the BLAS implementation to OPENBLAS-THREADS? This should be
+possible by using the flexiblas R package or by setting environment
+variables
+<https://github.com/mpimd-csc/flexiblas#selecting-the-backend-at-runtime>.
+
+That said, I know for sure that on Debian and Ubuntu you get a choice
+between libopenblas0-openmp / libopenblas0-pthread /
+libopenblas0-serial, and installing any one of these packages except
+libopenblas0-openmp should avoid the problem. (And the thread limit
+should be set to 1 if you're running your tasks in parallel by other
+means.)
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From @te|@no@@o||@ @end|ng |rom reg|one@m@rche@|t  Sat Jun 10 17:48:17 2023
+From: @te|@no@@o||@ @end|ng |rom reg|one@m@rche@|t (Stefano Sofia)
+Date: Sat, 10 Jun 2023 15:48:17 +0000
+Subject: [R] aggregate wind direction data with wind speed required
+In-Reply-To: <CAHqSRuSqDwdX80opFgL-bJRnBawCFctkpZTZGw0m1rnh7doAcA@mail.gmail.com>
+References: <879769e2d65d41e89bf0ca6593a78e04@regione.marche.it>,
+ <CAHqSRuSqDwdX80opFgL-bJRnBawCFctkpZTZGw0m1rnh7doAcA@mail.gmail.com>
+Message-ID: <b9a85ede9d214d0e893d6ea02b9b7d8a@regione.marche.it>
+
+Sorry for the big delay of my report, but prolonged severe weather conditions often absorb a large amount of time and energies to my studies.
+
+Thanks to all of you for your suggestions.
+
+I have not been able to implement Bert Gunter's hint, his code gave me an error I have not been able to fix.
+
+Bill Dunlap's hint is smart and has been resolutive.
+
+
+Thank you again to all of you
+
+Stefano
+
+
+
+         (oo)
+--oOO--( )--OOo--------------------------------------
+Stefano Sofia PhD
+Civil Protection - Marche Region - Italy
+Meteo Section
+Snow Section
+Via del Colle Ameno 5
+60126 Torrette di Ancona, Ancona (AN)
+Uff: +39 071 806 7743
+E-mail: stefano.sofia at regione.marche.it
+---Oo---------oO----------------------------------------
+
+
+________________________________
+Da: Bill Dunlap <williamwdunlap at gmail.com>
+Inviato: sabato 13 maggio 2023 22:38
+A: Stefano Sofia
+Cc: r-help at R-project.org
+Oggetto: Re: [R] aggregate wind direction data with wind speed required
+
+I think that using complex numbers to represent the wind velocity makes this simpler.  You would need to write some simple conversion functions since wind directions are typically measured clockwise from north and the argument of a complex number is measured counterclockwise from east.  E.g.,
+
+windToComplex <-
+function(speed, degreesCW) {
+  complex(mod=speed, arg=(90-degreesCW)/180*pi)
+}
+complexToWind <-
+function(z) {
+  # Convert complex velocity z to speed and direction (degrees clockwise
+  # from north, in range [0,360)).
+  stopifnot(is.complex(z))
+  data.frame(speed = Mod(z), degreesCW = (pi - Arg(z*1i))/(2*pi)*360)
+}
+
+Then use FUN=mean instead of my_fun.
+
+-Bill
+
+On Sat, May 13, 2023 at 7:51?AM Stefano Sofia <stefano.sofia at regione.marche.it<mailto:stefano.sofia at regione.marche.it>> wrote:
+Dear list users,
+
+I have to aggregate wind direction data (wd) using a function that requires also a second input variable, wind speed (ws).
+
+This is the function that I need to use:
+
+
+my_fun <- function(wd1, ws1){
+
+  u_component <- -ws1*sin(2*pi*wd1/360)
+  v_component <- -ws1*cos(2*pi*wd1/360)
+  mean_u <- mean(u_component, na.rm=T)
+  mean_v <- mean(v_component, na.rm=T)
+  mean_wd <- (atan2(mean_u, mean_v) * 360/2/pi) + 180
+  result <- mean_wd
+  result
+}
+
+Does the aggregate function work only with functions with a single input variable (the one that I want to aggregate), or its use can be extended to functions with two input variables?
+
+Here a simple example (which is meaningless, the important think is the concept behind it):
+df <- data.frame(day=c(1, 1, 1, 2, 2, 2, 3, 3), month=c(1, 1, 2, 2, 2, 2, 2, 2), wd=c(45, 90, 90, 135, 180, 270, 270, 315), ws=c(7, 7, 8, 3, 2, 7, 14, 13))
+
+aggregate(wd ~ day + month, data=df, FUN = my_fun)
+
+cannot work, because ws is not taken into consideration.
+
+I got lost. Any hint, any help?
+I hope to have been able to explain my problem.
+Thank you for your attention,
+Stefano
+
+
+         (oo)
+--oOO--( )--OOo--------------------------------------
+Stefano Sofia PhD
+Civil Protection - Marche Region - Italy
+Meteo Section
+Snow Section
+Via del Colle Ameno 5
+60126 Torrette di Ancona, Ancona (AN)
+Uff: +39 071 806 7743
+E-mail: stefano.sofia at regione.marche.it<mailto:stefano.sofia at regione.marche.it>
+---Oo---------oO----------------------------------------
+
+________________________________
+
+AVVISO IMPORTANTE: Questo messaggio di posta elettronica pu? contenere informazioni confidenziali, pertanto ? destinato solo a persone autorizzate alla ricezione. I messaggi di posta elettronica per i client di Regione Marche possono contenere informazioni confidenziali e con privilegi legali. Se non si ? il destinatario specificato, non leggere, copiare, inoltrare o archiviare questo messaggio. Se si ? ricevuto questo messaggio per errore, inoltrarlo al mittente ed eliminarlo completamente dal sistema del proprio computer. Ai sensi dell'art. 6 della DGR n. 1394/2008 si segnala che, in caso di necessit? ed urgenza, la risposta al presente messaggio di posta elettronica pu? essere visionata da persone estranee al destinatario.
+IMPORTANT NOTICE: This e-mail message is intended to be received only by persons entitled to receive the confidential information it may contain. E-mail messages to clients of Regione Marche may contain information that is confidential and legally privileged. Please do not read, copy, forward, or store this message unless you are an intended recipient of it. If you have received this message in error, please forward it to the sender and delete it completely from your computer system.
+
+--
+Questo messaggio  stato analizzato da Libraesva ESG ed  risultato non infetto.
+This message was scanned by Libraesva ESG and is believed to be clean.
+
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help<https://urlsand.esvalabs.com/?u=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&e=a1c37615&h=997ca565&f=y&p=y>
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html<https://urlsand.esvalabs.com/?u=http%3A%2F%2Fwww.R-project.org%2Fposting-guide.html&e=a1c37615&h=5a0f7b62&f=y&p=y>
+and provide commented, minimal, self-contained, reproducible code.
+
+--
+Questo messaggio ? stato analizzato con Libraesva ESG ed ? risultato non infetto
+
+________________________________
+
+AVVISO IMPORTANTE: Questo messaggio di posta elettronica pu? contenere informazioni confidenziali, pertanto ? destinato solo a persone autorizzate alla ricezione. I messaggi di posta elettronica per i client di Regione Marche possono contenere informazioni confidenziali e con privilegi legali. Se non si ? il destinatario specificato, non leggere, copiare, inoltrare o archiviare questo messaggio. Se si ? ricevuto questo messaggio per errore, inoltrarlo al mittente ed eliminarlo completamente dal sistema del proprio computer. Ai sensi dell?art. 6 della DGR n. 1394/2008 si segnala che, in caso di necessit? ed urgenza, la risposta al presente messaggio di posta elettronica pu? essere visionata da persone estranee al destinatario.
+IMPORTANT NOTICE: This e-mail message is intended to be received only by persons entitled to receive the confidential information it may contain. E-mail messages to clients of Regione Marche may contain information that is confidential and legally privileged. Please do not read, copy, forward, or store this message unless you are an intended recipient of it. If you have received this message in error, please forward it to the sender and delete it completely from your computer system.
+
+--
+Questo messaggio  stato analizzato da Libraesva ESG ed  risultato non infetto.
+This message was scanned by Libraesva ESG and is believed to be clean.
+
+
+	[[alternative HTML version deleted]]
+
+
