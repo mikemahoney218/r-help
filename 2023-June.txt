@@ -16294,3 +16294,241 @@ Size: 13289 bytes
 Desc: not available
 URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20230630/38a349ee/attachment.png>
 
+From du@@@@dr|@n @end|ng |rom un|buc@ro  Fri Jun 30 10:33:34 2023
+From: du@@@@dr|@n @end|ng |rom un|buc@ro (=?UTF-8?B?QWRyaWFuIER1yJlh?=)
+Date: Fri, 30 Jun 2023 11:33:34 +0300
+Subject: [R] replacing unicode characters
+In-Reply-To: <CADNULg9uhQ___S24uYNqaE+KNEUdaXY8AXrte=_Q_Se7HaDEiA@mail.gmail.com>
+References: <CAJ=0CtCn-ACCH91UPLMyozj4ro3QYsYiaS7D=WDfv0s__h00Dw@mail.gmail.com>
+ <CADNULg9uhQ___S24uYNqaE+KNEUdaXY8AXrte=_Q_Se7HaDEiA@mail.gmail.com>
+Message-ID: <CAJ=0CtBm1UBaHow4DXQWZwFxUuWq0_RgFb6RBCrhdfGxJ9csBA@mail.gmail.com>
+
+Hello Iris,
+
+Thanks for your answer. The thing is not that I want to obtain <U+00E7>,
+but that it gets produced regardless.
+In the meantime, I have assessed the real culprit is somehow (perhaps)
+related to the locale or encoding of the terminal process that I use to run
+R, in that particular MacOS Electron application (it doesn't happen on
+Windows).
+
+In a very simple test, I tried creating a text file from the Electron app
+embedded R:
+sink("test.txt")
+cat("\u00e7")
+sink()
+
+which resulted in:
+
+<U+00E7>
+
+I don't quite understand how this works, my best guess is it matters less
+how R interprets these characters, but how they are passed through the
+child process that started R.
+I'd be grateful for any hint in this direction, if anyone has experience.
+
+Best wishes,
+Adrian
+
+On Thu, Jun 29, 2023 at 1:59?AM Iris Simmons <ikwsimmo at gmail.com> wrote:
+
+> Hiya!
+>
+>
+> You can do this by specifying sub="c99" instead of "Unicode":
+>
+> ```R
+> x <- "fa\xE7ile"
+> xx <- iconv(x, "latin1", "UTF-8")
+> iconv(xx, "UTF-8", "ASCII", "c99")
+> ```
+>
+> produces:
+>
+> ```
+> > x <- "fa\xE7ile"
+> > xx <- iconv(x, "latin1", "UTF-8")
+> > iconv(xx, "UTF-8", "ASCII", "c99")
+> [1] "fa\\u00e7ile"
+> >
+> ```
+>
+> For future reference, you can find this in section Examples of the
+> help page ?iconv
+> I hope this helps!
+>
+> On Wed, Jun 28, 2023 at 3:09?PM Adrian Du?a <dusa.adrian at gmail.com> wrote:
+> >
+> > Dear list,
+> >
+> > Building on the example from ?iconv:
+> > x <- "fa\xE7ile"
+> > xx <- iconv(x, "latin1", "UTF-8") # "fa?ile"
+> >
+> > and:
+> >
+> > iconv(xx, "UTF-8", "ASCII", "Unicode")
+> > # "fa<U+00E7>ile"
+> >
+> > This is the type of result I sometimes get from an R script that I cannot
+> > reproduce here, because it depends on a terminal process started in a
+> > compiled Electron (Node.js) application, under MacOS.
+> >
+> > I was wondering, is there a standard way, perhaps also using iconv(), to
+> > convert this type of result to a more manageable unicode representation?
+> >
+> > Something like: "fa\u00e7ile"
+> >
+> > Or perhaps a clever regexp, for any number of such occurrences in a
+> string?
+> >
+> > Thanks a lot in advance,
+> > Adrian
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+-- 
+Adrian Dusa
+University of Bucharest
+Romanian Social Data Archive
+Soseaua Panduri nr. 90-92
+050663 Bucharest sector 5
+Romania
+https://adriandusa.eu
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Jun 30 13:10:27 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 30 Jun 2023 14:10:27 +0300
+Subject: [R] replacing unicode characters
+In-Reply-To: <CAJ=0CtBm1UBaHow4DXQWZwFxUuWq0_RgFb6RBCrhdfGxJ9csBA@mail.gmail.com>
+References: <CAJ=0CtCn-ACCH91UPLMyozj4ro3QYsYiaS7D=WDfv0s__h00Dw@mail.gmail.com>
+ <CADNULg9uhQ___S24uYNqaE+KNEUdaXY8AXrte=_Q_Se7HaDEiA@mail.gmail.com>
+ <CAJ=0CtBm1UBaHow4DXQWZwFxUuWq0_RgFb6RBCrhdfGxJ9csBA@mail.gmail.com>
+Message-ID: <20230630141027.3b45a7ab@Tarkus>
+
+On Fri, 30 Jun 2023 11:33:34 +0300
+Adrian Du?a <dusa.adrian at unibuc.ro> wrote:
+
+> In a very simple test, I tried creating a text file from the Electron
+> app embedded R:
+> sink("test.txt")
+> cat("\u00e7")
+> sink()
+> 
+> which resulted in:
+> 
+> <U+00E7>
+> 
+> I don't quite understand how this works, my best guess is it matters
+> less how R interprets these characters, but how they are passed
+> through the child process that started R.
+
+Something goes wrong with the locale setting when the R child process
+is being launched. For example,
+
+Rscript -e 'cat("\ue7\n")'
+# ?
+
+but:
+LC_ALL=C Rscript -e 'cat("\ue7\n")'
+# <U+00E7>
+
+When preparing \ue7 for output, R decides that it's not representable
+in the session encoding. What's the output of sessionInfo() and
+l10n_info() in the child process?
+
+-- 
+Best regards,
+Ivan
+
+
+From du@@@@dr|@n @end|ng |rom un|buc@ro  Fri Jun 30 16:34:37 2023
+From: du@@@@dr|@n @end|ng |rom un|buc@ro (Adrian Dusa)
+Date: Fri, 30 Jun 2023 17:34:37 +0300
+Subject: [R] replacing unicode characters
+In-Reply-To: <20230630141027.3b45a7ab@Tarkus>
+References: <CAJ=0CtCn-ACCH91UPLMyozj4ro3QYsYiaS7D=WDfv0s__h00Dw@mail.gmail.com>
+ <CADNULg9uhQ___S24uYNqaE+KNEUdaXY8AXrte=_Q_Se7HaDEiA@mail.gmail.com>
+ <CAJ=0CtBm1UBaHow4DXQWZwFxUuWq0_RgFb6RBCrhdfGxJ9csBA@mail.gmail.com>
+ <20230630141027.3b45a7ab@Tarkus>
+Message-ID: <CAA1TD3oFJf4vCm1O3UsZwEx39nEThEXbUx5XbzoAFKEqd+bTmw@mail.gmail.com>
+
+Right on the point, Ivan, that was the issue. The output from l10n_info()
+was:
+
+$MBCS
+[1] FALSE
+
+$`UTF-8`
+[1] FALSE
+
+$`Latin-1`
+[1] FALSE
+
+$codeset
+[1] "US-ASCII"
+
+(and the locale was just "C")
+
+I simply needed to write something like:
+export LC_ALL='en_US.UTF-8'
+
+before starting the child process, and everything looks good now.
+
+Thanks a lot, much obliged,
+Adrian
+
+
+On Fri, Jun 30, 2023 at 2:10?PM Ivan Krylov <krylov.r00t at gmail.com> wrote:
+
+> On Fri, 30 Jun 2023 11:33:34 +0300
+> Adrian Du?a <dusa.adrian at unibuc.ro> wrote:
+>
+> > In a very simple test, I tried creating a text file from the Electron
+> > app embedded R:
+> > sink("test.txt")
+> > cat("\u00e7")
+> > sink()
+> >
+> > which resulted in:
+> >
+> > <U+00E7>
+> >
+> > I don't quite understand how this works, my best guess is it matters
+> > less how R interprets these characters, but how they are passed
+> > through the child process that started R.
+>
+> Something goes wrong with the locale setting when the R child process
+> is being launched. For example,
+>
+> Rscript -e 'cat("\ue7\n")'
+> # ?
+>
+> but:
+> LC_ALL=C Rscript -e 'cat("\ue7\n")'
+> # <U+00E7>
+>
+> When preparing \ue7 for output, R decides that it's not representable
+> in the session encoding. What's the output of sessionInfo() and
+> l10n_info() in the child process?
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
