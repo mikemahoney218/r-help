@@ -3157,3 +3157,285 @@ PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From cec|||@@c@rmo @end|ng |rom u@@pt  Wed Jul  5 11:14:14 2023
+From: cec|||@@c@rmo @end|ng |rom u@@pt (=?iso-8859-1?Q?Cec=EDlia_Carmo?=)
+Date: Wed, 5 Jul 2023 09:14:14 +0000
+Subject: [R] textual analysis - transforming several pdf to txt - naming the
+ files
+Message-ID: <0379a40c6de749b6b10709601cf074af@ua.pt>
+
+I am taking my first steps in textual analysis with R.
+I have pdf files consisting of company reports for several years (1 file corresponds to 1 company and 1 year).
+My idea is to start by transforming all my pdf files into txt files for further treatment and analysis (this will allow me to group the files by company or by year, depending on the future analysis to be performed).
+I do not have in-depth knowledge of programming in R. I just adapt codes that I find, to my needs. Here goes the first doubt in a code I'm adapting:
+
+My pdf files are in one directory named "pdfs". The names of my files are, for example, SONAE2020FS.pdf, EDP2021GS.pdf
+I want to convert them to txt and give the same names as in the pdf files: SOANE2020FS.txt, EDP2021GS.txt
+I'm running the following scrip, but the names of txt files that I obtain are: pdftext1, pdftext2, pdftext3...
+What do I need to change?
+Thank you very much,
+
+Cec?lia Carmo
+Universidade de Aveiro - Portugal
+
+
+dirpath <- ("/Users/ceciliacarmo/documents/RTextualAnalysis/data/pdfs")
+
+
+library(pdftools)
+
+library(dplyr)
+
+
+convertpdf2txt <- function(dirpath){
+
+  files <- list.files(dirpath, full.names = T)
+
+  x <- sapply(files, function(x){
+
+  x <- pdftools::pdf_text(x) %>%
+
+  paste0(collapse = " ") %>%
+
+  stringr::str_squish()
+
+  return(x)
+
+    })
+
+}
+
+# apply function
+
+txts <- convertpdf2txt(here::here("data", "pdf/"))
+
+# add names to txt files
+
+names(txts) <- paste0(here::here("data","pdftext"), 1:length(txts), sep = "")
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Wed Jul  5 11:57:33 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Wed, 5 Jul 2023 10:57:33 +0100
+Subject: [R] 
+ textual analysis - transforming several pdf to txt - naming the
+ files
+In-Reply-To: <0379a40c6de749b6b10709601cf074af@ua.pt>
+References: <0379a40c6de749b6b10709601cf074af@ua.pt>
+Message-ID: <b639decc-d80f-d58e-f3ed-9e0c9751eec3@sapo.pt>
+
+?s 10:14 de 05/07/2023, Cec?lia Carmo escreveu:
+> I am taking my first steps in textual analysis with R.
+> I have pdf files consisting of company reports for several years (1 file corresponds to 1 company and 1 year).
+> My idea is to start by transforming all my pdf files into txt files for further treatment and analysis (this will allow me to group the files by company or by year, depending on the future analysis to be performed).
+> I do not have in-depth knowledge of programming in R. I just adapt codes that I find, to my needs. Here goes the first doubt in a code I'm adapting:
+> 
+> My pdf files are in one directory named "pdfs". The names of my files are, for example, SONAE2020FS.pdf, EDP2021GS.pdf
+> I want to convert them to txt and give the same names as in the pdf files: SOANE2020FS.txt, EDP2021GS.txt
+> I'm running the following scrip, but the names of txt files that I obtain are: pdftext1, pdftext2, pdftext3...
+> What do I need to change?
+> Thank you very much,
+> 
+> Cec?lia Carmo
+> Universidade de Aveiro - Portugal
+> 
+> 
+> dirpath <- ("/Users/ceciliacarmo/documents/RTextualAnalysis/data/pdfs")
+> 
+> 
+> library(pdftools)
+> 
+> library(dplyr)
+> 
+> 
+> convertpdf2txt <- function(dirpath){
+> 
+>    files <- list.files(dirpath, full.names = T)
+> 
+>    x <- sapply(files, function(x){
+> 
+>    x <- pdftools::pdf_text(x) %>%
+> 
+>    paste0(collapse = " ") %>%
+> 
+>    stringr::str_squish()
+> 
+>    return(x)
+> 
+>      })
+> 
+> }
+> 
+> # apply function
+> 
+> txts <- convertpdf2txt(here::here("data", "pdf/"))
+> 
+> # add names to txt files
+> 
+> names(txts) <- paste0(here::here("data","pdftext"), 1:length(txts), sep = "")
+> 
+> 
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Try the following.
+The corrected function convertpdf2txt assigns names based on the files 
+variable.
+It uses tools::file_path_sans_ext to keep the filename without extension 
+and pastes the new extension to them. In the end there is no need to 
+call here::here again, the list already is a named list.
+
+
+
+convertpdf2txt <- function(dirpath){
+   files <- list.files(dirpath, pattern = "Consoli.*\\.pdf$", full.names 
+= TRUE)
+   files <- chartr("\\", "/", files)
+
+   x <- lapply(files, function(x){
+     pdftools::pdf_text(x) %>%
+       paste0(collapse = " ") %>%
+       stringr::str_squish()
+   })
+   new_names <- tools::file_path_sans_ext(files)
+   new_names <- paste(new_names, "txt", sep = ".")
+   setNames(x, new_names)
+}
+
+# apply function
+# note that my test files are in "~/Temp"
+txts <- convertpdf2txt(here::here("~", "Temp"))
+names(txts)
+
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+From cec|||@@c@rmo @end|ng |rom u@@pt  Wed Jul  5 12:12:12 2023
+From: cec|||@@c@rmo @end|ng |rom u@@pt (=?iso-8859-1?Q?Cec=EDlia_Carmo?=)
+Date: Wed, 5 Jul 2023 10:12:12 +0000
+Subject: [R] 
+ textual analysis - transforming several pdf to txt - naming the
+ files
+Message-ID: <07a94f758365464b97691564ab7be648@ua.pt>
+
+convertpdf2txt <- function(dirpath){
+
+   files <- list.files(dirpath, pattern = "Consoli.*\\.pdf$", full.names
+= TRUE)
+   files <- chartr("\\", "/", files)
+
+   x <- lapply(files, function(x){
+     pdftools::pdf_text(x) %>%
+       paste0(collapse = " ") %>%
+       stringr::str_squish()
+   })
+   new_names <- tools::file_path_sans_ext(files)
+   new_names <- paste(new_names, "txt", sep = ".")
+   setNames(x, new_names)
+}
+
+# apply function
+# note that my test files are in "~/Temp"
+txts <- convertpdf2txt(here::here("~", "Temp"))
+names(txts)
+
+
+Thank you very much, but the following error appeared:
+
+Error: unexpected '}' in "}"
+
+
+
+
+Cec?lia Carmo
+
+Universidade de Aveiro
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Wed Jul  5 17:43:19 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Wed, 5 Jul 2023 16:43:19 +0100
+Subject: [R] 
+ textual analysis - transforming several pdf to txt - naming the
+ files
+In-Reply-To: <07a94f758365464b97691564ab7be648@ua.pt>
+References: <07a94f758365464b97691564ab7be648@ua.pt>
+Message-ID: <70b01fdb-8adc-337f-8bc7-d2d7f0e050b3@sapo.pt>
+
+?s 11:12 de 05/07/2023, Cec?lia Carmo escreveu:
+> convertpdf2txt <- function(dirpath){
+> 
+>     files <- list.files(dirpath, pattern = "Consoli.*\\.pdf$", full.names
+> = TRUE)
+>     files <- chartr("\\", "/", files)
+> 
+>     x <- lapply(files, function(x){
+>       pdftools::pdf_text(x) %>%
+>         paste0(collapse = " ") %>%
+>         stringr::str_squish()
+>     })
+>     new_names <- tools::file_path_sans_ext(files)
+>     new_names <- paste(new_names, "txt", sep = ".")
+>     setNames(x, new_names)
+> }
+> 
+> # apply function
+> # note that my test files are in "~/Temp"
+> txts <- convertpdf2txt(here::here("~", "Temp"))
+> names(txts)
+> 
+> 
+> Thank you very much, but the following error appeared:
+> 
+> Error: unexpected '}' in "}"
+> 
+> 
+> 
+> 
+> Cec?lia Carmo
+> 
+> Universidade de Aveiro
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+I had tested the code with a couple of PDF's and it ran with no errors 
+or warnings.
+That error is telling that a "}" is not balanced but in my code they all 
+are, RStudio checks it automatically.
+
+Can you try to check in an editor with syntax highlighting?
+
+
+Hope this helps,
+
+Rui Barradas
+
+
