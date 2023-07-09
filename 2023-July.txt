@@ -6950,3 +6950,1300 @@ Martin
     > and provide commented, minimal, self-contained, reproducible code.
 
 
+From h|uc@@2 @end|ng |rom |@u@edu  Fri Jul  7 18:23:57 2023
+From: h|uc@@2 @end|ng |rom |@u@edu (Heather Lucas)
+Date: Fri, 7 Jul 2023 16:23:57 +0000
+Subject: [R] depmixs4 standardError() issue
+In-Reply-To: <20230625133640.7b6b073c@rolf-Latitude-E7470>
+References: <BN0P221MB049361B6F118626AE9C0243BF84B9@BN0P221MB0493.NAMP221.PROD.OUTLOOK.COM>
+ <20230625133640.7b6b073c@rolf-Latitude-E7470>
+Message-ID: <BN0P221MB0493A41D64DDE97E14FFB90DF82DA@BN0P221MB0493.NAMP221.PROD.OUTLOOK.COM>
+
+Hi Rolf,
+
+Thank you so much for this very helpful response (and I apologize for the slow response to the response)!  I did have the opportunity to speak to Maarten Speekenbrink recently and he provided similar information, so I believe you are exactly right and your response helped provide some additional context.  Good to know that it is not just me but somewhat of an inherent difficulty with HMMs.
+
+Thank you for letting me know about your eglhmm package!  I will keep in it in mind for any future projects in which there is only one predictor.
+
+For now, I have switched from depmixS4 to a new package called hmmTBM.  Not so much because of the issue with the NaN CIs but because it allows random effects. This is extremely helpful for me since I am working with eye tracking data, which has fixations nested in trials and trials nested in participants.  While I am still learning, this package seems to be working well for me so far.
+
+Thanks again for taking the time to respond to my question!
+
+Best,
+Heather
+
+
+----------------------------------------------
+Heather D. Lucas, PhD
+(she/her pronouns)
+Assistant Professor, Cognitive and Brain Sciences
+Committee on Diversity and Outreach in Psychology, Member
+Louisiana State University
+210 Audubon Hall
+Baton Rouge, LA 70803
+
+From: Rolf Turner <rolfturner at posteo.net>
+Date: Saturday, June 24, 2023 at 8:36 PM
+To: Heather Lucas <hlucas2 at lsu.edu>
+Cc: r-help at r-project.org <r-help at r-project.org>
+Subject: Re: [R] depmixs4 standardError() issue
+[You don't often get email from rolfturner at posteo.net. Learn why this is important at https://aka.ms/LearnAboutSenderIdentification ]
+
+On Tue, 30 May 2023 17:43:31 +0000
+Heather Lucas <hlucas2 at lsu.edu> wrote:
+
+> Hello,
+>
+> I've been enjoying using the "Mixture and Hidden Markov Models in R"
+> by Visser & Speekenbrink to learn how to apply these analyses to my
+> own data using depmixS4.
+>
+> I currently have a fitted 4-state mixture model with three emissions
+> variables and one binomial covariate (HS). I am trying to compute
+> confidence intervals using the following code, where fmms4s is the
+> model:
+>
+> fmms4Svov <- vcov(fmms4S)$vcov  #this line runs fine
+> fmms4Sse <- standardError(fmms4S)  #this is where I get the error
+> fmms4SCI <- confint(fmms4S)
+>
+> This worked fine before I added the covariate, but with the covariate
+> I receive a warning message: In sqrt(diag(vc$vcov)) : NaNs produced.
+> As a result, several of my parameters have NaNs as CIs.  In general,
+> I get this error more frequently for more complex models (even when
+> these models converge and show a better fit than simpler models) but
+> I cannot find any information as to why this happens.  Getting rid of
+> one of the emissions variables but leaving the covariate also seems
+> to ?fix? the issue but it crops up quite often for me in general.
+>
+> Many thanks,
+
+Greetings.  I hope, given the very belated nature of my response, that
+you are still interested in this issue.  I have seen no answers to your
+enquiry, so I am chipping in, despite my woeful lack of expertise.
+
+Basically my guess would be that the NaNs result from  the covariance
+matrix vc$vcov having negative diagonal entries --- negative variance
+estimates.  I believe that vc$vcov would have been produced, at some
+level, by inverting the negative of the Hessian matrix of the parameter
+estimates.  In my experience, the Hessian matrices that arise in the
+hidden Markov model context can be, shall we say, a bit delicate.
+(Downright flaky, not to put too fine a point on it.) It may be the
+case that the Hessian is not negative definite.
+
+Theoretically the Hessian matrix will be negative definite at the
+maximum (or at a local maximum) of the log likelihood of the model.
+Convergence issues may be such that, even though the algorithm is judged
+to have converged, the parameter estimates are sufficiently far from
+the maximum point so that the Hessian will have some positive
+eigenvalues (equivalently its negative will have some negative
+eigenvalues) leading to the negative variance estimates.  If you could
+look at it, you would probably find that the gradient vector (which
+should theoretically be zero at the maximum) has some unacceptably
+large entries.
+
+The numerical analysis considerations that arise in maximising the log
+likelihood of a hidden Markov model are fraught with difficulties and
+subtleties.  The more complex the model, the more likely it is that
+these difficulties will rear their ugly little heads.  When they do,
+it seems to me, there is not much that an ordinary mortal can do about
+it.
+
+A couple of other comments.
+
+(a) In the past I have communicated a bit with the maintainer of the
+depmixS4 package (Ingmar Visser <i.visser at uva.nl>) and found him to be
+reasonably helpful and responsive.  You might try contacting him
+directly and see if he has any useful suggestions.  You would of course
+have to make your data available to him, in order for him to get
+anywhere.
+
+(b) You might like to try experimenting with my package "eglhmm"
+("extended generalised linear hidden Markov models").  This package has
+considerable overlap with depmixS4, but has a very different syntax and
+a different set of bells an whistles.  However I note that in your
+enquiry you say that you have "three emission variables" so it appears
+that you are dealing with a multivariate problem.  My package does not
+do multivariate stuff, except in one restricted (and rather r?cherch?)
+context so my package probably won't be of any real use to you.
+
+Also my package does not do mixtures as such.
+
+If you *should* be interested in trying my package, you can get it from
+my web page (https://nam04.safelinks.protection.outlook.com/?url=https%3A%2F%2Fwww.stat.auckland.ac.nz%2F~rolf&data=05%7C01%7Chlucas2%40lsu.edu%7C992a7466238a4739cfef08db751ca58a%7C2d4dad3f50ae47d983a09ae2b1f466f8%7C0%7C0%7C638232538139907909%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=zkIxJHl75Xuw4p1wPBiDIrX94IX%2F1dASRxrU3l%2FiNOQ%3D&reserved=0; scroll to the
+bottom and click on "Eglhmm").  The source package and a Windoze binary
+are available.  I have not yet submitted my package to CRAN, although I
+hope to do so in the fairly (???) near future.
+
+My package may well have a fair few bugs lurking in its innards.  (But
+then, don't they all?)  If you do experiment with eglhmm, please let me
+know about any bugs that you encounter.
+
+I hope this of some help and interest.
+
+cheers,
+
+Rolf Turner
+
+--
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+	[[alternative HTML version deleted]]
+
+
+From r@e@crump @end|ng |rom w@rw|ck@@c@uk  Sat Jul  8 13:28:31 2023
+From: r@e@crump @end|ng |rom w@rw|ck@@c@uk (Ron Crump)
+Date: Sat, 08 Jul 2023 12:28:31 +0100
+Subject: [R] Getting an error calling MASS::boxcox in a function
+Message-ID: <08FA83E2-1D1B-4D38-B506-7AF5CCA905EF@warwick.ac.uk>
+
+Hi,
+
+Firstly, apologies as I have posted this on community.rstudio.com too. 
+
+I want to optimise a Box-Cox transformation on columns of a matrix (ie, a unique lambda for each column). So I wrote a function that includes the call to MASS::boxcox in order that it can be applied to each column easily. Except that I'm getting an error when calling the function. If I just extract a column of the matrix and run the code not in the function, it works. If I call the function either with an extracted column (ie dd1 in the reprex below) or in a call to apply I get an error (see the reprex below).
+
+I'm sure I'm doing something silly, but I can't see what it is. Any help appreciated.
+
+library(MASS)
+
+# Find optimised Lambda for Boc-Cox transformation
+BoxCoxLambda <- function(z){
+    b <- boxcox(lm(z+1 ~ 1), lambda = seq(-5, 5, length.out = 61), plotit = FALSE)
+    b$x[which.max(b$y)]    # best lambda
+}
+
+mrow <- 500
+mcol <- 2
+set.seed(12345)
+dd <- matrix(rgamma(mrow*mcol, shape = 2, scale = 5), nrow = mrow, ncol = mcol)
+
+# Try it not using the BoxCoxLambda function:
+dd1 <- dd[,1] # 1st column of dd
+bb <- boxcox(lm(dd1+1 ~ 1), lambda = seq(-5, 5, length.out = 101), plotit = FALSE)
+print(paste0("1st column's lambda is ", bb$x[which.max(bb$y)]))
+#> [1] "1st column's lambda is 0.2"
+
+# Calculate lambda for each column of dd
+lambdas <- apply(dd, 2, BoxCoxLambda, simplify = TRUE)
+#> Error in eval(predvars, data, env): object 'z' not found
+
+Created on 2023-07-08 with reprex v2.0.2
+
+Thanks for your time and help.
+
+Ron
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Jul  8 17:28:21 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 8 Jul 2023 08:28:21 -0700
+Subject: [R] Getting an error calling MASS::boxcox in a function
+In-Reply-To: <08FA83E2-1D1B-4D38-B506-7AF5CCA905EF@warwick.ac.uk>
+References: <08FA83E2-1D1B-4D38-B506-7AF5CCA905EF@warwick.ac.uk>
+Message-ID: <CAGxFJbS+gdxL+2NDam6n9RXn6NaM-2ZOQLgbkzissmftOBiDqw@mail.gmail.com>
+
+Try this for your function:
+
+BoxCoxLambda <- function(z){
+   y <- z
+   b <- boxcox(y + 1 ~ 1,lambda = seq(-5, 5, length.out = 61), plotit =
+FALSE)
+   b$x[which.max(b$y)]    # best lambda
+}
+
+***I think*** (corrections and clarification strongly welcomed!) that `~`
+(the formula function) is looking for 'z' in the GlobalEnv, the caller of
+apply(), and not finding it. It finds 'y' here explicitly in the
+BoxCoxLambda environment.
+
+Cheers,
+Bert
+
+
+
+On Sat, Jul 8, 2023 at 4:28?AM Ron Crump via R-help <r-help at r-project.org>
+wrote:
+
+> Hi,
+>
+> Firstly, apologies as I have posted this on community.rstudio.com too.
+>
+> I want to optimise a Box-Cox transformation on columns of a matrix (ie, a
+> unique lambda for each column). So I wrote a function that includes the
+> call to MASS::boxcox in order that it can be applied to each column easily.
+> Except that I'm getting an error when calling the function. If I just
+> extract a column of the matrix and run the code not in the function, it
+> works. If I call the function either with an extracted column (ie dd1 in
+> the reprex below) or in a call to apply I get an error (see the reprex
+> below).
+>
+> I'm sure I'm doing something silly, but I can't see what it is. Any help
+> appreciated.
+>
+> library(MASS)
+>
+> # Find optimised Lambda for Boc-Cox transformation
+> BoxCoxLambda <- function(z){
+>     b <- boxcox(lm(z+1 ~ 1), lambda = seq(-5, 5, length.out = 61), plotit
+> = FALSE)
+>     b$x[which.max(b$y)]    # best lambda
+> }
+>
+> mrow <- 500
+> mcol <- 2
+> set.seed(12345)
+> dd <- matrix(rgamma(mrow*mcol, shape = 2, scale = 5), nrow = mrow, ncol =
+> mcol)
+>
+> # Try it not using the BoxCoxLambda function:
+> dd1 <- dd[,1] # 1st column of dd
+> bb <- boxcox(lm(dd1+1 ~ 1), lambda = seq(-5, 5, length.out = 101), plotit
+> = FALSE)
+> print(paste0("1st column's lambda is ", bb$x[which.max(bb$y)]))
+> #> [1] "1st column's lambda is 0.2"
+>
+> # Calculate lambda for each column of dd
+> lambdas <- apply(dd, 2, BoxCoxLambda, simplify = TRUE)
+> #> Error in eval(predvars, data, env): object 'z' not found
+>
+> Created on 2023-07-08 with reprex v2.0.2
+>
+> Thanks for your time and help.
+>
+> Ron
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Jul  8 18:47:12 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 8 Jul 2023 09:47:12 -0700
+Subject: [R] Getting an error calling MASS::boxcox in a function
+In-Reply-To: <CAGxFJbS+gdxL+2NDam6n9RXn6NaM-2ZOQLgbkzissmftOBiDqw@mail.gmail.com>
+References: <08FA83E2-1D1B-4D38-B506-7AF5CCA905EF@warwick.ac.uk>
+ <CAGxFJbS+gdxL+2NDam6n9RXn6NaM-2ZOQLgbkzissmftOBiDqw@mail.gmail.com>
+Message-ID: <CAGxFJbRaC89whn011w68jOzxag2R26DRpVLBAJ7guOjTKVk4bg@mail.gmail.com>
+
+No, I'm afraid I'm wrong. Something went wrong with my R session and gave
+me incorrect answers. After restarting, I continued to get the same error
+as you did with my supposed "fix." So just ignore what I said and sorry for
+the noise.
+
+-- Bert
+
+On Sat, Jul 8, 2023 at 8:28?AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> Try this for your function:
+>
+> BoxCoxLambda <- function(z){
+>    y <- z
+>    b <- boxcox(y + 1 ~ 1,lambda = seq(-5, 5, length.out = 61), plotit =
+> FALSE)
+>    b$x[which.max(b$y)]    # best lambda
+> }
+>
+> ***I think*** (corrections and clarification strongly welcomed!) that `~`
+> (the formula function) is looking for 'z' in the GlobalEnv, the caller of
+> apply(), and not finding it. It finds 'y' here explicitly in the
+> BoxCoxLambda environment.
+>
+> Cheers,
+> Bert
+>
+>
+>
+> On Sat, Jul 8, 2023 at 4:28?AM Ron Crump via R-help <r-help at r-project.org>
+> wrote:
+>
+>> Hi,
+>>
+>> Firstly, apologies as I have posted this on community.rstudio.com too.
+>>
+>> I want to optimise a Box-Cox transformation on columns of a matrix (ie, a
+>> unique lambda for each column). So I wrote a function that includes the
+>> call to MASS::boxcox in order that it can be applied to each column easily.
+>> Except that I'm getting an error when calling the function. If I just
+>> extract a column of the matrix and run the code not in the function, it
+>> works. If I call the function either with an extracted column (ie dd1 in
+>> the reprex below) or in a call to apply I get an error (see the reprex
+>> below).
+>>
+>> I'm sure I'm doing something silly, but I can't see what it is. Any help
+>> appreciated.
+>>
+>> library(MASS)
+>>
+>> # Find optimised Lambda for Boc-Cox transformation
+>> BoxCoxLambda <- function(z){
+>>     b <- boxcox(lm(z+1 ~ 1), lambda = seq(-5, 5, length.out = 61), plotit
+>> = FALSE)
+>>     b$x[which.max(b$y)]    # best lambda
+>> }
+>>
+>> mrow <- 500
+>> mcol <- 2
+>> set.seed(12345)
+>> dd <- matrix(rgamma(mrow*mcol, shape = 2, scale = 5), nrow = mrow, ncol =
+>> mcol)
+>>
+>> # Try it not using the BoxCoxLambda function:
+>> dd1 <- dd[,1] # 1st column of dd
+>> bb <- boxcox(lm(dd1+1 ~ 1), lambda = seq(-5, 5, length.out = 101), plotit
+>> = FALSE)
+>> print(paste0("1st column's lambda is ", bb$x[which.max(bb$y)]))
+>> #> [1] "1st column's lambda is 0.2"
+>>
+>> # Calculate lambda for each column of dd
+>> lambdas <- apply(dd, 2, BoxCoxLambda, simplify = TRUE)
+>> #> Error in eval(predvars, data, env): object 'z' not found
+>>
+>> Created on 2023-07-08 with reprex v2.0.2
+>>
+>> Thanks for your time and help.
+>>
+>> Ron
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Sat Jul  8 20:25:49 2023
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Sat, 8 Jul 2023 14:25:49 -0400
+Subject: [R] Getting an error calling MASS::boxcox in a function
+In-Reply-To: <CAGxFJbRaC89whn011w68jOzxag2R26DRpVLBAJ7guOjTKVk4bg@mail.gmail.com>
+References: <08FA83E2-1D1B-4D38-B506-7AF5CCA905EF@warwick.ac.uk>
+ <CAGxFJbS+gdxL+2NDam6n9RXn6NaM-2ZOQLgbkzissmftOBiDqw@mail.gmail.com>
+ <CAGxFJbRaC89whn011w68jOzxag2R26DRpVLBAJ7guOjTKVk4bg@mail.gmail.com>
+Message-ID: <56188272-3d6a-205f-eeb3-ab38ea503b2c@mcmaster.ca>
+
+Dear Ron and Bert,
+
+First (and without considering why one would want to do this, e.g., 
+adding a start of 1 to the data), the following works for me:
+
+------ snip ------
+
+ > library(MASS)
+
+ > BoxCoxLambda <- function(z){
++   b <- boxcox(z + 1 ~ 1,
++               lambda = seq(-5, 5, length.out = 101),
++               plotit = FALSE)
++   b$x[which.max(b$y)]
++ }
+
+ > mrow <- 500
+ > mcol <- 2
+ > set.seed(12345)
+ > dd <- matrix(rgamma(mrow*mcol, shape = 2, scale = 5), nrow = mrow, ncol =
++                mcol)
+
+ > dd1 <- dd[, 1] # 1st column of dd
+ > res <- boxcox(lm(dd1 + 1 ~ 1), lambda = seq(-5, 5, length.out = 101), 
+plotit
++              = FALSE)
+ > res$x[which.max(res$y)]
+[1] 0.2
+
+ > apply(dd, 2, BoxCoxLambda, simplify = TRUE)
+[1] 0.2 0.2
+
+------ snip ------
+
+One could also use the powerTransform() function in the car package, 
+which in this context transforms towards *multi*normality:
+
+------ snip ------
+
+ > library(car)
+Loading required package: carData
+
+ > powerTransform(dd + 1)
+Estimated transformation parameters
+        Y1        Y2
+0.1740200 0.2089925
+
+I hope this helps,
+  John
+
+-- 
+John Fox, Professor Emeritus
+McMaster University
+Hamilton, Ontario, Canada
+web: https://www.john-fox.ca/
+
+On 2023-07-08 12:47 p.m., Bert Gunter wrote:
+> Caution: This email may have originated from outside the organization. Please exercise additional caution with any links and attachments.
+> 
+> 
+> No, I'm afraid I'm wrong. Something went wrong with my R session and gave
+> me incorrect answers. After restarting, I continued to get the same error
+> as you did with my supposed "fix." So just ignore what I said and sorry for
+> the noise.
+> 
+> -- Bert
+> 
+> On Sat, Jul 8, 2023 at 8:28?AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> 
+>> Try this for your function:
+>>
+>> BoxCoxLambda <- function(z){
+>>     y <- z
+>>     b <- boxcox(y + 1 ~ 1,lambda = seq(-5, 5, length.out = 61), plotit =
+>> FALSE)
+>>     b$x[which.max(b$y)]    # best lambda
+>> }
+>>
+>> ***I think*** (corrections and clarification strongly welcomed!) that `~`
+>> (the formula function) is looking for 'z' in the GlobalEnv, the caller of
+>> apply(), and not finding it. It finds 'y' here explicitly in the
+>> BoxCoxLambda environment.
+>>
+>> Cheers,
+>> Bert
+>>
+>>
+>>
+>> On Sat, Jul 8, 2023 at 4:28?AM Ron Crump via R-help <r-help at r-project.org>
+>> wrote:
+>>
+>>> Hi,
+>>>
+>>> Firstly, apologies as I have posted this on community.rstudio.com too.
+>>>
+>>> I want to optimise a Box-Cox transformation on columns of a matrix (ie, a
+>>> unique lambda for each column). So I wrote a function that includes the
+>>> call to MASS::boxcox in order that it can be applied to each column easily.
+>>> Except that I'm getting an error when calling the function. If I just
+>>> extract a column of the matrix and run the code not in the function, it
+>>> works. If I call the function either with an extracted column (ie dd1 in
+>>> the reprex below) or in a call to apply I get an error (see the reprex
+>>> below).
+>>>
+>>> I'm sure I'm doing something silly, but I can't see what it is. Any help
+>>> appreciated.
+>>>
+>>> library(MASS)
+>>>
+>>> # Find optimised Lambda for Boc-Cox transformation
+>>> BoxCoxLambda <- function(z){
+>>>      b <- boxcox(lm(z+1 ~ 1), lambda = seq(-5, 5, length.out = 61), plotit
+>>> = FALSE)
+>>>      b$x[which.max(b$y)]    # best lambda
+>>> }
+>>>
+>>> mrow <- 500
+>>> mcol <- 2
+>>> set.seed(12345)
+>>> dd <- matrix(rgamma(mrow*mcol, shape = 2, scale = 5), nrow = mrow, ncol =
+>>> mcol)
+>>>
+>>> # Try it not using the BoxCoxLambda function:
+>>> dd1 <- dd[,1] # 1st column of dd
+>>> bb <- boxcox(lm(dd1+1 ~ 1), lambda = seq(-5, 5, length.out = 101), plotit
+>>> = FALSE)
+>>> print(paste0("1st column's lambda is ", bb$x[which.max(bb$y)]))
+>>> #> [1] "1st column's lambda is 0.2"
+>>>
+>>> # Calculate lambda for each column of dd
+>>> lambdas <- apply(dd, 2, BoxCoxLambda, simplify = TRUE)
+>>> #> Error in eval(predvars, data, env): object 'z' not found
+>>>
+>>> Created on 2023-07-08 with reprex v2.0.2
+>>>
+>>> Thanks for your time and help.
+>>>
+>>> Ron
+>>>          [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+> 
+>          [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Jul  8 21:42:05 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 8 Jul 2023 12:42:05 -0700
+Subject: [R] Getting an error calling MASS::boxcox in a function
+In-Reply-To: <56188272-3d6a-205f-eeb3-ab38ea503b2c@mcmaster.ca>
+References: <08FA83E2-1D1B-4D38-B506-7AF5CCA905EF@warwick.ac.uk>
+ <CAGxFJbS+gdxL+2NDam6n9RXn6NaM-2ZOQLgbkzissmftOBiDqw@mail.gmail.com>
+ <CAGxFJbRaC89whn011w68jOzxag2R26DRpVLBAJ7guOjTKVk4bg@mail.gmail.com>
+ <56188272-3d6a-205f-eeb3-ab38ea503b2c@mcmaster.ca>
+Message-ID: <CAGxFJbReEb_f0+gzDOTfWOiRYgGizdVgzX5ZbKkguthE7iqR6g@mail.gmail.com>
+
+Thanks John.
+
+?boxcox says:
+
+*************************
+Arguments
+
+object
+
+a formula or fitted model object. Currently only lm and aov objects are handled.
+*************************
+I read that as saying that
+
+boxcox(lm(z+1 ~ 1),...)
+
+should run without error. But it didn't. And perhaps here's why:
+BoxCoxLambda <- function(z){
+   b <- MASS:::boxcox.lm(lm(z+1 ~ 1), lambda = seq(-5, 5, length.out =
+61), plotit = FALSE)
+   b$x[which.max(b$y)]    # best lambda
+}
+
+> lambdas <- apply(dd,2 , BoxCoxLambda)
+Error in NextMethod() : 'NextMethod' called from an anonymous function
+
+and, indeed, ?UseMethod says:
+"NextMethod should not be called except in methods called by UseMethod
+or from internal generics (see InternalGenerics). In particular it
+will not work inside anonymous calling functions (e.g.,
+get("print.ts")(AirPassengers))."
+
+****BUT ****
+BoxCoxLambda <- function(z){
+  b <- MASS:::boxcox(z+1 ~ 1, lambda = seq(-5, 5, length.out = 61),
+plotit = FALSE)
+  b$x[which.max(b$y)]    # best lambda
+}
+
+> lambdas <- apply(dd,2 , BoxCoxLambda)
+> lambdas
+[1] 0.1666667 0.1666667
+
+The identical lambdas do not seem right to me; nor do I understand why
+boxcox.lm apparently throws the error while boxcox.formula does not
+(it also calls NextMethod()) So I would welcome clarification to clear
+my clogged (cerebral) sinuses. :-)
+
+
+Best,
+Bert
+
+
+On Sat, Jul 8, 2023 at 11:25?AM John Fox <jfox at mcmaster.ca> wrote:
+>
+> Dear Ron and Bert,
+>
+> First (and without considering why one would want to do this, e.g.,
+> adding a start of 1 to the data), the following works for me:
+>
+> ------ snip ------
+>
+>  > library(MASS)
+>
+>  > BoxCoxLambda <- function(z){
+> +   b <- boxcox(z + 1 ~ 1,
+> +               lambda = seq(-5, 5, length.out = 101),
+> +               plotit = FALSE)
+> +   b$x[which.max(b$y)]
+> + }
+>
+>  > mrow <- 500
+>  > mcol <- 2
+>  > set.seed(12345)
+>  > dd <- matrix(rgamma(mrow*mcol, shape = 2, scale = 5), nrow = mrow, ncol =
+> +                mcol)
+>
+>  > dd1 <- dd[, 1] # 1st column of dd
+>  > res <- boxcox(lm(dd1 + 1 ~ 1), lambda = seq(-5, 5, length.out = 101),
+> plotit
+> +              = FALSE)
+>  > res$x[which.max(res$y)]
+> [1] 0.2
+>
+>  > apply(dd, 2, BoxCoxLambda, simplify = TRUE)
+> [1] 0.2 0.2
+>
+> ------ snip ------
+>
+> One could also use the powerTransform() function in the car package,
+> which in this context transforms towards *multi*normality:
+>
+> ------ snip ------
+>
+>  > library(car)
+> Loading required package: carData
+>
+>  > powerTransform(dd + 1)
+> Estimated transformation parameters
+>         Y1        Y2
+> 0.1740200 0.2089925
+>
+> I hope this helps,
+>   John
+>
+> --
+> John Fox, Professor Emeritus
+> McMaster University
+> Hamilton, Ontario, Canada
+> web: https://www.john-fox.ca/
+>
+> On 2023-07-08 12:47 p.m., Bert Gunter wrote:
+> > Caution: This email may have originated from outside the organization. Please exercise additional caution with any links and attachments.
+> >
+> >
+> > No, I'm afraid I'm wrong. Something went wrong with my R session and gave
+> > me incorrect answers. After restarting, I continued to get the same error
+> > as you did with my supposed "fix." So just ignore what I said and sorry for
+> > the noise.
+> >
+> > -- Bert
+> >
+> > On Sat, Jul 8, 2023 at 8:28?AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> >> Try this for your function:
+> >>
+> >> BoxCoxLambda <- function(z){
+> >>     y <- z
+> >>     b <- boxcox(y + 1 ~ 1,lambda = seq(-5, 5, length.out = 61), plotit =
+> >> FALSE)
+> >>     b$x[which.max(b$y)]    # best lambda
+> >> }
+> >>
+> >> ***I think*** (corrections and clarification strongly welcomed!) that `~`
+> >> (the formula function) is looking for 'z' in the GlobalEnv, the caller of
+> >> apply(), and not finding it. It finds 'y' here explicitly in the
+> >> BoxCoxLambda environment.
+> >>
+> >> Cheers,
+> >> Bert
+> >>
+> >>
+> >>
+> >> On Sat, Jul 8, 2023 at 4:28?AM Ron Crump via R-help <r-help at r-project.org>
+> >> wrote:
+> >>
+> >>> Hi,
+> >>>
+> >>> Firstly, apologies as I have posted this on community.rstudio.com too.
+> >>>
+> >>> I want to optimise a Box-Cox transformation on columns of a matrix (ie, a
+> >>> unique lambda for each column). So I wrote a function that includes the
+> >>> call to MASS::boxcox in order that it can be applied to each column easily.
+> >>> Except that I'm getting an error when calling the function. If I just
+> >>> extract a column of the matrix and run the code not in the function, it
+> >>> works. If I call the function either with an extracted column (ie dd1 in
+> >>> the reprex below) or in a call to apply I get an error (see the reprex
+> >>> below).
+> >>>
+> >>> I'm sure I'm doing something silly, but I can't see what it is. Any help
+> >>> appreciated.
+> >>>
+> >>> library(MASS)
+> >>>
+> >>> # Find optimised Lambda for Boc-Cox transformation
+> >>> BoxCoxLambda <- function(z){
+> >>>      b <- boxcox(lm(z+1 ~ 1), lambda = seq(-5, 5, length.out = 61), plotit
+> >>> = FALSE)
+> >>>      b$x[which.max(b$y)]    # best lambda
+> >>> }
+> >>>
+> >>> mrow <- 500
+> >>> mcol <- 2
+> >>> set.seed(12345)
+> >>> dd <- matrix(rgamma(mrow*mcol, shape = 2, scale = 5), nrow = mrow, ncol =
+> >>> mcol)
+> >>>
+> >>> # Try it not using the BoxCoxLambda function:
+> >>> dd1 <- dd[,1] # 1st column of dd
+> >>> bb <- boxcox(lm(dd1+1 ~ 1), lambda = seq(-5, 5, length.out = 101), plotit
+> >>> = FALSE)
+> >>> print(paste0("1st column's lambda is ", bb$x[which.max(bb$y)]))
+> >>> #> [1] "1st column's lambda is 0.2"
+> >>>
+> >>> # Calculate lambda for each column of dd
+> >>> lambdas <- apply(dd, 2, BoxCoxLambda, simplify = TRUE)
+> >>> #> Error in eval(predvars, data, env): object 'z' not found
+> >>>
+> >>> Created on 2023-07-08 with reprex v2.0.2
+> >>>
+> >>> Thanks for your time and help.
+> >>>
+> >>> Ron
+> >>>          [[alternative HTML version deleted]]
+> >>>
+> >>> ______________________________________________
+> >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>> PLEASE do read the posting guide
+> >>> http://www.R-project.org/posting-guide.html
+> >>> and provide commented, minimal, self-contained, reproducible code.
+> >>>
+> >>
+> >
+> >          [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Sat Jul  8 23:01:27 2023
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Sat, 8 Jul 2023 17:01:27 -0400
+Subject: [R] Getting an error calling MASS::boxcox in a function
+In-Reply-To: <CAGxFJbReEb_f0+gzDOTfWOiRYgGizdVgzX5ZbKkguthE7iqR6g@mail.gmail.com>
+References: <08FA83E2-1D1B-4D38-B506-7AF5CCA905EF@warwick.ac.uk>
+ <CAGxFJbS+gdxL+2NDam6n9RXn6NaM-2ZOQLgbkzissmftOBiDqw@mail.gmail.com>
+ <CAGxFJbRaC89whn011w68jOzxag2R26DRpVLBAJ7guOjTKVk4bg@mail.gmail.com>
+ <56188272-3d6a-205f-eeb3-ab38ea503b2c@mcmaster.ca>
+ <CAGxFJbReEb_f0+gzDOTfWOiRYgGizdVgzX5ZbKkguthE7iqR6g@mail.gmail.com>
+Message-ID: <b1559643-c0cf-7b89-382a-cb184e567669@mcmaster.ca>
+
+Hi Bert,
+
+On 2023-07-08 3:42 p.m., Bert Gunter wrote:
+> Caution: This email may have originated from outside the organization. Please exercise additional caution with any links and attachments.
+> 
+> 
+> Thanks John.
+> 
+> ?boxcox says:
+> 
+> *************************
+> Arguments
+> 
+> object
+> 
+> a formula or fitted model object. Currently only lm and aov objects are handled.
+> *************************
+> I read that as saying that
+> 
+> boxcox(lm(z+1 ~ 1),...)
+> 
+> should run without error. But it didn't. And perhaps here's why:
+> BoxCoxLambda <- function(z){
+>     b <- MASS:::boxcox.lm(lm(z+1 ~ 1), lambda = seq(-5, 5, length.out =
+> 61), plotit = FALSE)
+>     b$x[which.max(b$y)]    # best lambda
+> }
+> 
+>> lambdas <- apply(dd,2 , BoxCoxLambda)
+> Error in NextMethod() : 'NextMethod' called from an anonymous function
+> 
+> and, indeed, ?UseMethod says:
+> "NextMethod should not be called except in methods called by UseMethod
+> or from internal generics (see InternalGenerics). In particular it
+> will not work inside anonymous calling functions (e.g.,
+> get("print.ts")(AirPassengers))."
+> 
+> ****BUT ****
+> BoxCoxLambda <- function(z){
+>    b <- MASS:::boxcox(z+1 ~ 1, lambda = seq(-5, 5, length.out = 61),
+> plotit = FALSE)
+>    b$x[which.max(b$y)]    # best lambda
+> }
+> 
+>> lambdas <- apply(dd,2 , BoxCoxLambda)
+>> lambdas
+> [1] 0.1666667 0.1666667
+
+As it turns out, it's the update() step in boxcox.lm() that fails, and 
+the update takes place because $y is missing from the lm object, so the 
+following works:
+
+BoxCoxLambda <- function(z){
+     b <- boxcox(lm(z + 1 ~ 1, y=TRUE),
+                 lambda = seq(-5, 5, length.out = 101),
+                 plotit = FALSE)
+     b$x[which.max(b$y)]
+}
+
+> 
+> The identical lambdas do not seem right to me; 
+
+I think that's just an accident of the example (using the BoxCoxLambda() 
+above):
+
+ > apply(dd, 2, BoxCoxLambda, simplify = TRUE)
+[1] 0.2 0.2
+
+ > dd[, 2]  <- dd[, 2]^3
+ > apply(dd, 2, BoxCoxLambda, simplify = TRUE)
+[1] 0.2 0.1
+
+Best,
+  John
+
+> nor do I understand why
+> boxcox.lm apparently throws the error while boxcox.formula does not
+> (it also calls NextMethod()) So I would welcome clarification to clear
+> my clogged (cerebral) sinuses. :-)
+> 
+> 
+> Best,
+> Bert
+> 
+> 
+> On Sat, Jul 8, 2023 at 11:25?AM John Fox <jfox at mcmaster.ca> wrote:
+>>
+>> Dear Ron and Bert,
+>>
+>> First (and without considering why one would want to do this, e.g.,
+>> adding a start of 1 to the data), the following works for me:
+>>
+>> ------ snip ------
+>>
+>>   > library(MASS)
+>>
+>>   > BoxCoxLambda <- function(z){
+>> +   b <- boxcox(z + 1 ~ 1,
+>> +               lambda = seq(-5, 5, length.out = 101),
+>> +               plotit = FALSE)
+>> +   b$x[which.max(b$y)]
+>> + }
+>>
+>>   > mrow <- 500
+>>   > mcol <- 2
+>>   > set.seed(12345)
+>>   > dd <- matrix(rgamma(mrow*mcol, shape = 2, scale = 5), nrow = mrow, ncol =
+>> +                mcol)
+>>
+>>   > dd1 <- dd[, 1] # 1st column of dd
+>>   > res <- boxcox(lm(dd1 + 1 ~ 1), lambda = seq(-5, 5, length.out = 101),
+>> plotit
+>> +              = FALSE)
+>>   > res$x[which.max(res$y)]
+>> [1] 0.2
+>>
+>>   > apply(dd, 2, BoxCoxLambda, simplify = TRUE)
+>> [1] 0.2 0.2
+>>
+>> ------ snip ------
+>>
+>> One could also use the powerTransform() function in the car package,
+>> which in this context transforms towards *multi*normality:
+>>
+>> ------ snip ------
+>>
+>>   > library(car)
+>> Loading required package: carData
+>>
+>>   > powerTransform(dd + 1)
+>> Estimated transformation parameters
+>>          Y1        Y2
+>> 0.1740200 0.2089925
+>>
+>> I hope this helps,
+>>    John
+>>
+>> --
+>> John Fox, Professor Emeritus
+>> McMaster University
+>> Hamilton, Ontario, Canada
+>> web: https://www.john-fox.ca/
+>>
+>> On 2023-07-08 12:47 p.m., Bert Gunter wrote:
+>>> Caution: This email may have originated from outside the organization. Please exercise additional caution with any links and attachments.
+>>>
+>>>
+>>> No, I'm afraid I'm wrong. Something went wrong with my R session and gave
+>>> me incorrect answers. After restarting, I continued to get the same error
+>>> as you did with my supposed "fix." So just ignore what I said and sorry for
+>>> the noise.
+>>>
+>>> -- Bert
+>>>
+>>> On Sat, Jul 8, 2023 at 8:28?AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>>>
+>>>> Try this for your function:
+>>>>
+>>>> BoxCoxLambda <- function(z){
+>>>>      y <- z
+>>>>      b <- boxcox(y + 1 ~ 1,lambda = seq(-5, 5, length.out = 61), plotit =
+>>>> FALSE)
+>>>>      b$x[which.max(b$y)]    # best lambda
+>>>> }
+>>>>
+>>>> ***I think*** (corrections and clarification strongly welcomed!) that `~`
+>>>> (the formula function) is looking for 'z' in the GlobalEnv, the caller of
+>>>> apply(), and not finding it. It finds 'y' here explicitly in the
+>>>> BoxCoxLambda environment.
+>>>>
+>>>> Cheers,
+>>>> Bert
+>>>>
+>>>>
+>>>>
+>>>> On Sat, Jul 8, 2023 at 4:28?AM Ron Crump via R-help <r-help at r-project.org>
+>>>> wrote:
+>>>>
+>>>>> Hi,
+>>>>>
+>>>>> Firstly, apologies as I have posted this on community.rstudio.com too.
+>>>>>
+>>>>> I want to optimise a Box-Cox transformation on columns of a matrix (ie, a
+>>>>> unique lambda for each column). So I wrote a function that includes the
+>>>>> call to MASS::boxcox in order that it can be applied to each column easily.
+>>>>> Except that I'm getting an error when calling the function. If I just
+>>>>> extract a column of the matrix and run the code not in the function, it
+>>>>> works. If I call the function either with an extracted column (ie dd1 in
+>>>>> the reprex below) or in a call to apply I get an error (see the reprex
+>>>>> below).
+>>>>>
+>>>>> I'm sure I'm doing something silly, but I can't see what it is. Any help
+>>>>> appreciated.
+>>>>>
+>>>>> library(MASS)
+>>>>>
+>>>>> # Find optimised Lambda for Boc-Cox transformation
+>>>>> BoxCoxLambda <- function(z){
+>>>>>       b <- boxcox(lm(z+1 ~ 1), lambda = seq(-5, 5, length.out = 61), plotit
+>>>>> = FALSE)
+>>>>>       b$x[which.max(b$y)]    # best lambda
+>>>>> }
+>>>>>
+>>>>> mrow <- 500
+>>>>> mcol <- 2
+>>>>> set.seed(12345)
+>>>>> dd <- matrix(rgamma(mrow*mcol, shape = 2, scale = 5), nrow = mrow, ncol =
+>>>>> mcol)
+>>>>>
+>>>>> # Try it not using the BoxCoxLambda function:
+>>>>> dd1 <- dd[,1] # 1st column of dd
+>>>>> bb <- boxcox(lm(dd1+1 ~ 1), lambda = seq(-5, 5, length.out = 101), plotit
+>>>>> = FALSE)
+>>>>> print(paste0("1st column's lambda is ", bb$x[which.max(bb$y)]))
+>>>>> #> [1] "1st column's lambda is 0.2"
+>>>>>
+>>>>> # Calculate lambda for each column of dd
+>>>>> lambdas <- apply(dd, 2, BoxCoxLambda, simplify = TRUE)
+>>>>> #> Error in eval(predvars, data, env): object 'z' not found
+>>>>>
+>>>>> Created on 2023-07-08 with reprex v2.0.2
+>>>>>
+>>>>> Thanks for your time and help.
+>>>>>
+>>>>> Ron
+>>>>>           [[alternative HTML version deleted]]
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>>> PLEASE do read the posting guide
+>>>>> http://www.R-project.org/posting-guide.html
+>>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>>>
+>>>>
+>>>
+>>>           [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Jul  8 23:08:07 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 8 Jul 2023 14:08:07 -0700
+Subject: [R] Getting an error calling MASS::boxcox in a function
+In-Reply-To: <b1559643-c0cf-7b89-382a-cb184e567669@mcmaster.ca>
+References: <08FA83E2-1D1B-4D38-B506-7AF5CCA905EF@warwick.ac.uk>
+ <CAGxFJbS+gdxL+2NDam6n9RXn6NaM-2ZOQLgbkzissmftOBiDqw@mail.gmail.com>
+ <CAGxFJbRaC89whn011w68jOzxag2R26DRpVLBAJ7guOjTKVk4bg@mail.gmail.com>
+ <56188272-3d6a-205f-eeb3-ab38ea503b2c@mcmaster.ca>
+ <CAGxFJbReEb_f0+gzDOTfWOiRYgGizdVgzX5ZbKkguthE7iqR6g@mail.gmail.com>
+ <b1559643-c0cf-7b89-382a-cb184e567669@mcmaster.ca>
+Message-ID: <CAGxFJbRXL0KaUisgVD+BiLjhpOn3+MaV045kX1=XwG4WQm9Lxw@mail.gmail.com>
+
+Aha. Many thanks, John. Never would have gotten there on my own.
+
+-- Bert
+
+On Sat, Jul 8, 2023 at 2:01?PM John Fox <jfox at mcmaster.ca> wrote:
+>
+> Hi Bert,
+>
+> On 2023-07-08 3:42 p.m., Bert Gunter wrote:
+> > Caution: This email may have originated from outside the organization. Please exercise additional caution with any links and attachments.
+> >
+> >
+> > Thanks John.
+> >
+> > ?boxcox says:
+> >
+> > *************************
+> > Arguments
+> >
+> > object
+> >
+> > a formula or fitted model object. Currently only lm and aov objects are handled.
+> > *************************
+> > I read that as saying that
+> >
+> > boxcox(lm(z+1 ~ 1),...)
+> >
+> > should run without error. But it didn't. And perhaps here's why:
+> > BoxCoxLambda <- function(z){
+> >     b <- MASS:::boxcox.lm(lm(z+1 ~ 1), lambda = seq(-5, 5, length.out =
+> > 61), plotit = FALSE)
+> >     b$x[which.max(b$y)]    # best lambda
+> > }
+> >
+> >> lambdas <- apply(dd,2 , BoxCoxLambda)
+> > Error in NextMethod() : 'NextMethod' called from an anonymous function
+> >
+> > and, indeed, ?UseMethod says:
+> > "NextMethod should not be called except in methods called by UseMethod
+> > or from internal generics (see InternalGenerics). In particular it
+> > will not work inside anonymous calling functions (e.g.,
+> > get("print.ts")(AirPassengers))."
+> >
+> > ****BUT ****
+> > BoxCoxLambda <- function(z){
+> >    b <- MASS:::boxcox(z+1 ~ 1, lambda = seq(-5, 5, length.out = 61),
+> > plotit = FALSE)
+> >    b$x[which.max(b$y)]    # best lambda
+> > }
+> >
+> >> lambdas <- apply(dd,2 , BoxCoxLambda)
+> >> lambdas
+> > [1] 0.1666667 0.1666667
+>
+> As it turns out, it's the update() step in boxcox.lm() that fails, and
+> the update takes place because $y is missing from the lm object, so the
+> following works:
+>
+> BoxCoxLambda <- function(z){
+>      b <- boxcox(lm(z + 1 ~ 1, y=TRUE),
+>                  lambda = seq(-5, 5, length.out = 101),
+>                  plotit = FALSE)
+>      b$x[which.max(b$y)]
+> }
+>
+> >
+> > The identical lambdas do not seem right to me;
+>
+> I think that's just an accident of the example (using the BoxCoxLambda()
+> above):
+>
+>  > apply(dd, 2, BoxCoxLambda, simplify = TRUE)
+> [1] 0.2 0.2
+>
+>  > dd[, 2]  <- dd[, 2]^3
+>  > apply(dd, 2, BoxCoxLambda, simplify = TRUE)
+> [1] 0.2 0.1
+>
+> Best,
+>   John
+>
+> > nor do I understand why
+> > boxcox.lm apparently throws the error while boxcox.formula does not
+> > (it also calls NextMethod()) So I would welcome clarification to clear
+> > my clogged (cerebral) sinuses. :-)
+> >
+> >
+> > Best,
+> > Bert
+> >
+> >
+> > On Sat, Jul 8, 2023 at 11:25?AM John Fox <jfox at mcmaster.ca> wrote:
+> >>
+> >> Dear Ron and Bert,
+> >>
+> >> First (and without considering why one would want to do this, e.g.,
+> >> adding a start of 1 to the data), the following works for me:
+> >>
+> >> ------ snip ------
+> >>
+> >>   > library(MASS)
+> >>
+> >>   > BoxCoxLambda <- function(z){
+> >> +   b <- boxcox(z + 1 ~ 1,
+> >> +               lambda = seq(-5, 5, length.out = 101),
+> >> +               plotit = FALSE)
+> >> +   b$x[which.max(b$y)]
+> >> + }
+> >>
+> >>   > mrow <- 500
+> >>   > mcol <- 2
+> >>   > set.seed(12345)
+> >>   > dd <- matrix(rgamma(mrow*mcol, shape = 2, scale = 5), nrow = mrow, ncol =
+> >> +                mcol)
+> >>
+> >>   > dd1 <- dd[, 1] # 1st column of dd
+> >>   > res <- boxcox(lm(dd1 + 1 ~ 1), lambda = seq(-5, 5, length.out = 101),
+> >> plotit
+> >> +              = FALSE)
+> >>   > res$x[which.max(res$y)]
+> >> [1] 0.2
+> >>
+> >>   > apply(dd, 2, BoxCoxLambda, simplify = TRUE)
+> >> [1] 0.2 0.2
+> >>
+> >> ------ snip ------
+> >>
+> >> One could also use the powerTransform() function in the car package,
+> >> which in this context transforms towards *multi*normality:
+> >>
+> >> ------ snip ------
+> >>
+> >>   > library(car)
+> >> Loading required package: carData
+> >>
+> >>   > powerTransform(dd + 1)
+> >> Estimated transformation parameters
+> >>          Y1        Y2
+> >> 0.1740200 0.2089925
+> >>
+> >> I hope this helps,
+> >>    John
+> >>
+> >> --
+> >> John Fox, Professor Emeritus
+> >> McMaster University
+> >> Hamilton, Ontario, Canada
+> >> web: https://www.john-fox.ca/
+> >>
+> >> On 2023-07-08 12:47 p.m., Bert Gunter wrote:
+> >>> Caution: This email may have originated from outside the organization. Please exercise additional caution with any links and attachments.
+> >>>
+> >>>
+> >>> No, I'm afraid I'm wrong. Something went wrong with my R session and gave
+> >>> me incorrect answers. After restarting, I continued to get the same error
+> >>> as you did with my supposed "fix." So just ignore what I said and sorry for
+> >>> the noise.
+> >>>
+> >>> -- Bert
+> >>>
+> >>> On Sat, Jul 8, 2023 at 8:28?AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >>>
+> >>>> Try this for your function:
+> >>>>
+> >>>> BoxCoxLambda <- function(z){
+> >>>>      y <- z
+> >>>>      b <- boxcox(y + 1 ~ 1,lambda = seq(-5, 5, length.out = 61), plotit =
+> >>>> FALSE)
+> >>>>      b$x[which.max(b$y)]    # best lambda
+> >>>> }
+> >>>>
+> >>>> ***I think*** (corrections and clarification strongly welcomed!) that `~`
+> >>>> (the formula function) is looking for 'z' in the GlobalEnv, the caller of
+> >>>> apply(), and not finding it. It finds 'y' here explicitly in the
+> >>>> BoxCoxLambda environment.
+> >>>>
+> >>>> Cheers,
+> >>>> Bert
+> >>>>
+> >>>>
+> >>>>
+> >>>> On Sat, Jul 8, 2023 at 4:28?AM Ron Crump via R-help <r-help at r-project.org>
+> >>>> wrote:
+> >>>>
+> >>>>> Hi,
+> >>>>>
+> >>>>> Firstly, apologies as I have posted this on community.rstudio.com too.
+> >>>>>
+> >>>>> I want to optimise a Box-Cox transformation on columns of a matrix (ie, a
+> >>>>> unique lambda for each column). So I wrote a function that includes the
+> >>>>> call to MASS::boxcox in order that it can be applied to each column easily.
+> >>>>> Except that I'm getting an error when calling the function. If I just
+> >>>>> extract a column of the matrix and run the code not in the function, it
+> >>>>> works. If I call the function either with an extracted column (ie dd1 in
+> >>>>> the reprex below) or in a call to apply I get an error (see the reprex
+> >>>>> below).
+> >>>>>
+> >>>>> I'm sure I'm doing something silly, but I can't see what it is. Any help
+> >>>>> appreciated.
+> >>>>>
+> >>>>> library(MASS)
+> >>>>>
+> >>>>> # Find optimised Lambda for Boc-Cox transformation
+> >>>>> BoxCoxLambda <- function(z){
+> >>>>>       b <- boxcox(lm(z+1 ~ 1), lambda = seq(-5, 5, length.out = 61), plotit
+> >>>>> = FALSE)
+> >>>>>       b$x[which.max(b$y)]    # best lambda
+> >>>>> }
+> >>>>>
+> >>>>> mrow <- 500
+> >>>>> mcol <- 2
+> >>>>> set.seed(12345)
+> >>>>> dd <- matrix(rgamma(mrow*mcol, shape = 2, scale = 5), nrow = mrow, ncol =
+> >>>>> mcol)
+> >>>>>
+> >>>>> # Try it not using the BoxCoxLambda function:
+> >>>>> dd1 <- dd[,1] # 1st column of dd
+> >>>>> bb <- boxcox(lm(dd1+1 ~ 1), lambda = seq(-5, 5, length.out = 101), plotit
+> >>>>> = FALSE)
+> >>>>> print(paste0("1st column's lambda is ", bb$x[which.max(bb$y)]))
+> >>>>> #> [1] "1st column's lambda is 0.2"
+> >>>>>
+> >>>>> # Calculate lambda for each column of dd
+> >>>>> lambdas <- apply(dd, 2, BoxCoxLambda, simplify = TRUE)
+> >>>>> #> Error in eval(predvars, data, env): object 'z' not found
+> >>>>>
+> >>>>> Created on 2023-07-08 with reprex v2.0.2
+> >>>>>
+> >>>>> Thanks for your time and help.
+> >>>>>
+> >>>>> Ron
+> >>>>>           [[alternative HTML version deleted]]
+> >>>>>
+> >>>>> ______________________________________________
+> >>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>>>> PLEASE do read the posting guide
+> >>>>> http://www.R-project.org/posting-guide.html
+> >>>>> and provide commented, minimal, self-contained, reproducible code.
+> >>>>>
+> >>>>
+> >>>
+> >>>           [[alternative HTML version deleted]]
+> >>>
+> >>> ______________________________________________
+> >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> >>> and provide commented, minimal, self-contained, reproducible code.
+> >>
+
+
