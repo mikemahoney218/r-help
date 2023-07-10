@@ -8247,3 +8247,228 @@ On Sat, Jul 8, 2023 at 2:01?PM John Fox <jfox at mcmaster.ca> wrote:
 > >>
 
 
+From @hu|@|@cheung @end|ng |rom gm@||@com  Sun Jul  9 03:25:03 2023
+From: @hu|@|@cheung @end|ng |rom gm@||@com (Shu Fai Cheung)
+Date: Sun, 9 Jul 2023 09:25:03 +0800
+Subject: [R] printCoefmat() and zap.ind
+In-Reply-To: <25768.16419.758276.323572@stat.math.ethz.ch>
+References: <CAPVJd2UBbr--JaN20EG65aFt+yMSeeQ_pT2SfPKD+CFPW+seeQ@mail.gmail.com>
+ <25768.14696.794296.3642@stat.math.ethz.ch>
+ <25768.16419.758276.323572@stat.math.ethz.ch>
+Message-ID: <CAPVJd2Xf0KHGY1T_ydivvqobq8AB=3cN8C8j7Y8bdubd98-27g@mail.gmail.com>
+
+(Sorry for sending it twice. I forgot to reply
+to the mailing list.)
+
+Many many thanks for the comments and examples!
+
+I could write my own function to achieve what
+I want to do. However, I would like to find a method that
+uses built-in functions only and prints the output in a format
+identical to that of the default output of print.summary.lm(),
+which uses printCoefmat() internally.
+
+It seems that this cannot be done easily for now. This
+is a workaround.
+
+```r
+
+set.seed(5689417)
+n <- 10000
+x1 <- rnorm(n)
+x2 <- rnorm(n)
+y <- .5 * x1 + .6 * x2 + rnorm(n, -0.0002366, .2)
+dat <- data.frame(x1, x2, y)
+out <- lm(y ~ x1 + x2, dat)
+out_summary <- summary(out)
+out_summary$coefficients[, "Estimate"] <-
+  round(out_summary$coefficients[, "Estimate"], 4)
+out_summary$coefficients[, "Std. Error"] <-
+  round(out_summary$coefficients[, "Std. Error"], 4)
+
+printCoefmat(out_summary$coefficients)
+#>             Estimate Std. Error t value Pr(>|t|)
+#> (Intercept)   0.0000     0.0020    0.00        1
+#> x1            0.5021     0.0020  254.70   <2e-16 ***
+#> x2            0.6002     0.0020  301.23   <2e-16 ***
+
+#> ---
+#> Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+```
+
+I have to round the two columns first before calling
+printCoefmat(). Not nice but works for now.
+
+Regards,
+Shu Fai Cheung
+
+? 2023?7?8??? 00:41?Martin Maechler <maechler at stat.math.ethz.ch> ???
+
+> >>>>> Martin Maechler
+> >>>>>     on Fri, 7 Jul 2023 18:12:24 +0200 writes:
+>
+> >>>>> Shu Fai Cheung
+> >>>>>     on Thu, 6 Jul 2023 17:14:27 +0800 writes:
+>
+>     >> Hi All,
+>
+>     >> I would like to ask two questions about printCoefmat().
+>
+>     > Good... this function, originally named print.coefmat(),
+>     > is 25 years old (in R) now:
+>
+>     > --------------------------------------------------------------------
+>     > r1902 | maechler | 1998-08-14 19:19:05 +0200 (Fri, 14 Aug 1998) |
+>     > Changed paths:
+>     > M R-0-62-patches/CHANGES
+>     > M R-0-62-patches/src/library/base/R/anova.R
+>     > M R-0-62-patches/src/library/base/R/glm.R
+>     > M R-0-62-patches/src/library/base/R/lm.R
+>     > M R-0-62-patches/src/library/base/R/print.R
+>
+>     > print.coefmat(.) about ok
+>     > --------------------------------------------------------------------
+>
+>     > (yes, at the time, the 'stats' package did not exist yet ..)
+>
+>     > so it may be a good time to look at it.
+>
+>
+>     >> First, I found a behavior of printCoefmat() that looks strange to
+> me,
+>     >> but I am not sure whether this is an intended behavior:
+>
+>     >> ``` r
+>     >> set.seed(5689417)
+>     >> n <- 10000
+>     >> x1 <- rnorm(n)
+>     >> x2 <- rnorm(n)
+>     >> y <- .5 * x1 + .6 * x2 + rnorm(n, -0.0002366, .2)
+>     >> dat <- data.frame(x1, x2, y)
+>     >> out <- lm(y ~ x1 + x2, dat)
+>     >> out_summary <- summary(out)
+>     >> printCoefmat(out_summary$coefficients)
+>     >> #>               Estimate Std. Error t value Pr(>|t|)
+>     >> #> (Intercept) 1.7228e-08 1.9908e-03    0.00        1
+>     >> #> x1          5.0212e-01 1.9715e-03  254.70   <2e-16 ***
+>     >> #> x2          6.0016e-01 1.9924e-03  301.23   <2e-16 ***
+>     >> #> ---
+>     >> #> Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+>
+>     >> printCoefmat(out_summary$coefficients,
+>     >> zap.ind = 1,
+>     >> digits = 4)
+>     >> #>             Estimate Std. Error t value Pr(>|t|)
+>     >> #> (Intercept) 0.000000   0.001991     0.0        1
+>     >> #> x1          0.502100   0.001971   254.7   <2e-16 ***
+>     >> #> x2          0.600200   0.001992   301.2   <2e-16 ***
+>     >> #> ---
+>     >> #> Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+>     >> ```
+>
+>     >> With zap.ind = 1, the values in "Estimate" were correctly
+>     >> zapped using digits = 4. However, by default, "Estimate"
+>     >> and "Std. Error" are formatted together. Because the
+>     >> standard errors are small, with digits = 4, zero's were added
+>     >> to values in "Estimate", resulting in "0.502100" and
+>     >> "0.600200", which are misleading because, if rounded to
+>     >> the 6th decimal place, the values to be displayed should
+>     >> be "0.502122" and "0.600162".
+>
+>     >> Is this behavior of printCoefmat() intended/normal?
+>
+>     > Yes, this is "normal" in the sense that zapsmall() is used.
+>     > I'm not even sure anymore if I was always aware 1998 what exactly the
+>     > simple zapsmall() function is doing.
+>     > It does not do what you want here (and actually *typically* want
+>     > for formatting numbers for display, plotting, etc):
+>     > You "really want" here and in such situations
+>
+>     > zapOnlysmall <- function(x, dig) {
+>     >    x[abs(x) <= 10^-dig] <- 0
+>     >    x
+>     > }
+>
+>     > and I think I'd replace the use of zapsmall() inside
+>     > printCoefmat() with something like zapOnlysmall() above.
+>
+>     > This will indeed nicely solve your problem.
+>
+> well..., now that I tried to change it "globally" in
+> printCoefmat() and I see how many of the lm() summary or anova()
+> outputs .. outputs that get slightly changed, and sometimes
+> quite unfavourably,
+>
+> I think that the "hard" replacement of zapsmall() by
+> zapOnlysmall() {above}  is too drastic, ... even though it helps
+> in your case.
+>
+> ... back to the "drawing board" ...
+>
+> Martin
+>
+>
+>     >> Second, how can I use zap without this behavior?
+>     >> In cases like the one above, I need to use zap such that
+>     >> the intercept will not be displayed in scientific notation.
+>     >> Disabling scientific notation cannot achieve the desired
+>     >> goal.
+>
+>
+>     >> I tried adding cs.ind = 1:
+>
+>     > well, from the help page   ?printCoefmat
+>
+>     > cs.ind is really about the [ind]ices of [c]oefficient + [s]cale or
+> [s]td.err
+>     > So, for lm() you should not have to set cs.ind but rather keep
+>     > it at it's smart default of cs.ind = 1:2 .
+>
+>
+>     >> ```r
+>     >> printCoefmat(out_summary$coefficients,
+>     >> zap.ind = 1,
+>     >> digits = 4,
+>     >> cs.ind = 1)
+>     >> #>             Estimate Std. Error t value Pr(>|t|)
+>     >> #> (Intercept)   0.0000   0.001991     0.0        1
+>     >> #> x1            0.5021   0.001971   254.7   <2e-16 ***
+>     >> #> x2            0.6002   0.001992   301.2   <2e-16 ***
+>     >> #> ---
+>     >> #> Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+>     >> ```
+>
+>     >> However, this solution is not ideal because the numbers
+>     >> of decimal places of "Estimate" and "Std. Error" are
+>     >> different. How can I get the output like this one?
+>
+>
+>     >> ```r
+>     >> #>             Estimate Std. Error t value Pr(>|t|)
+>     >> #> (Intercept)   0.0000   0.0020     0.0        1
+>     >> #> x1            0.5021   0.0020   254.7   <2e-16 ***
+>     >> #> x2            0.6002   0.0020   301.2   <2e-16 ***
+>     >> ```
+>
+>     >> Thanks for your attention.
+>
+>     >> Regards,
+>     >> Shu Fai Cheung
+>
+>     > Thank you, Shu Fai,
+>     > for your careful and thoughtful report!
+>
+>     > Best regards,
+>     > Martin
+>
+>     > ______________________________________________
+>     > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>     > https://stat.ethz.ch/mailman/listinfo/r-help
+>     > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+>     > and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
