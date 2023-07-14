@@ -10848,3 +10848,958 @@ PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Thu Jul 13 03:17:12 2023
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Thu, 13 Jul 2023 01:17:12 +0000
+Subject: [R] ggplot: Can plot graphs with points,
+ can't plot graph with points and line
+Message-ID: <MW4PR03MB6363CE7C6DFD8C38798773F4E237A@MW4PR03MB6363.namprd03.prod.outlook.com>
+
+I am trying to plot four points, and join the points with lines. I can plot the points, but I can't plot the points and the line.
+I hope someone can help my with my ggplot code.
+
+# load ggplot2
+if(!require(ggplot2)){install.packages("ggplot2")}
+library(ggplot2)
+
+# Create data
+Time       <- c("Age.25","Age.35","Age.45","Age.55")
+Medians    <-c(128.25,148.75,158.5,168.75)
+themedians <- matrix(data=cbind(Time,Medians),nrow=4,ncol=2)
+dimnames(themedians) <- list(NULL,c("Time","Median"))
+# Convert to dataframe the data format used by ggplot
+themedians <- data.frame(themedians)
+themedians
+
+# This plot works
+ggplot(themedians,aes(x=Time,y=Median))+
+  geom_point()
+# This plot does not work!
+ggplot(themedians,aes(x=Time,y=Median))+
+  geom_point()+
+  geom_line()
+
+Thank you,
+John
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Thu Jul 13 05:20:35 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Wed, 12 Jul 2023 23:20:35 -0400
+Subject: [R] Just to you
+In-Reply-To: <MW4PR03MB6363CE7C6DFD8C38798773F4E237A@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <MW4PR03MB6363CE7C6DFD8C38798773F4E237A@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <005101d9b538$fd2b9c30$f782d490$@gmail.com>
+
+John,
+
+I am a tad puzzled at why your code does not work so I tried replicating it.
+
+Let me say you are not plotting what you think. When you plot points using
+characters, it LOOKS like it did something but not really. It labels four
+equally apart lines (when your data is not linear) and you are getting
+nosense. But when you try for lines, using otherwise valid code, it fails.
+
+Based on your earlier post, I sort of understood what you did but find it
+roundabout and not necessary. And you made all columns of type character!
+
+You had two perfectly good vectors of type character and floating point. You
+eventually wanted a data.frame or the like. I assume your code is an example
+of something more complex because normally code like this works fine:
+
+> temp <- data.frame(Time=Time, Median=Medians)
+> temp
+    Time Median
+1 Age.25 128.25
+2 Age.35 148.75
+3 Age.45 158.50
+4 Age.55 168.75
+
+Alternatively, these two lines let you make a data.frame with default names
+and rename it, skipping the matrix part as that nonsense makes all the
+columns character and you need floating point for a graph!
+
+> temp <- data.frame(Time, Medians)
+> temp
+    Time Medians
+1 Age.25  128.25
+2 Age.35  148.75
+3 Age.45  158.50
+4 Age.55  168.75
+> colnames(temp) <- c("Newname1", "Newname2")
+> temp
+  Newname1 Newname2
+1   Age.25   128.25
+2   Age.35   148.75
+3   Age.45   158.50
+4   Age.55   168.75
+
+Now in your code using ggplot, as stated above it only looks like it works.
+Using my temp, the points are where they belong. Yes, it breaks when adding
+lines because the code is trying to group things as one axis is categorical.
+One solution is to tell it not to group:
+
+This works for me:
+
+ggplot(temp,aes(x=Time,y=Median))+
++     geom_point()+
++     geom_line(aes(group=NA))
+
+I cannot attach a graph to messages on this forum but I suggest you modify
+your code to include this. Either do not use the matrix intermediate and
+keep your numbers as numbers, or convert the darn column back to numeric.
+
+And for now, try my ungrouping.
+
+Alternate suggestion, don't graph as above. Consider three columns and graph
+numbers versus numbers adding a label wherever you want:
+
+library(ggplot2)
+
+Time <- c(25, 35, 45, 55)
+Timelabels <- paste("age.", Time, sep="")
+Medians    <-c(128.25,148.75,158.5,168.75)
+mydata=data.frame(Time=Time, Median=Medians)
+rownames(mydata) <- Timelabels
+
+ggplot(data=mydata, aes(x=Time, y=Medians)) + geom_line() + geom_point()
++geom_text(label=rownames(mydata))
+
+ggplot(data=mydata, aes(x=Time, y=Medians)) +
+  geom_line() + 
+  geom_point(size=3, color="red") +
+  geom_label(label=rownames(mydata),alpha=0.4)
+
+There are likely better ways but my point is it may be best to plot numbers
+against numbers.
+
+
+
+
+
+
+
+
+
+
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+Sent: Wednesday, July 12, 2023 9:17 PM
+To: r-help at r-project.org (r-help at r-project.org) <r-help at r-project.org>
+Subject: [R] ggplot: Can plot graphs with points, can't plot graph with
+points and line
+
+I am trying to plot four points, and join the points with lines. I can plot
+the points, but I can't plot the points and the line.
+I hope someone can help my with my ggplot code.
+
+# load ggplot2
+if(!require(ggplot2)){install.packages("ggplot2")}
+library(ggplot2)
+
+# Create data
+Time       <- c("Age.25","Age.35","Age.45","Age.55")
+Medians    <-c(128.25,148.75,158.5,168.75)
+themedians <- matrix(data=cbind(Time,Medians),nrow=4,ncol=2)
+dimnames(themedians) <- list(NULL,c("Time","Median"))
+# Convert to dataframe the data format used by ggplot
+themedians <- data.frame(themedians)
+themedians
+
+# This plot works
+ggplot(themedians,aes(x=Time,y=Median))+
+  geom_point()
+# This plot does not work!
+ggplot(themedians,aes(x=Time,y=Median))+
+  geom_point()+
+  geom_line()
+
+Thank you,
+John
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From drj|m|emon @end|ng |rom gm@||@com  Thu Jul 13 07:10:35 2023
+From: drj|m|emon @end|ng |rom gm@||@com (Jim Lemon)
+Date: Thu, 13 Jul 2023 15:10:35 +1000
+Subject: [R] ggplot: Can plot graphs with points,
+ can't plot graph with points and line
+In-Reply-To: <MW4PR03MB6363CE7C6DFD8C38798773F4E237A@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <MW4PR03MB6363CE7C6DFD8C38798773F4E237A@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <CA+8X3fVYLe3UcgNyPcVnW9-L1zZpkhok+ykFNvCyZaxrsAeSTg@mail.gmail.com>
+
+Hi John,
+I'm not sure how to do this with ggplot, but:
+
+Time<- c("Age.25","Age.35","Age.45","Age.55")
+Medians<-c(128.25,148.75,158.5,168.75)
+> is.character(Time)
+# [1] TRUE - thus it has no intrinsic numeric value to plot
+> is.numeric(Medians)
+# [1] TRUE
+# coerce Medians to factor and then plot against Time, but can't do point/line
+plot(as.factor(Time),Medians,type="p")
+# let R determine the x values (1:4) and omit the x-axis
+plot(Medians,type="b",xaxt="n")
+# add the x-axis with the "Time" labels
+axis(1,at=1:4,labels=Time)
+
+
+On Thu, Jul 13, 2023 at 11:18?AM Sorkin, John <jsorkin at som.umaryland.edu> wrote:
+>
+> I am trying to plot four points, and join the points with lines. I can plot the points, but I can't plot the points and the line.
+> I hope someone can help my with my ggplot code.
+>
+> # load ggplot2
+> if(!require(ggplot2)){install.packages("ggplot2")}
+> library(ggplot2)
+>
+> # Create data
+> Time       <- c("Age.25","Age.35","Age.45","Age.55")
+> Medians    <-c(128.25,148.75,158.5,168.75)
+> themedians <- matrix(data=cbind(Time,Medians),nrow=4,ncol=2)
+> dimnames(themedians) <- list(NULL,c("Time","Median"))
+> # Convert to dataframe the data format used by ggplot
+> themedians <- data.frame(themedians)
+> themedians
+>
+> # This plot works
+> ggplot(themedians,aes(x=Time,y=Median))+
+>   geom_point()
+> # This plot does not work!
+> ggplot(themedians,aes(x=Time,y=Median))+
+>   geom_point()+
+>   geom_line()
+>
+> Thank you,
+> John
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From du@@@@dr|@n @end|ng |rom un|buc@ro  Thu Jul 13 08:08:56 2023
+From: du@@@@dr|@n @end|ng |rom un|buc@ro (=?UTF-8?B?QWRyaWFuIER1yJlh?=)
+Date: Thu, 13 Jul 2023 09:08:56 +0300
+Subject: [R] Variable and value labels
+In-Reply-To: <CAFL9eumQ+U63SyzH6dED+yeEo2xFmFNt1ur8K-hjMdSaa+msew@mail.gmail.com>
+References: <CAFL9eumQ+U63SyzH6dED+yeEo2xFmFNt1ur8K-hjMdSaa+msew@mail.gmail.com>
+Message-ID: <CAJ=0CtA0fcStv-OV_GkviR=05cSY93MnCqH8Myo5tJ+ZX7qM9A@mail.gmail.com>
+
+Anupam,
+
+This is very general, and it also depends on the scientific domain.
+Factors do solve the value labels, but they drop the (original) values.
+They also lose the connection to the different types of missing values (an
+important topic in the social sciences).
+
+Base R provides as much as it can, but it cannot possibly cover all
+applications out there, so an add-on package is a must.
+A good way to do both variable and value labels, as well as different types
+of missing values, is the package "declared".
+
+I hope this helps,
+Adrian
+
+On Wed, Jul 12, 2023 at 6:55?AM Anupam Tyagi <anuptyagi at gmail.com> wrote:
+
+> Hello,
+>
+> is there an easy way to do variable and value labels (for factor variables)
+> in base-R, without using a package. If not, what is an easy and good way to
+> do labels, using an add-on package.
+>
+> --
+> Anupam.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+-- 
+Adrian Dusa
+University of Bucharest
+Romanian Social Data Archive
+Soseaua Panduri nr. 90-92
+050663 Bucharest sector 5
+Romania
+https://adriandusa.eu
+
+	[[alternative HTML version deleted]]
+
+
+From @nupty@g| @end|ng |rom gm@||@com  Thu Jul 13 08:50:31 2023
+From: @nupty@g| @end|ng |rom gm@||@com (Anupam Tyagi)
+Date: Thu, 13 Jul 2023 12:20:31 +0530
+Subject: [R] Variable and value labels
+In-Reply-To: <005e01d9b4f0$ec59d040$c50d70c0$@gmail.com>
+References: <CAFL9eumQ+U63SyzH6dED+yeEo2xFmFNt1ur8K-hjMdSaa+msew@mail.gmail.com>
+ <005e01d9b4f0$ec59d040$c50d70c0$@gmail.com>
+Message-ID: <CAFL9euk-keAWbHNwvP06zhgQP5JpeixxpvurLnQ+3E_igAv+Jw@mail.gmail.com>
+
+Thanks, Avi. By labels I mean human readable descriptions of variables and
+values of factor variables. In a plot, I want labels to be used
+for labelling axes on which a factor is plotted, and variable labels for
+axes names/descriptions in a plot. I may have borrowed the terminology of
+variable and value labels from Stata software, which I use.
+
+I use a lot of packages. So, I have nothing against packages. But for
+labelling, I sometimes worry that I may get tied to a package for something
+as basic as assigning labels, and some function/packages may not pick up
+the labels correctly/well when plotting or displaying results. Maybe I am
+worried for nothing.
+
+I have not used R much after 2003. In the past few months I have begun to
+use R again with R Studio, mostly for plotting and visualization of data.
+So, you can think of me as a new user.
+
+On Thu, 13 Jul 2023 at 00:14, <avi.e.gross at gmail.com> wrote:
+
+> Anupam,
+>
+> Your question, even after looking at other messages, remains a bit unclear.
+>
+> What do you mean by "labels"? What you mean by variables and values and how
+> is that related to factors?
+>
+> An example or two would be helpful so we can say more than PROBABLY.
+> Otherwise, you risk having many people here waste lots of time sending
+> answers to questions you did not ask.
+>
+> And why an insistence on not using packages? If you are doing something for
+> a class, sure, you may need to use the basics you were supposedly taught in
+> class or a textbook. Otherwise, a good set of packages makes code much
+> easier to write and often more reliable. Realistically, quite a bit of what
+> some call base R is actually packages deemed useful enough to be included
+> at
+> startup and that can change.
+>
+> If you are new to R, note you can attach arbitrary attributes to a variable
+> and you can have things like named lists where some or all the items have
+> names as an attribute.
+>
+> Factors are part of base R and are a completely different concept. You can
+> use base R to get or set the base levels of a factor and many other things
+> and there are advantages sometimes in using a vector in factor mode than
+> plain but also sometimes disadvantages.
+>
+> If you ask a more specific and properly explained question, maybe we can
+> help you.
+>
+> Specifically, please tell us how you plan on using your labels. As an
+> example, if I make a named list like this:
+>
+> mylist <- list(pi=3.14, e=2.7, 666)
+>
+> then I can access all elements as in mylist[[2]] without a name but
+> mylist$pi lets me access that item by name and mylist[["e"]] and I can also
+> change the current values similarly. But without explaining what you want,
+> my explanation likely is not what you need.
+>
+> But do note that even if you do not USE a package, you can sometimes use it
+> indirectly by examining the code for a function you like. If it is
+> primarily
+> written in R, you may see how it does something and take a part of the code
+> and use it yourself.
+>
+>
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Anupam Tyagi
+> Sent: Tuesday, July 11, 2023 11:49 PM
+> To: r-help mailing list <r-help at r-project.org>
+> Subject: [R] Variable and value labels
+>
+> Hello,
+>
+> is there an easy way to do variable and value labels (for factor variables)
+> in base-R, without using a package. If not, what is an easy and good way to
+> do labels, using an add-on package.
+>
+> --
+> Anupam.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+>
+
+-- 
+Anupam.
+
+	[[alternative HTML version deleted]]
+
+
+From jrkr|de@u @end|ng |rom gm@||@com  Thu Jul 13 14:30:50 2023
+From: jrkr|de@u @end|ng |rom gm@||@com (John Kane)
+Date: Thu, 13 Jul 2023 08:30:50 -0400
+Subject: [R] ggplot: Can plot graphs with points,
+ can't plot graph with points and line
+In-Reply-To: <CA+8X3fVYLe3UcgNyPcVnW9-L1zZpkhok+ykFNvCyZaxrsAeSTg@mail.gmail.com>
+References: <MW4PR03MB6363CE7C6DFD8C38798773F4E237A@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <CA+8X3fVYLe3UcgNyPcVnW9-L1zZpkhok+ykFNvCyZaxrsAeSTg@mail.gmail.com>
+Message-ID: <CAKZQJMBPHFagGCOT3HmNZcmqzmecf+LkFs2XLdu74tAuHHY7QQ@mail.gmail.com>
+
+Hi John,
+
+This should do what you want.  I've changed your data.frame name for my own
+convenience to "dat1".
+
+###===========================================
+dat1  <- data.frame(
+Time  = c("Age.25","Age.35","Age.45","Age.55"),
+Medians = c(128.25,148.75,158.5,168.75)
+)
+
+# create segments data.frame
+
+dat2  <- data.frame(x = dat1$Time[1:3], xend = dat1$Time[2:4],
+                    y = dat1$Medians[1:3], yend = dat1$Medians[2:4])
+
+
+
+p1  <- ggplot(dat1 ,aes(x = Time, y = Medians)) +
+  geom_point()
+
+p1 + geom_segment( x = "Age.25", y = 128.25, xend = "Age.35", yend =
+148.75) +
+  geom_segment( x = "Age.35", y = 148.75, xend = "Age.45", yend = 158.5) +
+  geom_segment( x = "Age.45", y = 158.5, xend = "Age.55", yend = 168.55)
+
+
+# This solution shamelessly stolen from
+##
+https://stackoverflow.com/questions/62536499/how-to-draw-multiple-line-segment-in-ggplot
+p1 + geom_segment(
+  data = dat2,
+  mapping = aes(x=x, y=y, xend=xend, yend=yend),
+  inherit.aes = FALSE
+)
+
+
+On Thu, 13 Jul 2023 at 01:11, Jim Lemon <drjimlemon at gmail.com> wrote:
+
+> Hi John,
+> I'm not sure how to do this with ggplot, but:
+>
+> Time<- c("Age.25","Age.35","Age.45","Age.55")
+> Medians<-c(128.25,148.75,158.5,168.75)
+> > is.character(Time)
+> # [1] TRUE - thus it has no intrinsic numeric value to plot
+> > is.numeric(Medians)
+> # [1] TRUE
+> # coerce Medians to factor and then plot against Time, but can't do
+> point/line
+> plot(as.factor(Time),Medians,type="p")
+> # let R determine the x values (1:4) and omit the x-axis
+> plot(Medians,type="b",xaxt="n")
+> # add the x-axis with the "Time" labels
+> axis(1,at=1:4,labels=Time)
+>
+>
+> On Thu, Jul 13, 2023 at 11:18?AM Sorkin, John <jsorkin at som.umaryland.edu>
+> wrote:
+> >
+> > I am trying to plot four points, and join the points with lines. I can
+> plot the points, but I can't plot the points and the line.
+> > I hope someone can help my with my ggplot code.
+> >
+> > # load ggplot2
+> > if(!require(ggplot2)){install.packages("ggplot2")}
+> > library(ggplot2)
+> >
+> > # Create data
+> > Time       <- c("Age.25","Age.35","Age.45","Age.55")
+> > Medians    <-c(128.25,148.75,158.5,168.75)
+> > themedians <- matrix(data=cbind(Time,Medians),nrow=4,ncol=2)
+> > dimnames(themedians) <- list(NULL,c("Time","Median"))
+> > # Convert to dataframe the data format used by ggplot
+> > themedians <- data.frame(themedians)
+> > themedians
+> >
+> > # This plot works
+> > ggplot(themedians,aes(x=Time,y=Median))+
+> >   geom_point()
+> > # This plot does not work!
+> > ggplot(themedians,aes(x=Time,y=Median))+
+> >   geom_point()+
+> >   geom_line()
+> >
+> > Thank you,
+> > John
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+-- 
+John Kane
+Kingston ON Canada
+
+	[[alternative HTML version deleted]]
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Thu Jul 13 17:21:42 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Thu, 13 Jul 2023 11:21:42 -0400
+Subject: [R] Variable and value labels
+In-Reply-To: <CAFL9euk-keAWbHNwvP06zhgQP5JpeixxpvurLnQ+3E_igAv+Jw@mail.gmail.com>
+References: <CAFL9eumQ+U63SyzH6dED+yeEo2xFmFNt1ur8K-hjMdSaa+msew@mail.gmail.com>
+ <005e01d9b4f0$ec59d040$c50d70c0$@gmail.com>
+ <CAFL9euk-keAWbHNwvP06zhgQP5JpeixxpvurLnQ+3E_igAv+Jw@mail.gmail.com>
+Message-ID: <003601d9b59d$ba876a70$2f963f50$@gmail.com>
+
+Anupam,
+ 
+Thanks for explaining you are talking about factors.
+ 
+I see my friend Adrian has pointed out reasons you may want to use a package he built called ?declared? but my answer will be within the regular R domain as you asked.
+ 
+You should read up a bit on factors in a book, not just blindly searching. A factor, loosely speaking started off as a mixture of the original values as characters and a numbered vector referencing them. When you want the original labels, you can see them and when you want the integer indices you can see them.
+ 
+> greek <- c("Alpha", "Beta", "Gamma", "Alphabeta", "Beta", "Alpha", "Alpha Male")
+> greek
+[1] "Alpha"      "Beta"       "Gamma"      "Alphabeta"  "Beta"       "Alpha"     
+[7] "Alpha Male"
+> 
+> facgreek <- factor(greek)
+> facgreek
+[1] Alpha      Beta       Gamma      Alphabeta  Beta       Alpha      Alpha Male
+Levels: Alpha Alpha Male Alphabeta Beta Gamma
+> 
+> levels(facgreek)
+[1] "Alpha"      "Alpha Male" "Alphabeta"  "Beta"       "Gamma"     
+> labels(facgreek)
+[1] "1" "2" "3" "4" "5" "6" "7"
+> str(facgreek)
+Factor w/ 5 levels "Alpha","Alpha Male",..: 1 4 5 3 4 1 2
+> as.numeric(facgreek)
+[1] 1 4 5 3 4 1 2
+ 
+You can play with all kinds of things in base R such as getting the nth item as a label, or finding all the items currently mapped to the key of 1 and so on.
+ 
+> as.numeric(facgreek)
+[1] 1 4 5 3 4 1 2
+> facgreek[5]
+[1] Beta
+Levels: Alpha Alpha Male Alphabeta Beta Gamma
+> facgreek[as.numeric(facgreek) == 1]
+[1] Alpha Alpha
+ 
+ 
+> as.character(facgreek)
+[1] "Alpha"      "Beta"       "Gamma"      "Alphabeta"  "Beta"       "Alpha"     
+[7] "Alpha Male"
+> as.integer(facgreek)
+[1] 1 4 5 3 4 1 2
+ 
+ 
+Now when plotting, it depends on what you use. Base R comes with the usual plot functions as well as others like lattice and there are packages like ggplot2. Some of these may even convert a vector into a factor internally. In some cases, you may want to tell it to use a factor in a certain way, such as by re-ordering the order of the levels of a factor so the display is graphed in that order.
+ 
+And as I answered another person, some graphing functions allow you to do other kinds of labeling on top of the plot that may meet your needs.
+ 
+I may be the opposite of you as I did not use R much before 2003. ?
+ 
+But seriously, we often are like new users even when we once knew a bit about something. The R from before 2003 (or was it S?) has evolved quite a bit. If, like me, you have used lots of other computer languages in between, then they often blend in your mind as they have overlapping paradigms and methods and of course quirks.
+ 
+And, of course, I sympathize with adjusting from other environments designed for somewhat more specific purposes like Stata as R is more of a general purpose programming language. Often people start with those others and then come to R because they need to be able to do more or just fine-tune things or ?
+ 
+ 
+ 
+From: Anupam Tyagi <anuptyagi at gmail.com> 
+Sent: Thursday, July 13, 2023 2:51 AM
+To: avi.e.gross at gmail.com
+Cc: r-help at r-project.org
+Subject: Re: [R] Variable and value labels
+ 
+Thanks, Avi. By labels I mean human readable descriptions of variables and values of factor variables. In a plot, I want labels to be used for labelling axes on which a factor is plotted, and variable labels for axes names/descriptions in a plot. I may have borrowed the terminology of variable and value labels from Stata software, which I use.
+ 
+I use a lot of packages. So, I have nothing against packages. But for labelling, I sometimes worry that I may get tied to a package for something as basic as assigning labels, and some function/packages may not pick up the labels correctly/well when plotting or displaying results. Maybe I am worried for nothing.
+ 
+I have not used R much after 2003. In the past few months I have begun to use R again with R Studio, mostly for plotting and visualization of data. So, you can think of me as a new user.
+ 
+On Thu, 13 Jul 2023 at 00:14, <avi.e.gross at gmail.com <mailto:avi.e.gross at gmail.com> > wrote:
+Anupam,
+
+Your question, even after looking at other messages, remains a bit unclear.
+
+What do you mean by "labels"? What you mean by variables and values and how
+is that related to factors?
+
+An example or two would be helpful so we can say more than PROBABLY.
+Otherwise, you risk having many people here waste lots of time sending
+answers to questions you did not ask.
+
+And why an insistence on not using packages? If you are doing something for
+a class, sure, you may need to use the basics you were supposedly taught in
+class or a textbook. Otherwise, a good set of packages makes code much
+easier to write and often more reliable. Realistically, quite a bit of what
+some call base R is actually packages deemed useful enough to be included at
+startup and that can change.
+
+If you are new to R, note you can attach arbitrary attributes to a variable
+and you can have things like named lists where some or all the items have
+names as an attribute.
+
+Factors are part of base R and are a completely different concept. You can
+use base R to get or set the base levels of a factor and many other things
+and there are advantages sometimes in using a vector in factor mode than
+plain but also sometimes disadvantages. 
+
+If you ask a more specific and properly explained question, maybe we can
+help you.
+
+Specifically, please tell us how you plan on using your labels. As an
+example, if I make a named list like this:
+
+mylist <- list(pi=3.14, e=2.7, 666)
+
+then I can access all elements as in mylist[[2]] without a name but
+mylist$pi lets me access that item by name and mylist[["e"]] and I can also
+change the current values similarly. But without explaining what you want,
+my explanation likely is not what you need.
+
+But do note that even if you do not USE a package, you can sometimes use it
+indirectly by examining the code for a function you like. If it is primarily
+written in R, you may see how it does something and take a part of the code
+and use it yourself.
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org <mailto:r-help-bounces at r-project.org> > On Behalf Of Anupam Tyagi
+Sent: Tuesday, July 11, 2023 11:49 PM
+To: r-help mailing list <r-help at r-project.org <mailto:r-help at r-project.org> >
+Subject: [R] Variable and value labels
+
+Hello,
+
+is there an easy way to do variable and value labels (for factor variables)
+in base-R, without using a package. If not, what is an easy and good way to
+do labels, using an add-on package.
+
+-- 
+Anupam.
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org <mailto:R-help at r-project.org>  mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Anupam.
+
+	[[alternative HTML version deleted]]
+
+
+From @nupty@g| @end|ng |rom gm@||@com  Fri Jul 14 02:58:53 2023
+From: @nupty@g| @end|ng |rom gm@||@com (Anupam Tyagi)
+Date: Fri, 14 Jul 2023 06:28:53 +0530
+Subject: [R] Variable and value labels
+In-Reply-To: <003601d9b59d$ba876a70$2f963f50$@gmail.com>
+References: <CAFL9eumQ+U63SyzH6dED+yeEo2xFmFNt1ur8K-hjMdSaa+msew@mail.gmail.com>
+ <005e01d9b4f0$ec59d040$c50d70c0$@gmail.com>
+ <CAFL9euk-keAWbHNwvP06zhgQP5JpeixxpvurLnQ+3E_igAv+Jw@mail.gmail.com>
+ <003601d9b59d$ba876a70$2f963f50$@gmail.com>
+Message-ID: <CAFL9eumg3ESy+SERvEWv__44TuyVvNje466cjoBWG_nmTBzn5Q@mail.gmail.com>
+
+Thanks again, Avi. I will read up more on factors.
+
+On Thu, 13 Jul, 2023, 8:51 pm , <avi.e.gross at gmail.com> wrote:
+
+> Anupam,
+>
+>
+>
+> Thanks for explaining you are talking about factors.
+>
+>
+>
+> I see my friend Adrian has pointed out reasons you may want to use a
+> package he built called ?declared? but my answer will be within the regular
+> R domain as you asked.
+>
+>
+>
+> You should read up a bit on factors in a book, not just blindly searching.
+> A factor, loosely speaking started off as a mixture of the original values
+> as characters and a numbered vector referencing them. When you want the
+> original labels, you can see them and when you want the integer indices you
+> can see them.
+>
+>
+>
+> > greek <- c("Alpha", "Beta", "Gamma", "Alphabeta", "Beta", "Alpha",
+> "Alpha Male")
+>
+> > greek
+>
+> [1] "Alpha"      "Beta"       "Gamma"      "Alphabeta"  "Beta"
+> "Alpha"
+>
+> [7] "Alpha Male"
+>
+> >
+>
+> > facgreek <- factor(greek)
+>
+> > facgreek
+>
+> [1] Alpha      Beta       Gamma      Alphabeta  Beta       Alpha
+> Alpha Male
+>
+> Levels: Alpha Alpha Male Alphabeta Beta Gamma
+>
+> >
+>
+> > levels(facgreek)
+>
+> [1] "Alpha"      "Alpha Male" "Alphabeta"  "Beta"       "Gamma"
+>
+> > labels(facgreek)
+>
+> [1] "1" "2" "3" "4" "5" "6" "7"
+>
+> > str(facgreek)
+>
+> Factor w/ 5 levels "Alpha","Alpha Male",..: 1 4 5 3 4 1 2
+>
+> > as.numeric(facgreek)
+>
+> [1] 1 4 5 3 4 1 2
+>
+>
+>
+> You can play with all kinds of things in base R such as getting the nth
+> item as a label, or finding all the items currently mapped to the key of 1
+> and so on.
+>
+>
+>
+> > as.numeric(facgreek)
+>
+> [1] 1 4 5 3 4 1 2
+>
+> > facgreek[5]
+>
+> [1] Beta
+>
+> Levels: Alpha Alpha Male Alphabeta Beta Gamma
+>
+> > facgreek[as.numeric(facgreek) == 1]
+>
+> [1] Alpha Alpha
+>
+>
+>
+>
+>
+> > as.character(facgreek)
+>
+> [1] "Alpha"      "Beta"       "Gamma"      "Alphabeta"  "Beta"       "Alpha"
+>
+> [7] "Alpha Male"
+>
+> > as.integer(facgreek)
+>
+> [1] 1 4 5 3 4 1 2
+>
+>
+>
+>
+>
+> Now when plotting, it depends on what you use. Base R comes with the usual
+> plot functions as well as others like lattice and there are packages like
+> ggplot2. Some of these may even convert a vector into a factor internally.
+> In some cases, you may want to tell it to use a factor in a certain way,
+> such as by re-ordering the order of the levels of a factor so the display
+> is graphed in that order.
+>
+>
+>
+> And as I answered another person, some graphing functions allow you to do
+> other kinds of labeling on top of the plot that may meet your needs.
+>
+>
+>
+> I may be the opposite of you as I did not use R much before 2003. ?
+>
+>
+>
+> But seriously, we often are like new users even when we once knew a bit
+> about something. The R from before 2003 (or was it S?) has evolved quite a
+> bit. If, like me, you have used lots of other computer languages in
+> between, then they often blend in your mind as they have overlapping
+> paradigms and methods and of course quirks.
+>
+>
+>
+> And, of course, I sympathize with adjusting from other environments
+> designed for somewhat more specific purposes like Stata as R is more of a
+> general purpose programming language. Often people start with those others
+> and then come to R because they need to be able to do more or just
+> fine-tune things or ?
+>
+>
+>
+>
+>
+>
+>
+> *From:* Anupam Tyagi <anuptyagi at gmail.com>
+> *Sent:* Thursday, July 13, 2023 2:51 AM
+> *To:* avi.e.gross at gmail.com
+> *Cc:* r-help at r-project.org
+> *Subject:* Re: [R] Variable and value labels
+>
+>
+>
+> Thanks, Avi. By labels I mean human readable descriptions of variables and
+> values of factor variables. In a plot, I want labels to be used
+> for labelling axes on which a factor is plotted, and variable labels for
+> axes names/descriptions in a plot. I may have borrowed the terminology of
+> variable and value labels from Stata software, which I use.
+>
+>
+>
+> I use a lot of packages. So, I have nothing against packages. But for
+> labelling, I sometimes worry that I may get tied to a package for something
+> as basic as assigning labels, and some function/packages may not pick up
+> the labels correctly/well when plotting or displaying results. Maybe I am
+> worried for nothing.
+>
+>
+>
+> I have not used R much after 2003. In the past few months I have begun to
+> use R again with R Studio, mostly for plotting and visualization of data.
+> So, you can think of me as a new user.
+>
+>
+>
+> On Thu, 13 Jul 2023 at 00:14, <avi.e.gross at gmail.com> wrote:
+>
+> Anupam,
+>
+> Your question, even after looking at other messages, remains a bit unclear.
+>
+> What do you mean by "labels"? What you mean by variables and values and how
+> is that related to factors?
+>
+> An example or two would be helpful so we can say more than PROBABLY.
+> Otherwise, you risk having many people here waste lots of time sending
+> answers to questions you did not ask.
+>
+> And why an insistence on not using packages? If you are doing something for
+> a class, sure, you may need to use the basics you were supposedly taught in
+> class or a textbook. Otherwise, a good set of packages makes code much
+> easier to write and often more reliable. Realistically, quite a bit of what
+> some call base R is actually packages deemed useful enough to be included
+> at
+> startup and that can change.
+>
+> If you are new to R, note you can attach arbitrary attributes to a variable
+> and you can have things like named lists where some or all the items have
+> names as an attribute.
+>
+> Factors are part of base R and are a completely different concept. You can
+> use base R to get or set the base levels of a factor and many other things
+> and there are advantages sometimes in using a vector in factor mode than
+> plain but also sometimes disadvantages.
+>
+> If you ask a more specific and properly explained question, maybe we can
+> help you.
+>
+> Specifically, please tell us how you plan on using your labels. As an
+> example, if I make a named list like this:
+>
+> mylist <- list(pi=3.14, e=2.7, 666)
+>
+> then I can access all elements as in mylist[[2]] without a name but
+> mylist$pi lets me access that item by name and mylist[["e"]] and I can also
+> change the current values similarly. But without explaining what you want,
+> my explanation likely is not what you need.
+>
+> But do note that even if you do not USE a package, you can sometimes use it
+> indirectly by examining the code for a function you like. If it is
+> primarily
+> written in R, you may see how it does something and take a part of the code
+> and use it yourself.
+>
+>
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Anupam Tyagi
+> Sent: Tuesday, July 11, 2023 11:49 PM
+> To: r-help mailing list <r-help at r-project.org>
+> Subject: [R] Variable and value labels
+>
+> Hello,
+>
+> is there an easy way to do variable and value labels (for factor variables)
+> in base-R, without using a package. If not, what is an easy and good way to
+> do labels, using an add-on package.
+>
+> --
+> Anupam.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+>
+>
+>
+> --
+>
+> Anupam.
+>
+
+	[[alternative HTML version deleted]]
+
+
