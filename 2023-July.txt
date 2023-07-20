@@ -14344,3 +14344,104 @@ Hadley
 http://hadley.nz
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Jul 19 09:52:46 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 19 Jul 2023 09:52:46 +0200
+Subject: [R] change language  at console
+In-Reply-To: <alpine.LNX.2.11.1504010754190.26540@localhost>
+References: <1538493775.2899949.1427897669877.JavaMail.yahoo@mail.yahoo.com>
+ <alpine.LNX.2.11.1504010754190.26540@localhost>
+Message-ID: <25783.38478.947724.935249@stat.math.ethz.ch>
+
+>>>>> Rich Shepard via R-help 
+>>>>>     on Tue, 18 Jul 2023 10:32:51 -0000 writes:
+
+      > On Wed, 1 Apr 2015, Prof Brian Ripley wrote: 
+      >  I would start by trying LANGUAGE=en , e.g. ? ? ? ? ? ? ? ? ? ? ? ? ? ?
+
+  > More specifically, you can use en_US or en_GB.  Rich
+
+"en_US" actually does not exist -- see below (but "en"
+corresponds to it).
+
+More relevantly, since R 4.2.0  we have
+
+  Sys.setLanguage()
+
+which does slightly more than setting LANGUAGE, notably
+internally using  bindtextdomain() in a useful way, such that
+the "translation cache" (of already translated messages) is flushed;
+It was first considered in response to R's bugzilla issue PR#18055
+  --> https://bugs.r-project.org/bugzilla/show_bug.cgi?id=18055
+
+Note that help(Sys.setLanguage) 's examples
+contain quite interesting R code , for example the following
+(shown with R output here in R 4.3.1 with NLS (:=
+Natural Language Support) enabled {as usual I think}, under
+Linux (Fedora 36):
+
+
+>  ## A show off of translations -- platform (font etc) dependent:
+>  ## The translation languages available for "base" R in this version of R:
+
+>      if(capabilities("NLS")) withAutoprint({
++        langs <- list.files(bindtextdomain("R"),
++                            pattern = "^[a-z]{2}(_[A-Z]{2}|@quot)?$")
++        langs
++        txts <- sapply(setNames(,langs),
++                       function(lang) { Sys.setLanguage(lang)
++                                       gettext("incompatible dimensions", domain="R-stats") })
++        cbind(txts)
++        (nTrans <- length(unique(txts)))
++        (not_translated <- names(txts[txts == txts[["en"]]]))
++      })
+> langs <- list.files(bindtextdomain("R"), pattern = "^[a-z]{2}(_[A-Z]{2}|@quot)?$")
+> langs
+ [1] "da"      "de"      "en"      "en_GB"   "en at quot" "es"      "fa"      "fr"      "it"     
+[10] "ja"      "ko"      "lt"      "nn"      "pl"      "pt_BR"   "ru"      "tr"      "zh_CN"  
+[19] "zh_TW"  
+> txts <- sapply(setNames(, langs), function(lang) {
++     Sys.setLanguage(lang)
++     gettext("incompatible dimensions", domain = "R-stats")
++ })
+> cbind(txts)
+        txts                            
+da      "incompatible dimensions"       
+de      "inkompatible Dimensionen"      
+en      "incompatible dimensions"       
+en_GB   "incompatible dimensions"       
+en at quot "incompatible dimensions"       
+es      "incompatible dimensions"       
+fa      "incompatible dimensions"       
+fr      "dimensions incompatibles"      
+it      "dimensioni incompatibili"      
+ja      " ???????? "            
+ko      "incompatible dimensions"       
+lt      "nesuderinami matavimo skai?iai"
+nn      "incompatible dimensions"       
+pl      "niezgodne wymiary"             
+pt_BR   "dimens?es incompat?veis"       
+ru      "????????????? ???????????"     
+tr      "uyumsuz boyutlar"              
+zh_CN   "?????"                    
+zh_TW   "?????"                    
+> (nTrans <- length(unique(txts)))
+[1] 12
+> (not_translated <- names(txts[txts == txts[["en"]]]))
+[1] "da"      "en"      "en_GB"   "en at quot" "es"      "fa"      "ko"      "nn"     
+
+---------------
+
+In the original NEWS for R 4.2.0 ,
+Sys.setLanguage() was labeled as "partly experimental"  but I
+think in the mean time has shown some stability  and I'd
+recommend its use {such that we find out if should be made even
+more reliable}.
+
+Martin
+
+--
+Martin Maechler
+ETH Zurich  and  R Core team
+
+
