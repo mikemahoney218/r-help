@@ -17390,3 +17390,145 @@ https://stat.ethz.ch/mailman/listinfo/r-help
 PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
+From kev|n @end|ng |rom zembower@org  Mon Jul 31 22:11:43 2023
+From: kev|n @end|ng |rom zembower@org (Kevin Zembower)
+Date: Mon, 31 Jul 2023 20:11:43 +0000
+Subject: [R] Suggestions for hierarchical row names?
+References: <43f8cec8-482d-33bd-da16-0a0b8f4de78e@zembower.org>
+Message-ID: <01000189ad93f84e-a4bb87a8-fc5d-41a8-8fe4-68fd33dd8771-000000@email.amazonses.com>
+
+Hello,
+
+On 28 June I asked a question with the subject "Processing a 
+hierarchical string name". Folks here were very generous in helping me, 
+and I'm very pleased with the solutions. Now, I'm asking about a related 
+topic, and I have both technical and stylistic questions.
+
+I'm still working on my US census report for my neighborhood, and have 
+tables with labels like this:
+
+ > p16_tab[,1]
+# A tibble: 9 ? 1
+   label 
+
+   <chr> 
+
+1 " !!Total:" 
+
+2 " !!Total:!!Family households:" 
+
+3 " !!Total:!!Family households:!!Married couple family" 
+
+4 " !!Total:!!Family households:!!Other family:" 
+
+5 " !!Total:!!Family households:!!Other family:!!Male householder, no 
+spouse present"
+6 " !!Total:!!Family households:!!Other family:!!Female householder, no 
+spouse present"
+7 " !!Total:!!Nonfamily households:" 
+
+8 " !!Total:!!Nonfamily households:!!Householder living alone" 
+
+9 " !!Total:!!Nonfamily households:!!Householder not living alone" 
+
+ >
+
+A sample table can be obtained with:
+library(tidyverse)
+library(tidycensus)
+
+get_us <- function(table, summary_var) {
+     get_decennial(
+         geography = "us",
+         table = table,
+         cache_table = TRUE,
+         year = 2020,
+         sumfile = "dhc",
+         summary_var = summary_var) %>%
+         mutate(GEOID = NULL,
+                NAME = NULL,
+                "US_pc" = value / summary_value * 100,
+                value = NULL,
+                summary_value = NULL)
+
+tableID <- "P16"
+summary_var <- "P16_001N"
+
+(us_P16 <- get_us(tableID, summary_var))
+
+labels <- load_variables(2020, "dhc", cache = TRUE)
+
+(p16_tab <- us_P16 %>%
+      left_join(labels, by = c("variable" = "name")) %>%
+      mutate(variable = NULL, concept = NULL) %>%
+      relocate(label)
+)
+
+Initially, I thought that I would indent the lines by a single space for 
+every piece of text starting with "!!" and ending with ":" except for 
+the last one. This works fine, if the final output was just ASCII text.
+
+However, I'm trying to output my report in LaTeX, using sweave and 
+knitr/kable. When I output my report using spaces, LaTeX deletes them. I 
+then tried replacing the spaces with "\hspace{1em}":
+
+p16_tab$label <- p16_tab$label %>%
+     str_replace("^ !!", "") %>% #Drop the leading ' !!'
+     str_replace_all("[^!]*!!", "\\\\hspace{1em}")
+
+kable(p16_tab, format = "latex", booktabs = TRUE,
+       col.names = c("label", "United States %-age")
+       )
+
+This results in the "\" of "\hspace" being replace with 
+"\textbackslash{}hspace".
+
+I also thought that there was a way to suppress formatting in 
+kableExtra, but I can't find it now. Regardless, I remember it didn't 
+work the way I wanted it to, either.
+
+kableExtra has the add_indent() function, that looks promising:
+
+(p16_tab <- us_P16 %>%
+      left_join(labels, by = c("variable" = "name")) %>%
+      mutate(variable = NULL, concept = NULL) %>%
+      relocate(label)
+)
+
+p16_tab$label <- p16_tab$label %>%
+     str_replace("^ !!", "") %>% #Drop the leading ' !!'
+     str_replace_all("[^!]*!!", "") #Replace each !!.* with nothing
+
+Unfortunately, this doesn't work:
+
+kable(p16_tab, format = "latex", booktabs = TRUE,
+       col.names = c("label", "United States %-age")
+       ) %>%
+       add_indent(c(2:9), level_of_indent = c(1,2,2,3,3,1,2,2))
+
+and I have to do this:
+
+kable(p16_tab, format = "latex", booktabs = TRUE,
+       col.names = c("label", "United States %-age")
+       ) %>%
+     add_indent(c(2,7), level_of_indent = 1) %>%
+     add_indent(c(3,4,8,9), level_of_indent = 2) %>%
+     add_indent(c(5,6), level_of_indent = 3)
+
+However, this is manual, and therefore not really satisfactory.
+
+I have two question:
+
+1. If I want to use spaces, and would like a programmatic solution 
+(versus a manual one), can this be done?
+
+2. Stylistically, is there a better way to represent the nesting of 
+lower rows in a table below upper rows? If I don't fixate on using 
+spaces, is there anther way?
+
+Thanks for your suggestions and advice.
+
+-Kevin
+
+
+
