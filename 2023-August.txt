@@ -6603,3 +6603,345 @@ tel: 1-877-GKX-GROUP
 email: ggrothendieck at gmail.com
 
 
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Tue Aug  8 04:31:48 2023
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Mon, 7 Aug 2023 22:31:48 -0400
+Subject: [R] Merge with closest (not equal) time stamps
+Message-ID: <IA1P223MB04997367CEB9FA4936AF5405FA0DA@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+
+
+I have two dataframes, each with a column for timestamp.  I want to
+merge the two dataframes such that each row from first dataframe
+is matched with the row in the second dataframe with most recent but
+preceding timestamp. Here is an example.
+
+option.trades <- data.frame(timestamp = as.POSIXct(c("2023-08-07 10:23:22", "2023-08-07 10:25:33", "2023-08-07 10:28:41")), option.price = c(2.5, 2.7, 1.8))
+
+stock.trades <- data.frame(timestamp = as.POSIXct(c("2023-08-07 10:23:21", "2023-08-07 10:23:34", "2023-08-07 10:24:57", "2023-08-07 10:28:37", "2023-08-07 10:29:01")), stock.price = c(102.2, 102.9, 103.1, 101.8, 101.7))
+
+stock.trades <- stock.trades[order(stock.trades$timestamp),]
+
+library(plyr)
+mystock.prices <- ldply(option.trades$timestamp, function(tstamp) tail(subset(stock.trades, timestamp <= tstamp), 1))
+names(mystock.prices)[1] <- "stock.timestamp"
+myres <- cbind(option.trades, mystock.prices)
+
+This method works. But for large dataframes, it is very slow.  Is there
+a way to speed up the merge?
+
+Thanks,
+Naresh
+
+
+From er|cjberger @end|ng |rom gm@||@com  Tue Aug  8 11:39:57 2023
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Tue, 8 Aug 2023 12:39:57 +0300
+Subject: [R] Merge with closest (not equal) time stamps
+In-Reply-To: <IA1P223MB04997367CEB9FA4936AF5405FA0DA@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+References: <IA1P223MB04997367CEB9FA4936AF5405FA0DA@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+Message-ID: <CAGgJW76gu5ZFeCs5V+C6yQNqCsOd1=j+Mq+_+JhVrBb8xU2r4Q@mail.gmail.com>
+
+Hi Naresh,
+Perhaps the below is faster than your approach
+
+library(dplyr)
+library(tidyr)
+merge(option.trades, stock.trades, by="timestamp", all=TRUE) |>
+  dplyr::arrange(timestamp) |>
+  dplyr::mutate(stock.timestamp =
+as.POSIXct(ifelse(is.na(option.price), timestamp, NA))) |>
+  tidyr::fill(stock.price, stock.timestamp) |>
+  dplyr::filter(!is.na(option.price)) |>
+  dplyr::select(1,2,4,3) ->
+  myres2
+
+identical(myres, myres2)  ## TRUE
+
+
+On Tue, Aug 8, 2023 at 5:32?AM Naresh Gurbuxani
+<naresh_gurbuxani at hotmail.com> wrote:
+>
+>
+> I have two dataframes, each with a column for timestamp.  I want to
+> merge the two dataframes such that each row from first dataframe
+> is matched with the row in the second dataframe with most recent but
+> preceding timestamp. Here is an example.
+>
+> option.trades <- data.frame(timestamp = as.POSIXct(c("2023-08-07 10:23:22", "2023-08-07 10:25:33", "2023-08-07 10:28:41")), option.price = c(2.5, 2.7, 1.8))
+>
+> stock.trades <- data.frame(timestamp = as.POSIXct(c("2023-08-07 10:23:21", "2023-08-07 10:23:34", "2023-08-07 10:24:57", "2023-08-07 10:28:37", "2023-08-07 10:29:01")), stock.price = c(102.2, 102.9, 103.1, 101.8, 101.7))
+>
+> stock.trades <- stock.trades[order(stock.trades$timestamp),]
+>
+> library(plyr)
+> mystock.prices <- ldply(option.trades$timestamp, function(tstamp) tail(subset(stock.trades, timestamp <= tstamp), 1))
+> names(mystock.prices)[1] <- "stock.timestamp"
+> myres <- cbind(option.trades, mystock.prices)
+>
+> This method works. But for large dataframes, it is very slow.  Is there
+> a way to speed up the merge?
+>
+> Thanks,
+> Naresh
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Tue Aug  8 13:12:32 2023
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Tue, 8 Aug 2023 07:12:32 -0400
+Subject: [R] Merge with closest (not equal) time stamps
+In-Reply-To: <CAGgJW76gu5ZFeCs5V+C6yQNqCsOd1=j+Mq+_+JhVrBb8xU2r4Q@mail.gmail.com>
+References: <IA1P223MB04997367CEB9FA4936AF5405FA0DA@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+ <CAGgJW76gu5ZFeCs5V+C6yQNqCsOd1=j+Mq+_+JhVrBb8xU2r4Q@mail.gmail.com>
+Message-ID: <IA1P223MB04997267CA7F5424DEE13496FA0DA@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+
+I was able to adapt your solution using packages with which I am more familiar. 
+
+myres2 <- merge(option.trades, stock.trades, by = "timestamp", all =
+TRUE)
+
+myres2[,"stock.timestamp"] <- ifelse(is.na(myres2$stock.price), NA,
+myres2$timestamp)
+
+myres2$stock.timestamp <- as.POSIXct(myres2$stock.timestamp, origin =
+"1970-01-01")
+
+library(zoo)
+myres2$stock.price <- na.locf(myres2$stock.price)
+myres2$stock.timestamp <- na.locf(myres2$stock.timestamp)
+myres2 <- myres2[!is.na(myres2$option.price),]
+row.names(myres2) <- NULL
+
+all.equal(myres, myres2[,c(1, 2, 4, 3)]) # TRUE
+
+This calculation is indeed faster.  
+
+Thanks for your help,
+Naresh
+
+> On Aug 8, 2023, at 5:39 AM, Eric Berger <ericjberger at gmail.com> wrote:
+> 
+> Hi Naresh,
+> Perhaps the below is faster than your approach
+> 
+> library(dplyr)
+> library(tidyr)
+> merge(option.trades, stock.trades, by="timestamp", all=TRUE) |>
+>  dplyr::arrange(timestamp) |>
+>  dplyr::mutate(stock.timestamp =
+> as.POSIXct(ifelse(is.na(option.price), timestamp, NA))) |>
+>  tidyr::fill(stock.price, stock.timestamp) |>
+>  dplyr::filter(!is.na(option.price)) |>
+>  dplyr::select(1,2,4,3) ->
+>  myres2
+> 
+> identical(myres, myres2)  ## TRUE
+> 
+> 
+> On Tue, Aug 8, 2023 at 5:32?AM Naresh Gurbuxani
+> <naresh_gurbuxani at hotmail.com> wrote:
+>> 
+>> 
+>> I have two dataframes, each with a column for timestamp.  I want to
+>> merge the two dataframes such that each row from first dataframe
+>> is matched with the row in the second dataframe with most recent but
+>> preceding timestamp. Here is an example.
+>> 
+>> option.trades <- data.frame(timestamp = as.POSIXct(c("2023-08-07 10:23:22", "2023-08-07 10:25:33", "2023-08-07 10:28:41")), option.price = c(2.5, 2.7, 1.8))
+>> 
+>> stock.trades <- data.frame(timestamp = as.POSIXct(c("2023-08-07 10:23:21", "2023-08-07 10:23:34", "2023-08-07 10:24:57", "2023-08-07 10:28:37", "2023-08-07 10:29:01")), stock.price = c(102.2, 102.9, 103.1, 101.8, 101.7))
+>> 
+>> stock.trades <- stock.trades[order(stock.trades$timestamp),]
+>> 
+>> library(plyr)
+>> mystock.prices <- ldply(option.trades$timestamp, function(tstamp) tail(subset(stock.trades, timestamp <= tstamp), 1))
+>> names(mystock.prices)[1] <- "stock.timestamp"
+>> myres <- cbind(option.trades, mystock.prices)
+>> 
+>> This method works. But for large dataframes, it is very slow.  Is there
+>> a way to speed up the merge?
+>> 
+>> Thanks,
+>> Naresh
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From e@ @end|ng |rom enr|co@chum@nn@net  Tue Aug  8 13:34:17 2023
+From: e@ @end|ng |rom enr|co@chum@nn@net (Enrico Schumann)
+Date: Tue, 08 Aug 2023 13:34:17 +0200
+Subject: [R] Merge with closest (not equal) time stamps
+In-Reply-To: <IA1P223MB04997367CEB9FA4936AF5405FA0DA@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+ (Naresh Gurbuxani's message of "Mon, 7 Aug 2023 22:31:48 -0400")
+References: <IA1P223MB04997367CEB9FA4936AF5405FA0DA@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+Message-ID: <87fs4t7op2.fsf@enricoschumann.net>
+
+On Mon, 07 Aug 2023, Naresh Gurbuxani writes:
+
+> I have two dataframes, each with a column for timestamp.  I want to
+> merge the two dataframes such that each row from first dataframe
+> is matched with the row in the second dataframe with most recent but
+> preceding timestamp. Here is an example.
+>
+> option.trades <- data.frame(timestamp = as.POSIXct(c("2023-08-07 10:23:22", "2023-08-07 10:25:33", "2023-08-07 10:28:41")), option.price = c(2.5, 2.7, 1.8))
+>
+> stock.trades <- data.frame(timestamp =
+> as.POSIXct(c("2023-08-07 10:23:21", "2023-08-07
+> 10:23:34", "2023-08-07 10:24:57", "2023-08-07
+> 10:28:37", "2023-08-07 10:29:01")), stock.price =
+> c(102.2, 102.9, 103.1, 101.8, 101.7))
+>
+> stock.trades <- stock.trades[order(stock.trades$timestamp),]
+>
+> library(plyr)
+> mystock.prices <- ldply(option.trades$timestamp, function(tstamp) tail(subset(stock.trades, timestamp <= tstamp), 1))
+> names(mystock.prices)[1] <- "stock.timestamp"
+> myres <- cbind(option.trades, mystock.prices)
+>
+> This method works. But for large dataframes, it is very slow.  Is there
+> a way to speed up the merge?
+>
+> Thanks,
+> Naresh
+>
+
+If the timestamps are sorted (or you can sort them),
+function ?findInterval might be helpful:
+
+    i <- findInterval(option.trades$timestamp, stock.trades$timestamp)
+    cbind(option.trades, stock.trades[i, ])
+    ##             timestamp option.price           timestamp stock.price
+    ## 1 2023-08-07 10:23:22          2.5 2023-08-07 10:23:21       102.2
+    ## 3 2023-08-07 10:25:33          2.7 2023-08-07 10:24:57       103.1
+    ## 4 2023-08-07 10:28:41          1.8 2023-08-07 10:28:37       101.8
+
+
+
+-- 
+Enrico Schumann
+Lucerne, Switzerland
+http://enricoschumann.net
+
+
+From j@gu @end|ng |rom @@p@com  Tue Aug  8 12:39:15 2023
+From: j@gu @end|ng |rom @@p@com (Gu, Jay)
+Date: Tue, 8 Aug 2023 10:39:15 +0000
+Subject: [R] R library highcharter function highchart() execute with
+ exception the apparmor read denied for /etc/passwd and /etc/group
+Message-ID: <GV1PR02MB853963D1CFD50119AEC92D6E810DA@GV1PR02MB8539.eurprd02.prod.outlook.com>
+
+Dears,
+
+
+I use the R library highcharter with ubuntu 18.04 and R 3.6.3. Recently, I upgraded to ubuntu 20.04 and R 4.3.1. And the version of library highcharter are both 0.9.4. Then I execute the function highchart() it always throw the exception that child process has died. And I checked the /var/log/kern.log and found below error:
+
+Aug 7 08:37:50 ip-172-31-27-249 kernel: [2251703.494866] audit: type=1400 audit(1691397470.399:739): apparmor="DENIED" operation="open" profile="managedr-profile" name="/etc/passwd" pid=159930 comm="R" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
+Aug 7 08:37:50 ip-172-31-27-249 kernel: [2251703.494871] audit: type=1400 audit(1691397470.399:740): apparmor="DENIED" operation="open" profile="managedr-profile" name="/etc/group" pid=159930 comm="R" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
+
+If I add below two lines in my apparmor profile it will resolve this issue. But I don't like to expose these two files to end user as it has potential risk.
+/etc/passwd r,
+/etc/group r,
+
+I'd like to know if there is any solution to fix it without giving the read access for these two files /etc/passwd and /etc/group in the apparmor profile as I did with ubuntu 18.04 and R 3.6.3. Thanks!
+Best Regards!
+Jay Gu
+
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue Aug  8 16:57:13 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 8 Aug 2023 07:57:13 -0700
+Subject: [R] R library highcharter function highchart() execute with
+ exception the apparmor read denied for /etc/passwd and /etc/group
+In-Reply-To: <GV1PR02MB853963D1CFD50119AEC92D6E810DA@GV1PR02MB8539.eurprd02.prod.outlook.com>
+References: <GV1PR02MB853963D1CFD50119AEC92D6E810DA@GV1PR02MB8539.eurprd02.prod.outlook.com>
+Message-ID: <CAGxFJbSZ6h20o3fR=rKHp4+3wf-qfLeBxqC1JgcPOzrDv2YNow@mail.gmail.com>
+
+If you don't get a satisfactory answer here in due course, you can try
+contacting the package maintainer, who you can find via ?maintainer.
+
+Cheers,
+Bert
+
+On Tue, Aug 8, 2023 at 7:50?AM Gu, Jay via R-help <r-help at r-project.org> wrote:
+>
+> Dears,
+>
+>
+> I use the R library highcharter with ubuntu 18.04 and R 3.6.3. Recently, I upgraded to ubuntu 20.04 and R 4.3.1. And the version of library highcharter are both 0.9.4. Then I execute the function highchart() it always throw the exception that child process has died. And I checked the /var/log/kern.log and found below error:
+>
+> Aug 7 08:37:50 ip-172-31-27-249 kernel: [2251703.494866] audit: type=1400 audit(1691397470.399:739): apparmor="DENIED" operation="open" profile="managedr-profile" name="/etc/passwd" pid=159930 comm="R" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
+> Aug 7 08:37:50 ip-172-31-27-249 kernel: [2251703.494871] audit: type=1400 audit(1691397470.399:740): apparmor="DENIED" operation="open" profile="managedr-profile" name="/etc/group" pid=159930 comm="R" requested_mask="r" denied_mask="r" fsuid=1000 ouid=0
+>
+> If I add below two lines in my apparmor profile it will resolve this issue. But I don't like to expose these two files to end user as it has potential risk.
+> /etc/passwd r,
+> /etc/group r,
+>
+> I'd like to know if there is any solution to fix it without giving the read access for these two files /etc/passwd and /etc/group in the apparmor profile as I did with ubuntu 18.04 and R 3.6.3. Thanks!
+> Best Regards!
+> Jay Gu
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Aug  8 21:15:06 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Tue, 8 Aug 2023 22:15:06 +0300
+Subject: [R] R library highcharter function highchart() execute with
+ exception the apparmor read denied for /etc/passwd and /etc/group
+In-Reply-To: <GV1PR02MB853963D1CFD50119AEC92D6E810DA@GV1PR02MB8539.eurprd02.prod.outlook.com>
+References: <GV1PR02MB853963D1CFD50119AEC92D6E810DA@GV1PR02MB8539.eurprd02.prod.outlook.com>
+Message-ID: <20230808221506.2898f2c2@Tarkus>
+
+On Tue, 8 Aug 2023 10:39:15 +0000
+"Gu, Jay via R-help" <r-help at r-project.org> wrote:
+
+>  Then I execute the function highchart() it always throw the
+> exception that child process has died. And I checked the
+> /var/log/kern.log and found below error:
+> 
+> Aug 7 08:37:50 ip-172-31-27-249 kernel: [2251703.494866] audit:
+> type=1400 audit(1691397470.399:739): apparmor="DENIED"
+> operation="open" profile="managedr-profile" name="/etc/passwd"
+> pid=159930 comm="R" requested_mask="r" denied_mask="r" fsuid=1000
+> ouid=0
+
+It's not that terrible to let a program access /etc/passwd. It does
+contain the list of the users, which is a privacy risk, true, but at
+least the passwords are safely hashed and hidden away in /etc/shadow.
+
+Searching the CRAN mirror on GitHub for "/etc/passwd" gives quite a few
+hits, and so does "getpwuid". There are likely other POSIX functions
+that read /etc/passwd too. Any of highcharter's 68 dependencies could
+be trying to read /etc/passwd directly or indirectly. (Could be fs,
+could be some other package.)
+
+If you run R -d gdb and let it crash, what does the backtrace say?
+
+I think it's likely that the /etc/passwd access won't be easy to get
+rid of, so if you don't want to give R access to it, you might want to
+run it inside a container or a virtual machine.
+
+-- 
+Best regards,
+Ivan
+
+
