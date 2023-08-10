@@ -6945,3 +6945,286 @@ Best regards,
 Ivan
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Aug  9 08:23:15 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 9 Aug 2023 09:23:15 +0300
+Subject: [R] R library highcharter function highchart() execute with
+ exception the apparmor read denied for /etc/passwd and /etc/group
+In-Reply-To: <AS8PR02MB85411682C9BA7727539235F78112A@AS8PR02MB8541.eurprd02.prod.outlook.com>
+References: <GV1PR02MB853963D1CFD50119AEC92D6E810DA@GV1PR02MB8539.eurprd02.prod.outlook.com>
+ <20230808221506.2898f2c2@Tarkus>
+ <AS8PR02MB85411682C9BA7727539235F78112A@AS8PR02MB8541.eurprd02.prod.outlook.com>
+Message-ID: <20230809092315.7bd22548@Tarkus>
+
+On Wed, 9 Aug 2023 01:13:40 +0000
+"Gu, Jay" <j.gu at sap.com> wrote:
+
+> I'm running the R within docker container.
+
+In that case (depending on the way the container is set up, of course),
+your /etc/passwd shouldn't even be a privacy concern. It's most likely
+identical that in other containers running R. You can read it yourself
+(either by getting a separate shell inside the container or by running
+readLines("/etc/passwd")) and check for identifying information. There
+should be no harm in letting an R package read it.
+
+If you are curious to know which part is trying to access it, we still
+need a backtrace at the point where AppArmor crashes the process,
+either from a core file or from a live process. (Other techniques are
+fine too, but setting conditional breakpoints on open() and openat() is
+more involved.)
+
+-- 
+Best regards,
+Ivan
+
+
+From j@gu @end|ng |rom @@p@com  Wed Aug  9 03:13:40 2023
+From: j@gu @end|ng |rom @@p@com (Gu, Jay)
+Date: Wed, 9 Aug 2023 01:13:40 +0000
+Subject: [R] R library highcharter function highchart() execute with
+ exception the apparmor read denied for /etc/passwd and /etc/group
+In-Reply-To: <20230808221506.2898f2c2@Tarkus>
+References: <GV1PR02MB853963D1CFD50119AEC92D6E810DA@GV1PR02MB8539.eurprd02.prod.outlook.com>
+ <20230808221506.2898f2c2@Tarkus>
+Message-ID: <AS8PR02MB85411682C9BA7727539235F78112A@AS8PR02MB8541.eurprd02.prod.outlook.com>
+
+Hi Ivan,
+
+I'm running the R within docker container. Do you have any idea about it? Thanks!
+
+
+Best Regards!
+Jay Gu
+
+-----Original Message-----
+From: Ivan Krylov <krylov.r00t at gmail.com> 
+Sent: Wednesday, August 9, 2023 3:15 AM
+To: Gu, Jay via R-help <r-help at r-project.org>
+Cc: Gu, Jay <j.gu at sap.com>
+Subject: Re: [R] R library highcharter function highchart() execute with exception the apparmor read denied for /etc/passwd and /etc/group
+
+[You don't often get email from krylov.r00t at gmail.com. Learn why this is important at https://aka.ms/LearnAboutSenderIdentification ]
+
+On Tue, 8 Aug 2023 10:39:15 +0000
+"Gu, Jay via R-help" <r-help at r-project.org> wrote:
+
+>  Then I execute the function highchart() it always throw the
+> exception that child process has died. And I checked the
+> /var/log/kern.log and found below error:
+>
+> Aug 7 08:37:50 ip-172-31-27-249 kernel: [2251703.494866] audit:
+> type=1400 audit(1691397470.399:739): apparmor="DENIED"
+> operation="open" profile="managedr-profile" name="/etc/passwd"
+> pid=159930 comm="R" requested_mask="r" denied_mask="r" fsuid=1000
+> ouid=0
+
+It's not that terrible to let a program access /etc/passwd. It does
+contain the list of the users, which is a privacy risk, true, but at
+least the passwords are safely hashed and hidden away in /etc/shadow.
+
+Searching the CRAN mirror on GitHub for "/etc/passwd" gives quite a few
+hits, and so does "getpwuid". There are likely other POSIX functions
+that read /etc/passwd too. Any of highcharter's 68 dependencies could
+be trying to read /etc/passwd directly or indirectly. (Could be fs,
+could be some other package.)
+
+If you run R -d gdb and let it crash, what does the backtrace say?
+
+I think it's likely that the /etc/passwd access won't be easy to get
+rid of, so if you don't want to give R access to it, you might want to
+run it inside a container or a virtual machine.
+
+--
+Best regards,
+Ivan
+
+
+From h@w|ckh@m @end|ng |rom gm@||@com  Wed Aug  9 14:39:50 2023
+From: h@w|ckh@m @end|ng |rom gm@||@com (Hadley Wickham)
+Date: Wed, 9 Aug 2023 07:39:50 -0500
+Subject: [R] Merge with closest (not equal) time stamps
+In-Reply-To: <IA1P223MB04997367CEB9FA4936AF5405FA0DA@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+References: <IA1P223MB04997367CEB9FA4936AF5405FA0DA@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+Message-ID: <CABdHhvF8dbDdciF=y-0YPZiEdHxBb6TtN5Oni0=a2gvK7TSZgw@mail.gmail.com>
+
+It sounds like you might want a rolling join, e.g.
+https://dplyr.tidyverse.org/reference/join_by.html#rolling-joins.
+
+(And data.table has similar functionality which inspired dplyr)
+
+Hadley
+
+On Mon, Aug 7, 2023 at 9:32?PM Naresh Gurbuxani
+<naresh_gurbuxani at hotmail.com> wrote:
+>
+>
+> I have two dataframes, each with a column for timestamp.  I want to
+> merge the two dataframes such that each row from first dataframe
+> is matched with the row in the second dataframe with most recent but
+> preceding timestamp. Here is an example.
+>
+> option.trades <- data.frame(timestamp = as.POSIXct(c("2023-08-07 10:23:22", "2023-08-07 10:25:33", "2023-08-07 10:28:41")), option.price = c(2.5, 2.7, 1.8))
+>
+> stock.trades <- data.frame(timestamp = as.POSIXct(c("2023-08-07 10:23:21", "2023-08-07 10:23:34", "2023-08-07 10:24:57", "2023-08-07 10:28:37", "2023-08-07 10:29:01")), stock.price = c(102.2, 102.9, 103.1, 101.8, 101.7))
+>
+> stock.trades <- stock.trades[order(stock.trades$timestamp),]
+>
+> library(plyr)
+> mystock.prices <- ldply(option.trades$timestamp, function(tstamp) tail(subset(stock.trades, timestamp <= tstamp), 1))
+> names(mystock.prices)[1] <- "stock.timestamp"
+> myres <- cbind(option.trades, mystock.prices)
+>
+> This method works. But for large dataframes, it is very slow.  Is there
+> a way to speed up the merge?
+>
+> Thanks,
+> Naresh
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+http://hadley.nz
+
+
+From nov|y@nto @end|ng |rom omeg@re@e@rch@|d  Wed Aug  9 06:30:21 2023
+From: nov|y@nto @end|ng |rom omeg@re@e@rch@|d (Andreas Noviyanto)
+Date: Wed, 09 Aug 2023 04:30:21 +0000
+Subject: [R] unused argument(s) (Header = 1) help!
+In-Reply-To: <<65B70EC50BAE479B9AE0504F5088B6D4@Gandalf>>
+References: <<65B70EC50BAE479B9AE0504F5088B6D4@Gandalf>>
+Message-ID: <emc7fd90c7-4c99-493d-933b-b5565087fd68@bdf170ac.com>
+
+Dear Daniel,
+
+I was use this script to calculate replicateBE with R software, its 
+worked. when i use the same script with similar data (xlsx) i got error 
+messages like below, do you have any suggest? thanks anyway
+my script:
+library(replicateBE)
+path.in  <- "Z:/Personil Omega"
+path.out <-  path.in
+method.A(path.in=path.in, path.out=path.out, file="lans",
+          set="01", ext="xlsx", header=1, ola=TRUE)
+method.A(path.in=path.in, path.out=path.out, file="lans",
+     set="02", ext="xlsx", header=1)
+ABE(path.in=path.in, path.out=path.out, file="lans",
+     set="01", ext="xlsx", header=1)
+
+ABE(path.in=path.in, path.out=path.out, file="lans",
+     set="02", ext="xlsx", header=1)
+
+result:
+ > library(replicateBE)
+ > path.in  <- "Z:/Personil Omega"
+ > path.out <- path.in
+ > method.A(path.in=path.in, path.out=path.out, file="lans",
++          set="01", ext="xlsx", header=1, ola=TRUE)
+Error in method.A(path.in = path.in, path.out = path.out, file = "lans", 
+  :
+   unused argument (header = 1)
+ > method.A(path.in=path.in, path.out=path.out, file="lans",
++     set="02", ext="xlsx", header=1)
+Error in method.A(path.in = path.in, path.out = path.out, file = "lans", 
+  :
+   unused argument (header = 1)
+ > ABE(path.in=path.in, path.out=path.out, file="lans",
++     set="01", ext="xlsx", header=1)
+Error in ABE(path.in = path.in, path.out = path.out, file = "lans",  :
+   unused argument (header = 1)
+ > ABE(path.in=path.in, path.out=path.out, file="lans",
++     set="02", ext="xlsx", header=1)
+Error in ABE(path.in = path.in, path.out = path.out, file = "lans",  :
+   unused argument (header = 1)
+
+
+
+Warm Regards,
+
+Andreas
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Wed Aug  9 18:26:52 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Wed, 9 Aug 2023 17:26:52 +0100
+Subject: [R] unused argument(s) (Header = 1) help!
+In-Reply-To: <emc7fd90c7-4c99-493d-933b-b5565087fd68@bdf170ac.com>
+References: <<65B70EC50BAE479B9AE0504F5088B6D4@Gandalf>
+ <emc7fd90c7-4c99-493d-933b-b5565087fd68@bdf170ac.com>
+Message-ID: <46b459ef-802c-fd1a-ecee-ebae4986316e@sapo.pt>
+
+?s 05:30 de 09/08/2023, Andreas Noviyanto escreveu:
+> Dear Daniel,
+> 
+> I was use this script to calculate replicateBE with R software, its
+> worked. when i use the same script with similar data (xlsx) i got error
+> messages like below, do you have any suggest? thanks anyway
+> my script:
+> library(replicateBE)
+> path.in  <- "Z:/Personil Omega"
+> path.out <-  path.in
+> method.A(path.in=path.in, path.out=path.out, file="lans",
+>            set="01", ext="xlsx", header=1, ola=TRUE)
+> method.A(path.in=path.in, path.out=path.out, file="lans",
+>       set="02", ext="xlsx", header=1)
+> ABE(path.in=path.in, path.out=path.out, file="lans",
+>       set="01", ext="xlsx", header=1)
+> 
+> ABE(path.in=path.in, path.out=path.out, file="lans",
+>       set="02", ext="xlsx", header=1)
+> 
+> result:
+>   > library(replicateBE)
+>   > path.in  <- "Z:/Personil Omega"
+>   > path.out <- path.in
+>   > method.A(path.in=path.in, path.out=path.out, file="lans",
+> +          set="01", ext="xlsx", header=1, ola=TRUE)
+> Error in method.A(path.in = path.in, path.out = path.out, file = "lans",
+>    :
+>     unused argument (header = 1)
+>   > method.A(path.in=path.in, path.out=path.out, file="lans",
+> +     set="02", ext="xlsx", header=1)
+> Error in method.A(path.in = path.in, path.out = path.out, file = "lans",
+>    :
+>     unused argument (header = 1)
+>   > ABE(path.in=path.in, path.out=path.out, file="lans",
+> +     set="01", ext="xlsx", header=1)
+> Error in ABE(path.in = path.in, path.out = path.out, file = "lans",  :
+>     unused argument (header = 1)
+>   > ABE(path.in=path.in, path.out=path.out, file="lans",
+> +     set="02", ext="xlsx", header=1)
+> Error in ABE(path.in = path.in, path.out = path.out, file = "lans",  :
+>     unused argument (header = 1)
+> 
+> 
+> 
+> Warm Regards,
+> 
+> Andreas
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+That error message means that there is no argument 'header' to function 
+method.A.
+Simply remove it and you should be fine.
+
+Hope this helps,
+
+Rui Barradas
+
+
