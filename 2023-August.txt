@@ -9691,3 +9691,341 @@ On 2023-08-13 15:28, Hans W wrote:
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From e@ @end|ng |rom enr|co@chum@nn@net  Mon Aug 14 08:08:29 2023
+From: e@ @end|ng |rom enr|co@chum@nn@net (Enrico Schumann)
+Date: Mon, 14 Aug 2023 08:08:29 +0200
+Subject: [R] Noisy objective functions
+In-Reply-To: <CAML4n3NEdWX8841d=i-0bPURvgkpjs2cMBeX2WcVyu0=U09A8A@mail.gmail.com>
+ (Hans W.'s message of "Sun, 13 Aug 2023 21:28:19 +0200")
+References: <CAML4n3NEdWX8841d=i-0bPURvgkpjs2cMBeX2WcVyu0=U09A8A@mail.gmail.com>
+Message-ID: <87y1iew3z6.fsf@aldus>
+
+On Sun, 13 Aug 2023, Hans W writes:
+
+> While working on 'random walk' applications, I got interested in
+> optimizing noisy objective functions. As an (artificial) example, the
+> following is the Rosenbrock function, where Gaussian noise of standard
+> deviation `sd = 0.01` is added to the function value.
+>
+>     fn <- function(x)
+>               (1+rnorm(1, sd=0.01)) * adagio::fnRosenbrock(x)
+>
+> To smooth out the noise, define another function `fnk(x, k = 1)` that
+> calls `fn` k times and returns the mean value of those k function
+> applications.
+>
+>     fnk <- function(x, k = 1) {     # fnk(x) same as fn(x)
+>         rv = 0.0
+>         for (i in 1:k) rv <- rv + fn(x)
+>         return(rv/n)
+>     }
+>
+> When we apply several optimization solvers to this noisy and smoothed
+> noise functions we get for instance the following results:
+> (Starting point is always `rep(0.1, 5)`, maximal number of iterations 5000,
+>  relative tolerance 1e-12, and the optimization is successful if the
+> function value at the minimum is below 1e-06.)
+>
+>       k   nmk       anms neldermead     ucminf optim_BFGS
+>      ---------------------------------------------------
+>       1  0.21       0.32       0.13       0.00       0.00
+>       3  0.52       0.63       0.50       0.00       0.00
+>      10  0.81       0.91       0.87       0.00       0.00
+>
+> Solvers: nmk = dfoptim::nmk, anms = pracma::anms [both Nelder-Mead codes]
+>          neldermead = nloptr::neldermead,
+>          ucminf = ucminf::ucminf, optim_BFGS = optim with method "BFGS"
+>
+> Read the table as follows: `nmk` will be successful in 21% of the
+> trials, while for example `optim` will never come close to the true
+> minimum.
+>
+> I think it is reasonable to assume that gradient-based methods do
+> poorly with noisy objectives, though I did not expect to see them fail
+> so clearly. On the other hand, Nelder-Mead implementations do quite
+> well if there is not too much noise.
+>
+> In real-world applications, it will often not be possible to do the
+> same measurement several times. That is, we will then have to live
+> with `k = 1`. In my applications with long 'random walks', doing the
+> calculations several times in a row will really need some time.
+>
+> QUESTION: What could be other approaches to minimize noisy functions?
+>
+> I looked through some "Stochastic Programming" tutorials and did not
+> find them very helpful in this situation. Of course, I might have
+> looked into these works too superficially.
+>
+
+Since Nelder--Mead worked /relatively/ well: in my
+experience, its results can sometimes be improved by
+restarting it, i.e. re-initializing the simplex.  See this
+note here: http://enricoschumann.net/R/restartnm.htm ,
+which incidentally also uses the Rosenbrock function.
+
+Just for the record, I think Differential Evolution (DE)
+can handle such problems well, though it would usually
+need more iterations.  As computational "proof" ;-) , I
+run DE 50 times for the k == 1 case, and each time store
+whether the resulting objective-function value is below
+1e-6.  I let DE take way more function evaluations
+(population of 100 times 500 generations = 50000 function
+evaluations); but it gets a value below 1e-6 in all 50
+cases.
+
+
+    library("NMOF")
+    ofv.below.threshold <- logical(50)
+    for (i in seq_along(ofv.below.threshold)) {
+        sol <- DEopt(fnk,
+                     algo = list(
+                         nP = 100, nG = 500,
+                         min = rep(  5, 5), max = rep(   10, 5)))
+        
+        ofv.below.threshold[i] <- sol$OFvalue < 1e-6
+    }
+    sum(ofv.below.threshold)/length(ofv.below.threshold)
+
+
+(These 50 runs take less than half a minute on my
+machine.) Note that I have on purpose initialized the
+population in the range 5 to 10, i.e. way off the optimum.
+
+
+
+
+-- 
+Enrico Schumann
+Lucerne, Switzerland
+http://enricoschumann.net
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Mon Aug 14 19:04:09 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Mon, 14 Aug 2023 17:04:09 +0000
+Subject: [R] time series transformation....
+In-Reply-To: <CAGgJW74sjKfD-VtK2kqHCS0wQ6gj6uiUB61BKajwObkDkeNw1Q@mail.gmail.com>
+References: <PU4P216MB156857160E17C21ED8A70255C811A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAGgJW74sjKfD-VtK2kqHCS0wQ6gj6uiUB61BKajwObkDkeNw1Q@mail.gmail.com>
+Message-ID: <PU4P216MB15685887177DF4BAD6720237C817A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear Eric,
+                 THanks for the reply...will this also work with arfima() ? What if I want to fit a model like GARCH and friends?
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Eric Berger <ericjberger at gmail.com>
+Sent: Sunday, August 13, 2023 10:34 AM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] time series transformation....
+
+Hi Akshay,
+The forecast package will do the BoxCox transform and automatically
+backtransform the forecasts.
+The package also handles xts objects.
+For example, modifying the example from the help page of
+forecast::forecast for Arima
+
+> dt <- as.Date("2023-01-01") + 1:length(WWWusage)
+> a <- xts(WWWusage, order.by=dt)
+> fit1 <- Arima(a, c(3,1,0))
+> fit2 <- Arima(a, lambda=0.5, c(3,1,0))  ## applies the Box-Cox transform with lambda=0.5
+> par(mfrow=c(1,2))
+> plot(forecast(fit1))
+> plot(forecast(fit2))
+
+HTH,
+Eric
+
+p.s. RJH is the author/maintainer of the forecast package
+
+
+On Sun, Aug 13, 2023 at 1:01?AM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>
+> dear members,
+>                          I have a heteroscedastic time series which I want to transform to make it homoscedastic by a box cox transformation. I am using Otexts by RJ hyndman and George Athanopolous as my textbook. They discuss transformation and also say the fpp3 and the fable package automatically back transforms the point forecast. they also discuss the process which I find to be very cumbersome. Is there any R package which automatically back transforms the point forecast when I use xts objects ( RJH and GA use tsibble objects) with arfima/arima in the forecast package?
+>
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From er|cjberger @end|ng |rom gm@||@com  Mon Aug 14 19:34:42 2023
+From: er|cjberger @end|ng |rom gm@||@com (Eric Berger)
+Date: Mon, 14 Aug 2023 20:34:42 +0300
+Subject: [R] time series transformation....
+In-Reply-To: <PU4P216MB15685887177DF4BAD6720237C817A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+References: <PU4P216MB156857160E17C21ED8A70255C811A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAGgJW74sjKfD-VtK2kqHCS0wQ6gj6uiUB61BKajwObkDkeNw1Q@mail.gmail.com>
+ <PU4P216MB15685887177DF4BAD6720237C817A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <CAGgJW74Z9c0r-yMD60xO03H5WaQbGNwnCo-1seG8vxz47FUK5A@mail.gmail.com>
+
+Hi Akshay,
+If you do
+> help(package="forecast")
+
+you will find that arfima is listed. Unfortunately, I don't see any
+ARCH-type models there, but you should check out the help page
+results.
+
+Good luck,
+Eric
+
+On Mon, Aug 14, 2023 at 8:04?PM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>
+> Dear Eric,
+>                  THanks for the reply...will this also work with arfima() ? What if I want to fit a model like GARCH and friends?
+>
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+> ________________________________
+> From: Eric Berger <ericjberger at gmail.com>
+> Sent: Sunday, August 13, 2023 10:34 AM
+> To: akshay kulkarni <akshay_e4 at hotmail.com>
+> Cc: R help Mailing list <r-help at r-project.org>
+> Subject: Re: [R] time series transformation....
+>
+> Hi Akshay,
+> The forecast package will do the BoxCox transform and automatically
+> backtransform the forecasts.
+> The package also handles xts objects.
+> For example, modifying the example from the help page of
+> forecast::forecast for Arima
+>
+> > dt <- as.Date("2023-01-01") + 1:length(WWWusage)
+> > a <- xts(WWWusage, order.by=dt)
+> > fit1 <- Arima(a, c(3,1,0))
+> > fit2 <- Arima(a, lambda=0.5, c(3,1,0))  ## applies the Box-Cox transform with lambda=0.5
+> > par(mfrow=c(1,2))
+> > plot(forecast(fit1))
+> > plot(forecast(fit2))
+>
+> HTH,
+> Eric
+>
+> p.s. RJH is the author/maintainer of the forecast package
+>
+>
+> On Sun, Aug 13, 2023 at 1:01?AM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+> >
+> > dear members,
+> >                          I have a heteroscedastic time series which I want to transform to make it homoscedastic by a box cox transformation. I am using Otexts by RJ hyndman and George Athanopolous as my textbook. They discuss transformation and also say the fpp3 and the fable package automatically back transforms the point forecast. they also discuss the process which I find to be very cumbersome. Is there any R package which automatically back transforms the point forecast when I use xts objects ( RJH and GA use tsibble objects) with arfima/arima in the forecast package?
+> >
+> > THanking you,
+> > Yours sincerely,
+> > AKSHAY M KULKARNI
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Mon Aug 14 20:55:45 2023
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Mon, 14 Aug 2023 18:55:45 +0000
+Subject: [R] time series transformation....
+In-Reply-To: <CAGgJW74Z9c0r-yMD60xO03H5WaQbGNwnCo-1seG8vxz47FUK5A@mail.gmail.com>
+References: <PU4P216MB156857160E17C21ED8A70255C811A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAGgJW74sjKfD-VtK2kqHCS0wQ6gj6uiUB61BKajwObkDkeNw1Q@mail.gmail.com>
+ <PU4P216MB15685887177DF4BAD6720237C817A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+ <CAGgJW74Z9c0r-yMD60xO03H5WaQbGNwnCo-1seG8vxz47FUK5A@mail.gmail.com>
+Message-ID: <PU4P216MB15681DCFE6FAF141FA364587C817A@PU4P216MB1568.KORP216.PROD.OUTLOOK.COM>
+
+Dear ERic,
+                 THanks a lot....!
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+________________________________
+From: Eric Berger <ericjberger at gmail.com>
+Sent: Monday, August 14, 2023 11:04 PM
+To: akshay kulkarni <akshay_e4 at hotmail.com>
+Cc: R help Mailing list <r-help at r-project.org>
+Subject: Re: [R] time series transformation....
+
+Hi Akshay,
+If you do
+> help(package="forecast")
+
+you will find that arfima is listed. Unfortunately, I don't see any
+ARCH-type models there, but you should check out the help page
+results.
+
+Good luck,
+Eric
+
+On Mon, Aug 14, 2023 at 8:04?PM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>
+> Dear Eric,
+>                  THanks for the reply...will this also work with arfima() ? What if I want to fit a model like GARCH and friends?
+>
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+> ________________________________
+> From: Eric Berger <ericjberger at gmail.com>
+> Sent: Sunday, August 13, 2023 10:34 AM
+> To: akshay kulkarni <akshay_e4 at hotmail.com>
+> Cc: R help Mailing list <r-help at r-project.org>
+> Subject: Re: [R] time series transformation....
+>
+> Hi Akshay,
+> The forecast package will do the BoxCox transform and automatically
+> backtransform the forecasts.
+> The package also handles xts objects.
+> For example, modifying the example from the help page of
+> forecast::forecast for Arima
+>
+> > dt <- as.Date("2023-01-01") + 1:length(WWWusage)
+> > a <- xts(WWWusage, order.by=dt)
+> > fit1 <- Arima(a, c(3,1,0))
+> > fit2 <- Arima(a, lambda=0.5, c(3,1,0))  ## applies the Box-Cox transform with lambda=0.5
+> > par(mfrow=c(1,2))
+> > plot(forecast(fit1))
+> > plot(forecast(fit2))
+>
+> HTH,
+> Eric
+>
+> p.s. RJH is the author/maintainer of the forecast package
+>
+>
+> On Sun, Aug 13, 2023 at 1:01?AM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+> >
+> > dear members,
+> >                          I have a heteroscedastic time series which I want to transform to make it homoscedastic by a box cox transformation. I am using Otexts by RJ hyndman and George Athanopolous as my textbook. They discuss transformation and also say the fpp3 and the fable package automatically back transforms the point forecast. they also discuss the process which I find to be very cumbersome. Is there any R package which automatically back transforms the point forecast when I use xts objects ( RJH and GA use tsibble objects) with arfima/arima in the forecast package?
+> >
+> > THanking you,
+> > Yours sincerely,
+> > AKSHAY M KULKARNI
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
