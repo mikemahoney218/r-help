@@ -52773,3 +52773,339 @@ On 2023-08-25 12:47, ASHLIN VARKEY wrote:
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From j@|og@don @end|ng |rom qu@ntex-re@e@rch@com  Sun Aug 27 20:54:23 2023
+From: j@|og@don @end|ng |rom qu@ntex-re@e@rch@com (John Logsdon)
+Date: Sun, 27 Aug 2023 19:54:23 +0100
+Subject: [R] Issue with gc() on Ubuntu 20.04
+Message-ID: <119c6d748a32bbb1961e56b83746bedc@quantex-research.com>
+
+Folks
+
+I have come across an issue with gc() hogging the processor according to 
+Rprof.
+
+Platform is Ubuntu 20.04 all up to date
+R version 4.3.1
+libraries: survival, MASS, gtools and openxlsx.
+
+With default gc.auto options, the profiler notes the garbage collector 
+as self.pct 99.39%.
+
+So I have tried switching it off using options(gc.auto=Inf) in the R 
+session before running my program using source().
+
+This lowered self.pct to 99.36.  Not much there.
+
+After some pondering, I added an options(gc.auto=Inf) at the beginning 
+of each function, not resetting it at exit, but expecting the offending 
+function(s) to plead guilty.
+
+Not so although it did lower the gc() time to 95.84%.
+
+This was on a 16 core Threadripper 1950X box so I was intending to use 
+library parallel but I tried it on my lowly windows box that is years 
+old and got it down to 88.07%.
+
+The only thing I can think of is that there are quite a lot of cases 
+where a function is generated on the fly as in:
+
+eval(parse(t=paste("dprob <- 
+function(x,l,s){",dist.functions[2,][dist.functions[1,]==distn],"(x,l,s)}",sep="")))
+
+I haven't added the options to any of these.
+
+The highest time used by any of my functions is 0.05% - the rest is 
+dominated by gc().
+
+There may not be much point in parallising the code until I can reduce 
+the garbage collection.
+
+I am not short of memory and would like to disable it fully but despite 
+adding to all routines, I haven't managed to do this yet.
+
+Can anyone advise me?
+
+And why is the Linux version so much worse than Windows?
+
+TIA
+
+-- 
+John Logsdon
+Quantex Research Ltd
+m:+447717758675/h:+441614454951
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Aug 27 22:02:23 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 27 Aug 2023 23:02:23 +0300
+Subject: [R] Issue with gc() on Ubuntu 20.04
+In-Reply-To: <119c6d748a32bbb1961e56b83746bedc@quantex-research.com>
+References: <119c6d748a32bbb1961e56b83746bedc@quantex-research.com>
+Message-ID: <20230827230223.2f7b7159@Tarkus>
+
+On Sun, 27 Aug 2023 19:54:23 +0100
+John Logsdon <j.logsdon at quantex-research.com> wrote:
+
+> Not so although it did lower the gc() time to 95.84%.
+> 
+> This was on a 16 core Threadripper 1950X box so I was intending to
+> use library parallel but I tried it on my lowly windows box that is
+> years old and got it down to 88.07%.
+
+Does the Windows box have the same version of R on it?
+
+> The only thing I can think of is that there are quite a lot of cases 
+> where a function is generated on the fly as in:
+> 
+> eval(parse(t=paste("dprob <- 
+> function(x,l,s){",dist.functions[2,][dist.functions[1,]==distn],"(x,l,s)}",sep="")))
+
+This isn't very idiomatic. If you need dprob to call the function named
+in dist.functions[2,][dist.functions[1,]==distn], wouldn't it be easier
+for R to assign that function straight to dprob?
+
+dprob <- get(dist.functions[2,][dist.functions[1,]==distn])
+
+This way, you avoid the need to parse the code, which is typically not
+the fastest part of a programming language.
+
+(Generally in R and other programming languages with recursive data
+structures, storing variable names in other variables is not very
+efficient. Why not put functions directly into a list?)
+
+Rprof() samples the whole call stack. Can you find out which functions
+result in a call to gc()? I haven't experimented with a wide sample of
+R code, but I don't usually encounter gc() as a major entry in my
+Rprof() outputs.
+
+-- 
+Best regards,
+Ivan
+
+
+From ro||turner @end|ng |rom po@teo@net  Sun Aug 27 23:40:31 2023
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Sun, 27 Aug 2023 21:40:31 +0000
+Subject: [R] Query on finding root
+In-Reply-To: <CAKwZBowmp5LYFGmzxeBw42q7m93X5B7ysuDLMoK5S1h2NN=O5g@mail.gmail.com>
+References: <CAKwZBowmp5LYFGmzxeBw42q7m93X5B7ysuDLMoK5S1h2NN=O5g@mail.gmail.com>
+Message-ID: <20230828094008.5c377461@rolf-Latitude-E7470>
+
+
+On Fri, 25 Aug 2023 22:17:05 +0530
+ASHLIN VARKEY <ashlinvarkey at gmail.com> wrote:
+
+> Sir,
+
+Please note that r-help is a mailing list, not a knight! ??
+
+> I want to solve the equation Q(u)=mean, where Q(u) represents the
+> quantile function. Here my Q(u)=(c*u^lamda1)/((1-u)^lamda2), which is
+> the quantile function of Davies (Power-pareto) distribution.  Hence I
+> want to solve , *(c*u^lamda1)/((1-u)^lamda2)=28353.7....(Eq.1)*
+> where lamda1=0.03399381, lamda2=0.1074444 and c=26104.50. When I used
+> the package 'Davies' and solved Eq 1, I got the answer u=0.3952365.
+> But when I use the function  'uniroot' to solve the Eq.1, I got a
+> different answer which is  u=0.6048157.  Why did this difference
+> happen?  Which is the correct method to solve Eq.1. Using the value
+> of *u *from the first method my further calculation was nearer to
+> empirical values.  The R-code I used is herewith. Kindly help me to
+> solve this issue.
+> 
+> R-code
+> Q(u)=(c*u^lamda1)/((1-u)^lamda2)
+> mean=28353.7 # mean calculated from data
+> lamda1=.03399381 # estimates c, lamda1 and lamda2 calculated from data
+> lamda2=.1074444
+> c=26104.50
+> library(Davies)# using package
+> params=c(c,lamda1,lamda2)
+> u=pdavies(28353.7,params)
+> u
+> fun=function(u){((26104.50*u^0.03399381)/((1-u)^0.1074444))-28353.7}
+> uniroot= uniroot(fun,c(0.01,1))
+> uniroot
+
+As Prof. Nash has pointed out, this looks like homework.
+
+Some general advice:  graphics can be very revealing, and are easy to
+effect in R.  Relevant method: plot.function(); relevant utility:
+abline().  Look at the help for these.
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sun Aug 27 23:59:55 2023
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sun, 27 Aug 2023 17:59:55 -0400
+Subject: [R] Query on finding root
+In-Reply-To: <20230828094008.5c377461@rolf-Latitude-E7470>
+References: <CAKwZBowmp5LYFGmzxeBw42q7m93X5B7ysuDLMoK5S1h2NN=O5g@mail.gmail.com>
+ <20230828094008.5c377461@rolf-Latitude-E7470>
+Message-ID: <86ba076e-52f5-38ca-5f47-fa3238670da5@gmail.com>
+
+    This doesn't look like homework to me -- too specific.  The posting 
+guide <https://www.r-project.org/posting-guide.html> says that the list 
+is not intended for "Basic statistics and classroom homework" -- again, 
+this doesn't seem to fall into that category.
+
+   tl;dr, I think the difference between the two approaches is just 
+whether the lower or upper tail is considered (i.e., adding lower.tail = 
+FALSE to pdavies(), or more simply taking (1-x), makes the two answers 
+agree).
+
+   If you look at the source code for pdavies() you'll see that it's 
+essentially doing the same uniroot() calculation that you are.
+
+## Q(u)=(c*u^lamda1)/((1-u)^lamda2)
+mean <- 28353.7 # mean calculated from data
+lambda1 <- .03399381 # estimates c, lambda1 and lambda2 calculated from data
+lambda2 <- .1074444
+c <- 26104.50
+library(Davies)# using package
+params <- c(c,lambda1,lambda2)
+u <- pdavies(x = mean, params = params, lower.tail = FALSE)
+u
+fun <- function(u) {
+     with(as.list(params), (c*u^lambda1)/((1-u)^lambda2)) - mean
+}
+curve(fun, from = 0.01, to = 1)
+uniroot <- uniroot(fun,c(0.01,1))
+abline(h = 0)
+uniroot$root
+
+
+
+On 2023-08-27 5:40 p.m., Rolf Turner wrote:
+> 
+> On Fri, 25 Aug 2023 22:17:05 +0530
+> ASHLIN VARKEY <ashlinvarkey at gmail.com> wrote:
+> 
+>> Sir,
+> 
+> Please note that r-help is a mailing list, not a knight! ??
+> 
+>> I want to solve the equation Q(u)=mean, where Q(u) represents the
+>> quantile function. Here my Q(u)=(c*u^lamda1)/((1-u)^lamda2), which is
+>> the quantile function of Davies (Power-pareto) distribution.  Hence I
+>> want to solve , *(c*u^lamda1)/((1-u)^lamda2)=28353.7....(Eq.1)*
+>> where lamda1=0.03399381, lamda2=0.1074444 and c=26104.50. When I used
+>> the package 'Davies' and solved Eq 1, I got the answer u=0.3952365.
+>> But when I use the function  'uniroot' to solve the Eq.1, I got a
+>> different answer which is  u=0.6048157.  Why did this difference
+>> happen?  Which is the correct method to solve Eq.1. Using the value
+>> of *u *from the first method my further calculation was nearer to
+>> empirical values.  The R-code I used is herewith. Kindly help me to
+>> solve this issue.
+>>
+>> R-code
+>> Q(u)=(c*u^lamda1)/((1-u)^lamda2)
+>> mean=28353.7 # mean calculated from data
+>> lamda1=.03399381 # estimates c, lamda1 and lamda2 calculated from data
+>> lamda2=.1074444
+>> c=26104.50
+>> library(Davies)# using package
+>> params=c(c,lamda1,lamda2)
+>> u=pdavies(28353.7,params)
+>> u
+>> fun=function(u){((26104.50*u^0.03399381)/((1-u)^0.1074444))-28353.7}
+>> uniroot= uniroot(fun,c(0.01,1))
+>> uniroot
+> 
+> As Prof. Nash has pointed out, this looks like homework.
+> 
+> Some general advice:  graphics can be very revealing, and are easy to
+> effect in R.  Relevant method: plot.function(); relevant utility:
+> abline().  Look at the help for these.
+> 
+> cheers,
+> 
+> Rolf Turner
+> 
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From j@|og@don @end|ng |rom qu@ntex-re@e@rch@com  Mon Aug 28 01:00:08 2023
+From: j@|og@don @end|ng |rom qu@ntex-re@e@rch@com (John Logsdon)
+Date: Mon, 28 Aug 2023 00:00:08 +0100
+Subject: [R] Issue with gc() on Ubuntu 20.04
+In-Reply-To: <20230827230223.2f7b7159@Tarkus>
+References: <119c6d748a32bbb1961e56b83746bedc@quantex-research.com>
+ <20230827230223.2f7b7159@Tarkus>
+Message-ID: <aede63167e27f8670a2ace3ad229388a@quantex-research.com>
+
+On 27-08-2023 21:02, Ivan Krylov wrote:
+> On Sun, 27 Aug 2023 19:54:23 +0100
+> John Logsdon <j.logsdon at quantex-research.com> wrote:
+> 
+>> Not so although it did lower the gc() time to 95.84%.
+>> 
+>> This was on a 16 core Threadripper 1950X box so I was intending to
+>> use library parallel but I tried it on my lowly windows box that is
+>> years old and got it down to 88.07%.
+> 
+> Does the Windows box have the same version of R on it?
+> 
+
+Yes, they are both 4.3.1
+
+>> The only thing I can think of is that there are quite a lot of cases
+>> where a function is generated on the fly as in:
+>> 
+>> eval(parse(t=paste("dprob <-
+>> function(x,l,s){",dist.functions[2,][dist.functions[1,]==distn],"(x,l,s)}",sep="")))
+> 
+> This isn't very idiomatic. If you need dprob to call the function named
+> in dist.functions[2,][dist.functions[1,]==distn], wouldn't it be easier
+> for R to assign that function straight to dprob?
+> 
+> dprob <- get(dist.functions[2,][dist.functions[1,]==distn])
+> 
+> This way, you avoid the need to parse the code, which is typically not
+> the fastest part of a programming language.
+> 
+> (Generally in R and other programming languages with recursive data
+> structures, storing variable names in other variables is not very
+> efficient. Why not put functions directly into a list?)
+> 
+
+Agreed but this statement and other similar ones are only assigned once 
+in an outer loop.
+
+> Rprof() samples the whole call stack. Can you find out which functions
+> result in a call to gc()? I haven't experimented with a wide sample of
+> R code, but I don't usually encounter gc() as a major entry in my
+> Rprof() outputs.
+
+ From the first table, removing all the system functions, it suggests 
+that the function do.combx() is mainly guilty.  I have recoded that and 
+gc() no longer appears - as it shouldn't with it switched off!  One 
+difference was that the new code used the built in combn function while 
+the old code used gtools::combinations.  I need gtools::permutations 
+elsewhere but that is not time critical.
+
+Thanks Ivan for making me think!
+
+-- 
+John Logsdon
+Quantex Research Ltd
+m:+447717758675/h:+441614454951
+
+
