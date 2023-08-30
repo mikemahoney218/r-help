@@ -54013,3 +54013,234 @@ On Tue, Aug 29, 2023 at 9:22?AM Martin M?ller Skarbiniks Pedersen
 http://hadley.nz
 
 
+From wjm1 @end|ng |rom c@@@co|umb|@@edu  Tue Aug 29 06:07:36 2023
+From: wjm1 @end|ng |rom c@@@co|umb|@@edu (William Michels)
+Date: Mon, 28 Aug 2023 21:07:36 -0700
+Subject: [R] Book Recommendation
+In-Reply-To: <d09f5757-b966-8a73-6541-f62f46c87fce@shdawson.com>
+References: <d09f5757-b966-8a73-6541-f62f46c87fce@shdawson.com>
+Message-ID: <CAA99HCxHXkmjdKfn_wNe+Qmg7qSF0+nw3b+58aWr2yTN_mKUzQ@mail.gmail.com>
+
+I'm a big fan of the sqldf package by Gabor Grothendieck:
+
+"sqldf: Manipulate R Data Frames Using SQL"
+https://CRAN.R-project.org/package=sqldf
+
+The sqldf "README.html" converts to a 42 page PDF:
+https://cran.r-project.org/web/packages/sqldf/readme/README.html
+
+You can also find favorable blog posts for the sqldf package on the
+web, notably a post (circa 2013) from Patrick Burns:
+https://www.burns-stat.com/translating-r-sql-basics/
+
+HTH,
+
+Bill.
+
+W. Michels, Ph.D.
+
+
+
+On Mon, Aug 28, 2023 at 8:47?AM Stephen H. Dawson, DSL via R-help
+<r-help at r-project.org> wrote:
+>
+> Good Morning,
+>
+>
+> I am doing some research to develop a new course where I teach. I am
+> looking for a book to use in the course content to teach accomplishing
+> SQL in R.
+>
+> Does anyone know of a book on this topic to recommend for consideration?
+>
+>
+> Thank You,
+> --
+> *Stephen Dawson, DSL*
+> /Executive Strategy Consultant/
+> Business & Technology
+> +1 (865) 804-3454
+> http://www.shdawson.com
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Tue Aug 29 18:15:27 2023
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Tue, 29 Aug 2023 11:15:27 -0500
+Subject: [R] logLIk(lme(...))?
+Message-ID: <9406364a-ec76-5c67-f817-2a64aad78c54@effectivedefense.org>
+
+Hello, all:
+
+
+	  I have a dataset with 2 groups.  I want to estimate 2 means and 2 
+standard deviations.  I naively think I should be able to use lme to do 
+that, e.g., lme(y~gp, random=y~1|gp, method='ML').  I think I should get 
+the same answer as from lm(y~1, ...) within each level of group.  I can 
+get the same means, but I don't know how to extract the within-gp 
+standard deviations, and the sum of logLik for the latter two does not 
+equal the former.
+
+
+TOY EXAMPLE:
+
+
+library(nlme)
+
+
+set.seed(1)
+
+
+lmePblm <- data.frame(y=c(rnorm(5, 1, 2), rnorm(5,3,5)),
+                       gp=factor(rep(1:2, each=5)))
+
+
+fit22 <- lme(y~gp, lmePblm, random=~1|gp, method='ML')
+
+
+fitGp1 <- lm(y~1, lmePblm[lmePblm$gp==1, ])
+
+
+fitGp2 <- lm(y~1, lmePblm[lmePblm$gp==2, ])
+
+
+(ll22 <- logLik(fit22))
+
+
+(llGp1 <- logLik(fitGp1))
+
+
+(llGp2 <- logLik(fitGp2))
+
+
+# Why isn't (ll22 = llGp1+llGp2)?
+
+
+(ll22 - llGp1-llGp2)
+
+
+# And secondarily, how can I get the residual standard deviations
+# within each gp from fit22?
+
+
+	  Thanks,
+	  Spencer Graves
+
+
+From @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org  Tue Aug 29 23:57:59 2023
+From: @pencer@gr@ve@ @end|ng |rom e||ect|vede|en@e@org (Spencer Graves)
+Date: Tue, 29 Aug 2023 16:57:59 -0500
+Subject: [R] logLIk(lme(...))?
+In-Reply-To: <9406364a-ec76-5c67-f817-2a64aad78c54@effectivedefense.org>
+References: <9406364a-ec76-5c67-f817-2a64aad78c54@effectivedefense.org>
+Message-ID: <591915e6-8903-6471-8154-1c7bf1467918@effectivedefense.org>
+
+I found my problem:
+
+
+The following function gave llGp1, llGp2 and ll22:
+
+
+logLik_lm <- function(object){
+   res <- resid(object)
+   n <- length(res)
+   s2MLE <- sum(res^2)/n
+   lglk <- (-n/2)*(log(2*pi*s2MLE)+1)
+   lglk
+}
+logLik(fitGp1)
+logLik(fitGp1)-logLik_lm(fitGp1)
+llGp1 - logLik_lm(fitGp1)
+
+
+logLik(fitGp2)
+logLik(fitGp2)-logLik_lm(fitGp2)
+llGp2 - logLik_lm(fitGp2)
+
+logLik(fit22)
+logLik(fit22)-logLik_lm(fit22)
+ll22 -logLik_lm(fit22)
+
+
+	  These differences were all 0 to within roundoff error.  That 
+confirmed for me that I could safely compare logLik.lm and logLik.lme.
+
+
+	  What I thought should have been a linear operation wasn't.  Please 
+excuse the waste of your time.
+
+
+	  Thanks,
+	  Spencer Graves
+
+
+On 8/29/23 11:15 AM, Spencer Graves wrote:
+> Hello, all:
+> 
+> 
+>  ????? I have a dataset with 2 groups.? I want to estimate 2 means and 2 
+> standard deviations.? I naively think I should be able to use lme to do 
+> that, e.g., lme(y~gp, random=y~1|gp, method='ML').? I think I should get 
+> the same answer as from lm(y~1, ...) within each level of group.? I can 
+> get the same means, but I don't know how to extract the within-gp 
+> standard deviations, and the sum of logLik for the latter two does not 
+> equal the former.
+> 
+> 
+> TOY EXAMPLE:
+> 
+> 
+> library(nlme)
+> 
+> 
+> set.seed(1)
+> 
+> 
+> lmePblm <- data.frame(y=c(rnorm(5, 1, 2), rnorm(5,3,5)),
+>  ????????????????????? gp=factor(rep(1:2, each=5)))
+> 
+> 
+> fit22 <- lme(y~gp, lmePblm, random=~1|gp, method='ML')
+> 
+> 
+> fitGp1 <- lm(y~1, lmePblm[lmePblm$gp==1, ])
+> 
+> 
+> fitGp2 <- lm(y~1, lmePblm[lmePblm$gp==2, ])
+> 
+> 
+> (ll22 <- logLik(fit22))
+> 
+> 
+> (llGp1 <- logLik(fitGp1))
+> 
+> 
+> (llGp2 <- logLik(fitGp2))
+> 
+> 
+> # Why isn't (ll22 = llGp1+llGp2)?
+> 
+> 
+> (ll22 - llGp1-llGp2)
+> 
+> 
+> # And secondarily, how can I get the residual standard deviations
+> # within each gp from fit22?
+> 
+> 
+>  ????? Thanks,
+>  ????? Spencer Graves
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
