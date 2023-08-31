@@ -54244,3 +54244,635 @@ On 8/29/23 11:15 AM, Spencer Graves wrote:
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From chr_bou@quet @end|ng |rom protonm@||@com  Tue Aug 29 16:41:40 2023
+From: chr_bou@quet @end|ng |rom protonm@||@com (Christophe Bousquet)
+Date: Tue, 29 Aug 2023 14:41:40 +0000
+Subject: [R] Problems with installing R packages from source and running C++
+ in R, even on fresh R installation
+Message-ID: <hMOLabhKX4qUpm7377yPK4N85t3XtYvEMbfXIXytM1ODg6IdHfmOJBUyhNEAKJVJVTsWOzI_vFenQgeFYZpmnIjkR3SrzpkYa_MdtvPZiew=@protonmail.com>
+
+Dear all,
+
+I am having issues with R that are giving me headaches since a few weeks. Basically, I cannot:
+(i) install packages from source
+(ii) run packages relying on C++
+I really do not understand how and why this is happening [it was working perfectly fine before and I cannot determine when the problem started for sure], and the solution appears to be extremely difficult to find on the Internet. However, based on the number of StackOverflow questions on these issues, I assume they are affecting many persons.
+I already posted some questions related to these issues on StackOverflow [https://stackoverflow.com/questions/76979386/how-to-install-r-packages-from-source-on-fresh-r-installation] and on the RStan forum [https://discourse.mc-stan.org/t/cannot-compile-stan-program-from-r-package-brms/32294/22], but without success.
+
+This is kind of infuriating, because (i) I have no issues on my personal laptop and (ii) the same issues keep coming back on my work laptop, even after a full uninstallation of all R-related components [R, RStudio, Rtools, paths...].
+
+Let's say that I managed to successfully uninstall all R-related components [maybe I miss something at this step?]. Then, I reinstall R4.3.1 [R-4.3.1-win.exe] and directly try to install a package from source. I then get the following warning message (which I actually take as an error message, because the whole command does not work):
+
+```> install.packages("PKI", type = "source")
+Installing package into ?C:/Users/Christophe Bousquet/AppData/Local/R/win-library/4.3?
+(as ?lib? is unspecified)
+--- Please select a CRAN mirror for use in this session ---
+trying URL 'https://cloud.r-project.org/src/contrib/PKI_0.1-12.tar.gz'
+Content type 'application/x-gzip' length 85544 bytes (83 KB)
+downloaded 83 KB
+
+The downloaded source packages are in
+?C:\Users\Christophe Bousquet\AppData\Local\Temp\Rtmpg1wwob\downloaded_packages?
+Warning message:
+In install.packages("PKI", type = "source") :
+installation of package ?PKI? had non-zero exit status
+```
+
+I guess this is normal, as at that moment Rtools 4.3 is not installed. So I install Rtools 4.3 [rtools43-5550-5548.exe], but I still get the same error message.
+
+However, Rtools 4.3 seems to be recognized by R:
+
+```
+> library(pkgbuild)
+> rtools_path()
+[1] "C:\\rtools43/usr/bin"
+> has_rtools(debug = TRUE)
+Found in Rtools 4.3 installation folder
+[1] TRUE
+> check_rtools(debug = TRUE)
+Found in Rtools 4.3 installation folder
+[1] TRUE```
+
+Then, if I try to use a package relying on C++, it fails as well.
+For instance:
+
+```
+> library(Rcpp)
+> evalCpp("21 + 21")
+
+Error in sourceCpp(code = code, env = env, rebuild = rebuild, cacheDir = cacheDir, :
+Error 65535 occurred building shared library.
+
+WARNING: The tools required to build C++ code for R were not found.
+
+Please download and install the appropriate version of Rtools:
+
+http://cran.r-project.org/bin/windows/Rtools/
+```
+
+I am particularly at loss with the warning, as R seems to find Rtools based on the diagnostic performed by pkgbuild (see above).
+
+However, when I run has_compiler() and check_compiler(), there seems to be some issues:
+
+```
+> has_compiler(debug = TRUE)
+Trying to compile a simple C file
+Running "C:/PROGRA~1/R/R-43~1.1/bin/x64/Rcmd.exe" SHLIB foo.c
+[1] FALSE
+> check_compiler(debug = TRUE)
+Trying to compile a simple C file
+Running "C:/PROGRA~1/R/R-43~1.1/bin/x64/Rcmd.exe" SHLIB foo.cError: Failed to compile C code
+```
+
+Any help would be greatly appreciated :-)
+
+Here is the output of my sessionInfo():
+
+```
+R version 4.3.1 (2023-06-16 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 10 x64 (build 19045)
+
+Matrix products: default
+
+locale:
+[1] LC_COLLATE=English_United Kingdom.utf8 LC_CTYPE=English_United Kingdom.utf8 LC_MONETARY=English_United Kingdom.utf8
+[4] LC_NUMERIC=C LC_TIME=English_United Kingdom.utf8
+
+time zone: Europe/Zurich
+tzcode source: internal
+
+attached base packages:
+[1] stats graphics grDevices utils datasets methods base
+
+other attached packages:
+[1] pkgbuild_1.4.2
+
+loaded via a namespace (and not attached):
+[1] processx_3.8.2 compiler_4.3.1 R6_2.5.1 cli_3.6.1 prettyunits_1.1.1 tools_4.3.1 crayon_1.5.2 [8] callr_3.7.3 ps_1.7.5
+```
+
+and the output of Sys.getlocale():
+
+```
+Sys.getlocale()
+[1] "LC_COLLATE=English_United Kingdom.utf8;LC_CTYPE=English_United Kingdom.utf8;LC_MONETARY=English_United Kingdom.utf8;LC_NUMERIC=C;LC_TIME=English_United Kingdom.utf8"```
+
+Many thanks in advance,
+Christophe Bousquet
+University of Konstanz
+
+Sent from [ProtonMail](https://protonmail.ch), encrypted email based in Switzerland.
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Aug 30 10:37:45 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 30 Aug 2023 11:37:45 +0300
+Subject: [R] 
+ Problems with installing R packages from source and running C++
+ in R, even on fresh R installation
+In-Reply-To: <hMOLabhKX4qUpm7377yPK4N85t3XtYvEMbfXIXytM1ODg6IdHfmOJBUyhNEAKJVJVTsWOzI_vFenQgeFYZpmnIjkR3SrzpkYa_MdtvPZiew=@protonmail.com>
+References: <hMOLabhKX4qUpm7377yPK4N85t3XtYvEMbfXIXytM1ODg6IdHfmOJBUyhNEAKJVJVTsWOzI_vFenQgeFYZpmnIjkR3SrzpkYa_MdtvPZiew=@protonmail.com>
+Message-ID: <20230830113745.07c0c4f2@Tarkus>
+
+On Tue, 29 Aug 2023 14:41:40 +0000
+Christophe Bousquet via R-help <r-help at r-project.org> wrote:
+
+> (ii) the same issues keep coming back on my work laptop
+
+It may be worth asking the IT department at work, just in case there is
+a system to prevent unauthorised programs from running that interferes
+with Rtools.
+
+Are you comfortable using the command line? If you create a hello.c
+file with the following contents:
+
+#include <stdio.h>
+int main(void) { printf("Hello world!\n"); }
+
+...and then place it into %USERPROFILE% (C:/Users/Christophe Bousquet),
+start "Rtools43 bash" from the Start menu and try the following command
+line:
+
+export PATH=/x86_64-w64-mingw32.static.posix/bin:$PATH
+gcc -o hello.exe hello.c
+./hello.exe
+
+Does it say hello to you?
+
+-- 
+Best regards,
+Ivan
+
+
+From @erv|ce @end|ng |rom @hd@w@on@com  Wed Aug 30 18:01:07 2023
+From: @erv|ce @end|ng |rom @hd@w@on@com (Stephen H. Dawson, DSL)
+Date: Wed, 30 Aug 2023 12:01:07 -0400
+Subject: [R] Book Recommendation
+In-Reply-To: <CAA99HCxHXkmjdKfn_wNe+Qmg7qSF0+nw3b+58aWr2yTN_mKUzQ@mail.gmail.com>
+References: <d09f5757-b966-8a73-6541-f62f46c87fce@shdawson.com>
+ <CAA99HCxHXkmjdKfn_wNe+Qmg7qSF0+nw3b+58aWr2yTN_mKUzQ@mail.gmail.com>
+Message-ID: <95966ae3-09d3-77f8-795e-bc82bcbbbb15@shdawson.com>
+
+Thanks, Bill. I appreciate your helpful assistance.
+
+
+Kindest Regards,
+*Stephen Dawson, DSL*
+/Executive Strategy Consultant/
+Business & Technology
++1 (865) 804-3454
+http://www.shdawson.com
+
+
+On 8/29/23 00:07, William Michels wrote:
+> I'm a big fan of the sqldf package by Gabor Grothendieck:
+>
+> "sqldf: Manipulate R Data Frames Using SQL"
+> https://CRAN.R-project.org/package=sqldf
+>
+> The sqldf "README.html" converts to a 42 page PDF:
+> https://cran.r-project.org/web/packages/sqldf/readme/README.html
+>
+> You can also find favorable blog posts for the sqldf package on the
+> web, notably a post (circa 2013) from Patrick Burns:
+> https://www.burns-stat.com/translating-r-sql-basics/
+>
+> HTH,
+>
+> Bill.
+>
+> W. Michels, Ph.D.
+>
+>
+>
+> On Mon, Aug 28, 2023 at 8:47?AM Stephen H. Dawson, DSL via R-help
+> <r-help at r-project.org> wrote:
+>> Good Morning,
+>>
+>>
+>> I am doing some research to develop a new course where I teach. I am
+>> looking for a book to use in the course content to teach accomplishing
+>> SQL in R.
+>>
+>> Does anyone know of a book on this topic to recommend for consideration?
+>>
+>>
+>> Thank You,
+>> --
+>> *Stephen Dawson, DSL*
+>> /Executive Strategy Consultant/
+>> Business & Technology
+>> +1 (865) 804-3454
+>> http://www.shdawson.com
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @erv|ce @end|ng |rom @hd@w@on@com  Wed Aug 30 18:02:33 2023
+From: @erv|ce @end|ng |rom @hd@w@on@com (Stephen H. Dawson, DSL)
+Date: Wed, 30 Aug 2023 12:02:33 -0400
+Subject: [R] Book Recommendation
+In-Reply-To: <CAGAA5beoxOv4Dhy=DFA-sQY5pC_KDeF2zTBJzqExW1hH3dtDWg@mail.gmail.com>
+References: <d09f5757-b966-8a73-6541-f62f46c87fce@shdawson.com>
+ <CAGxFJbSY3MLGZG5hQLoXcFk1XpTZOVuFiJM1bdV6Qq5pu8UTkw@mail.gmail.com>
+ <ac390fad-ff29-de68-244e-b7431572bcef@shdawson.com>
+ <CAGAA5beoxOv4Dhy=DFA-sQY5pC_KDeF2zTBJzqExW1hH3dtDWg@mail.gmail.com>
+Message-ID: <9ce3dc1a-80c1-5250-9774-4a64f5715744@shdawson.com>
+
+Thanks, Martin. I appreciate your helpful assistance.
+
+
+Kindest Regards,
+*Stephen Dawson, DSL*
+/Executive Strategy Consultant/
+Business & Technology
++1 (865) 804-3454
+http://www.shdawson.com
+
+
+On 8/28/23 17:14, Martin M?ller Skarbiniks Pedersen wrote:
+> The SQLite is a good database to use.
+>
+> https://cran.r-project.org/web/packages/RSQLite/vignettes/RSQLite.html
+>
+> On Mon, Aug 28, 2023, 22:12 Stephen H. Dawson, DSL via R-help 
+> <r-help at r-project.org> wrote:
+>
+>
+>     This is an academic course. The effort now is to nail down the
+>     former. I
+>     am pushing against a local db for the students. I prefer they
+>     focus on
+>     the get-and-analyze efforts and not db administration efforts.
+>
+
+
+From @erv|ce @end|ng |rom @hd@w@on@com  Wed Aug 30 18:06:26 2023
+From: @erv|ce @end|ng |rom @hd@w@on@com (Stephen H. Dawson, DSL)
+Date: Wed, 30 Aug 2023 12:06:26 -0400
+Subject: [R] Book Recommendation
+In-Reply-To: <CABdHhvH8k73YJSAt4HhJRg3Zq4wZPFChJM7qQEfy8-hKfFxGBg@mail.gmail.com>
+References: <d09f5757-b966-8a73-6541-f62f46c87fce@shdawson.com>
+ <CAGxFJbSY3MLGZG5hQLoXcFk1XpTZOVuFiJM1bdV6Qq5pu8UTkw@mail.gmail.com>
+ <ac390fad-ff29-de68-244e-b7431572bcef@shdawson.com>
+ <CAGAA5beoxOv4Dhy=DFA-sQY5pC_KDeF2zTBJzqExW1hH3dtDWg@mail.gmail.com>
+ <CABdHhvH8k73YJSAt4HhJRg3Zq4wZPFChJM7qQEfy8-hKfFxGBg@mail.gmail.com>
+Message-ID: <d837b4a4-1b49-178d-9270-41d9d9fb4fc6@shdawson.com>
+
+Thanks, Hadley. I appreciate your helpful assistance.
+
+
+Kindest Regards,
+*Stephen Dawson, DSL*
+/Executive Strategy Consultant/
+Business & Technology
++1 (865) 804-3454
+http://www.shdawson.com
+
+
+On 8/28/23 18:00, Hadley Wickham wrote:
+> These days I'd recommend duckdb
+> (https://cran.r-project.org/web/packages/duckdb/index.html) instead.
+> It's a similar design to RSQLite (i.e. you don't need a separate
+> server) but it's designed for the needs of data science.
+>
+> Hadley
+>
+> On Tue, Aug 29, 2023 at 9:22?AM Martin M?ller Skarbiniks Pedersen
+> <traxplayer at gmail.com> wrote:
+>> The SQLite is a good database to use.
+>>
+>> https://cran.r-project.org/web/packages/RSQLite/vignettes/RSQLite.html
+>>
+>> On Mon, Aug 28, 2023, 22:12 Stephen H. Dawson, DSL via R-help <
+>> r-help at r-project.org> wrote:
+>>
+>>> This is an academic course. The effort now is to nail down the former. I
+>>> am pushing against a local db for the students. I prefer they focus on
+>>> the get-and-analyze efforts and not db administration efforts.
+>>>
+>>>
+>>          [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+>
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Aug 30 18:09:36 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 30 Aug 2023 19:09:36 +0300
+Subject: [R] 
+ Problems with installing R packages from source and running C++
+ in R, even on fresh R installation
+In-Reply-To: <-gK4K38T4XHaYjsOkfUzcCxsW6vSVk1U8PqFY08FhLjlHu9mziymAtOaAZ01BZKGgpIqhumdOVaRAeF_6t69nHuANnR3sNndpXFUzwpqH8M=@protonmail.com>
+References: <hMOLabhKX4qUpm7377yPK4N85t3XtYvEMbfXIXytM1ODg6IdHfmOJBUyhNEAKJVJVTsWOzI_vFenQgeFYZpmnIjkR3SrzpkYa_MdtvPZiew=@protonmail.com>
+ <20230830113745.07c0c4f2@Tarkus>
+ <-gK4K38T4XHaYjsOkfUzcCxsW6vSVk1U8PqFY08FhLjlHu9mziymAtOaAZ01BZKGgpIqhumdOVaRAeF_6t69nHuANnR3sNndpXFUzwpqH8M=@protonmail.com>
+Message-ID: <20230830190936.6c2ea08c@arachnoid>
+
+? Wed, 30 Aug 2023 14:35:48 +0000
+Christophe Bousquet <chr_bousquet at protonmail.com> ?????:
+
+> I followed your instructions and, yes, Rtools43 bash told me at the
+> end "Hello world!".
+> 
+> Do you think this is a good sign? And do you have any idea how I
+> could continue to solve the issue?
+
+It is a good sign. Your Rtools43 installation is working, but R for
+some reason doesn't know about it.
+
+What is the value of Sys.getenv('PATH'), Sys.which('make'),
+Sys.which('gcc') inside a running R session? Presumably, if PATH
+starts with something like
+
+C:/rtools43/x86_64-w64-mingw32.static.posix/bin;C:/rtools43/usr/bin;
+
+...then both Make and the compiler should be available to R. If it
+doesn't, it's worth trying to prepend it there.
+
+-- 
+Best regards,
+Ivan
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Aug 30 20:59:43 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 30 Aug 2023 21:59:43 +0300
+Subject: [R] 
+ Problems with installing R packages from source and running C++
+ in R, even on fresh R installation
+In-Reply-To: <6aUJAWes94XV_0CRJsi36iPjACBvj0dCGqEd_6ZVSE6SmofBmyCoMPm6rBU033Adguy26LvXPJW4dpt_GfLiv3OYRauNx8PdUjy1x8h-g8w=@protonmail.com>
+References: <hMOLabhKX4qUpm7377yPK4N85t3XtYvEMbfXIXytM1ODg6IdHfmOJBUyhNEAKJVJVTsWOzI_vFenQgeFYZpmnIjkR3SrzpkYa_MdtvPZiew=@protonmail.com>
+ <20230830113745.07c0c4f2@Tarkus>
+ <-gK4K38T4XHaYjsOkfUzcCxsW6vSVk1U8PqFY08FhLjlHu9mziymAtOaAZ01BZKGgpIqhumdOVaRAeF_6t69nHuANnR3sNndpXFUzwpqH8M=@protonmail.com>
+ <20230830190936.6c2ea08c@arachnoid>
+ <6aUJAWes94XV_0CRJsi36iPjACBvj0dCGqEd_6ZVSE6SmofBmyCoMPm6rBU033Adguy26LvXPJW4dpt_GfLiv3OYRauNx8PdUjy1x8h-g8w=@protonmail.com>
+Message-ID: <20230830215943.66720f3f@Tarkus>
+
+On Wed, 30 Aug 2023 16:31:20 +0000
+Christophe Bousquet <chr_bousquet at protonmail.com> wrote:
+
+>  So, yes, it seems possible for R to localize paths related to
+> Rtools... But then, I really do not get where things go wrong...
+
+When installing packages containing code to compile, R eventually calls
+R CMD SHLIB. Same thing happens with inline C++: it gets stored in a
+temporary file, compiled into a *.dll using R CMD SHLIB and then loaded
+using dyn.load().
+
+Write the following into a file named hello.c:
+
+#include <R.h>
+#include <Rinternals.h>
+SEXP hello(void) {
+        SEXP ret = PROTECT(allocVector(STRSXP, 1));
+        SET_STRING_ELT(ret, 0, mkChar("hello"));
+        UNPROTECT(1);
+        return ret;
+}
+
+From within R, setwd() to the directory containing hello.c and run:
+
+tools::Rcmd('SHLIB -n hello.c')
+tools::Rcmd('SHLIB hello.c')
+
+What do the commands print? Does the second command fail?
+
+(Let's Cc: R-help at r-project.org in case people with more experience
+debugging Windows problems have a better idea what's going on.)
+
+-- 
+Best regards,
+Ivan
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Aug 30 21:10:28 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 30 Aug 2023 15:10:28 -0400
+Subject: [R] 
+ Problems with installing R packages from source and running C++
+ in R, even on fresh R installation
+In-Reply-To: <20230830215943.66720f3f@Tarkus>
+References: <hMOLabhKX4qUpm7377yPK4N85t3XtYvEMbfXIXytM1ODg6IdHfmOJBUyhNEAKJVJVTsWOzI_vFenQgeFYZpmnIjkR3SrzpkYa_MdtvPZiew=@protonmail.com>
+ <20230830113745.07c0c4f2@Tarkus>
+ <-gK4K38T4XHaYjsOkfUzcCxsW6vSVk1U8PqFY08FhLjlHu9mziymAtOaAZ01BZKGgpIqhumdOVaRAeF_6t69nHuANnR3sNndpXFUzwpqH8M=@protonmail.com>
+ <20230830190936.6c2ea08c@arachnoid>
+ <6aUJAWes94XV_0CRJsi36iPjACBvj0dCGqEd_6ZVSE6SmofBmyCoMPm6rBU033Adguy26LvXPJW4dpt_GfLiv3OYRauNx8PdUjy1x8h-g8w=@protonmail.com>
+ <20230830215943.66720f3f@Tarkus>
+Message-ID: <65a86647-6d3c-2cbc-f430-ceffdfabc27e@gmail.com>
+
+On 30/08/2023 2:59 p.m., Ivan Krylov wrote:
+> On Wed, 30 Aug 2023 16:31:20 +0000
+> Christophe Bousquet <chr_bousquet at protonmail.com> wrote:
+> 
+>>   So, yes, it seems possible for R to localize paths related to
+>> Rtools... But then, I really do not get where things go wrong...
+> 
+> When installing packages containing code to compile, R eventually calls
+> R CMD SHLIB. Same thing happens with inline C++: it gets stored in a
+> temporary file, compiled into a *.dll using R CMD SHLIB and then loaded
+> using dyn.load().
+> 
+> Write the following into a file named hello.c:
+> 
+> #include <R.h>
+> #include <Rinternals.h>
+> SEXP hello(void) {
+>          SEXP ret = PROTECT(allocVector(STRSXP, 1));
+>          SET_STRING_ELT(ret, 0, mkChar("hello"));
+>          UNPROTECT(1);
+>          return ret;
+> }
+> 
+>  From within R, setwd() to the directory containing hello.c and run:
+> 
+> tools::Rcmd('SHLIB -n hello.c')
+> tools::Rcmd('SHLIB hello.c')
+> 
+> What do the commands print? Does the second command fail?
+> 
+> (Let's Cc: R-help at r-project.org in case people with more experience
+> debugging Windows problems have a better idea what's going on.)
+> 
+
+It sounds exactly as though Rtools files aren't on the path that's in 
+effect when R starts.  That's probably the one stored in the registry. 
+In the old days it was set in the System app in the Windows Control 
+Panel under "Edit the system environment variables".  I don't know if 
+that's still true.
+
+Duncan Murdoch
+
+
+From 538280 @end|ng |rom gm@||@com  Wed Aug 30 22:52:33 2023
+From: 538280 @end|ng |rom gm@||@com (Greg Snow)
+Date: Wed, 30 Aug 2023 14:52:33 -0600
+Subject: [R] Book Recommendation
+In-Reply-To: <d09f5757-b966-8a73-6541-f62f46c87fce@shdawson.com>
+References: <d09f5757-b966-8a73-6541-f62f46c87fce@shdawson.com>
+Message-ID: <CAFEqCdwdNgWN+XwKW0ApAFikE9fiw639qibNbAeUj-x3VmDxxA@mail.gmail.com>
+
+Stephen,  I see lots of answers with packages and resources, but not
+book recommendations.  I have used Introduction to Data Technologies
+by Paul Murrell (https://www.stat.auckland.ac.nz/~paul/ItDT/) to teach
+SQL and database design and would recommend looking at it as a
+possibility.
+
+On Mon, Aug 28, 2023 at 9:47?AM Stephen H. Dawson, DSL via R-help
+<r-help at r-project.org> wrote:
+>
+> Good Morning,
+>
+>
+> I am doing some research to develop a new course where I teach. I am
+> looking for a book to use in the course content to teach accomplishing
+> SQL in R.
+>
+> Does anyone know of a book on this topic to recommend for consideration?
+>
+>
+> Thank You,
+> --
+> *Stephen Dawson, DSL*
+> /Executive Strategy Consultant/
+> Business & Technology
+> +1 (865) 804-3454
+> http://www.shdawson.com
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Gregory (Greg) L. Snow Ph.D.
+538280 at gmail.com
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Aug 30 23:28:28 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Wed, 30 Aug 2023 14:28:28 -0700
+Subject: [R] 
+ Problems with installing R packages from source and running C++
+ in R, even on fresh R installation
+In-Reply-To: <65a86647-6d3c-2cbc-f430-ceffdfabc27e@gmail.com>
+References: <hMOLabhKX4qUpm7377yPK4N85t3XtYvEMbfXIXytM1ODg6IdHfmOJBUyhNEAKJVJVTsWOzI_vFenQgeFYZpmnIjkR3SrzpkYa_MdtvPZiew=@protonmail.com>
+ <20230830113745.07c0c4f2@Tarkus>
+ <-gK4K38T4XHaYjsOkfUzcCxsW6vSVk1U8PqFY08FhLjlHu9mziymAtOaAZ01BZKGgpIqhumdOVaRAeF_6t69nHuANnR3sNndpXFUzwpqH8M=@protonmail.com>
+ <20230830190936.6c2ea08c@arachnoid>
+ <6aUJAWes94XV_0CRJsi36iPjACBvj0dCGqEd_6ZVSE6SmofBmyCoMPm6rBU033Adguy26LvXPJW4dpt_GfLiv3OYRauNx8PdUjy1x8h-g8w=@protonmail.com>
+ <20230830215943.66720f3f@Tarkus>
+ <65a86647-6d3c-2cbc-f430-ceffdfabc27e@gmail.com>
+Message-ID: <D442E7BB-8B62-4D90-92CB-CFF4D04747A5@dcn.davis.ca.us>
+
+TL:DR there are at least three maybe four ways to address this depending on what you plan to do.
+
+I usually adjust PATH to add Rtools using .Rprofile. But if you do that then if you want to use the command line to invoke R then you need to set the PATH separately when you start the shell. For this reason some people like to set it in the User Environment Variables control panel... but some Rtools programs conflict with some Cygwin tools so I don't like to set it globally that way since I use Cygwin a lot.
+
+Finally, I _think_ RStudio will try to look up your Rtools and adjust settings automagically from within RStudio, but only if you have never previously configured it in your environment variables. But that is only inferred from reports I have read that imply they never manually set anything and it "just works"... I have always set it up manually. If this sounds attractive then you might try making sure Rtools is NOT in your PATH before RStudio starts up _and_ that it isn't configured in your .Rprofile file.
+
+On August 30, 2023 12:10:28 PM PDT, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>On 30/08/2023 2:59 p.m., Ivan Krylov wrote:
+>> On Wed, 30 Aug 2023 16:31:20 +0000
+>> Christophe Bousquet <chr_bousquet at protonmail.com> wrote:
+>> 
+>>>   So, yes, it seems possible for R to localize paths related to
+>>> Rtools... But then, I really do not get where things go wrong...
+>> 
+>> When installing packages containing code to compile, R eventually calls
+>> R CMD SHLIB. Same thing happens with inline C++: it gets stored in a
+>> temporary file, compiled into a *.dll using R CMD SHLIB and then loaded
+>> using dyn.load().
+>> 
+>> Write the following into a file named hello.c:
+>> 
+>> #include <R.h>
+>> #include <Rinternals.h>
+>> SEXP hello(void) {
+>>          SEXP ret = PROTECT(allocVector(STRSXP, 1));
+>>          SET_STRING_ELT(ret, 0, mkChar("hello"));
+>>          UNPROTECT(1);
+>>          return ret;
+>> }
+>> 
+>>  From within R, setwd() to the directory containing hello.c and run:
+>> 
+>> tools::Rcmd('SHLIB -n hello.c')
+>> tools::Rcmd('SHLIB hello.c')
+>> 
+>> What do the commands print? Does the second command fail?
+>> 
+>> (Let's Cc: R-help at r-project.org in case people with more experience
+>> debugging Windows problems have a better idea what's going on.)
+>> 
+>
+>It sounds exactly as though Rtools files aren't on the path that's in effect when R starts.  That's probably the one stored in the registry. In the old days it was set in the System app in the Windows Control Panel under "Edit the system environment variables".  I don't know if that's still true.
+>
+>Duncan Murdoch
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Thu Aug 31 00:15:01 2023
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Wed, 30 Aug 2023 18:15:01 -0400
+Subject: [R] data.table question
+Message-ID: <IA1P223MB0499A96A276F4DE735A6854EFAE6A@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+
+
+I want to apply interpolation functions from one data.table to each row
+of another data.table.
+
+interp.dt <- data.table(scen = rep(c("a", "b"), c(3, 3)), term = c(1,
+20, 60, 1, 32, 72), shock = c(10, 20, 30, 9, 12, 32))
+
+interp.fn <- function(df, x) with(df, approx(term, shock, xout = x)$y)
+
+mydt <- data.table(name = c("xx", "yy", "zz"), term = c(22, 6, 18))
+
+## Does not work
+## scen.dt <- CJ(scen = c("a", "b"), mydt)
+
+scen.dt <- lapply(c("a", "b"), function(scenario) {tempdt <- copy(mydt);
+tempdt[, scen := scenario]})
+scen.dt <- rbindlist(scen.dt)
+
+## Works
+interp.fn(interp.dt[scen == "a"], 22)
+
+## Does not work
+## scen.dt[, shock := interp.fn(interp.dt[scen == scen], term)]
+
+## Works using data.frame apply
+scen.dt[, "shock"] <- apply(scen.dt, 1, function(row) {
+interp.fn(interp.dt[scen == row["scen"]], as.numeric(row["term"]))})
+
+Is it possible to get both the above results using native data.table
+methods?
+
+Thanks,
+Naresh
+
+
