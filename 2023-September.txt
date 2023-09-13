@@ -12508,3 +12508,483 @@ Kingston ON Canada
 	[[alternative HTML version deleted]]
 
 
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Mon Sep 11 22:40:24 2023
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Mon, 11 Sep 2023 20:40:24 +0000
+Subject: [R] unable to load latticeExtra in AWS R
+In-Reply-To: <3492F6DE-1982-4BD3-95D9-A80764EDEDAF@gmail.com>
+References: <BY3PR09MB8260F8031C6795AE812D6A1CBFEDA@BY3PR09MB8260.namprd09.prod.outlook.com>
+ <BY3PR09MB8260B623E78B5FFB64FBF4D1BFEDA@BY3PR09MB8260.namprd09.prod.outlook.com>
+ <IA1P223MB0499E5E6D915A09C20EC29A6FAEDA@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+ <3492F6DE-1982-4BD3-95D9-A80764EDEDAF@gmail.com>
+Message-ID: <IA1P223MB04991D0BEFBA8B124EBA0224FAF2A@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+
+Reinstall of jpeg followed by reinstall of latticeExtra solved this problem.
+
+Thanks
+
+Sent from my iPhone
+
+> On Sep 8, 2023, at 6:34 PM, Ivan Krylov <krylov.r00t at gmail.com> wrote:
+> 
+> ?8 ???????? 2023 ?. 22:25:10 UTC, Naresh Gurbuxani <naresh_gurbuxani at hotmail.com> ?????:
+>>> library(latticeExtra)
+>> Error: package or namespace load failed for ?latticeExtra? in dyn.load(file, DLLpath = DLLpath, ...):
+>> unable to load shared object '/home/ec2-user/SageMaker/R-library/jpeg/libs/jpeg.so':
+>>  libjpeg.so.8: cannot open shared object file: No such file or directory
+> 
+>> !> sessionInfo()
+>> R version 4.2.3 (2023-03-15)
+>> Platform: x86_64-conda-linux-gnu (64-bit)
+>> Running under: Amazon Linux 2
+> Sounds like an LD_LIBRARY_PATH problem. How did you install the jpeg package? Try reinstalling it.
+> -- 
+> Best regards,
+> Ivan
+
+From pd@|gd @end|ng |rom gm@||@com  Tue Sep 12 14:21:24 2023
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Tue, 12 Sep 2023 14:21:24 +0200
+Subject: [R] prop.trend.test
+In-Reply-To: <102fa2f9-7f44-f8cd-fb4b-4740313c32b6@sapo.pt>
+References: <1884818502.6266978.1694093012313.ref@mail.yahoo.com>
+ <1884818502.6266978.1694093012313@mail.yahoo.com>
+ <283374f8-00ff-20ec-44e2-8ed0470a614e@sapo.pt>
+ <1389791463.6717152.1694150558314@mail.yahoo.com>
+ <EFFC6A67-67BD-4730-B954-86684765C19D@gmail.com>
+ <102fa2f9-7f44-f8cd-fb4b-4740313c32b6@sapo.pt>
+Message-ID: <307C1800-CC14-4EB0-A377-151F607800CE@gmail.com>
+
+Argh, yes, drats, thanks. 
+
+There will be a matter of an estimated residual error.
+
+So
+
+> coef(summary(ht$lmfit))["score","t value"]*sigma(ht$lmfit)
+[1] -2.867913
+
+matches the signes square root of the Chi-square.
+
+Or, likely better (avoid 0 df cases), switch to a Gaussian glm fit and use the z stat
+
+> coef(summary(ht$glmfit, dispersion = 1))
+               Estimate Std. Error   z value      Pr(>|z|)
+(Intercept)  1.02187141 0.03199737 31.936102 8.425506e-224
+score       -0.03341563 0.01165155 -2.867913  4.131897e-03
+
+The Estimate (-0.0334) should still make sense as the LPM estimate of the regression slope.
+
+- Peter D.
+
+
+> On 8 Sep 2023, at 12:53 , Rui Barradas <ruipbarradas at sapo.pt> wrote:
+> 
+> ?s 10:06 de 08/09/2023, peter dalgaard escreveu:
+>> Yes, this was written a bit bone-headed (as I am allowed to say...)
+>> If you look at the code, you will see inside:
+>>     a <- anova(lm(freq ~ score, data = list(freq = x/n, score = as.vector(score)),
+>>         weights = w))
+>> and the lm() inside should give you the direction via the sign of the regression coefficient on "score".
+>>  So, at least for now, you could just doctor a copy of the code for your own purposes, as in
+>>  fit <- lm(freq ~ score, data = list(freq = x/n, score = as.vector(score)),
+>>         weights = w)
+>>  a <- anova(fit)
+>>  and arrange to return coef(fit)["score"] at the end. Something like structure(... estimate=c(lpm.slope=coef(fit)["score"]) ....)
+>> (I expect that you might also extract the t-statistic from coef(summary(fit)) and find that it is the signed square root of the Chi-square, but I won't have time to test that just now.)
+>> -pd
+>>> On 8 Sep 2023, at 07:22 , Thomas Subia via R-help <r-help at r-project.org> wrote:
+>>> 
+>>> Colleagues,
+>>> 
+>>> Thanks all for the responses.
+>>> 
+>>> I am monitoring the daily total number of defects per sample unit.
+>>> I need to know whether this daily defect proportion is trending upward (a bad thing for a manufacturing process).
+>>> 
+>>> My first thought was to use either a u or a u' control chart for this.
+>>> As far as I know, u or u' charts are poor to detect drifts.
+>>> 
+>>> This is why I chose to use prop.trend.test to detect trends in proportions.
+>>> 
+>>> While prop.trend.test can confirm the existence of a trend, as far as I know, it is left to the user
+>>> to determine what direction that trend is.
+>>> 
+>>> One way to illustrate trending is of course to plot the data and use geom_smooth and method lm
+>>> For the non-statisticians in my group, I've found that using this method along with the p-value of prop.trend.test, makes it easier for the users to determine the existence of trending and its direction.
+>>> 
+>>> If there are any other ways to do this, please let me know.
+>>> 
+>>> Thomas Subia
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>>> On Thursday, September 7, 2023 at 10:31:27 AM PDT, Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>>> ?s 14:23 de 07/09/2023, Thomas Subia via R-help escreveu:
+>>>> 
+>>>> Colleagues
+>>>> 
+>>>>    Consider
+>>>> smokers  <- c( 83, 90, 129, 70 )
+>>>> patients <- c( 86, 93, 136, 82 )
+>>>> 
+>>>>    prop.trend.test(smokers, patients)
+>>>> 
+>>>>    Output:
+>>>> 
+>>>>        Chi-squared Test for Trend inProportions
+>>>> 
+>>>>    data:  smokers out of patients ,
+>>>> 
+>>>> using scores: 1 2 3 4
+>>>> 
+>>>> X-squared = 8.2249, df = 1, p-value = 0.004132
+>>>> 
+>>>>    # trend test for proportions indicates proportions aretrending.
+>>>> 
+>>>>    How does one identify the direction of trending?
+>>>>    # prop.test indicates that the proportions are unequal but doeslittle to indicate trend direction.
+>>>> All the best,
+>>>> Thomas Subia
+>>>> 
+>>>> 
+>>>>     [[alternative HTML version deleted]]
+>>>> 
+>>>> ______________________________________________
+>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>>> and provide commented, minimal, self-contained, reproducible code.
+>>> Hello,
+>>> 
+>>> By visual inspection it seems that there is a decreasing trend.
+>>> Note that the sample estimates of prop.test and smokers/patients are equal.
+>>> 
+>>> 
+>>> smokers  <- c( 83, 90, 129, 70 )
+>>> patients <- c( 86, 93, 136, 82 )
+>>> 
+>>> prop.test(smokers, patients)$estimate
+>>> #>    prop 1    prop 2    prop 3    prop 4
+>>> #> 0.9651163 0.9677419 0.9485294 0.8536585
+>>> 
+>>> smokers/patients
+>>> 
+>>> #> [1] 0.9651163 0.9677419 0.9485294 0.8536585
+>>> 
+>>> plot(smokers/patients, type = "b")
+>>> 
+>>> 
+>>> 
+>>> Hope this helps,
+>>> 
+>>> Rui Barradas
+>>> 
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+> 
+> Actually, the t-statistic is not the signed square root of the X-squared test statistic. I have edited the function, assigned the lm fit and returned it as is. (print.htest won't print this new list member so the output is not cluttered with irrelevant noise.)
+> 
+> 
+> smokers  <- c( 83, 90, 129, 70 )
+> patients <- c( 86, 93, 136, 82 )
+> 
+> edit(prop.trend.test, file = "ptt.R")
+> source("ptt.R")
+> 
+> # stats::prop.trend.test edited to include the results
+> # of the lm fit and saved under a new name
+> ptt <- function (x, n, score = seq_along(x))
+> {
+>  method <- "Chi-squared Test for Trend in Proportions"
+>  dname <- paste(deparse1(substitute(x)), "out of", deparse1(substitute(n)),
+>                 ",\n using scores:", paste(score, collapse = " "))
+>  x <- as.vector(x)
+>  n <- as.vector(n)
+>  p <- sum(x)/sum(n)
+>  w <- n/p/(1 - p)
+>  a <- anova(fit <- lm(freq ~ score, data = list(freq = x/n, score = as.vector(score)),
+>                       weights = w))
+>  chisq <- c(`X-squared` = a["score", "Sum Sq"])
+>  structure(list(statistic = chisq, parameter = c(df = 1),
+>                 p.value = pchisq(as.numeric(chisq), 1, lower.tail = FALSE),
+>                 method = method, data.name = dname
+>                 , lmfit = fit
+>                 ), class = "htest")
+> }
+> 
+> 
+> ht <- ptt(smokers, patients)
+> ht$statistic |> sqrt()
+> #> X-squared
+> #>  2.867913
+> ht$lmfit |> summary() |> coef()
+> #>                Estimate Std. Error   t value   Pr(>|t|)
+> #> (Intercept)  1.02187141 0.04732740 21.591539 0.00213815
+> #> score       -0.03341563 0.01723384 -1.938954 0.19207036
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From |oopv|ny| @end|ng |rom gm@||@com  Tue Sep 12 17:24:26 2023
+From: |oopv|ny| @end|ng |rom gm@||@com (Loop Vinyl)
+Date: Tue, 12 Sep 2023 12:24:26 -0300
+Subject: [R] graph in R with grouping letters from the turkey test with
+ agricolae package
+Message-ID: <CAF_u4OngSZOt2M=a3wTu6y1kg9DR56t9g_ma9rWK9nZZZJtDzw@mail.gmail.com>
+
+I would like to produce the attached graph (graph1) with the R package
+agricolae, could someone give me an example with the attached data (data)?
+
+I expect an adapted graph (graph2) with the data (data)
+
+Best regards
+
+-------------- next part --------------
+An embedded and charset-unspecified text was scrubbed...
+Name: data.txt
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20230912/03d584e9/attachment.txt>
+
+From kev|n @end|ng |rom zembower@org  Tue Sep 12 22:50:25 2023
+From: kev|n @end|ng |rom zembower@org (=?UTF-8?Q?Kevin_Zembower?=)
+Date: Tue, 12 Sep 2023 20:50:25 +0000
+Subject: [R] Help with plotting and date-times for climate data
+References: <9f944cd464ada0c7d05750670e9b3e7f935a7350.camel@zembower.org>
+Message-ID: <0100018a8b28dd03-b1012577-a8c4-432f-a04c-36368ee90e7b-000000@email.amazonses.com>
+
+Hello,
+
+I'm trying to calculate the mean temperature max from a file of climate
+date, and plot it over a range of days in the year. I've downloaded the
+data, and cleaned it up the way I think it should be. However, when I
+plot it, the geom_smooth line doesn't show up. I think that's because
+my x axis is characters or factors. Here's what I have so far:
+========================================
+library(tidyverse)
+
+data <- read_csv("Ely_MN_Weather.csv")
+
+start_day = yday(as_date("2023-09-22"))
+end_day = yday(as_date("2023-10-15"))
+               
+d <- as_tibble(data) %>%
+    select(DATE,TMAX,TMIN) %>%
+    mutate(DATE = as_date(DATE),
+           yday = yday(DATE),
+           md = sprintf("%02d-%02d", month(DATE), mday(DATE))
+           ) %>%
+    filter(yday >= start_day & yday <= end_day) %>%
+    mutate(md = as.factor(md))
+
+d_sum <- d %>%
+    group_by(md) %>%
+    summarize(tmax_mean = mean(TMAX, na.rm=TRUE))
+
+## Here's the filtered data:
+dput(d_sum)
+
+> structure(list(md = structure(1:25, levels = c("09-21", "09-22", 
+"09-23", "09-24", "09-25", "09-26", "09-27", "09-28", "09-29", 
+"09-30", "10-01", "10-02", "10-03", "10-04", "10-05", "10-06", 
+"10-07", "10-08", "10-09", "10-10", "10-11", "10-12", "10-13", 
+"10-14", "10-15"), class = "factor"), tmax_mean = c(65,
+62.2222222222222, 
+61.3, 63.8888888888889, 64.3, 60.1111111111111, 62.3, 60.5, 61.9, 
+61.2, 63.6666666666667, 59.5, 59.5555555555556, 61.5555555555556, 
+59.4444444444444, 58.7777777777778, 55.8888888888889, 58.125, 
+58, 55.6666666666667, 57, 55.4444444444444, 49.7777777777778, 
+48.75, 43.6666666666667)), class = c("tbl_df", "tbl", "data.frame"
+), row.names = c(NA, -25L))
+> 
+ggplot(data = d_sum, aes(x = md)) +
+    geom_point(aes(y = tmax_mean, color = "blue")) +
+    geom_smooth(aes(y = tmax_mean, color = "blue"))
+=====================================
+My questions are:
+1. Why isn't my geom_smooth plotting? How can I fix it?
+2. I don't think I'm handling the month and day combination correctly.
+Is there a way to encode month and day (but not year) as a date?
+3. (Minor point) Why does my graph of tmax_mean come out red when I
+specify "blue"?
+
+Thanks for any advice or guidance you can offer. I really appreciate
+the expertise of this group.
+
+-Kevin
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Tue Sep 12 23:54:50 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 12 Sep 2023 22:54:50 +0100
+Subject: [R] graph in R with grouping letters from the turkey test with
+ agricolae package
+In-Reply-To: <CAF_u4OngSZOt2M=a3wTu6y1kg9DR56t9g_ma9rWK9nZZZJtDzw@mail.gmail.com>
+References: <CAF_u4OngSZOt2M=a3wTu6y1kg9DR56t9g_ma9rWK9nZZZJtDzw@mail.gmail.com>
+Message-ID: <16913bc2-872c-c5e3-00a9-179d25dd1406@sapo.pt>
+
+?s 16:24 de 12/09/2023, Loop Vinyl escreveu:
+> I would like to produce the attached graph (graph1) with the R package
+> agricolae, could someone give me an example with the attached data (data)?
+> 
+> I expect an adapted graph (graph2) with the data (data)
+> 
+> Best regards
+> 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+There are no attached graphs, only data.
+Can you post the code have you tried?
+
+Hope this helps,
+
+Rui Barradas
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Wed Sep 13 00:06:43 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 12 Sep 2023 23:06:43 +0100
+Subject: [R] Help with plotting and date-times for climate data
+In-Reply-To: <0100018a8b28dd03-b1012577-a8c4-432f-a04c-36368ee90e7b-000000@email.amazonses.com>
+References: <9f944cd464ada0c7d05750670e9b3e7f935a7350.camel@zembower.org>
+ <0100018a8b28dd03-b1012577-a8c4-432f-a04c-36368ee90e7b-000000@email.amazonses.com>
+Message-ID: <611847a8-88a7-59a2-8f79-65c2293145df@sapo.pt>
+
+?s 21:50 de 12/09/2023, Kevin Zembower via R-help escreveu:
+> Hello,
+> 
+> I'm trying to calculate the mean temperature max from a file of climate
+> date, and plot it over a range of days in the year. I've downloaded the
+> data, and cleaned it up the way I think it should be. However, when I
+> plot it, the geom_smooth line doesn't show up. I think that's because
+> my x axis is characters or factors. Here's what I have so far:
+> ========================================
+> library(tidyverse)
+> 
+> data <- read_csv("Ely_MN_Weather.csv")
+> 
+> start_day = yday(as_date("2023-09-22"))
+> end_day = yday(as_date("2023-10-15"))
+>                 
+> d <- as_tibble(data) %>%
+>      select(DATE,TMAX,TMIN) %>%
+>      mutate(DATE = as_date(DATE),
+>             yday = yday(DATE),
+>             md = sprintf("%02d-%02d", month(DATE), mday(DATE))
+>             ) %>%
+>      filter(yday >= start_day & yday <= end_day) %>%
+>      mutate(md = as.factor(md))
+> 
+> d_sum <- d %>%
+>      group_by(md) %>%
+>      summarize(tmax_mean = mean(TMAX, na.rm=TRUE))
+> 
+> ## Here's the filtered data:
+> dput(d_sum)
+> 
+>> structure(list(md = structure(1:25, levels = c("09-21", "09-22",
+> "09-23", "09-24", "09-25", "09-26", "09-27", "09-28", "09-29",
+> "09-30", "10-01", "10-02", "10-03", "10-04", "10-05", "10-06",
+> "10-07", "10-08", "10-09", "10-10", "10-11", "10-12", "10-13",
+> "10-14", "10-15"), class = "factor"), tmax_mean = c(65,
+> 62.2222222222222,
+> 61.3, 63.8888888888889, 64.3, 60.1111111111111, 62.3, 60.5, 61.9,
+> 61.2, 63.6666666666667, 59.5, 59.5555555555556, 61.5555555555556,
+> 59.4444444444444, 58.7777777777778, 55.8888888888889, 58.125,
+> 58, 55.6666666666667, 57, 55.4444444444444, 49.7777777777778,
+> 48.75, 43.6666666666667)), class = c("tbl_df", "tbl", "data.frame"
+> ), row.names = c(NA, -25L))
+>>
+> ggplot(data = d_sum, aes(x = md)) +
+>      geom_point(aes(y = tmax_mean, color = "blue")) +
+>      geom_smooth(aes(y = tmax_mean, color = "blue"))
+> =====================================
+> My questions are:
+> 1. Why isn't my geom_smooth plotting? How can I fix it?
+> 2. I don't think I'm handling the month and day combination correctly.
+> Is there a way to encode month and day (but not year) as a date?
+> 3. (Minor point) Why does my graph of tmax_mean come out red when I
+> specify "blue"?
+> 
+> Thanks for any advice or guidance you can offer. I really appreciate
+> the expertise of this group.
+> 
+> -Kevin
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+The problem is that the dates are factors, not real dates. And 
+geom_smooth is not interpolating along a discrete axis (the x axis).
+
+Paste a fake year with md, coerce to date and plot.
+I have simplified the aes() calls and added a date scale in order to 
+make the x axis more readable.
+
+Without the formula and method arguments, geom_smooth will print a 
+message, they are now made explicit.
+
+
+
+suppressPackageStartupMessages({
+   library(dplyr)
+   library(ggplot2)
+})
+
+d_sum %>%
+   mutate(md = paste("2023", md, sep = "-"),
+          md = as.Date(md)) %>%
+   ggplot(aes(x = md, y = tmax_mean)) +
+   geom_point(color = "blue") +
+   geom_smooth(
+     formula = y ~ x,
+     method = loess,
+     color = "blue"
+   ) +
+   scale_x_date(date_breaks = "7 days", date_labels = "%m-%d")
+
+
+
+Hope this helps,
+
+Rui Barradas
+
+
