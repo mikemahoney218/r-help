@@ -17346,3 +17346,837 @@ On 2023-09-16 4:39 p.m., Robert Baer wrote:
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From rb@er @end|ng |rom @t@u@edu  Mon Sep 18 03:33:00 2023
+From: rb@er @end|ng |rom @t@u@edu (Robert Baer)
+Date: Sun, 17 Sep 2023 20:33:00 -0500
+Subject: [R] Print hypothesis warning- Car package
+In-Reply-To: <b655a6b1-5f1f-45fb-96c1-b25b29d6809b@mcmaster.ca>
+References: <e4260eec-9e96-f90f-d698-9bc135b61d30@atsu.edu>
+ <b655a6b1-5f1f-45fb-96c1-b25b29d6809b@mcmaster.ca>
+Message-ID: <30f97286-6bab-53be-0b36-e93cd698792c@atsu.edu>
+
+Thanks John. Appreciate the insights.
+
+On 9/17/2023 9:43 AM, John Fox wrote:
+> Dear Robert,
+>
+> Anova() calls linearHypothesis(), also in the car package, to compute 
+> sums of squares and df, supplying appropriate hypothesis matrices. 
+> linearHypothesis() usually tries to express the hypothesis matrix in 
+> symbolic equation form for printing, but won't do this if coefficient 
+> names include arithmetic operators, in your case - and +, which can 
+> confuse it.
+>
+> The symbolic form of the hypothesis isn't really relevant for Anova(), 
+> which doesn't use the printed representation of each hypothesis, and 
+> so, despite the warnings, you get the correct ANOVA table. In your 
+> case, where the data are balanced, with 4 cases per cell, Anova(mod) 
+> and summary(mod) are equivalent, which makes me wonder why you would 
+> use Anova() in the first place.
+>
+> To elaborate a bit, linearHypothesis() does tolerate arithmetic 
+> operators in coefficient names if you specify the hypothesis 
+> symbolically rather than as a hypothesis matrix. For example, to test, 
+> the interaction:
+>
+> ------- snip --------
+>
+> > linearHypothesis(mod,
+> +????????????????? c("TreatmentDabrafenib:ExpressionCD271+ = 0",
+> +??????????????????? "TreatmentTrametinib:ExpressionCD271+ = 0",
+> +??????????????????? "TreatmentCombination:ExpressionCD271+ = 0"))
+> Linear hypothesis test
+>
+> Hypothesis:
+> TreatmentDabrafenib:ExpressionCD271+ = 0
+> TreatmentTrametinib:ExpressionCD271+ = 0
+> TreatmentCombination:ExpressionCD271+ = 0
+>
+> Model 1: restricted model
+> Model 2: Viability ~ Treatment * Expression
+>
+> ? Res.Df?? RSS Df Sum of Sq???? F Pr(>F)
+> 1???? 27 18966
+> 2???? 24 16739? 3??? 2226.3 1.064 0.3828
+>
+> ------- snip --------
+>
+> Alternatively:
+>
+> ------- snip --------
+>
+> > H <- matrix(0, 3, 8)
+> > H[1, 6] <- H[2, 7] <- H[3, 8] <- 1
+> > H
+> ???? [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8]
+> [1,]??? 0??? 0??? 0??? 0??? 0??? 1??? 0??? 0
+> [2,]??? 0??? 0??? 0??? 0??? 0??? 0??? 1??? 0
+> [3,]??? 0??? 0??? 0??? 0??? 0??? 0??? 0??? 1
+>
+> > linearHypothesis(mod, H)
+> Linear hypothesis test
+>
+> Hypothesis:
+>
+>
+> Model 1: restricted model
+> Model 2: Viability ~ Treatment * Expression
+>
+> ? Res.Df?? RSS Df Sum of Sq???? F Pr(>F)
+> 1???? 27 18966
+> 2???? 24 16739? 3??? 2226.3 1.064 0.3828
+> Warning message:
+> In printHypothesis(L, rhs, names(b)) :
+> ? one or more coefficients in the hypothesis include
+> ???? arithmetic operators in their names;
+> ? the printed representation of the hypothesis will be omitted
+>
+> ------- snip --------
+>
+> There's no good reason that linearHypothesis() should try to express 
+> each hypothesis symbolically for Anova(), since Anova() doesn't use 
+> that information. When I have some time, I'll arrange to avoid the 
+> warning.
+>
+> Best,
+> ?John
+>
+
+
+From pd@|gd @end|ng |rom gm@||@com  Mon Sep 18 16:08:57 2023
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Mon, 18 Sep 2023 16:08:57 +0200
+Subject: [R] Print hypothesis warning- Car package
+In-Reply-To: <b655a6b1-5f1f-45fb-96c1-b25b29d6809b@mcmaster.ca>
+References: <e4260eec-9e96-f90f-d698-9bc135b61d30@atsu.edu>
+ <b655a6b1-5f1f-45fb-96c1-b25b29d6809b@mcmaster.ca>
+Message-ID: <A5DEAE2A-C991-45EE-A966-079527335716@gmail.com>
+
+Also, I would guess that the code precedes the use of backticks in non-syntactic names. Could they be deployed here?
+
+- Peter
+
+> On 17 Sep 2023, at 16:43 , John Fox <jfox at mcmaster.ca> wrote:
+> 
+> Dear Robert,
+> 
+> Anova() calls linearHypothesis(), also in the car package, to compute sums of squares and df, supplying appropriate hypothesis matrices. linearHypothesis() usually tries to express the hypothesis matrix in symbolic equation form for printing, but won't do this if coefficient names include arithmetic operators, in your case - and +, which can confuse it.
+> 
+> The symbolic form of the hypothesis isn't really relevant for Anova(), which doesn't use the printed representation of each hypothesis, and so, despite the warnings, you get the correct ANOVA table. In your case, where the data are balanced, with 4 cases per cell, Anova(mod) and summary(mod) are equivalent, which makes me wonder why you would use Anova() in the first place.
+> 
+> To elaborate a bit, linearHypothesis() does tolerate arithmetic operators in coefficient names if you specify the hypothesis symbolically rather than as a hypothesis matrix. For example, to test, the interaction:
+> 
+> ------- snip --------
+> 
+> > linearHypothesis(mod,
+> +                  c("TreatmentDabrafenib:ExpressionCD271+ = 0",
+> +                    "TreatmentTrametinib:ExpressionCD271+ = 0",
+> +                    "TreatmentCombination:ExpressionCD271+ = 0"))
+> Linear hypothesis test
+> 
+> Hypothesis:
+> TreatmentDabrafenib:ExpressionCD271+ = 0
+> TreatmentTrametinib:ExpressionCD271+ = 0
+> TreatmentCombination:ExpressionCD271+ = 0
+> 
+> Model 1: restricted model
+> Model 2: Viability ~ Treatment * Expression
+> 
+>  Res.Df   RSS Df Sum of Sq     F Pr(>F)
+> 1     27 18966
+> 2     24 16739  3    2226.3 1.064 0.3828
+> 
+> ------- snip --------
+> 
+> Alternatively:
+> 
+> ------- snip --------
+> 
+> > H <- matrix(0, 3, 8)
+> > H[1, 6] <- H[2, 7] <- H[3, 8] <- 1
+> > H
+>     [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8]
+> [1,]    0    0    0    0    0    1    0    0
+> [2,]    0    0    0    0    0    0    1    0
+> [3,]    0    0    0    0    0    0    0    1
+> 
+> > linearHypothesis(mod, H)
+> Linear hypothesis test
+> 
+> Hypothesis:
+> 
+> 
+> Model 1: restricted model
+> Model 2: Viability ~ Treatment * Expression
+> 
+>  Res.Df   RSS Df Sum of Sq     F Pr(>F)
+> 1     27 18966
+> 2     24 16739  3    2226.3 1.064 0.3828
+> Warning message:
+> In printHypothesis(L, rhs, names(b)) :
+>  one or more coefficients in the hypothesis include
+>     arithmetic operators in their names;
+>  the printed representation of the hypothesis will be omitted
+> 
+> ------- snip --------
+> 
+> There's no good reason that linearHypothesis() should try to express each hypothesis symbolically for Anova(), since Anova() doesn't use that information. When I have some time, I'll arrange to avoid the warning.
+> 
+> Best,
+> John
+> 
+> -- 
+> John Fox, Professor Emeritus
+> McMaster University
+> Hamilton, Ontario, Canada
+> web: https://www.john-fox.ca/
+> On 2023-09-16 4:39 p.m., Robert Baer wrote:
+>> Caution: External email.
+>> When doing Anova using the car package,  I get a print warning that is
+>> unexpected.  It seemingly involves have my flow cytometry factor levels
+>> named CD271+ and CD171-.  But I am not sure this warning should be
+>> intended behavior.  Any explanation about whether I'm doing something
+>> wrong? Why can't I have CD271+ and CD271- as factor levels?  Its legal
+>> text isn't it?
+>> library(car) mod = aov(Viability ~ Treatment*Expression, data = dat1)
+>> Anova(mod, type =2) Anova Table (Type II tests) Response: Viability Sum
+>> Sq Df F value Pr(>F) Treatment 19447.3 3 9.2942 0.0002927 *** Expression
+>> 2669.8 1 3.8279 0.0621394 . Treatment:Expression 2226.3 3 1.0640
+>> 0.3828336 Residuals 16739.3 24 --- Signif. codes: 0 ?***? 0.001 ?**?
+>> 0.01 ?*? 0.05 ?.? 0.1 ? ? 1 Warning messages: 1: In printHypothesis(L,
+>> rhs, names(b)) : one or more coefficients in the hypothesis include
+>> arithmetic operators in their names; the printed representation of the
+>> hypothesis will be omitted 2: In printHypothesis(L, rhs, names(b)) : one
+>> or more coefficients in the hypothesis include arithmetic operators in
+>> their names; the printed representation of the hypothesis will be
+>> omitted 3: In printHypothesis(L, rhs, names(b)) : one or more
+>> coefficients in the hypothesis include arithmetic operators in their
+>> names; the printed representation of the hypothesis will be omitted
+>> The code to reproduce:
+>> ```
+>> dat1 <-structure(list(Treatment = structure(c(1L, 1L, 1L, 1L, 3L, 1L,
+>>                                                1L, 1L, 1L, 2L, 2L, 2L,
+>> 2L, 2L, 2L, 2L, 2L, 3L, 3L, 3L, 3L, 3L,
+>>                                                3L, 3L, 4L, 4L, 4L, 4L,
+>> 4L, 4L, 4L, 4L), levels = c("Control",
+>> "Dabrafenib", "Trametinib", "Combination"), class = "factor"),
+>>                        Expression = structure(c(2L, 2L, 2L, 2L, 2L, 1L,
+>> 1L, 1L,
+>>                                                 1L, 2L, 2L, 2L, 2L, 1L,
+>> 1L, 1L, 1L, 2L, 2L, 2L, 1L, 1L, 1L,
+>>                                                 1L, 2L, 2L, 2L, 2L, 1L,
+>> 1L, 1L, 1L), levels = c("CD271-",
+>> "CD271+"), class = "factor"),
+>>                        Viability = c(128.329809725159, 24.2360176821065,
+>> 76.3597924274457, 11.0128771862387, 21.4683836248318,
+>>                                      140.784162982894, 87.4303286565443,
+>> 118.181818181818, 53.603690178743,
+>>                                      51.2973284643475, 5.47760907168941,
+>> 27.1574091870075, 50.8360561214684,
+>>                                      56.5250816836441, 28.6949836632712,
+>> 93.2731116663463, 71.900826446281,
+>>                                      32.2314049586777, 24.2360176821065,
+>> 27.4649240822602, 24.0822602344801,
+>>                                      26.542379396502, 30.693830482414,
+>> 27.772438977513, 13.4729963482606,
+>>                                      8.24524312896406, 18.5469921199308,
+>> 13.9342686911397, 13.3192389006342,
+>>                                      19.9308091485681, 17.6244474341726,
+>> 16.2406304055353)),
+>>                   row.names = c(NA,
+>>                                 -32L),
+>>                   class = c("tbl_df", "tbl", "data.frame"))
+>> mod = aov(Viability ~ Treatment*Expression, data = dat1)
+>> summary(mod)
+>> library(car)
+>> Anova(mod, type =2)
+>> ```
+>>> sessionInfo() R version 4.3.1 (2023-06-16 ucrt) Platform:
+>> x86_64-w64-mingw32/x64 (64-bit) Running under: Windows 11 x64 (build
+>> 25951) Matrix products: default locale: [1] LC_COLLATE=English_United
+>> States.utf8 LC_CTYPE=English_United States.utf8
+>> LC_MONETARY=English_United States.utf8 [4] LC_NUMERIC=C
+>> LC_TIME=English_United States.utf8 time zone: America/Chicago tzcode
+>> source: internal attached base packages: [1] stats graphics grDevices
+>> utils datasets methods base other attached packages: [1] car_3.1-2
+>> carData_3.0-5 tidyr_1.3.0 readr_2.1.4 readxl_1.4.3 ggplot2_3.4.3
+>> dplyr_1.1.3 loaded via a namespace (and not attached): [1] crayon_1.5.2
+>> vctrs_0.6.3 cli_3.6.1 rlang_1.1.1 purrr_1.0.2 generics_0.1.3
+>> labeling_0.4.3 [8] bit_4.0.5 glue_1.6.2 colorspace_2.1-0 hms_1.1.3
+>> scales_1.2.1 fansi_1.0.4 grid_4.3.1 [15] cellranger_1.1.0 abind_1.4-5
+>> munsell_0.5.0 tibble_3.2.1 tzdb_0.4.0 lifecycle_1.0.3 compiler_4.3.1
+>> [22] pkgconfig_2.0.3 rstudioapi_0.15.0 farver_2.1.1 R6_2.5.1
+>> tidyselect_1.2.0 utf8_1.2.3 parallel_4.3.1 [29] vroom_1.6.3 pillar_1.9.0
+>> magrittr_2.0.3 bit64_4.0.5 tools_4.3.1 withr_2.5.0 gtable_0.3.4
+>>         [[alternative HTML version deleted]]
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Mon Sep 18 17:50:32 2023
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Mon, 18 Sep 2023 11:50:32 -0400
+Subject: [R] Print hypothesis warning- Car package
+In-Reply-To: <A5DEAE2A-C991-45EE-A966-079527335716@gmail.com>
+References: <e4260eec-9e96-f90f-d698-9bc135b61d30@atsu.edu>
+ <b655a6b1-5f1f-45fb-96c1-b25b29d6809b@mcmaster.ca>
+ <A5DEAE2A-C991-45EE-A966-079527335716@gmail.com>
+Message-ID: <e8775f00-c775-4060-9113-90aa7632e3b7@mcmaster.ca>
+
+Hi Peter,
+
+On 2023-09-18 10:08 a.m., peter dalgaard wrote:
+> Caution: External email.
+> 
+> 
+> Also, I would guess that the code precedes the use of backticks in non-syntactic names. 
+
+Indeed, by more than a decade (though modified in the interim).
+
+> Could they be deployed here?
+
+I don't think so, at least not without changing how the function works.
+
+The problem doesn't occur when the hypothesis is specified symbolically 
+as a character vector, including in equation form, only when the 
+hypothesis matrix is given directly, in which case linearHypothesis() 
+tries to construct the equation-form representation, again as character 
+vectors. Its inability to do so when the coefficient names include 
+arithmetic operators doesn't, I think, require a warning or even a 
+message: the symbolic representation of the hypothesis can simply be 
+omitted. The numeric results reported are entirely unaffected.
+
+I've made this change and will commit it to the next version of the car 
+package.
+
+Thank you for the suggestion,
+  John
+
+
+> 
+> - Peter
+> 
+>> On 17 Sep 2023, at 16:43 , John Fox <jfox at mcmaster.ca> wrote:
+>>
+>> Dear Robert,
+>>
+>> Anova() calls linearHypothesis(), also in the car package, to compute sums of squares and df, supplying appropriate hypothesis matrices. linearHypothesis() usually tries to express the hypothesis matrix in symbolic equation form for printing, but won't do this if coefficient names include arithmetic operators, in your case - and +, which can confuse it.
+>>
+>> The symbolic form of the hypothesis isn't really relevant for Anova(), which doesn't use the printed representation of each hypothesis, and so, despite the warnings, you get the correct ANOVA table. In your case, where the data are balanced, with 4 cases per cell, Anova(mod) and summary(mod) are equivalent, which makes me wonder why you would use Anova() in the first place.
+>>
+>> To elaborate a bit, linearHypothesis() does tolerate arithmetic operators in coefficient names if you specify the hypothesis symbolically rather than as a hypothesis matrix. For example, to test, the interaction:
+>>
+>> ------- snip --------
+>>
+>>> linearHypothesis(mod,
+>> +                  c("TreatmentDabrafenib:ExpressionCD271+ = 0",
+>> +                    "TreatmentTrametinib:ExpressionCD271+ = 0",
+>> +                    "TreatmentCombination:ExpressionCD271+ = 0"))
+>> Linear hypothesis test
+>>
+>> Hypothesis:
+>> TreatmentDabrafenib:ExpressionCD271+ = 0
+>> TreatmentTrametinib:ExpressionCD271+ = 0
+>> TreatmentCombination:ExpressionCD271+ = 0
+>>
+>> Model 1: restricted model
+>> Model 2: Viability ~ Treatment * Expression
+>>
+>>   Res.Df   RSS Df Sum of Sq     F Pr(>F)
+>> 1     27 18966
+>> 2     24 16739  3    2226.3 1.064 0.3828
+>>
+>> ------- snip --------
+>>
+>> Alternatively:
+>>
+>> ------- snip --------
+>>
+>>> H <- matrix(0, 3, 8)
+>>> H[1, 6] <- H[2, 7] <- H[3, 8] <- 1
+>>> H
+>>      [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8]
+>> [1,]    0    0    0    0    0    1    0    0
+>> [2,]    0    0    0    0    0    0    1    0
+>> [3,]    0    0    0    0    0    0    0    1
+>>
+>>> linearHypothesis(mod, H)
+>> Linear hypothesis test
+>>
+>> Hypothesis:
+>>
+>>
+>> Model 1: restricted model
+>> Model 2: Viability ~ Treatment * Expression
+>>
+>>   Res.Df   RSS Df Sum of Sq     F Pr(>F)
+>> 1     27 18966
+>> 2     24 16739  3    2226.3 1.064 0.3828
+>> Warning message:
+>> In printHypothesis(L, rhs, names(b)) :
+>>   one or more coefficients in the hypothesis include
+>>      arithmetic operators in their names;
+>>   the printed representation of the hypothesis will be omitted
+>>
+>> ------- snip --------
+>>
+>> There's no good reason that linearHypothesis() should try to express each hypothesis symbolically for Anova(), since Anova() doesn't use that information. When I have some time, I'll arrange to avoid the warning.
+>>
+>> Best,
+>> John
+>>
+>> --
+>> John Fox, Professor Emeritus
+>> McMaster University
+>> Hamilton, Ontario, Canada
+>> web: https://www.john-fox.ca/
+>> On 2023-09-16 4:39 p.m., Robert Baer wrote:
+>>> Caution: External email.
+>>> When doing Anova using the car package,  I get a print warning that is
+>>> unexpected.  It seemingly involves have my flow cytometry factor levels
+>>> named CD271+ and CD171-.  But I am not sure this warning should be
+>>> intended behavior.  Any explanation about whether I'm doing something
+>>> wrong? Why can't I have CD271+ and CD271- as factor levels?  Its legal
+>>> text isn't it?
+>>> library(car) mod = aov(Viability ~ Treatment*Expression, data = dat1)
+>>> Anova(mod, type =2) Anova Table (Type II tests) Response: Viability Sum
+>>> Sq Df F value Pr(>F) Treatment 19447.3 3 9.2942 0.0002927 *** Expression
+>>> 2669.8 1 3.8279 0.0621394 . Treatment:Expression 2226.3 3 1.0640
+>>> 0.3828336 Residuals 16739.3 24 --- Signif. codes: 0 ?***? 0.001 ?**?
+>>> 0.01 ?*? 0.05 ?.? 0.1 ? ? 1 Warning messages: 1: In printHypothesis(L,
+>>> rhs, names(b)) : one or more coefficients in the hypothesis include
+>>> arithmetic operators in their names; the printed representation of the
+>>> hypothesis will be omitted 2: In printHypothesis(L, rhs, names(b)) : one
+>>> or more coefficients in the hypothesis include arithmetic operators in
+>>> their names; the printed representation of the hypothesis will be
+>>> omitted 3: In printHypothesis(L, rhs, names(b)) : one or more
+>>> coefficients in the hypothesis include arithmetic operators in their
+>>> names; the printed representation of the hypothesis will be omitted
+>>> The code to reproduce:
+>>> ```
+>>> dat1 <-structure(list(Treatment = structure(c(1L, 1L, 1L, 1L, 3L, 1L,
+>>>                                                 1L, 1L, 1L, 2L, 2L, 2L,
+>>> 2L, 2L, 2L, 2L, 2L, 3L, 3L, 3L, 3L, 3L,
+>>>                                                 3L, 3L, 4L, 4L, 4L, 4L,
+>>> 4L, 4L, 4L, 4L), levels = c("Control",
+>>> "Dabrafenib", "Trametinib", "Combination"), class = "factor"),
+>>>                         Expression = structure(c(2L, 2L, 2L, 2L, 2L, 1L,
+>>> 1L, 1L,
+>>>                                                  1L, 2L, 2L, 2L, 2L, 1L,
+>>> 1L, 1L, 1L, 2L, 2L, 2L, 1L, 1L, 1L,
+>>>                                                  1L, 2L, 2L, 2L, 2L, 1L,
+>>> 1L, 1L, 1L), levels = c("CD271-",
+>>> "CD271+"), class = "factor"),
+>>>                         Viability = c(128.329809725159, 24.2360176821065,
+>>> 76.3597924274457, 11.0128771862387, 21.4683836248318,
+>>>                                       140.784162982894, 87.4303286565443,
+>>> 118.181818181818, 53.603690178743,
+>>>                                       51.2973284643475, 5.47760907168941,
+>>> 27.1574091870075, 50.8360561214684,
+>>>                                       56.5250816836441, 28.6949836632712,
+>>> 93.2731116663463, 71.900826446281,
+>>>                                       32.2314049586777, 24.2360176821065,
+>>> 27.4649240822602, 24.0822602344801,
+>>>                                       26.542379396502, 30.693830482414,
+>>> 27.772438977513, 13.4729963482606,
+>>>                                       8.24524312896406, 18.5469921199308,
+>>> 13.9342686911397, 13.3192389006342,
+>>>                                       19.9308091485681, 17.6244474341726,
+>>> 16.2406304055353)),
+>>>                    row.names = c(NA,
+>>>                                  -32L),
+>>>                    class = c("tbl_df", "tbl", "data.frame"))
+>>> mod = aov(Viability ~ Treatment*Expression, data = dat1)
+>>> summary(mod)
+>>> library(car)
+>>> Anova(mod, type =2)
+>>> ```
+>>>> sessionInfo() R version 4.3.1 (2023-06-16 ucrt) Platform:
+>>> x86_64-w64-mingw32/x64 (64-bit) Running under: Windows 11 x64 (build
+>>> 25951) Matrix products: default locale: [1] LC_COLLATE=English_United
+>>> States.utf8 LC_CTYPE=English_United States.utf8
+>>> LC_MONETARY=English_United States.utf8 [4] LC_NUMERIC=C
+>>> LC_TIME=English_United States.utf8 time zone: America/Chicago tzcode
+>>> source: internal attached base packages: [1] stats graphics grDevices
+>>> utils datasets methods base other attached packages: [1] car_3.1-2
+>>> carData_3.0-5 tidyr_1.3.0 readr_2.1.4 readxl_1.4.3 ggplot2_3.4.3
+>>> dplyr_1.1.3 loaded via a namespace (and not attached): [1] crayon_1.5.2
+>>> vctrs_0.6.3 cli_3.6.1 rlang_1.1.1 purrr_1.0.2 generics_0.1.3
+>>> labeling_0.4.3 [8] bit_4.0.5 glue_1.6.2 colorspace_2.1-0 hms_1.1.3
+>>> scales_1.2.1 fansi_1.0.4 grid_4.3.1 [15] cellranger_1.1.0 abind_1.4-5
+>>> munsell_0.5.0 tibble_3.2.1 tzdb_0.4.0 lifecycle_1.0.3 compiler_4.3.1
+>>> [22] pkgconfig_2.0.3 rstudioapi_0.15.0 farver_2.1.1 R6_2.5.1
+>>> tidyselect_1.2.0 utf8_1.2.3 parallel_4.3.1 [29] vroom_1.6.3 pillar_1.9.0
+>>> magrittr_2.0.3 bit64_4.0.5 tools_4.3.1 withr_2.5.0 gtable_0.3.4
+>>>          [[alternative HTML version deleted]]
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> --
+> Peter Dalgaard, Professor,
+> Center for Statistics, Copenhagen Business School
+> Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+> Phone: (+45)38153501
+> Office: A 4.23
+> Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+>
+
+
+From n|ckmwr@y @end|ng |rom gm@||@com  Mon Sep 18 18:54:02 2023
+From: n|ckmwr@y @end|ng |rom gm@||@com (Nick Wray)
+Date: Mon, 18 Sep 2023 17:54:02 +0100
+Subject: [R] halting with errors
+Message-ID: <CABxY9BOqnok-6+WxKnu-Ppk69O_uDnehzOvoTZ5uDkwz40nGZQ@mail.gmail.com>
+
+Hello  I am downloading flow data from the UK national river flow archive
+(NRFA).  I have code which works (thanks to previous help on r-help) but
+the problem is that before I make a call for the data for that particular
+year I don?t know whether the data exists for that particular year and
+catchment
+
+This is a typical url  and it works if you paste it into the top line on a
+web page.  15007 is the code for the Pitnacree catchment in Scotland
+
+https://timeseries.sepa.org.uk/KiWIS/KiWIS?service=kisters&type=queryServices&datasource=0&request=getTimeseriesValues&ts_path=1/15007/Q/15m.Cmd&from=2015-01-01&to=2015-01-31&returnfields=Timestamp,Value,Quality%20Code
+
+It works in R as well with
+
+page<-read_html("
+https://timeseries.sepa.org.uk/KiWIS/KiWIS?service=kisters&type=queryServices&datasource=0&request=getTimeseriesValues&ts_path=1/15007/Q/15m.Cmd&from=2015-01-01&to=2015-01-31&returnfields=Timestamp,Value,Quality%20Code
+")
+
+    yiq<-page |>
+
+      html_element("table") |>
+
+      html_table(header = TRUE) |>
+
+      (\(x) {
+
+        hdr <- unlist(x[3, ])
+
+        y <- x[-(1:3), ]
+
+        names(y) <- hdr
+
+        y
+
+      })()
+
+        print(nrow(yiq))
+
+    yiq
+
+
+
+But if I try to move onto another catchment Kenmore 15006
+
+eg
+
+
+
+https://timeseries.sepa.org.uk/KiWIS/KiWIS?service=kisters&type=queryServices&datasource=0&request=getTimeseriesValues&ts_path=1/15016/Q/15m.Cmd&from=2015-01-01&to=2015-01-31&returnfields=Timestamp,Value,Quality%20Code
+
+So in R
+
+read_html(?
+https://timeseries.sepa.org.uk/KiWIS/KiWIS?service=kisters&type=queryServices&datasource=0&request=getTimeseriesValues&ts_path=1/15016/Q/15m.Cmd&from=2015-01-01&to=2015-01-31&returnfields=Timestamp,Value,Quality%20Code
+?)
+
+This doesn?t work because there?s no data for this catchment for this year
+
+I am pasting in different years (from say 1961 to 2017) in a loop (and this
+works if the data sets exist) but the problem is that if the data is not
+there (and there doesn?t seem to be a way of determining this elsewhere)
+and so there?s nothing to read, an error message comes up and halts the
+program loop, so that manually I have to reset the url to try to find out
+whether there is data for the next year.
+
+What I?d like to know is whether there?s any way in R of seeing whether the
+data set exists, and if doesn?t, moving on the next possibility without
+halting?
+
+Any thoughts appreciated
+
+Thanks Nick Wray
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Sep 18 18:58:41 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 18 Sep 2023 12:58:41 -0400
+Subject: [R] halting with errors
+In-Reply-To: <CABxY9BOqnok-6+WxKnu-Ppk69O_uDnehzOvoTZ5uDkwz40nGZQ@mail.gmail.com>
+References: <CABxY9BOqnok-6+WxKnu-Ppk69O_uDnehzOvoTZ5uDkwz40nGZQ@mail.gmail.com>
+Message-ID: <5999b4ae-df38-4ca6-a583-7772b97808a7@gmail.com>
+
+You can use try() or tryCatch().  The former is simpler, the latter is 
+more flexible.
+
+For example:
+
+   result <- 
+try(read_html(?https://timeseries.sepa.org.uk/KiWIS/KiWIS?service=kisters&type=queryServices&datasource=0&request=getTimeseriesValues&ts_path=1/15016/Q/15m.Cmd&from=2015-01-01&to=2015-01-31&returnfields=Timestamp,Value,Quality%20Code?))
+   if (inherits(result, "try-error"))
+     message("year 2015 doesn't have data")
+   else {
+      ... do the usual stuff ...
+   }
+
+
+
+On 18/09/2023 12:54 p.m., Nick Wray wrote:
+> Hello  I am downloading flow data from the UK national river flow archive
+> (NRFA).  I have code which works (thanks to previous help on r-help) but
+> the problem is that before I make a call for the data for that particular
+> year I don?t know whether the data exists for that particular year and
+> catchment
+> 
+> This is a typical url  and it works if you paste it into the top line on a
+> web page.  15007 is the code for the Pitnacree catchment in Scotland
+> 
+> https://timeseries.sepa.org.uk/KiWIS/KiWIS?service=kisters&type=queryServices&datasource=0&request=getTimeseriesValues&ts_path=1/15007/Q/15m.Cmd&from=2015-01-01&to=2015-01-31&returnfields=Timestamp,Value,Quality%20Code
+> 
+> It works in R as well with
+> 
+> page<-read_html("
+> https://timeseries.sepa.org.uk/KiWIS/KiWIS?service=kisters&type=queryServices&datasource=0&request=getTimeseriesValues&ts_path=1/15007/Q/15m.Cmd&from=2015-01-01&to=2015-01-31&returnfields=Timestamp,Value,Quality%20Code
+> ")
+> 
+>      yiq<-page |>
+> 
+>        html_element("table") |>
+> 
+>        html_table(header = TRUE) |>
+> 
+>        (\(x) {
+> 
+>          hdr <- unlist(x[3, ])
+> 
+>          y <- x[-(1:3), ]
+> 
+>          names(y) <- hdr
+> 
+>          y
+> 
+>        })()
+> 
+>          print(nrow(yiq))
+> 
+>      yiq
+> 
+> 
+> 
+> But if I try to move onto another catchment Kenmore 15006
+> 
+> eg
+> 
+> 
+> 
+> https://timeseries.sepa.org.uk/KiWIS/KiWIS?service=kisters&type=queryServices&datasource=0&request=getTimeseriesValues&ts_path=1/15016/Q/15m.Cmd&from=2015-01-01&to=2015-01-31&returnfields=Timestamp,Value,Quality%20Code
+> 
+> So in R
+> 
+> read_html(?
+> https://timeseries.sepa.org.uk/KiWIS/KiWIS?service=kisters&type=queryServices&datasource=0&request=getTimeseriesValues&ts_path=1/15016/Q/15m.Cmd&from=2015-01-01&to=2015-01-31&returnfields=Timestamp,Value,Quality%20Code
+> ?)
+> 
+> This doesn?t work because there?s no data for this catchment for this year
+> 
+> I am pasting in different years (from say 1961 to 2017) in a loop (and this
+> works if the data sets exist) but the problem is that if the data is not
+> there (and there doesn?t seem to be a way of determining this elsewhere)
+> and so there?s nothing to read, an error message comes up and halts the
+> program loop, so that manually I have to reset the url to try to find out
+> whether there is data for the next year.
+> 
+> What I?d like to know is whether there?s any way in R of seeing whether the
+> data set exists, and if doesn?t, moving on the next possibility without
+> halting?
+> 
+> Any thoughts appreciated
+> 
+> Thanks Nick Wray
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From r@dh@kr|@hn@n@moh@n @end|ng |rom gm@||@com  Mon Sep 18 19:45:10 2023
+From: r@dh@kr|@hn@n@moh@n @end|ng |rom gm@||@com (mohan radhakrishnan)
+Date: Mon, 18 Sep 2023 23:15:10 +0530
+Subject: [R] Hadamard transformation
+Message-ID: <CAOoXFP_9kFVscY0qoLt20vBNnaD-JyDU_xhAmT7fQRGmxE7pmg@mail.gmail.com>
+
+Hello,
+
+I am attempting to port the R code which is an answer to
+https://codegolf.stackexchange.com/questions/194229/implement-the-2d-hadamard-transform
+
+
+function(M){for(i in 1:log2(nrow(M)))T=T%x%matrix(1-2*!3:0,2)/2; print(T);
+T%*%M%*%T}
+
+The code, 3 inputs and the corresponding outputs are shown in
+https://tio.run/##PYyxCsIwFEX3fkUcAu at VV7WvcSl2dOwi8QNqNSXQJhAqrYjfHoOIwz3D4XBDNOJYiGgerp@td9Diy/gAVlgnynr0A4MLfkkeUTdarnLq5mBXKAvON1W9J8YdZ1rmsk3T72jgV/TAVBHTAROYrs/00 at jz5YSY/aOSFKmvGP1yD9sk4Wa7ARSSRowf
+
+These are the inputs.
+
+f(matrix(c(2,3,2,5),2,2,byrow=TRUE))
+f(matrix(1,4,4))
+f(lower.tri(diag(4),T))
+
+My attempt to port this R code to another framework(Tensorflow) was only
+partially successful
+because I didn't fully understand the cryptic R code. The second input
+shown above works after
+hacking Tensorflow for a long time.
+
+My question is this. Can anyone code this in a clear way so that I can
+understand ? I understand
+Kronecker Product and matrix multiplication and can port that code but I am
+missing something as the same ported code does not work for all inputs.
+
+Thanks,
+Mohan
+
+	[[alternative HTML version deleted]]
+
+
+From ph|||p@w@ggoner @end|ng |rom gm@||@com  Mon Sep 18 16:28:40 2023
+From: ph|||p@w@ggoner @end|ng |rom gm@||@com (P. D. Waggoner)
+Date: Mon, 18 Sep 2023 08:28:40 -0600
+Subject: [R] Post Details for Two ASA Awards
+Message-ID: <690FA503-9801-4256-A115-F6FF7ED26481@gmail.com>
+
+Please post to R-help:
+
+
+Hi all -
+
+I wanted to share a message putting TWO upcoming awards on your radar. These are jointly sponsored by the Graphics and Computing sections of the American Statistical Association (ASA): 
+
+The student Paper Award. Full details here: https://community.amstat.org/jointscsg-section/awards/student-paper-competition 
+All application materials MUST BE RECEIVED by 5:00 PM EST, Thursday, December 15, 2023. The submission window will be open on December 1, 2023. They will be reviewed by the Student Paper Competition Award committee of the Statistical Computing and Graphics Sections. The selection criteria used by the committee will include innovation and significance of the contribution as well as the professional quality of the manuscript. Award announcements will be made by January 15, 2024. 
+
+John M. Chambers Statistical Software Award. Full details here: https://community.amstat.org/jointscsg-section/awards/john-m-chambers
+All application materials MUST BE RECEIVED by 5:00 PM EST, Thursday, December 15, 2023. The submission window will be open at http://asa.stat.uconn.edu <http://asa.stat.uconn.edu/> on December 1, 2023. The entries will be judged on a variety of dimensions, including the importance and relevance for statistical practice of the tasks performed by the software, ease of use, clarity of description, elegance and availability for use by the statistical community. Preference will be given to those entries that are grounded in software design rather than calculation. Award announcements will be made by January 15, 2024.
+
+I am chairing the awards process (and one of the committees) this term and would be happy to answer any questions. Thanks!
+
+Philip Waggoner
+
+https://pdwaggoner.github.io/
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Sep 18 20:16:13 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 18 Sep 2023 19:16:13 +0100
+Subject: [R] Hadamard transformation
+In-Reply-To: <CAOoXFP_9kFVscY0qoLt20vBNnaD-JyDU_xhAmT7fQRGmxE7pmg@mail.gmail.com>
+References: <CAOoXFP_9kFVscY0qoLt20vBNnaD-JyDU_xhAmT7fQRGmxE7pmg@mail.gmail.com>
+Message-ID: <2e3ec62d-9347-4985-a5f7-3a4d6329cca5@sapo.pt>
+
+?s 18:45 de 18/09/2023, mohan radhakrishnan escreveu:
+> Hello,
+> 
+> I am attempting to port the R code which is an answer to
+> https://codegolf.stackexchange.com/questions/194229/implement-the-2d-hadamard-transform
+> 
+> 
+> function(M){for(i in 1:log2(nrow(M)))T=T%x%matrix(1-2*!3:0,2)/2; print(T);
+> T%*%M%*%T}
+> 
+> The code, 3 inputs and the corresponding outputs are shown in
+> https://tio.run/##PYyxCsIwFEX3fkUcAu at VV7WvcSl2dOwi8QNqNSXQJhAqrYjfHoOIwz3D4XBDNOJYiGgerp@td9Diy/gAVlgnynr0A4MLfkkeUTdarnLq5mBXKAvON1W9J8YdZ1rmsk3T72jgV/TAVBHTAROYrs/00 at jz5YSY/aOSFKmvGP1yD9sk4Wa7ARSSRowf
+> 
+> These are the inputs.
+> 
+> f(matrix(c(2,3,2,5),2,2,byrow=TRUE))
+> f(matrix(1,4,4))
+> f(lower.tri(diag(4),T))
+> 
+> My attempt to port this R code to another framework(Tensorflow) was only
+> partially successful
+> because I didn't fully understand the cryptic R code. The second input
+> shown above works after
+> hacking Tensorflow for a long time.
+> 
+> My question is this. Can anyone code this in a clear way so that I can
+> understand ? I understand
+> Kronecker Product and matrix multiplication and can port that code but I am
+> missing something as the same ported code does not work for all inputs.
+> 
+> Thanks,
+> Mohan
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Is this what you want?
+(I have changed the notation a bit.)
+
+
+H <- function(M){
+   H0 <- 1
+   Transf <- matrix(c(1, 1, 1, -1), 2L)
+   for(i in 1:log2(nrow(M))) {
+     H0 <- H0 %x% Transf/2
+   }
+   H0 %*% M %*% H0
+}
+
+x <- matrix(c(2, 3, 2, 5), 2, 2, byrow = TRUE)
+y <- matrix(1, 4, 4)
+z <- lower.tri(diag(4), TRUE)
+z[] <- apply(z, 2, as.integer)
+H(x)
+H(y)
+H(z)
+
+
+
+Hope this helps,
+
+Rui Barradas
+
+
