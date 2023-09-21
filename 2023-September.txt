@@ -18791,3 +18791,371 @@ loaded via a namespace (and not attached):
 [21] Rsolnp_1.16
 
 
+From @rn@ud@g@boury @end|ng |rom gm@||@com  Tue Sep 19 17:14:58 2023
+From: @rn@ud@g@boury @end|ng |rom gm@||@com (arnaud gaboury)
+Date: Tue, 19 Sep 2023 17:14:58 +0200
+Subject: [R] apply a function to a list of lists
+Message-ID: <CAK1hC9uGNb4cxUrVhOw-LqRdYC9ZCQB3fJ4p5f0+EwB-PyJ_8g@mail.gmail.com>
+
+I have a list of 9 lists called my.list. Each one of these 9 lists is
+itself a list of 6 data.frames. Most of these data.frames have 0 rows and 0
+columns.
+I want to return all data.frames from the list with row numbers different
+from 0.
+I first created the following function:
+
+non_empty_df <- function(l) {
+    lapply(l, function(df) df[sapply(df, function(df) nrow(df) !=0)])
+}
+
+If I test this way: non_empty_df(my.list[1]) it does the job. It will
+return the data.frame from the first list of my_list with rows.
+Now I can't find a way to iterate the above function to all the 9 nested
+lists.
+
+Thank you for help
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Sep 20 09:48:34 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 20 Sep 2023 10:48:34 +0300
+Subject: [R] apply a function to a list of lists
+In-Reply-To: <CAK1hC9uGNb4cxUrVhOw-LqRdYC9ZCQB3fJ4p5f0+EwB-PyJ_8g@mail.gmail.com>
+References: <CAK1hC9uGNb4cxUrVhOw-LqRdYC9ZCQB3fJ4p5f0+EwB-PyJ_8g@mail.gmail.com>
+Message-ID: <20230920104834.4485cdcf@Tarkus>
+
+On Tue, 19 Sep 2023 17:14:58 +0200
+arnaud gaboury <arnaud.gaboury at gmail.com> wrote:
+
+> non_empty_df <- function(l) {
+>     lapply(l, function(df) df[sapply(df, function(df) nrow(df) !=0)])
+> }
+
+> If I test this way: non_empty_df(my.list[1]) it does the job. It will
+> return the data.frame from the first list of my_list with rows.
+> Now I can't find a way to iterate the above function to all the 9
+> nested lists.
+
+I think it should already work on the whole my.list. Note that
+my.list[1] is a list containing one list of data.frames, not just a
+list of data.frames (the latter would be my.list[[1]]).
+
+The outer `l` argument is the list of lists of data.frames. Inside the
+first anonymous function, `df` is a list of data.frames. Inside the
+second anonymous function, `df` is finally a data frame which you test
+for being non-empty. The lapply() call iterates over the lists of lists
+and the sapply() iterates over the data.frames inside a list.
+
+-- 
+Best regards,
+Ivan
+
+
+From br|@n@m|th199312 @end|ng |rom gm@||@com  Wed Sep 20 13:42:08 2023
+From: br|@n@m|th199312 @end|ng |rom gm@||@com (Brian Smith)
+Date: Wed, 20 Sep 2023 17:12:08 +0530
+Subject: [R] Unable to manually replicate execution of a R function
+In-Reply-To: <CAHUBDY_wr_uWTK3t2bU+EmVGvKRNHw4DdvmqMq+F0rq6R3OxGw@mail.gmail.com>
+References: <CAHUBDY_wr_uWTK3t2bU+EmVGvKRNHw4DdvmqMq+F0rq6R3OxGw@mail.gmail.com>
+Message-ID: <CAHUBDY--gxSU+bDNwdjXvN61U7pfVa_0x_Fta12kqY3Cnc+1kQ@mail.gmail.com>
+
+Hi,
+
+** In may earlier post there were some typo, so reposting the same
+after correction**
+
+I am trying to replicate a function from rugarch package manually.
+Below is the calculation based on the function,
+
+library(rugarch)
+data(dji30ret)
+spec = ugarchspec(mean.model = list(armaOrder = c(1,1), include.mean = TRUE),
+variance.model = list(model = "gjrGARCH"), distribution.model = "sstd")
+fit = ugarchfit(spec, data = dji30ret[1:1000, 1, drop = FALSE])
+spec2 = spec
+setfixed(spec2)<-as.list(coef(fit))
+filt = ugarchfilter(spec2, dji30ret[1001:2500, 1, drop = FALSE], n.old = 1000)
+actual = dji30ret[1001:2500,1]
+# location+scale invariance allows to use [mu + sigma*q(p,0,1,skew,shape)]
+VaR = fitted(filt) + sigma(filt)*qdist("sstd", p=0.05, mu = 0, sigma = 1,
+skew = coef(fit)["skew"], shape=coef(fit)["shape"])
+alpha = 0.05
+conf.level = 0.95
+
+VaRDurTest(0.05, actual, VaR)$b ## 1.019356
+
+
+Now I want to replicate the calculation manually as below,
+
+
+VaR.ind = ifelse(actual < VaR, 1, 0)
+N = sum(VaR.ind)
+TN = length(VaR.ind)
+D = diff(which(VaR.ind == 1))
+C = rep(0, length(D))
+N = length(D)
+
+pweibull = function (D, a, b, survival = FALSE)
+{
+cdf = 1 - exp(-(a * D)^b)
+if (survival)
+cdf = 1 - cdf
+return(cdf)
+}
+dweibull = function (D, a, b, log = FALSE)
+{
+pdf = (b * log(a) + log(b) + (b - 1) * log(D) - (a * D)^b)
+if (!log)
+pdf = exp(pdf)
+return(pdf)
+}
+likDurationW = function (pars, D, C, N)
+{
+b = pars[1]
+a = ((N - C[1] - C[N])/(sum(D^b)))^(1/b)
+lik = C[1] * log(pweibull(D[1], a, b, survival = TRUE)) +
+(1 - C[1]) * dweibull(D[1], a, b, log = TRUE) + sum(dweibull(D[2:(N -
+1)], a, b, log = TRUE)) + C[N] * log(pweibull(D[N],
+a, b, survival = TRUE)) + (1 - C[N]) * dweibull(D[N],
+a, b, log = TRUE)
+if (!is.finite(lik) || is.nan(lik))
+lik = 10000000000
+else lik = -lik
+return(lik)
+}
+optim(par = 2, fn = likDurationW, gr = NULL, D = D, C = C, N = N,
+method = "L-BFGS-B", lower = 0.001, upper = 10, control = list(trace =
+0))$par  ## 1.029628
+
+I fail to understand why there has to be a difference. Could you
+please help to find the reason?
+
+> sessionInfo()
+
+R version 4.2.2 (2022-10-31)
+
+Platform: x86_64-apple-darwin17.0 (64-bit)
+
+Running under: macOS Big Sur ... 10.16
+
+
+Matrix products: default
+
+BLAS:   /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRblas.0.dylib
+
+LAPACK: /Library/Frameworks/R.framework/Versions/4.2/Resources/lib/libRlapack.dylib
+
+
+locale:
+
+[1] C/UTF-8/C/C/C/C
+
+
+attached base packages:
+
+[1] parallel  stats     graphics  grDevices utils     datasets  methods
+
+[8] base
+
+
+other attached packages:
+
+[1] rugarch_1.4-9
+
+
+loaded via a namespace (and not attached):
+
+ [1] Rcpp_1.0.9                  mclust_6.0.0
+
+ [3] lattice_0.20-45             mvtnorm_1.1-3
+
+ [5] zoo_1.8-12                  MASS_7.3-58.1
+
+ [7] GeneralizedHyperbolic_0.8-4 truncnorm_1.0-9
+
+ [9] grid_4.2.2                  pracma_2.4.2
+
+[11] KernSmooth_2.23-20          SkewHyperbolic_0.4-0
+
+[13] Matrix_1.5-1                xts_0.12.1
+
+[15] spd_2.0-1                   tools_4.2.2
+
+[17] ks_1.14.1                   numDeriv_2016.8-1.1
+
+[19] compiler_4.2.2              DistributionUtils_0.6-1
+
+[21] Rsolnp_1.16
+
+
+From JH@rm@e @end|ng |rom roku@com  Wed Sep 20 16:13:02 2023
+From: JH@rm@e @end|ng |rom roku@com (Jorgen Harmse)
+Date: Wed, 20 Sep 2023 14:13:02 +0000
+Subject: [R] Could you manually replicate execution of a R function
+In-Reply-To: <mailman.370160.1.1695204002.63671.r-help@r-project.org>
+References: <mailman.370160.1.1695204002.63671.r-help@r-project.org>
+Message-ID: <LV3PR01MB8673512A8DD24DDA27830F3EDCF9A@LV3PR01MB8673.prod.exchangelabs.com>
+
+There may be collisions between variables in .GlobalEnv and variables in the function-call environment, and the parent of the function-call environment probably includes functions & other variables not available in .GlobalEnv. (If the function calls substitute or anything like that then the problem becomes even harder.) I would probably use the debugger to step into the function. If you want more control then create an environment that resembles what would be created in a function call:
+
+env.func <- new.env(parent=environment(f))
+delayedAssign(assign.env=env.func, ?.) for everything you pass in
+delayedAssign(assign.env=env.func, eval.env=env.func, ?.) for anything that will take a default value
+eval(envir=env.func, ?.) or evalq(envir=env.func, ?.) to execute parts of the function body or anything else
+
+You can even coerce body(f) to a character, strip the leading ?{?, and parse(text=?.) to break the function into expressions. That might be easier than copy-pasting function code.
+
+Regards,
+Jorgen Harmse.
+
+
+Message: 1
+Date: Tue, 19 Sep 2023 23:09:18 +0530
+From: Brian Smith <briansmith199312 at gmail.com>
+To: r-help at r-project.org
+Subject: [R] Could you manually replicate execution of a R function
+Message-ID:
+        <CAHUBDY_wr_uWTK3t2bU+EmVGvKRNHw4DdvmqMq+F0rq6R3OxGw at mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+
+Hi,
+
+I have trying to replicate a function from rugarch package manually.
+Below is the calculation based on the function,
+
+?
+
+	[[alternative HTML version deleted]]
+
+
+From @|eep|ngwe|| @end|ng |rom gm@||@com  Thu Sep 21 02:09:56 2023
+From: @|eep|ngwe|| @end|ng |rom gm@||@com (Simon Knapp)
+Date: Thu, 21 Sep 2023 10:09:56 +1000
+Subject: [R] Option "-shared" not being passed to gcc when installing
+ packages
+Message-ID: <CAA+5f=3hh=rxsAa6XVDJ=f3Q4vU_tp40yg6uhuiOB4+bSBOuhQ@mail.gmail.com>
+
+When installing packages, the option "-shared" is not being passed to gcc
+which hence fails, complaining that it cannot find main. When installing
+"mgcv", for example, I get the output listed below, in which the last call
+to gcc should contain the option "-shared".
+
+This problem occurs for all of several other packages I have just tried to
+install.
+
+It has been a while since I've used R, and I'm not positive if I've ever
+tried to install a package on this computer before, though I think I have.
+
+I am using R version 4.3.1 (2023-06-16) -- "Beagle Scouts" on ubuntu 20.04
+
+How might I fix this?
+
+> install.packages("mgcv")
+Installing package into ?/home/<me>/R/x86_64-pc-linux-gnu-library/4.3?
+(as ?lib? is unspecified)
+trying URL 'https://cloud.r-project.org/src/contrib/mgcv_1.9-0.tar.gz'
+Content type 'application/x-gzip' length 1112050 bytes (1.1 MB)
+==================================================
+downloaded 1.1 MB
+
+* installing *source* package ?mgcv? ...
+** package ?mgcv? successfully unpacked and MD5 sums checked
+** using staged installation
+** libs
+using C compiler: ?gcc (Ubuntu 9.4.0-1ubuntu1~20.04.2) 9.4.0?
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c coxph.c -o coxph.o
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c davies.c -o davies.o
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c discrete.c -o discrete.o
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c gdi.c -o gdi.o
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c init.c -o init.o
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c magic.c -o magic.o
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c mat.c -o mat.o
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c matrix.c -o matrix.o
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c mgcv.c -o mgcv.o
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c misc.c -o misc.o
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c mvn.c -o mvn.o
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c ncv.c -o ncv.o
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c qp.c -o qp.o
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c soap.c -o soap.o
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c sparse-smooth.c -o sparse-smooth.o
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c sparse.c -o sparse.o
+gcc -std=gnu99 -I"/usr/share/R/include" -DNDEBUG    -fopenmp -fpic  -g -O2
+-fdebug-prefix-map=/build/r-base-jbaK_j/r-base-3.6.3=.
+-fstack-protector-strong -Wformat -Werror=format-security -Wdate-time
+-D_FORTIFY_SOURCE=2 -g  -c tprs.c -o tprs.o
+gcc -std=gnu99 -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -Wl,-z,relro -o
+mgcv.so coxph.o davies.o discrete.o gdi.o init.o magic.o mat.o matrix.o
+mgcv.o misc.o mvn.o ncv.o qp.o soap.o sparse-smooth.o sparse.o tprs.o
+-llapack -lblas -lgfortran -lm -lquadmath -fopenmp -L/usr/lib/R/lib -lR
+/usr/bin/ld:
+/usr/lib/gcc/x86_64-linux-gnu/9/../../../x86_64-linux-gnu/Scrt1.o: in
+function `_start':
+(.text+0x24): undefined reference to `main'
+collect2: error: ld returned 1 exit status
+make: *** [/usr/share/R/share/make/shlib.mk:10: mgcv.so] Error 1
+ERROR: compilation failed for package ?mgcv?
+* removing ?/home/<me>/R/x86_64-pc-linux-gnu-library/4.3/mgcv?
+
+The downloaded source packages are in
+        ?/tmp/RtmpI7uMoa/downloaded_packages?
+Warning message:
+In install.packages("mgcv") :
+  installation of package ?mgcv? had non-zero exit status
+>
+
+Kind regards,
+Simon Knapp
+
+	[[alternative HTML version deleted]]
+
+
