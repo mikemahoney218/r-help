@@ -23358,3 +23358,459 @@ On Wed, Feb 8, 2023 at 11:10?PM PIKAL Petr <petr.pikal at precheza.cz> wrote:
 	[[alternative HTML version deleted]]
 
 
+From @rn@ud@g@boury @end|ng |rom gm@||@com  Wed Sep 27 13:01:08 2023
+From: @rn@ud@g@boury @end|ng |rom gm@||@com (arnaud gaboury)
+Date: Wed, 27 Sep 2023 13:01:08 +0200
+Subject: [R] replace character by numeric value
+Message-ID: <CAK1hC9sWDHGLAEOv8zf+kHWtSnkxfgTg0KGEAro3mcQbMamrdA@mail.gmail.com>
+
+I have two data.frames:
+
+mydf1 <- structure(list(symbol = "ETHUSDT", cummulative_quote_qty =
+1999.9122, side = "BUY", time = structure(1695656875.805, tzone = "", class
+= c("POSIXct", "POSIXt"))), row.names = c(NA, -1L), class = c("data.table",
+"data.frame"))
+
+mydf2 <- structure(list(symbol = c("ETHUSDT", "ETHUSDT", "ETHUSDT"),
+cummulative_quote_qty = c(1999.119408,
+0, 2999.890985), side = c("SELL", "BUY", "BUY"), time =
+structure(c(1695712848.487,
+1695744226.993, 1695744509.082), class = c("POSIXct", "POSIXt"
+), tzone = "")), row.names = c(NA, -3L), class = c("data.table",
+"data.frame"))
+
+I use this line to replace 'BUY' by numeric 1 and 'SELL' by numeric -1 in
+mydf1 and mydf2:
+mynewdf <- mydf |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+ifelse(side == 'SELL', -1, side)))
+
+This does the job but I am left with an issue: 1 and -1 are characters for
+mynewdf2 when it is numeric for mynewdf1. The result I am expecting is
+getting numeric values.
+I can't solve this issue (using as.numeric(1) doesn't work) and don't
+understand why I am left with num for mynewdf1 and characters for mynewdf2.
+
+> mynewdf1 <- mydf1 |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+ifelse(side == 'SELL', -1, side)))
+> str(mynewdf1)
+Classes ?data.table? and 'data.frame': 1 obs. of  4 variables:
+ $ symbol               : chr "ETHUSDT"
+ $ cummulative_quote_qty: num 2000
+ $ side                 : num 1      <<<------
+ $ time                 : POSIXct, format: "2023-09-25 17:47:55"
+ - attr(*, ".internal.selfref")=<externalptr>
+
+> mynewdf2 <- mydf2 |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+ifelse(side == 'SELL', -1, side)))
+>  str(mynewdf2)
+Classes ?data.table? and 'data.frame': 3 obs. of  4 variables:
+ $ symbol               : chr  "ETHUSDT" "ETHUSDT" "ETHUSDT"
+ $ cummulative_quote_qty: num  1999 0 3000
+ $ side                 : chr  "-1" "1" "1"   <<<------
+ $ time                 : POSIXct, format: "2023-09-26 09:20:48"
+"2023-09-26 18:03:46" "2023-09-26 18:08:29"
+ - attr(*, ".internal.selfref")=<externalptr>
+
+Thank you for help
+
+	[[alternative HTML version deleted]]
+
+
+From |v@n@c@|@ndr@ @end|ng |rom |e|z@@de  Thu Sep 28 08:17:15 2023
+From: |v@n@c@|@ndr@ @end|ng |rom |e|z@@de (Ivan Calandra)
+Date: Thu, 28 Sep 2023 08:17:15 +0200
+Subject: [R] replace character by numeric value
+In-Reply-To: <CAK1hC9sWDHGLAEOv8zf+kHWtSnkxfgTg0KGEAro3mcQbMamrdA@mail.gmail.com>
+References: <CAK1hC9sWDHGLAEOv8zf+kHWtSnkxfgTg0KGEAro3mcQbMamrdA@mail.gmail.com>
+Message-ID: <35891087-6d78-0106-99e5-90161a65809e@leiza.de>
+
+Dear Arnaud,
+
+I don't quite unterstand why you have imbricated ifelse() statements. Do 
+you have more that BUY (1) and SELL (-1)? If not, why not simply:
+mynewdf2 <- mydf2 |> dplyr::mutate(side = ifelse(side == 'BUY', 1, -1))
+
+That would solve the problem. I'm not quite sure exactly what happens, 
+but this is probably related to the intermediary result after the first 
+ifelse(), where characters and numeric are mixed. But conversion to 
+numeric works properly, so I'm not sure what you meant:
+as.numeric(mynewdf2$side)
+
+More generally, why are you trying to convert to 1 and -1? Why not use 
+factors? Are you trying to test contrasts maybe? I would be surprised if 
+the function for the statistical test you are trying to use does not 
+deal with that already on its own.
+
+HTH,
+Ivan
+
+
+On 27/09/2023 13:01, arnaud gaboury wrote:
+> I have two data.frames:
+>
+> mydf1 <- structure(list(symbol = "ETHUSDT", cummulative_quote_qty =
+> 1999.9122, side = "BUY", time = structure(1695656875.805, tzone = "", class
+> = c("POSIXct", "POSIXt"))), row.names = c(NA, -1L), class = c("data.table",
+> "data.frame"))
+>
+> mydf2 <- structure(list(symbol = c("ETHUSDT", "ETHUSDT", "ETHUSDT"),
+> cummulative_quote_qty = c(1999.119408,
+> 0, 2999.890985), side = c("SELL", "BUY", "BUY"), time =
+> structure(c(1695712848.487,
+> 1695744226.993, 1695744509.082), class = c("POSIXct", "POSIXt"
+> ), tzone = "")), row.names = c(NA, -3L), class = c("data.table",
+> "data.frame"))
+>
+> I use this line to replace 'BUY' by numeric 1 and 'SELL' by numeric -1 in
+> mydf1 and mydf2:
+> mynewdf <- mydf |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+> ifelse(side == 'SELL', -1, side)))
+>
+> This does the job but I am left with an issue: 1 and -1 are characters for
+> mynewdf2 when it is numeric for mynewdf1. The result I am expecting is
+> getting numeric values.
+> I can't solve this issue (using as.numeric(1) doesn't work) and don't
+> understand why I am left with num for mynewdf1 and characters for mynewdf2.
+>
+>> mynewdf1 <- mydf1 |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+> ifelse(side == 'SELL', -1, side)))
+>> str(mynewdf1)
+> Classes ?data.table? and 'data.frame': 1 obs. of  4 variables:
+>   $ symbol               : chr "ETHUSDT"
+>   $ cummulative_quote_qty: num 2000
+>   $ side                 : num 1      <<<------
+>   $ time                 : POSIXct, format: "2023-09-25 17:47:55"
+>   - attr(*, ".internal.selfref")=<externalptr>
+>
+>> mynewdf2 <- mydf2 |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+> ifelse(side == 'SELL', -1, side)))
+>>   str(mynewdf2)
+> Classes ?data.table? and 'data.frame': 3 obs. of  4 variables:
+>   $ symbol               : chr  "ETHUSDT" "ETHUSDT" "ETHUSDT"
+>   $ cummulative_quote_qty: num  1999 0 3000
+>   $ side                 : chr  "-1" "1" "1"   <<<------
+>   $ time                 : POSIXct, format: "2023-09-26 09:20:48"
+> "2023-09-26 18:03:46" "2023-09-26 18:08:29"
+>   - attr(*, ".internal.selfref")=<externalptr>
+>
+> Thank you for help
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From e@ @end|ng |rom enr|co@chum@nn@net  Thu Sep 28 09:12:53 2023
+From: e@ @end|ng |rom enr|co@chum@nn@net (Enrico Schumann)
+Date: Thu, 28 Sep 2023 09:12:53 +0200
+Subject: [R] replace character by numeric value
+In-Reply-To: <CAK1hC9sWDHGLAEOv8zf+kHWtSnkxfgTg0KGEAro3mcQbMamrdA@mail.gmail.com>
+ (arnaud gaboury's message of "Wed, 27 Sep 2023 13:01:08 +0200")
+References: <CAK1hC9sWDHGLAEOv8zf+kHWtSnkxfgTg0KGEAro3mcQbMamrdA@mail.gmail.com>
+Message-ID: <87ediin53e.fsf@enricoschumann.net>
+
+On Wed, 27 Sep 2023, arnaud gaboury writes:
+
+> I have two data.frames:
+>
+> mydf1 <- structure(list(symbol = "ETHUSDT", cummulative_quote_qty =
+> 1999.9122, side = "BUY", time = structure(1695656875.805, tzone = "", class
+> = c("POSIXct", "POSIXt"))), row.names = c(NA, -1L), class = c("data.table",
+> "data.frame"))
+>
+> mydf2 <- structure(list(symbol = c("ETHUSDT", "ETHUSDT", "ETHUSDT"),
+> cummulative_quote_qty = c(1999.119408,
+> 0, 2999.890985), side = c("SELL", "BUY", "BUY"), time =
+> structure(c(1695712848.487,
+> 1695744226.993, 1695744509.082), class = c("POSIXct", "POSIXt"
+> ), tzone = "")), row.names = c(NA, -3L), class = c("data.table",
+> "data.frame"))
+>
+> I use this line to replace 'BUY' by numeric 1 and 'SELL' by numeric -1 in
+> mydf1 and mydf2:
+> mynewdf <- mydf |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+> ifelse(side == 'SELL', -1, side)))
+>
+> This does the job but I am left with an issue: 1 and -1 are characters for
+> mynewdf2 when it is numeric for mynewdf1. The result I am expecting is
+> getting numeric values.
+> I can't solve this issue (using as.numeric(1) doesn't work) and don't
+> understand why I am left with num for mynewdf1 and characters for mynewdf2.
+>
+>> mynewdf1 <- mydf1 |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+> ifelse(side == 'SELL', -1, side)))
+>> str(mynewdf1)
+> Classes ?data.table? and 'data.frame': 1 obs. of  4 variables:
+>  $ symbol               : chr "ETHUSDT"
+>  $ cummulative_quote_qty: num 2000
+>  $ side                 : num 1      <<<------
+>  $ time                 : POSIXct, format: "2023-09-25 17:47:55"
+>  - attr(*, ".internal.selfref")=<externalptr>
+>
+>> mynewdf2 <- mydf2 |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+> ifelse(side == 'SELL', -1, side)))
+>>  str(mynewdf2)
+> Classes ?data.table? and 'data.frame': 3 obs. of  4 variables:
+>  $ symbol               : chr  "ETHUSDT" "ETHUSDT" "ETHUSDT"
+>  $ cummulative_quote_qty: num  1999 0 3000
+>  $ side                 : chr  "-1" "1" "1"   <<<------
+>  $ time                 : POSIXct, format: "2023-09-26 09:20:48"
+> "2023-09-26 18:03:46" "2023-09-26 18:08:29"
+>  - attr(*, ".internal.selfref")=<externalptr>
+>
+> Thank you for help
+>
+
+I'd use something like this:
+
+    map <- c(BUY = 1, SELL = -1)
+    mydf1$side <- map[mydf1$side]
+    str(mydf1)
+    ## Classes ?data.table? and 'data.frame':	1 obs. of  4 variables:
+    ##  $ symbol               : chr "ETHUSDT"
+    ##  $ cummulative_quote_qty: num 2000
+    ##  $ side                 : num 1
+    
+    mydf2$side <- map[mydf2$side]
+    str(mydf2)
+    ## Classes ?data.table? and 'data.frame':	3 obs. of  4 variables:
+    ##  $ symbol               : chr  "ETHUSDT" "ETHUSDT" "ETHUSDT"
+    ##  $ cummulative_quote_qty: num  1999 0 3000
+    ##  $ side                 : num  -1 1 1
+    ##  $ time                 : POSIXct, format: "2023-09-26 09:20:48" ...
+
+
+
+-- 
+Enrico Schumann
+Lucerne, Switzerland
+http://enricoschumann.net
+
+
+From @rn@ud@g@boury @end|ng |rom gm@||@com  Thu Sep 28 09:41:48 2023
+From: @rn@ud@g@boury @end|ng |rom gm@||@com (arnaud gaboury)
+Date: Thu, 28 Sep 2023 09:41:48 +0200
+Subject: [R] replace character by numeric value
+In-Reply-To: <35891087-6d78-0106-99e5-90161a65809e@leiza.de>
+References: <CAK1hC9sWDHGLAEOv8zf+kHWtSnkxfgTg0KGEAro3mcQbMamrdA@mail.gmail.com>
+ <35891087-6d78-0106-99e5-90161a65809e@leiza.de>
+Message-ID: <CAK1hC9sDSPw+r0qcxzTvDg0HC4=c6E2vDUKTpjx+8nbJZYPcXQ@mail.gmail.com>
+
+On Thu, Sep 28, 2023 at 8:18?AM Ivan Calandra <ivan.calandra at leiza.de> wrote:
+>
+> Dear Arnaud,
+>
+> I don't quite unterstand why you have imbricated ifelse() statements. Do
+> you have more that BUY (1) and SELL (-1)? If not, why not simply:
+> mynewdf2 <- mydf2 |> dplyr::mutate(side = ifelse(side == 'BUY', 1, -1))
+
+Yes it works indeed.
+I found another solution :
+df <- df |> mutate(side = as.numeric(ifelse(side == 'BUY', 1,
+ifelse(side == 'SELL', -1, side))))
+but yours is much simpler. and I can use dplyr::if_else() or
+fifelse(). which looks safer and faster.
+
+>
+> That would solve the problem. I'm not quite sure exactly what happens,
+> but this is probably related to the intermediary result after the first
+> ifelse(), where characters and numeric are mixed. But conversion to
+> numeric works properly, so I'm not sure what you meant:
+> as.numeric(mynewdf2$side)
+>
+> More generally, why are you trying to convert to 1 and -1?
+
+I am working on a crypto asset portfolio and want to compute profit &
+loss. To achieve it, I need to convert (BUY * quantity) to quantity
+and
+(SELL * quantity) to -quantity.
+
+Thank you for your answer.
+
+Why not use
+> factors? Are you trying to test contrasts maybe? I would be surprised if
+> the function for the statistical test you are trying to use does not
+> deal with that already on its own.
+>
+> HTH,
+> Ivan
+>
+>
+> On 27/09/2023 13:01, arnaud gaboury wrote:
+> > I have two data.frames:
+> >
+> > mydf1 <- structure(list(symbol = "ETHUSDT", cummulative_quote_qty =
+> > 1999.9122, side = "BUY", time = structure(1695656875.805, tzone = "", class
+> > = c("POSIXct", "POSIXt"))), row.names = c(NA, -1L), class = c("data.table",
+> > "data.frame"))
+> >
+> > mydf2 <- structure(list(symbol = c("ETHUSDT", "ETHUSDT", "ETHUSDT"),
+> > cummulative_quote_qty = c(1999.119408,
+> > 0, 2999.890985), side = c("SELL", "BUY", "BUY"), time =
+> > structure(c(1695712848.487,
+> > 1695744226.993, 1695744509.082), class = c("POSIXct", "POSIXt"
+> > ), tzone = "")), row.names = c(NA, -3L), class = c("data.table",
+> > "data.frame"))
+> >
+> > I use this line to replace 'BUY' by numeric 1 and 'SELL' by numeric -1 in
+> > mydf1 and mydf2:
+> > mynewdf <- mydf |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+> > ifelse(side == 'SELL', -1, side)))
+> >
+> > This does the job but I am left with an issue: 1 and -1 are characters for
+> > mynewdf2 when it is numeric for mynewdf1. The result I am expecting is
+> > getting numeric values.
+> > I can't solve this issue (using as.numeric(1) doesn't work) and don't
+> > understand why I am left with num for mynewdf1 and characters for mynewdf2.
+> >
+> >> mynewdf1 <- mydf1 |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+> > ifelse(side == 'SELL', -1, side)))
+> >> str(mynewdf1)
+> > Classes ?data.table? and 'data.frame': 1 obs. of  4 variables:
+> >   $ symbol               : chr "ETHUSDT"
+> >   $ cummulative_quote_qty: num 2000
+> >   $ side                 : num 1      <<<------
+> >   $ time                 : POSIXct, format: "2023-09-25 17:47:55"
+> >   - attr(*, ".internal.selfref")=<externalptr>
+> >
+> >> mynewdf2 <- mydf2 |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+> > ifelse(side == 'SELL', -1, side)))
+> >>   str(mynewdf2)
+> > Classes ?data.table? and 'data.frame': 3 obs. of  4 variables:
+> >   $ symbol               : chr  "ETHUSDT" "ETHUSDT" "ETHUSDT"
+> >   $ cummulative_quote_qty: num  1999 0 3000
+> >   $ side                 : chr  "-1" "1" "1"   <<<------
+> >   $ time                 : POSIXct, format: "2023-09-26 09:20:48"
+> > "2023-09-26 18:03:46" "2023-09-26 18:08:29"
+> >   - attr(*, ".internal.selfref")=<externalptr>
+> >
+> > Thank you for help
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From pd@|gd @end|ng |rom gm@||@com  Thu Sep 28 11:33:29 2023
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Thu, 28 Sep 2023 11:33:29 +0200
+Subject: [R] prop.trend.test question
+In-Reply-To: <000d01d9ef55$7a1ab6d0$6e502470$@yahoo.com>
+References: <000d01d9ef55$7a1ab6d0$6e502470$.ref@yahoo.com>
+ <000d01d9ef55$7a1ab6d0$6e502470$@yahoo.com>
+Message-ID: <915ADF43-AAA8-4C67-ABB2-462B4487E427@gmail.com>
+
+In a word: Yes.
+
+We discussed this about 2w ago. Basically, the lm() fits a local Linear Probability Model and the coef to "score" gives you the direction of the effect.
+
+In the same thread it was discussed (well, readable between the lines, maybe) that if you change the lm() to a Gaussian glm() and use summary(..., dispersion=1), you can extract the z-test version of the trend test. (I think that the reason for using the chisquare version was to match the example in Altman: Practical Statistics for Medical Research.)
+
+Arguably the code should be updated to use the z and at the same time include alternative=c("two.sided", "less", "greater") like other 1df tests have. Just a matter of these darn little round tuits that you seem never to be able to get... Also slightly tricky whether/how to make it backwards compatible.
+
+- pd
+
+> On 25 Sep 2023, at 04:10 , tgs77m--- via R-help <r-help at r-project.org> wrote:
+> 
+> Colleagues,
+> 
+> The code for prop.trend.test is given by:
+> 
+> function (x, n, score = seq_along(x)) 
+> {
+>    method <- "Chi-squared Test for Trend in Proportions"
+>    dname <- paste(deparse1(substitute(x)), "out of",
+> deparse1(substitute(n)), 
+>        ",\n using scores:", paste(score, collapse = " "))
+>    x <- as.vector(x)
+>    n <- as.vector(n)
+>    p <- sum(x)/sum(n)
+>    w <- n/p/(1 - p)
+>    a <- anova(lm(freq ~ score, data = list(freq = x/n, score =
+> as.vector(score)), 
+>        weights = w))
+>    chisq <- c(`X-squared` = a["score", "Sum Sq"])
+>    structure(list(statistic = chisq, parameter = c(df = 1), 
+>        p.value = pchisq(as.numeric(chisq), 1, lower.tail = FALSE), 
+>        method = method, data.name = dname), class = "htest")
+> }
+> 
+> It seems to me that the direction of the trend is found using the weighted
+> regression lm(freq ~ score, data = list(freq = x/n, score =
+> as.vector(score)), 
+>        weights = w))
+> 
+> Am I on the right track here?
+> 
+> Thomas Subia
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From @hu|@|@cheung @end|ng |rom gm@||@com  Thu Sep 28 17:46:45 2023
+From: @hu|@|@cheung @end|ng |rom gm@||@com (Shu Fai Cheung)
+Date: Thu, 28 Sep 2023 23:46:45 +0800
+Subject: [R] save(), load(), saveRDS(), and readRDS()
+Message-ID: <CAPVJd2X1a57BynSv+dDYbyRiRSXnTkUUoqJTDsJ2cgw0rMdVoA@mail.gmail.com>
+
+Hi All,
+
+There is a thread about the use of save(), load(), saveRDS(), and
+loadRDS(). It led me to think about a question regarding them.
+
+In my personal work, I prefer using saveRDS() and loadRDS() as I don't like
+the risk of overwriting anything in the global environment. I also like the
+freedom to name an object when reading it from a file.
+
+However, for teaching, I have to teach save() and load() because, in my
+discipline, it is common for researchers to share their datasets on the
+internet using the format saved by save(), and so students need to know how
+to use load() and what will happen when using it. Actually, I can't recall
+encountering datasets shared by the .rds format. I have been wondering why
+save() was usually used in that case.
+
+That discussion led me to read the help pages again and I noticed the
+following warning, from the help page of saveRDS():
+
+"Files produced by saveRDS (or serialize to a file connection) are not
+suitable as an interchange format between machines, for example to download
+from a website. The files produced by save
+<http://127.0.0.1:18888/library/base/help/save> have a header identifying
+the file type and so are better protected against erroneous use."
+
+When will the problem mentioned in the warning occur? That is, when will a
+file saved by saveRDS() not be read correctly? Saved in Linux and then read
+in Windows? Is it possible to create a reproducible error?
+
+Regards,
+Shu Fai
+
+	[[alternative HTML version deleted]]
+
+
