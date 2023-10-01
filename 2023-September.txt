@@ -23814,3 +23814,1695 @@ Shu Fai
 	[[alternative HTML version deleted]]
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Fri Sep 29 10:42:37 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Fri, 29 Sep 2023 11:42:37 +0300
+Subject: [R] save(), load(), saveRDS(), and readRDS()
+In-Reply-To: <CAPVJd2X1a57BynSv+dDYbyRiRSXnTkUUoqJTDsJ2cgw0rMdVoA@mail.gmail.com>
+References: <CAPVJd2X1a57BynSv+dDYbyRiRSXnTkUUoqJTDsJ2cgw0rMdVoA@mail.gmail.com>
+Message-ID: <20230929114237.2592975a@Tarkus>
+
+On Thu, 28 Sep 2023 23:46:45 +0800
+Shu Fai Cheung <shufai.cheung at gmail.com> wrote:
+
+> In my personal work, I prefer using saveRDS() and loadRDS() as I
+> don't like the risk of overwriting anything in the global
+> environment.
+
+There's the load(file, e <- new.env()) idiom, but that's potentially
+a lot to type.
+
+Confusingly, ?save also says:
+
+>> For saving single R objects, ?saveRDS()? is mostly preferable to
+>> ?save()?, notably because of the _functional_ nature of ?readRDS()?,
+>> as opposed to ?load()?.
+
+> The files produced by save
+> <http://127.0.0.1:18888/library/base/help/save> have a header
+> identifying the file type and so are better protected against
+> erroneous use."
+
+This header is also mentioned elsewhere in ?saveRDS:
+
+>> ?save? writes a single line header (typically ?"RDXs\n"?)
+
+The difference between the save() header and the serialize() header is
+that the save() header is designed to be read independently from the
+machine running the code: it's exactly 5 bytes; some precisely defined
+combinations of those 5 bytes identify how the rest of the file should
+be interpreted (nowadays, it's likely either "XDR format version 2" or
+"XDR format version 3"), and the rest of them cause an error.
+
+The serialize() header does contain enough information describing it
+(there's the first byte choosing between ASCII/XDR/native binary and a
+number of encoded integers describing the format version and the
+version of R you need to parse it), but it's stored in terms of
+serialized objects, so if you cannot for some reason decode them
+properly, you won't be able to read the header. A little bit of
+Catch-22.
+
+> When will the problem mentioned in the warning occur? That is, when
+> will a file saved by saveRDS() not be read correctly?
+
+One example I can offer is when a dataset is saved using serialize(xdr
+= FALSE) (which is not reachable using saveRDS()). The resulting file
+format would be dependent on the native byte order of the CPU in your
+computer. (Nowadays it's really hard to encounter a CPU that doesn't
+use little-endian byte order, so this is doubly unlikely to happen in
+practice.) Both save() and saveRDS() set xdr = TRUE and convert the
+data to "network byte order" (big-endian) when saving and back - when
+loading.
+
+The warning is relatively fresh (May 2021). Perhaps Prof. Brian D.
+Ripley (who made that change) will be able to explain it better.
+
+-- 
+Best regards,
+Ivan
+
+
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Fri Sep 29 12:32:20 2023
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Fri, 29 Sep 2023 10:32:20 +0000
+Subject: [R] lattice densityplot with weights
+Message-ID: <26CC33DB-A876-4C83-8996-76A619A8946E@hotmail.com>
+
+
+density() function in R accepts weights as an input.  Using this
+function, one can calculate density and plot it.  Is it possible to
+combined these two operations in lattice densityplot()?
+
+mydf <- data.frame(name = "A", x = seq(-2.9, 2.9, by = 0.2), wt =
+diff(pnorm(seq(-3, 3, by = 0.2))))
+mydf <- rbind(mydf, data.frame(name = "B", x = mydf$x + 0.5, wt =
+mydf$wt))
+with(subset(mydf, name == "A"), density(x, weights = wt / sum(wt)) |>
+plot(xlim = c(-3, 3.5), xlab = "", main = "Density Plots"))
+with(subset(mydf, name == "B"), density(x, weights = wt / sum(wt)) |>
+lines(lty = 2, col = 2))
+grid()
+legend("topright", legend = c("A", "B"), col = c(1, 2), lty = c(1, 2),
+bty = "n")
+
+# I want to do something like this:
+# densityplot(~ x, weights = wt, groups = name, data = mydf, type = c("l", "g"))
+
+
+From pd@|gd @end|ng |rom gm@||@com  Fri Sep 29 12:58:16 2023
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Fri, 29 Sep 2023 12:58:16 +0200
+Subject: [R] Odd result
+In-Reply-To: <2d1ee62a-6b76-867e-04f4-9dd40e8ec1b6@dewey.myzen.co.uk>
+References: <BN7PR08MB4114C9314A5872B287E8F7B5D0FEA@BN7PR08MB4114.namprd08.prod.outlook.com>
+ <2d1ee62a-6b76-867e-04f4-9dd40e8ec1b6@dewey.myzen.co.uk>
+Message-ID: <F0759E24-0588-4F87-AF32-0B384E90F13F@gmail.com>
+
+Yes. Also notice that something fishy seems to be going on in columns 2 and 3 (assuming that the date/time is 1 column). 
+They appear to be read as character data, even though the content is numeric?
+
+-pd
+
+> On 24 Sep 2023, at 11:58 , Michael Dewey <lists at dewey.myzen.co.uk> wrote:
+> 
+> Dear David
+> 
+> To get the first 46 rows just do KurtzData[1:43,]
+> 
+> However really you want to find out why it happened. It looks as though the .csv file you read has lots of blank lines at the end. I would open it in an editor to check that.
+> 
+> Michael
+> 
+> On 23/09/2023 23:55, Parkhurst, David wrote:
+>> With help from several people, I used file.choose() to get my file name, and read.csv() to read in the file as KurtzData.  Then when I print KurtzData, the last several lines look like this:
+>> 39   5/31/22              16.0      341    1.75525 0.0201 0.0214   7.00
+>> 40   6/28/22  2:00 PM      0.0      215    0.67950 0.0156 0.0294     NA
+>> 41   7/25/22 11:00 AM      11.9   1943.5        NA     NA 0.0500   7.80
+>> 42   8/31/22                  0    220.5        NA     NA 0.0700  30.50
+>> 43   9/28/22              0.067     10.9        NA     NA 0.0700  10.20
+>> 44  10/26/22              0.086      237        NA     NA 0.1550  45.00
+>> 45   1/12/23  1:00 PM     36.26    24196        NA     NA 0.7500 283.50
+>> 46   2/14/23  1:00 PM     20.71       55        NA     NA 0.0500   2.40
+>> 47                                              NA     NA     NA     NA
+>> 48                                              NA     NA     NA     NA
+>> 49                                              NA     NA     NA     NA
+>> Then the NA?s go down to one numbered 973.  Where did those extras likely come from, and how do I get rid of them?  I assume I need to get rid of all the lines after #46,  to do calculations and graphics, no?
+>> David
+>> 	[[alternative HTML version deleted]]
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> -- 
+> Michael
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From tebert @end|ng |rom u||@edu  Fri Sep 29 15:21:50 2023
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Fri, 29 Sep 2023 13:21:50 +0000
+Subject: [R] replace character by numeric value
+In-Reply-To: <87ediin53e.fsf@enricoschumann.net>
+References: <CAK1hC9sWDHGLAEOv8zf+kHWtSnkxfgTg0KGEAro3mcQbMamrdA@mail.gmail.com>
+ <87ediin53e.fsf@enricoschumann.net>
+Message-ID: <CH3PR22MB4514A312BEB8064DB81BA5A0CFC0A@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+Does this work?
+mynewdf$side <- as.numeric(mynewdf$side)
+
+This code would be the next line after your mutate.
+
+TIm
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Enrico Schumann
+Sent: Thursday, September 28, 2023 3:13 AM
+To: arnaud gaboury <arnaud.gaboury at gmail.com>
+Cc: r-help <r-help at r-project.org>
+Subject: Re: [R] replace character by numeric value
+
+[External Email]
+
+On Wed, 27 Sep 2023, arnaud gaboury writes:
+
+> I have two data.frames:
+>
+> mydf1 <- structure(list(symbol = "ETHUSDT", cummulative_quote_qty =
+> 1999.9122, side = "BUY", time = structure(1695656875.805, tzone = "",
+> class = c("POSIXct", "POSIXt"))), row.names = c(NA, -1L), class =
+> c("data.table",
+> "data.frame"))
+>
+> mydf2 <- structure(list(symbol = c("ETHUSDT", "ETHUSDT", "ETHUSDT"),
+> cummulative_quote_qty = c(1999.119408, 0, 2999.890985), side =
+> c("SELL", "BUY", "BUY"), time = structure(c(1695712848.487,
+> 1695744226.993, 1695744509.082), class = c("POSIXct", "POSIXt"
+> ), tzone = "")), row.names = c(NA, -3L), class = c("data.table",
+> "data.frame"))
+>
+> I use this line to replace 'BUY' by numeric 1 and 'SELL' by numeric -1
+> in
+> mydf1 and mydf2:
+> mynewdf <- mydf |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+> ifelse(side == 'SELL', -1, side)))
+>
+> This does the job but I am left with an issue: 1 and -1 are characters
+> for
+> mynewdf2 when it is numeric for mynewdf1. The result I am expecting is
+> getting numeric values.
+> I can't solve this issue (using as.numeric(1) doesn't work) and don't
+> understand why I am left with num for mynewdf1 and characters for mynewdf2.
+>
+>> mynewdf1 <- mydf1 |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+> ifelse(side == 'SELL', -1, side)))
+>> str(mynewdf1)
+> Classes 'data.table' and 'data.frame': 1 obs. of  4 variables:
+>  $ symbol               : chr "ETHUSDT"
+>  $ cummulative_quote_qty: num 2000
+>  $ side                 : num 1      <<<------
+>  $ time                 : POSIXct, format: "2023-09-25 17:47:55"
+>  - attr(*, ".internal.selfref")=<externalptr>
+>
+>> mynewdf2 <- mydf2 |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+> ifelse(side == 'SELL', -1, side)))
+>>  str(mynewdf2)
+> Classes 'data.table' and 'data.frame': 3 obs. of  4 variables:
+>  $ symbol               : chr  "ETHUSDT" "ETHUSDT" "ETHUSDT"
+>  $ cummulative_quote_qty: num  1999 0 3000
+>  $ side                 : chr  "-1" "1" "1"   <<<------
+>  $ time                 : POSIXct, format: "2023-09-26 09:20:48"
+> "2023-09-26 18:03:46" "2023-09-26 18:08:29"
+>  - attr(*, ".internal.selfref")=<externalptr>
+>
+> Thank you for help
+>
+
+I'd use something like this:
+
+    map <- c(BUY = 1, SELL = -1)
+    mydf1$side <- map[mydf1$side]
+    str(mydf1)
+    ## Classes 'data.table' and 'data.frame':   1 obs. of  4 variables:
+    ##  $ symbol               : chr "ETHUSDT"
+    ##  $ cummulative_quote_qty: num 2000
+    ##  $ side                 : num 1
+
+    mydf2$side <- map[mydf2$side]
+    str(mydf2)
+    ## Classes 'data.table' and 'data.frame':   3 obs. of  4 variables:
+    ##  $ symbol               : chr  "ETHUSDT" "ETHUSDT" "ETHUSDT"
+    ##  $ cummulative_quote_qty: num  1999 0 3000
+    ##  $ side                 : num  -1 1 1
+    ##  $ time                 : POSIXct, format: "2023-09-26 09:20:48" ...
+
+
+
+--
+Enrico Schumann
+Lucerne, Switzerland
+http://enricoschumann.net/
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From bbo|ker @end|ng |rom gm@||@com  Fri Sep 29 15:59:32 2023
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Fri, 29 Sep 2023 09:59:32 -0400
+Subject: [R] replace character by numeric value
+In-Reply-To: <CH3PR22MB4514A312BEB8064DB81BA5A0CFC0A@CH3PR22MB4514.namprd22.prod.outlook.com>
+References: <CAK1hC9sWDHGLAEOv8zf+kHWtSnkxfgTg0KGEAro3mcQbMamrdA@mail.gmail.com>
+ <87ediin53e.fsf@enricoschumann.net>
+ <CH3PR22MB4514A312BEB8064DB81BA5A0CFC0A@CH3PR22MB4514.namprd22.prod.outlook.com>
+Message-ID: <e50a42d6-caf2-4e33-891d-afce3ab2875b@gmail.com>
+
+   The reason you're getting the result as character is that you have 
+'side' as your alternative result in the second ifelse().  If "BUY" and 
+"SELL" are the only options you might try
+
+    ifelse(side == 'BUY', 1, ifelse(side == 'SELL', -1, NA))
+
+or
+
+    c(1,-1)[match(side, c("BUY", "SELL"))]
+
+or
+
+vals <- c(BUY=1, SELL = -1)
+vals[side]
+
+
+On 2023-09-29 9:21 a.m., Ebert,Timothy Aaron wrote:
+> Does this work?
+> mynewdf$side <- as.numeric(mynewdf$side)
+> 
+> This code would be the next line after your mutate.
+> 
+> TIm
+> 
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Enrico Schumann
+> Sent: Thursday, September 28, 2023 3:13 AM
+> To: arnaud gaboury <arnaud.gaboury at gmail.com>
+> Cc: r-help <r-help at r-project.org>
+> Subject: Re: [R] replace character by numeric value
+> 
+> [External Email]
+> 
+> On Wed, 27 Sep 2023, arnaud gaboury writes:
+> 
+>> I have two data.frames:
+>>
+>> mydf1 <- structure(list(symbol = "ETHUSDT", cummulative_quote_qty =
+>> 1999.9122, side = "BUY", time = structure(1695656875.805, tzone = "",
+>> class = c("POSIXct", "POSIXt"))), row.names = c(NA, -1L), class =
+>> c("data.table",
+>> "data.frame"))
+>>
+>> mydf2 <- structure(list(symbol = c("ETHUSDT", "ETHUSDT", "ETHUSDT"),
+>> cummulative_quote_qty = c(1999.119408, 0, 2999.890985), side =
+>> c("SELL", "BUY", "BUY"), time = structure(c(1695712848.487,
+>> 1695744226.993, 1695744509.082), class = c("POSIXct", "POSIXt"
+>> ), tzone = "")), row.names = c(NA, -3L), class = c("data.table",
+>> "data.frame"))
+>>
+>> I use this line to replace 'BUY' by numeric 1 and 'SELL' by numeric -1
+>> in
+>> mydf1 and mydf2:
+>> mynewdf <- mydf |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+>> ifelse(side == 'SELL', -1, side)))
+>>
+>> This does the job but I am left with an issue: 1 and -1 are characters
+>> for
+>> mynewdf2 when it is numeric for mynewdf1. The result I am expecting is
+>> getting numeric values.
+>> I can't solve this issue (using as.numeric(1) doesn't work) and don't
+>> understand why I am left with num for mynewdf1 and characters for mynewdf2.
+>>
+>>> mynewdf1 <- mydf1 |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+>> ifelse(side == 'SELL', -1, side)))
+>>> str(mynewdf1)
+>> Classes 'data.table' and 'data.frame': 1 obs. of  4 variables:
+>>   $ symbol               : chr "ETHUSDT"
+>>   $ cummulative_quote_qty: num 2000
+>>   $ side                 : num 1      <<<------
+>>   $ time                 : POSIXct, format: "2023-09-25 17:47:55"
+>>   - attr(*, ".internal.selfref")=<externalptr>
+>>
+>>> mynewdf2 <- mydf2 |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+>> ifelse(side == 'SELL', -1, side)))
+>>>   str(mynewdf2)
+>> Classes 'data.table' and 'data.frame': 3 obs. of  4 variables:
+>>   $ symbol               : chr  "ETHUSDT" "ETHUSDT" "ETHUSDT"
+>>   $ cummulative_quote_qty: num  1999 0 3000
+>>   $ side                 : chr  "-1" "1" "1"   <<<------
+>>   $ time                 : POSIXct, format: "2023-09-26 09:20:48"
+>> "2023-09-26 18:03:46" "2023-09-26 18:08:29"
+>>   - attr(*, ".internal.selfref")=<externalptr>
+>>
+>> Thank you for help
+>>
+> 
+> I'd use something like this:
+> 
+>      map <- c(BUY = 1, SELL = -1)
+>      mydf1$side <- map[mydf1$side]
+>      str(mydf1)
+>      ## Classes 'data.table' and 'data.frame':   1 obs. of  4 variables:
+>      ##  $ symbol               : chr "ETHUSDT"
+>      ##  $ cummulative_quote_qty: num 2000
+>      ##  $ side                 : num 1
+> 
+>      mydf2$side <- map[mydf2$side]
+>      str(mydf2)
+>      ## Classes 'data.table' and 'data.frame':   3 obs. of  4 variables:
+>      ##  $ symbol               : chr  "ETHUSDT" "ETHUSDT" "ETHUSDT"
+>      ##  $ cummulative_quote_qty: num  1999 0 3000
+>      ##  $ side                 : num  -1 1 1
+>      ##  $ time                 : POSIXct, format: "2023-09-26 09:20:48" ...
+> 
+> 
+> 
+> --
+> Enrico Schumann
+> Lucerne, Switzerland
+> http://enricoschumann.net/
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From tebert @end|ng |rom u||@edu  Fri Sep 29 16:12:35 2023
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Fri, 29 Sep 2023 14:12:35 +0000
+Subject: [R] replace character by numeric value
+In-Reply-To: <e50a42d6-caf2-4e33-891d-afce3ab2875b@gmail.com>
+References: <CAK1hC9sWDHGLAEOv8zf+kHWtSnkxfgTg0KGEAro3mcQbMamrdA@mail.gmail.com>
+ <87ediin53e.fsf@enricoschumann.net>
+ <CH3PR22MB4514A312BEB8064DB81BA5A0CFC0A@CH3PR22MB4514.namprd22.prod.outlook.com>
+ <e50a42d6-caf2-4e33-891d-afce3ab2875b@gmail.com>
+Message-ID: <CH3PR22MB45146A1E8D9A0C5E2D1F5910CFC0A@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+You might also try
+mynewdf <- mydf |> dplyr::mutate(side = ifelse(side == 'BUY', 1,-1))
+
+This may give unexpected results if there are other choices besides "BUY" and "SELL".
+
+mynewdf <- mydf |> dplyr::mutate(side = ifelse(side == 'BUY', 1, ifelse(side == 'SELL', -1, NA)))
+
+is an option that would take care of other options.
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Ben Bolker
+Sent: Friday, September 29, 2023 10:00 AM
+To: r-help at r-project.org
+Subject: Re: [R] replace character by numeric value
+
+[External Email]
+
+   The reason you're getting the result as character is that you have 'side' as your alternative result in the second ifelse().  If "BUY" and "SELL" are the only options you might try
+
+    ifelse(side == 'BUY', 1, ifelse(side == 'SELL', -1, NA))
+
+or
+
+    c(1,-1)[match(side, c("BUY", "SELL"))]
+
+or
+
+vals <- c(BUY=1, SELL = -1)
+vals[side]
+
+
+On 2023-09-29 9:21 a.m., Ebert,Timothy Aaron wrote:
+> Does this work?
+> mynewdf$side <- as.numeric(mynewdf$side)
+>
+> This code would be the next line after your mutate.
+>
+> TIm
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Enrico
+> Schumann
+> Sent: Thursday, September 28, 2023 3:13 AM
+> To: arnaud gaboury <arnaud.gaboury at gmail.com>
+> Cc: r-help <r-help at r-project.org>
+> Subject: Re: [R] replace character by numeric value
+>
+> [External Email]
+>
+> On Wed, 27 Sep 2023, arnaud gaboury writes:
+>
+>> I have two data.frames:
+>>
+>> mydf1 <- structure(list(symbol = "ETHUSDT", cummulative_quote_qty =
+>> 1999.9122, side = "BUY", time = structure(1695656875.805, tzone = "",
+>> class = c("POSIXct", "POSIXt"))), row.names = c(NA, -1L), class =
+>> c("data.table",
+>> "data.frame"))
+>>
+>> mydf2 <- structure(list(symbol = c("ETHUSDT", "ETHUSDT", "ETHUSDT"),
+>> cummulative_quote_qty = c(1999.119408, 0, 2999.890985), side =
+>> c("SELL", "BUY", "BUY"), time = structure(c(1695712848.487,
+>> 1695744226.993, 1695744509.082), class = c("POSIXct", "POSIXt"
+>> ), tzone = "")), row.names = c(NA, -3L), class = c("data.table",
+>> "data.frame"))
+>>
+>> I use this line to replace 'BUY' by numeric 1 and 'SELL' by numeric
+>> -1 in
+>> mydf1 and mydf2:
+>> mynewdf <- mydf |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+>> ifelse(side == 'SELL', -1, side)))
+>>
+>> This does the job but I am left with an issue: 1 and -1 are
+>> characters for
+>> mynewdf2 when it is numeric for mynewdf1. The result I am expecting
+>> is getting numeric values.
+>> I can't solve this issue (using as.numeric(1) doesn't work) and don't
+>> understand why I am left with num for mynewdf1 and characters for mynewdf2.
+>>
+>>> mynewdf1 <- mydf1 |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+>> ifelse(side == 'SELL', -1, side)))
+>>> str(mynewdf1)
+>> Classes 'data.table' and 'data.frame': 1 obs. of  4 variables:
+>>   $ symbol               : chr "ETHUSDT"
+>>   $ cummulative_quote_qty: num 2000
+>>   $ side                 : num 1      <<<------
+>>   $ time                 : POSIXct, format: "2023-09-25 17:47:55"
+>>   - attr(*, ".internal.selfref")=<externalptr>
+>>
+>>> mynewdf2 <- mydf2 |> dplyr::mutate(side = ifelse(side == 'BUY', 1,
+>> ifelse(side == 'SELL', -1, side)))
+>>>   str(mynewdf2)
+>> Classes 'data.table' and 'data.frame': 3 obs. of  4 variables:
+>>   $ symbol               : chr  "ETHUSDT" "ETHUSDT" "ETHUSDT"
+>>   $ cummulative_quote_qty: num  1999 0 3000
+>>   $ side                 : chr  "-1" "1" "1"   <<<------
+>>   $ time                 : POSIXct, format: "2023-09-26 09:20:48"
+>> "2023-09-26 18:03:46" "2023-09-26 18:08:29"
+>>   - attr(*, ".internal.selfref")=<externalptr>
+>>
+>> Thank you for help
+>>
+>
+> I'd use something like this:
+>
+>      map <- c(BUY = 1, SELL = -1)
+>      mydf1$side <- map[mydf1$side]
+>      str(mydf1)
+>      ## Classes 'data.table' and 'data.frame':   1 obs. of  4 variables:
+>      ##  $ symbol               : chr "ETHUSDT"
+>      ##  $ cummulative_quote_qty: num 2000
+>      ##  $ side                 : num 1
+>
+>      mydf2$side <- map[mydf2$side]
+>      str(mydf2)
+>      ## Classes 'data.table' and 'data.frame':   3 obs. of  4 variables:
+>      ##  $ symbol               : chr  "ETHUSDT" "ETHUSDT" "ETHUSDT"
+>      ##  $ cummulative_quote_qty: num  1999 0 3000
+>      ##  $ side                 : num  -1 1 1
+>      ##  $ time                 : POSIXct, format: "2023-09-26 09:20:48" ...
+>
+>
+>
+> --
+> Enrico Schumann
+> Lucerne, Switzerland
+> http://enric/
+> oschumann.net%2F&data=05%7C01%7Ctebert%40ufl.edu%7Cc444bc296379414ba95
+> b08dbc0f46826%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C63831592818
+> 5843893%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLC
+> JBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=YHs9vJMita%2BWAdlmn
+> zx7%2Bte8gGqf3bTDl6CjnVG0exw%3D&reserved=0
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat/
+> .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Ctebert%40ufl.edu
+> %7Cc444bc296379414ba95b08dbc0f46826%7C0d4da0f84a314d76ace60a62331e1b84
+> %7C0%7C0%7C638315928185843893%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAw
+> MDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sda
+> ta=ANxrud%2Bvq7xIraYkKFA4FLgJT3%2Bp1ceynsEmvnl7ot0%3D&reserved=0
+> PLEASE do read the posting guide
+> http://www.r/
+> -project.org%2Fposting-guide.html&data=05%7C01%7Ctebert%40ufl.edu%7Cc4
+> 44bc296379414ba95b08dbc0f46826%7C0d4da0f84a314d76ace60a62331e1b84%7C0%
+> 7C0%7C638315928185843893%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiL
+> CJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=CW
+> oJHfmd4Nrll13MSqD22gRVORw8sOxKbvz1rFI8ov0%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat/
+> .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Ctebert%40ufl.edu
+> %7Cc444bc296379414ba95b08dbc0f46826%7C0d4da0f84a314d76ace60a62331e1b84
+> %7C0%7C0%7C638315928185843893%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAw
+> MDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sda
+> ta=ANxrud%2Bvq7xIraYkKFA4FLgJT3%2Bp1ceynsEmvnl7ot0%3D&reserved=0
+> PLEASE do read the posting guide
+> http://www.r/
+> -project.org%2Fposting-guide.html&data=05%7C01%7Ctebert%40ufl.edu%7Cc4
+> 44bc296379414ba95b08dbc0f46826%7C0d4da0f84a314d76ace60a62331e1b84%7C0%
+> 7C0%7C638315928185843893%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiL
+> CJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=CW
+> oJHfmd4Nrll13MSqD22gRVORw8sOxKbvz1rFI8ov0%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+
+--
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics  > E-mail is sent at my convenience; I don't expect replies outside of working hours.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Fri Sep 29 16:34:12 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Fri, 29 Sep 2023 07:34:12 -0700
+Subject: [R] lattice densityplot with weights
+In-Reply-To: <26CC33DB-A876-4C83-8996-76A619A8946E@hotmail.com>
+References: <26CC33DB-A876-4C83-8996-76A619A8946E@hotmail.com>
+Message-ID: <CAGxFJbQr_LB9W9tA_R1mC14fdW98WOc-yRLSX9GVDuV1T7zoJw@mail.gmail.com>
+
+Unless I misunderstand...
+
+See ?panel.densityplot
+
+Lattice functions do their work through a host of panel functions,
+typically passing their ... arguments to the panel functions.
+panel.densityplot has a weights argument.
+
+Cheers,
+Bert
+
+
+
+
+On Fri, Sep 29, 2023 at 3:32?AM Naresh Gurbuxani <
+naresh_gurbuxani at hotmail.com> wrote:
+
+>
+> density() function in R accepts weights as an input.  Using this
+> function, one can calculate density and plot it.  Is it possible to
+> combined these two operations in lattice densityplot()?
+>
+> mydf <- data.frame(name = "A", x = seq(-2.9, 2.9, by = 0.2), wt =
+> diff(pnorm(seq(-3, 3, by = 0.2))))
+> mydf <- rbind(mydf, data.frame(name = "B", x = mydf$x + 0.5, wt =
+> mydf$wt))
+> with(subset(mydf, name == "A"), density(x, weights = wt / sum(wt)) |>
+> plot(xlim = c(-3, 3.5), xlab = "", main = "Density Plots"))
+> with(subset(mydf, name == "B"), density(x, weights = wt / sum(wt)) |>
+> lines(lty = 2, col = 2))
+> grid()
+> legend("topright", legend = c("A", "B"), col = c(1, 2), lty = c(1, 2),
+> bty = "n")
+>
+> # I want to do something like this:
+> # densityplot(~ x, weights = wt, groups = name, data = mydf, type = c("l",
+> "g"))
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Fri Sep 29 16:56:06 2023
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Fri, 29 Sep 2023 10:56:06 -0400
+Subject: [R] lattice densityplot with weights
+In-Reply-To: <CAGxFJbQr_LB9W9tA_R1mC14fdW98WOc-yRLSX9GVDuV1T7zoJw@mail.gmail.com>
+References: <26CC33DB-A876-4C83-8996-76A619A8946E@hotmail.com>
+ <CAGxFJbQr_LB9W9tA_R1mC14fdW98WOc-yRLSX9GVDuV1T7zoJw@mail.gmail.com>
+Message-ID: <CADfFDC6Om3jqRVQ-yeG8c7pouxaPtyi0J65wfDR2mg7uVAXy4Q@mail.gmail.com>
+
+Yes, the following should (mostly) work:
+
+lattice::densityplot(~ x, mydf, groups = name, weights = wt,
+    auto.key = list(space = "inside"), grid = TRUE)
+
+I just realised that the 'subdensity' and 'warnWbw' arguments are not
+passed through by densityplot(), so there is no way to get rid of the
+corresponding warnings. But this should be OK otherwise.
+
+On Fri, 29 Sept 2023 at 10:35, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> Unless I misunderstand...
+>
+> See ?panel.densityplot
+>
+> Lattice functions do their work through a host of panel functions,
+> typically passing their ... arguments to the panel functions.
+> panel.densityplot has a weights argument.
+
+'weights' needs a bit more work because it has to do NSE like
+'groups', but other than that, yes. The ?densityplot help page
+documents the 'weight' argument.
+
+Best,
+-Deepayan
+
+
+> Cheers,
+> Bert
+>
+>
+>
+>
+> On Fri, Sep 29, 2023 at 3:32?AM Naresh Gurbuxani <
+> naresh_gurbuxani at hotmail.com> wrote:
+>
+> >
+> > density() function in R accepts weights as an input.  Using this
+> > function, one can calculate density and plot it.  Is it possible to
+> > combined these two operations in lattice densityplot()?
+> >
+> > mydf <- data.frame(name = "A", x = seq(-2.9, 2.9, by = 0.2), wt =
+> > diff(pnorm(seq(-3, 3, by = 0.2))))
+> > mydf <- rbind(mydf, data.frame(name = "B", x = mydf$x + 0.5, wt =
+> > mydf$wt))
+> > with(subset(mydf, name == "A"), density(x, weights = wt / sum(wt)) |>
+> > plot(xlim = c(-3, 3.5), xlab = "", main = "Density Plots"))
+> > with(subset(mydf, name == "B"), density(x, weights = wt / sum(wt)) |>
+> > lines(lty = 2, col = 2))
+> > grid()
+> > legend("topright", legend = c("A", "B"), col = c(1, 2), lty = c(1, 2),
+> > bty = "n")
+> >
+> > # I want to do something like this:
+> > # densityplot(~ x, weights = wt, groups = name, data = mydf, type = c("l",
+> > "g"))
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> > http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From JH@rm@e @end|ng |rom roku@com  Fri Sep 29 21:44:47 2023
+From: JH@rm@e @end|ng |rom roku@com (Jorgen Harmse)
+Date: Fri, 29 Sep 2023 19:44:47 +0000
+Subject: [R] save(), load(), saveRDS(), and readRDS()
+In-Reply-To: <mailman.370224.1.1695981601.16510.r-help@r-project.org>
+References: <mailman.370224.1.1695981601.16510.r-help@r-project.org>
+Message-ID: <PH7PR01MB86660456C288C4B721DB9C14DCC0A@PH7PR01MB8666.prod.exchangelabs.com>
+
+Ivan Krylov points out that load(file, e <- new.env()) is cumbersome. I put it into a function.
+
+Regards,
+Jorgen Harmse.
+
+
+#' Save & load lists & environments
+
+#'
+
+#' \code{\link{save}} has to be told what to save from an environment, and the obvious way
+
+#' to save a structure creates an extra layer. \code{\link{load}} with default settings
+
+#' clobbers the current environment. \code{save.env} saves a list or environment without an
+
+#' extra layer, and by default saves everything. \code{load.env} loads into an environment,
+
+#' and \code{load.list} loads into a list.
+
+#'
+
+#' @param S something that can be coerced to an environment, e.g. a named \code{list}
+
+#' @param file,envir inputs to \code{save} or \code{load}
+
+#' @param list input to \code{save}
+
+#' @param skip variables in \code{envir} that should not be saved, ignored if \code{list}
+
+#' is provided
+
+#' @param ... inputs to \code{load.env} or additional inputs to \code{save}
+
+#'
+
+#' @return \code{invisible} from \code{save.env}; an \code{environment} from \code{load.env};
+
+#' a \code{list} from \code{load.list}
+
+#'
+
+#' @export
+
+
+
+save.env <- function( S, file, list = setdiff(ls(envir),skip),
+
+                      envir = if(missing(S)) parent.frame() else as.environment(S),
+
+                      skip=NULL, ...
+
+                    )
+
+{ save(list=list, file=file, envir=envir, ...)}
+
+
+
+#' @rdname save.env
+
+#'
+
+#' @param keep,remove names of variables to keep or to remove
+
+#' @param absent what to do if variables named in \code{keep} are absent
+
+#' @param parent input to \code{\link{new.env}}
+
+#'
+
+#' @note \code{remove} is forced after the file is loaded, so the default works correctly.
+
+#'
+
+#' @export
+
+
+
+load.env <- function( file, keep, remove = if(!missing(keep)) setdiff(ls(envir),keep),
+
+                      absent=c('warn','ignore','stop'), envir=new.env(parent=parent),
+
+                      parent=parent.frame()
+
+                    )
+
+{ load(file,envir)
+
+  rm(list=remove,envir=envir)
+
+  if ( !missing(keep) && (match.arg(absent) -> absent) != 'ignore'
+
+      && length(keep.absent <- setdiff(keep,ls(envir))) > 0L )
+
+  { print(keep.absent)
+
+    if (absent=='warning')
+
+      warning('The variables listed above are absent from the file.')
+
+    else
+
+      stop('The variables listed above are absent from the file.')
+
+  }
+
+  return(envir)
+
+}
+
+
+
+#' @rdname save.env
+
+#'
+
+#' @param all.names input to \code{\link{as.list}}
+
+#'
+
+#' @export
+
+
+
+load.list <- function(..., all.names=TRUE) as.list(all.names=all.names, load.env(...))
+
+
+
+
+------------------------------
+
+Message: 2
+Date: Fri, 29 Sep 2023 11:42:37 +0300
+From: Ivan Krylov <krylov.r00t at gmail.com>
+To: Shu Fai Cheung <shufai.cheung at gmail.com>
+Cc: R mailing list <r-help at r-project.org>
+Subject: Re: [R] save(), load(), saveRDS(), and readRDS()
+Message-ID: <20230929114237.2592975a at Tarkus>
+Content-Type: text/plain; charset="utf-8"
+
+On Thu, 28 Sep 2023 23:46:45 +0800
+Shu Fai Cheung <shufai.cheung at gmail.com> wrote:
+
+> In my personal work, I prefer using saveRDS() and loadRDS() as I
+> don't like the risk of overwriting anything in the global
+> environment.
+
+There's the load(file, e <- new.env()) idiom, but that's potentially
+a lot to type.
+
+*********
+
+	[[alternative HTML version deleted]]
+
+
+From p@u|bern@|07 @end|ng |rom gm@||@com  Fri Sep 29 22:29:13 2023
+From: p@u|bern@|07 @end|ng |rom gm@||@com (Paul Bernal)
+Date: Fri, 29 Sep 2023 15:29:13 -0500
+Subject: [R] Grouping by Date and showing count of failures by date
+Message-ID: <CAMOcQfM6BLFSm6dPX3Tctw35wTwxuifeF6dq80jTOAS+N3_zNg@mail.gmail.com>
+
+Dear friends,
+
+Hope you are doing great. I am attaching the dataset I am working with
+because, when I tried to dput() it, I was not able to copy the entire
+result from dput(), so I apologize in advance for that.
+
+I am interested in creating a column named Failure_Date_Period that has the
+FAILDATE but formatted as YYYY_MM. Then I want to count the number of
+failures (given by column WONUM) and just have a dataframe that has the
+FAILDATE and the count of WONUM.
+
+I tried this:
+pt <- PivotTable$new()
+pt$addData(failuredf)
+pt$addColumnDataGroups("FAILDATE")
+pt <- PivotTable$new()
+pt$addData(failuredf)
+pt$addColumnDataGroups("FAILDATE")
+pt$defineCalculation(calculationName = "FailCounts",
+summariseExpression="n()")
+pt$renderPivot()
+
+but I was not successful. Bottom line, I need to create a new dataframe
+that has the number of failures by FAILDATE, but in YYYY-MM format.
+
+Any help and/or guidance will be greatly appreciated.
+
+Kind regards,
+Paul
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sat Sep 30 13:02:48 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sat, 30 Sep 2023 12:02:48 +0100
+Subject: [R] Grouping by Date and showing count of failures by date
+In-Reply-To: <CAMOcQfM6BLFSm6dPX3Tctw35wTwxuifeF6dq80jTOAS+N3_zNg@mail.gmail.com>
+References: <CAMOcQfM6BLFSm6dPX3Tctw35wTwxuifeF6dq80jTOAS+N3_zNg@mail.gmail.com>
+Message-ID: <745de4d9-78f9-4647-af7a-bbce74b25e5b@sapo.pt>
+
+?s 21:29 de 29/09/2023, Paul Bernal escreveu:
+> Dear friends,
+> 
+> Hope you are doing great. I am attaching the dataset I am working with
+> because, when I tried to dput() it, I was not able to copy the entire
+> result from dput(), so I apologize in advance for that.
+> 
+> I am interested in creating a column named Failure_Date_Period that has the
+> FAILDATE but formatted as YYYY_MM. Then I want to count the number of
+> failures (given by column WONUM) and just have a dataframe that has the
+> FAILDATE and the count of WONUM.
+> 
+> I tried this:
+> pt <- PivotTable$new()
+> pt$addData(failuredf)
+> pt$addColumnDataGroups("FAILDATE")
+> pt <- PivotTable$new()
+> pt$addData(failuredf)
+> pt$addColumnDataGroups("FAILDATE")
+> pt$defineCalculation(calculationName = "FailCounts",
+> summariseExpression="n()")
+> pt$renderPivot()
+> 
+> but I was not successful. Bottom line, I need to create a new dataframe
+> that has the number of failures by FAILDATE, but in YYYY-MM format.
+> 
+> Any help and/or guidance will be greatly appreciated.
+> 
+> Kind regards,
+> Paul
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+No data is attached. Maybe try
+
+dput(head(failuredf, 30))
+
+?
+
+And where can we find non-base PivotTable? Please start the scripts with 
+calls to library() when using non-base functionality.
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From jrkr|de@u @end|ng |rom gm@||@com  Sat Sep 30 13:11:01 2023
+From: jrkr|de@u @end|ng |rom gm@||@com (John Kane)
+Date: Sat, 30 Sep 2023 07:11:01 -0400
+Subject: [R] Grouping by Date and showing count of failures by date
+In-Reply-To: <745de4d9-78f9-4647-af7a-bbce74b25e5b@sapo.pt>
+References: <CAMOcQfM6BLFSm6dPX3Tctw35wTwxuifeF6dq80jTOAS+N3_zNg@mail.gmail.com>
+ <745de4d9-78f9-4647-af7a-bbce74b25e5b@sapo.pt>
+Message-ID: <CAKZQJMAFBEutABf8DAq4+WOzwro6FjpDJZPAMiFDAjwaoSJMKg@mail.gmail.com>
+
+To follow up on Rui Barradas's post, I do not think PivotTable is an R
+command.
+
+You may be thinking og the "pivot_longer" and "pivot_wider" functions in
+the {tidyr} package which is part of {tidyverse}.
+
+On Sat, 30 Sept 2023 at 07:03, Rui Barradas <ruipbarradas at sapo.pt> wrote:
+
+> ?s 21:29 de 29/09/2023, Paul Bernal escreveu:
+> > Dear friends,
+> >
+> > Hope you are doing great. I am attaching the dataset I am working with
+> > because, when I tried to dput() it, I was not able to copy the entire
+> > result from dput(), so I apologize in advance for that.
+> >
+> > I am interested in creating a column named Failure_Date_Period that has
+> the
+> > FAILDATE but formatted as YYYY_MM. Then I want to count the number of
+> > failures (given by column WONUM) and just have a dataframe that has the
+> > FAILDATE and the count of WONUM.
+> >
+> > I tried this:
+> > pt <- PivotTable$new()
+> > pt$addData(failuredf)
+> > pt$addColumnDataGroups("FAILDATE")
+> > pt <- PivotTable$new()
+> > pt$addData(failuredf)
+> > pt$addColumnDataGroups("FAILDATE")
+> > pt$defineCalculation(calculationName = "FailCounts",
+> > summariseExpression="n()")
+> > pt$renderPivot()
+> >
+> > but I was not successful. Bottom line, I need to create a new dataframe
+> > that has the number of failures by FAILDATE, but in YYYY-MM format.
+> >
+> > Any help and/or guidance will be greatly appreciated.
+> >
+> > Kind regards,
+> > Paul
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+>
+> No data is attached. Maybe try
+>
+> dput(head(failuredf, 30))
+>
+> ?
+>
+> And where can we find non-base PivotTable? Please start the scripts with
+> calls to library() when using non-base functionality.
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+> --
+> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a
+> presen?a de v?rus.
+> www.avg.com
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+-- 
+John Kane
+Kingston ON Canada
+
+	[[alternative HTML version deleted]]
+
+
+From tebert @end|ng |rom u||@edu  Sat Sep 30 13:53:30 2023
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Sat, 30 Sep 2023 11:53:30 +0000
+Subject: [R] Grouping by Date and showing count of failures by date
+In-Reply-To: <CAKZQJMAFBEutABf8DAq4+WOzwro6FjpDJZPAMiFDAjwaoSJMKg@mail.gmail.com>
+References: <CAMOcQfM6BLFSm6dPX3Tctw35wTwxuifeF6dq80jTOAS+N3_zNg@mail.gmail.com>
+ <745de4d9-78f9-4647-af7a-bbce74b25e5b@sapo.pt>
+ <CAKZQJMAFBEutABf8DAq4+WOzwro6FjpDJZPAMiFDAjwaoSJMKg@mail.gmail.com>
+Message-ID: <CH3PR22MB451497E79EBD743428FFC01FCFC7A@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+In this sort of post it would help if we knew the package that was being used for the example. I found one option.
+https://cran.r-project.org/web/packages/pivottabler/vignettes/v00-vignettes.html
+
+There may be a way to create a custom data type that would be a date but restricted to a yyyy-mm format. I do not know how to do this.
+Could you work with the date as a string with a yyyy-mm format. The issue is that R will not handle the string as a date.
+A third option would be to look at the lubridate package that can be installed by itself or as part of tidyverse. I do not promise that this is a solution, but it could be.
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of John Kane
+Sent: Saturday, September 30, 2023 7:11 AM
+To: Rui Barradas <ruipbarradas at sapo.pt>
+Cc: Paul Bernal <paulbernal07 at gmail.com>; R <r-help at r-project.org>
+Subject: Re: [R] Grouping by Date and showing count of failures by date
+
+[External Email]
+
+To follow up on Rui Barradas's post, I do not think PivotTable is an R command.
+
+You may be thinking og the "pivot_longer" and "pivot_wider" functions in the {tidyr} package which is part of {tidyverse}.
+
+On Sat, 30 Sept 2023 at 07:03, Rui Barradas <ruipbarradas at sapo.pt> wrote:
+
+> ?s 21:29 de 29/09/2023, Paul Bernal escreveu:
+> > Dear friends,
+> >
+> > Hope you are doing great. I am attaching the dataset I am working
+> > with because, when I tried to dput() it, I was not able to copy the
+> > entire result from dput(), so I apologize in advance for that.
+> >
+> > I am interested in creating a column named Failure_Date_Period that
+> > has
+> the
+> > FAILDATE but formatted as YYYY_MM. Then I want to count the number
+> > of failures (given by column WONUM) and just have a dataframe that
+> > has the FAILDATE and the count of WONUM.
+> >
+> > I tried this:
+> > pt <- PivotTable$new()
+> > pt$addData(failuredf)
+> > pt$addColumnDataGroups("FAILDATE")
+> > pt <- PivotTable$new()
+> > pt$addData(failuredf)
+> > pt$addColumnDataGroups("FAILDATE")
+> > pt$defineCalculation(calculationName = "FailCounts",
+> > summariseExpression="n()")
+> > pt$renderPivot()
+> >
+> > but I was not successful. Bottom line, I need to create a new
+> > dataframe that has the number of failures by FAILDATE, but in YYYY-MM format.
+> >
+> > Any help and/or guidance will be greatly appreciated.
+> >
+> > Kind regards,
+> > Paul
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://st/
+> > at.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Ctebert%40ufl
+> > .edu%7C7647cf60560f40177c9908dbc1a63d9a%7C0d4da0f84a314d76ace60a6233
+> > 1e1b84%7C0%7C0%7C638316691975258863%7CUnknown%7CTWFpbGZsb3d8eyJWIjoi
+> > MC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C
+> > %7C%7C&sdata=LNhXDb%2Bv5MGVc9SiL7KrJCMvD1Wkp4pQ14iScfZqxtk%3D&reserv
+> > ed=0
+> > PLEASE do read the posting guide
+> http://www.r/
+> -project.org%2Fposting-guide.html&data=05%7C01%7Ctebert%40ufl.edu%7C76
+> 47cf60560f40177c9908dbc1a63d9a%7C0d4da0f84a314d76ace60a62331e1b84%7C0%
+> 7C0%7C638316691975258863%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiL
+> CJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=I8
+> QM8BE7EdpXzfFuwe93IqqL4JS7wWGgfr24XRH5LHs%3D&reserved=0
+> > and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+>
+> No data is attached. Maybe try
+>
+> dput(head(failuredf, 30))
+>
+> ?
+>
+> And where can we find non-base PivotTable? Please start the scripts
+> with calls to library() when using non-base functionality.
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+> --
+> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a
+> presen?a de v?rus.
+> http://www.a/
+> vg.com%2F&data=05%7C01%7Ctebert%40ufl.edu%7C7647cf60560f40177c9908dbc1
+> a63d9a%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638316691975258863
+> %7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6I
+> k1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=zBgPdOLZNvCOa4n2GXWWjLh4wg
+> 3L4TdGXBMaGJ6n%2BsI%3D&reserved=0
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat/
+> .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C01%7Ctebert%40ufl.edu
+> %7C7647cf60560f40177c9908dbc1a63d9a%7C0d4da0f84a314d76ace60a62331e1b84
+> %7C0%7C0%7C638316691975258863%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAw
+> MDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sda
+> ta=LNhXDb%2Bv5MGVc9SiL7KrJCMvD1Wkp4pQ14iScfZqxtk%3D&reserved=0
+> PLEASE do read the posting guide
+> http://www.r/
+> -project.org%2Fposting-guide.html&data=05%7C01%7Ctebert%40ufl.edu%7C76
+> 47cf60560f40177c9908dbc1a63d9a%7C0d4da0f84a314d76ace60a62331e1b84%7C0%
+> 7C0%7C638316691975258863%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiL
+> CJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&sdata=I8
+> QM8BE7EdpXzfFuwe93IqqL4JS7wWGgfr24XRH5LHs%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+--
+John Kane
+Kingston ON Canada
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Sep 30 14:06:39 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 30 Sep 2023 08:06:39 -0400
+Subject: [R] Grouping by Date and showing count of failures by date
+In-Reply-To: <CAKZQJMAFBEutABf8DAq4+WOzwro6FjpDJZPAMiFDAjwaoSJMKg@mail.gmail.com>
+References: <CAMOcQfM6BLFSm6dPX3Tctw35wTwxuifeF6dq80jTOAS+N3_zNg@mail.gmail.com>
+ <745de4d9-78f9-4647-af7a-bbce74b25e5b@sapo.pt>
+ <CAKZQJMAFBEutABf8DAq4+WOzwro6FjpDJZPAMiFDAjwaoSJMKg@mail.gmail.com>
+Message-ID: <1709076f-fc44-4334-9c7c-2c5ed5eb9ab0@gmail.com>
+
+There's a package called "pivottabler" which exports PivotTable: 
+http://pivottabler.org.uk/reference/PivotTable.html .
+
+Duncan Murdoch
+
+On 30/09/2023 7:11 a.m., John Kane wrote:
+> To follow up on Rui Barradas's post, I do not think PivotTable is an R
+> command.
+> 
+> You may be thinking og the "pivot_longer" and "pivot_wider" functions in
+> the {tidyr} package which is part of {tidyverse}.
+> 
+> On Sat, 30 Sept 2023 at 07:03, Rui Barradas <ruipbarradas at sapo.pt> wrote:
+> 
+>> ?s 21:29 de 29/09/2023, Paul Bernal escreveu:
+>>> Dear friends,
+>>>
+>>> Hope you are doing great. I am attaching the dataset I am working with
+>>> because, when I tried to dput() it, I was not able to copy the entire
+>>> result from dput(), so I apologize in advance for that.
+>>>
+>>> I am interested in creating a column named Failure_Date_Period that has
+>> the
+>>> FAILDATE but formatted as YYYY_MM. Then I want to count the number of
+>>> failures (given by column WONUM) and just have a dataframe that has the
+>>> FAILDATE and the count of WONUM.
+>>>
+>>> I tried this:
+>>> pt <- PivotTable$new()
+>>> pt$addData(failuredf)
+>>> pt$addColumnDataGroups("FAILDATE")
+>>> pt <- PivotTable$new()
+>>> pt$addData(failuredf)
+>>> pt$addColumnDataGroups("FAILDATE")
+>>> pt$defineCalculation(calculationName = "FailCounts",
+>>> summariseExpression="n()")
+>>> pt$renderPivot()
+>>>
+>>> but I was not successful. Bottom line, I need to create a new dataframe
+>>> that has the number of failures by FAILDATE, but in YYYY-MM format.
+>>>
+>>> Any help and/or guidance will be greatly appreciated.
+>>>
+>>> Kind regards,
+>>> Paul
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>> Hello,
+>>
+>> No data is attached. Maybe try
+>>
+>> dput(head(failuredf, 30))
+>>
+>> ?
+>>
+>> And where can we find non-base PivotTable? Please start the scripts with
+>> calls to library() when using non-base functionality.
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>>
+>> --
+>> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a
+>> presen?a de v?rus.
+>> www.avg.com
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+> 
+>
+
+
+From p@u|bern@|07 @end|ng |rom gm@||@com  Sat Sep 30 18:45:07 2023
+From: p@u|bern@|07 @end|ng |rom gm@||@com (Paul Bernal)
+Date: Sat, 30 Sep 2023 11:45:07 -0500
+Subject: [R] Trouble with FAILDATE when using the aggregate() and ts()
+ functions
+Message-ID: <CAMOcQfPK-dXDaB98wuCjHjBN1cUwzLNF5p8AN+sWbmiSpkxatg@mail.gmail.com>
+
+Dear friends,
+
+First of all, the following is the R version I am working with:
+[64-bit] C:\Program Files\R\R-4.3.1
+
+The packages I am using are the following:
+library("dplyr")
+library("lubridate")
+library("tidyverse")
+library("readxl")
+library("stats")
+
+#reading data for distribution fitting
+
+failuredf <- as.data.frame(read_excel("FailureData.xlsx"))
+failuredf2 <- subset(failuredf, !is.na(FAILDATE))
+failuredf2["Fails"] <- if(is.null(failuredf$FAILDATE)==FALSE){
+   failuredf2$Fails = 1
+ }else{
+   failuredf2$Fails = 0
+ }
+ #reading data for distribution fitting
+
+failuredf <- as.data.frame(read_excel("FailureData.xlsx"))
+
+failuredf2 <- subset(failuredf, !is.na(FAILDATE))
+dput(head(failuredf2))
+structure(list(WONUM = c("946936", "944757", "946194", "897595",
+"897714", "898221"), ASSET = c("REMLOSSANTOS", "REMCAMPANA",
+"REMBAYANO", "REMCHIRIQUI", "REMDARIEN", "REMTUIRA"), INSTALLDATE =
+structure(c(1039910400,
+NA, 1223424000, 1200355200, 1175385600, 1220918400), class = c("POSIXct",
+"POSIXt"), tzone = "UTC"), LOCATION = c("DISTRITO-NOR", "DISTRITO-NOR",
+"DISTRITO-NOR", "DISTRITO-SUR", "DISTRITO-NOR", "DISTRITO-NOR"
+), DESCRIPTION = c("APOYO DE ATF- LIMPIEZA DE TANQUES DE COMBUSTIBLE
+REMOLCADOR LOS SANTOS",
+"APOYO DE ATF- LIMPIEZA DE LOS TANQUES DE COMBUSTIBLE  4B Y 4C (PORT Y STB
+DAY TANKS) CERRO CAMPANA",
+"APOYO DE ATF- LIMPIEZA Y PINTURA CUARTO DE M?QUINAS REMOLCADOR BAYANO",
+"Para FDS - Unidad de propulsi?n de babor con movimientos erraticos",
+"Para FDS - Bunkering", "Para FDS - Problemas intermitentes en el sistema
+de embrague de la unidad MCD en el SME"
+), WORKODER_REPORTDATE = structure(c(1517910018, 1517211639,
+1517563662, 1510655175, 1510733776, 1510909387), class = c("POSIXct",
+"POSIXt"), tzone = "UTC"), WORKTYPE = c("MC", "MC", "MC", "MC",
+"MC", "MC"), COMPONENTE = c("FSE", "FSE", "FSE", "MPS", "MME",
+"CSE"), COMP_DESCRIPTION = c("fuel system", "fuel system", "fuel system",
+"miscellaneous propulsion & steering", "miscellaneous main engine",
+"control system"), FAILURECODE = c("REM", "REM", "REM", "REM",
+"REM", "REM"), FAILDATE = structure(c(1520438053, 1520438271,
+1520438369, 1492283280, 1497858240, 1476959280), class = c("POSIXct",
+"POSIXt"), tzone = "UTC"), ORGID = c("ACP", "ACP", "ACP", "ACP",
+"ACP", "ACP"), TICKETCLASS = c(NA, NA, NA, NA, NA, NA), PROBLEMA =
+c("MENG",
+"MENG", "MENG", "PROSY", "MENG", "MENG"), PROBLEMA_CODE_DESC = c("MAIN
+ENGINES",
+"MAIN ENGINES", "MAIN ENGINES", "Propulsion system", "MAIN ENGINES",
+"MAIN ENGINES"), CAUSA = c(NA_character_, NA_character_, NA_character_,
+NA_character_, NA_character_, NA_character_), CAUSA_CODE_DESC =
+c(NA_character_,
+NA_character_, NA_character_, NA_character_, NA_character_, NA_character_
+), REMEDIO = c(NA_character_, NA_character_, NA_character_, NA_character_,
+NA_character_, NA_character_), REMEDIO_CODE_DESC = c(NA_character_,
+NA_character_, NA_character_, NA_character_, NA_character_, NA_character_
+)), row.names = c(NA, 6L), class = "data.frame")
+
+I basically want to group the dataset by FAILDATE and then just count the
+number of failures. It would be equivalent to creating a pivot table where
+you specify FAILDATE as rows and then count any field (in this case WONUM).
+#Here I  format FAILDATE as YYYY-MM
+failuredf2["faildateproc"] = format(failuredf2$FAILDATE, format='%Y-%m')
+
+#I just select the fields I am interested in
+failuredf3 <- select(failuredf2, faildateproc, Fails)
+
+head(failuredf3)
+
+#I do the aggregation here
+failuredf3.sum <- aggregate(x = failuredf3[c("Fails")],
+                     FUN = sum,
+                     by = list(FailDate = failuredf3$faildateproc))
+
+This actually works, but the problem comes when I try to extract the year
+and month from FailDate when I apply function ts() (to transform the data
+to a ts object (it is worth mentioning that the aggregate() function
+doesn't work if I do as.Date(failuredf$FAILDATE, format='%Y-%m'). By the
+way, it is worth mentioning that this is the aggregate function from the
+stats package.
+
+Look at the output when I do not apply the as.Date() funciton to
+failuredf$FAILDATE:
+head(failuredf3.sum)
+  FailDate Fails
+1  2016-09     1
+2  2016-10     1
+3  2016-11     3
+4  2016-12     4
+5  2017-01     5
+6  2017-02     6
+this is doing the aggregation properly, but if I apply the as.Date()
+function first, look what happens when I try to aggregate:
+#reading data for distribution fitting
+
+failuredf <- as.data.frame(read_excel("FailureData.xlsx"))
+
+failuredf2 <- subset(failuredf, !is.na(FAILDATE))
+
+dput(head(failuredf2))
+
+
+failuredf2["Fails"] <- if(is.null(failuredf$FAILDATE)==FALSE){
+  failuredf2$Fails = 1
+}else{
+  failuredf2$Fails = 0
+}
+
+
+failuredf2["faildateproc"] = as.Date(failuredf2$FAILDATE, format='%Y-%m'))
+
+failuredf3 <- select(failuredf2, faildateproc, Fails)
+
+head(failuredf3)
+
+failuredf3.sum <- aggregate(x = failuredf3[c("Fails")],
+                     FUN = sum,
+                     by = list(FailDate = failuredf3$faildateproc))
+head(failuredf3.sum)
+> head(failuredf3.sum)
+    FailDate Fails
+1 2016-09-27     1
+2 2016-10-20     1
+3 2016-11-09     1
+4 2016-11-18     1
+5 2016-11-22     1
+6 2016-12-01     1
+(this is not aggregating at all)
+It seems that the aggregate() function doesn't work with actual dates.
+
+I want to do the following:
+failure_ts <- ts(failuredf3.sum$Fails, start=c(year(failuredf3.sum[1,1]),
+month(failuredf3.sum[1,1)),
+end=c(year(failuredf3.sum[nrow(failuredf3.sum),1],month(failuredf3.sum[nrow(failuredf3),1])),
+frequency=12)
+I basically want to arrange my data so that I can have the count of
+failures grouped by YYYY-MM period and then be able to extract the year and
+month automatically when using the ts object, so I do not have to do it
+manually.
+
+Any help and/or guidance will be greatly appreciated.
+
+Below the complete code with the issue I am experiencing:
+library("vcd")
+library("stats")
+library("fitdistrplus")
+library("actuar")
+library("betafunctions")
+library("extraDistr")
+library("gamlss.dist")
+library("mbbefd")
+library("VGAM")
+library("LaplacesDemon")
+library("GB2")
+library("BMT")
+library("bridgedist")
+library("ExtDist")
+library("Pareto")
+library("CircStats")
+library("circular")
+library("lmomco")
+library("sgt")
+library("ChernoffDist")
+library("Runuran")
+library("emdbook")
+library("extraDistr")
+library("sadists")
+library("rmutil")
+library("cbinom")
+library("Davies")
+library("nCDunnett")
+library("AEP")
+library("tolerance")
+library("mixSPE")
+library("poweRlaw")
+library("ReIns")
+library("normalp")
+library("SMR")
+library("fpow")
+library("flexsurv")
+library("RTDE")
+library("distributionsrd")
+library("evd")
+library("SuppDists")
+library("EnvStats")
+library("ghyp")
+library("CaDENCE")
+library("VarianceGamma")
+library("MCMCpack")
+library("coga")
+library("ggamma")
+library("distTails")
+library("sglg")
+library("ollggamma")
+library("truncnorm")
+library("greybox")
+library("csn")
+library("CompQuadForm")
+library("NormalLaplace")
+library("evir")
+library("FAdist")
+library("TLMoments")
+library("QRM")
+library("ROOPSD")
+library("fExtremes")
+library("revdbayes")
+library("dgumbel")
+library("bgumbel")
+library("ugomquantreg")
+library("smoothmest")
+library("marg")
+library("fBasics")
+library("GeneralizedHyperbolic")
+library("HyperbolicDist")
+library("SkewHyperbolic")
+library("FatTailsR")
+library("statmod")
+library("SuppDists")
+library("GIGrvg")
+library("ForestFit")
+library("elfDistr")
+library("ecd")
+library("gld")
+library("ald")
+library("distr")
+library("gb")
+library("LambertW")
+library("L1pack")
+library("gambin")
+library("sld")
+library("SCI")
+library("glogis")
+library("GTDL")
+library("logitnorm")
+library("loglognorm")
+library("minimax")
+library("MittagLeffleR")
+library("extremefit")
+library("qrmtools")
+library("Renext")
+library("ParetoPosStable")
+library("PhaseTypeR")
+library("mapfit")
+library("matrixdist")
+library("stabledist")
+library("stable")
+library("PearsonDS")
+library("rtdists")
+library("MixedTS")
+library("crch")
+library("skewt")
+library("FMStable")
+library("SymTS")
+library("sn")
+library("triangle")
+library("mc2d")
+library("trapezoid")
+library("tsallisqexp")
+library("tweedie")
+library("KScorrect")
+library("vasicek")
+library("vasicekreg")
+library("rvMF")
+library("WienR")
+library("fBasics")
+library("gamlss")
+library("gamlss.add")
+library("univariateML")
+library("readxl")
+library("xlsx")
+library("MASS")
+library("invgamma")
+library("dplyr")
+library("lubridate")
+library("tidyverse")
+library("forecast")
+library("glmnet")
+library("neuralnet")
+library("nnfor")
+library("smooth")
+library("tseries")
+library("greybox")
+library("caret")
+library("lattice")
+library("doParallel")
+library("pdp")
+library("readxl")
+library("mixtools")
+library("pivottabler")
+library("arsenal")
+library("kableExtra")
+library("janitor")
+library("forecastHybrid")
+
+
+#getting current working directory
+
+getwd()
+
+#setting up desired working directory
+
+setwd("C:/Users/PaulBernal")
+
+
+#reading data for distribution fitting
+
+failuredf <- as.data.frame(read_excel("FailureData.xlsx"))
+
+failuredf2 <- subset(failuredf, !is.na(FAILDATE))
+
+
+failuredf2["Fails"] <- if(is.null(failuredf$FAILDATE)==FALSE){
+  failuredf2$Fails = 1
+}else{
+  failuredf2$Fails = 0
+}
+
+#mapply(format, failuredf2$FAILDATE, tz = "America/Bogota")
+failuredf2["faildateproc"] = format(failuredf2$FAILDATE, format='%Y-%m')
+
+failuredf3 <- select(failuredf2, faildateproc, Fails)
+
+head(failuredf3)
+
+failuredf3.sum <- aggregate(x = failuredf3[c("Fails")],
+                     FUN = sum,
+                     by = list(FailDate = failuredf3$faildateproc))
+head(failuredf3.sum)
+
+failuredf3.sum %>% arrange(ym(failuredf3.sum$FailDate))
+
+failuredf3.sum
+
+fail_ts_t <- ts(failuredf3.sum$Fails, start=c(year(failuredf3.sum[1,1]),
+month(failuredf3.sum[1,1])), end = c(2023,9), frequency = 12)
+Error in as.POSIXlt.character(x, tz = tz(x)) :
+  character string is not in a standard unambiguous format
+
+Kind regards,
+Paul
+
+	[[alternative HTML version deleted]]
+
+
