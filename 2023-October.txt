@@ -6112,3 +6112,229 @@ Best regards,
 Ivan
 
 
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sun Oct  8 13:19:22 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sun, 08 Oct 2023 04:19:22 -0700
+Subject: [R] Is it possible to get a downward pointing solid triangle
+ plotting symbol in R?
+In-Reply-To: <7ce87259-83b0-41b8-a4a3-bfc3edc629be@psyctc.org>
+References: <1166b665-5708-497a-9ab0-c9bf216946c2@psyctc.org>
+ <019f75be-8b1d-4701-b4d8-f7564cba1739@sapo.pt>
+ <F7E44F92-D788-4F8F-B86A-B3956FFC2E23@dcn.davis.ca.us>
+ <62c6a315-e65e-4901-b055-8d7c0b1c7c9f@psyctc.org>
+ <300D4998-8AF2-4085-A371-A7A65CD04814@dcn.davis.ca.us>
+ <7ce87259-83b0-41b8-a4a3-bfc3edc629be@psyctc.org>
+Message-ID: <33BD109B-E958-4089-A91E-374C37785AB4@dcn.davis.ca.us>
+
+Ah, I accidentally replied only to you. I re-introduced the list here...
+
+Maybe this [1] will help?
+
+[1] https://coolbutuseless.github.io/2021/11/04/custom-ggplot2-point-shapes-with-gggrid/
+
+On October 8, 2023 1:04:23 AM PDT, Chris Evans <chrishold at psyctc.org> wrote:
+>
+>On 07/10/2023 17:45, Jeff Newmiller wrote:
+>> No, you seem to be missing the distinction between code points (numbers representing the semantics of a character) and the visible presentation of a character. Some graphics devices don't understand Unicode at all (e.g. pdf()) and not all fonts have glyphs for all code points.
+>Thanks, that's helpful.? I think I have no illusions about that distinction but seem to have overvalued what it said in https://cran.r-project.org/doc/manuals/r-release/R-exts.html#Encoding-issues. That doesn't alert to the issue with pdf() and fonts.? I did have a niggly feeling things couldn't be as easy as that seemed to imply.
+>> Which is not to say you cannot get away with using this approach... but you will need to be prepared to deal with "it doesn't work" or "it looks wrong" complaints so documenting where it doesn't work (as you deal with such complaints?) may be advisable for your sanity. A solution that hardcoded three-sided polygons would avoid such concerns though it would be more tedious.
+>
+>And certainly beyond my limited programming capacities.? Hm, I suspect PDF output will be important to to some users, probably including myself, so if that won't handle this then I think I probably will go for the clumsy but seemingly usable workaround using ggnewscale at least for now.? I'll check out its output with the main graphic file outputs (probably not the correct term: pdf(), png() etc.) but I assume that as the fillable triangles are in the default R symbols they will come through to those various outputs.
+>
+>Was there a reason you replied only to me?? This seems the sort of clarification that I learn from watching the list: too trivial?? I would like to post it to the list but won't unless you are OK for me to do that.
+>
+>Many thanks again ...
+>
+>Chris
+>
+>> 
+>> On October 7, 2023 8:18:24 AM PDT, Chris Evans via R-help<r-help at r-project.org>  wrote:
+>>> SO helpful. Thanks to all.? I _think_ the answer to Jeff's question may be "It should only be problematical on R earlier than 2.10". At least,
+>>> that's how I read this:
+>>> 
+>>> There is a portable way to have arbitrary text in character strings (only) in your R code, which is to supply them in Unicode as ?\uxxxx?
+>>> escapes (or, rarely needed except for emojis, ?\Uxxxxxxxx? escapes). If there are any characters not in the current encoding the parser
+>>> will encode the character string as UTF-8 and mark it as such. This applies also to character strings in datasets: they can be prepared
+>>> using ?\uxxxx? escapes or encoded in UTF-8 in a UTF-8 locale, or even converted to UTF-8 /via/ |iconv()|. If you do this, make sure you have
+>>> ?R (>= 2.10)? (or later) in the ?Depends? field of the DESCRIPTION file.
+>>> 
+>>> (Quoting fromhttps://cran.r-project.org/doc/manuals/r-release/R-exts.html#Encoding-issues. Thanks for that pointer Jan.)
+>>> 
+>>> ### using UTF to solve my issue (for R versions >= 2.10 I think)
+>>> library(tidyverse)
+>>> tibble(x = 2:9, y = 2:9, c = c(rep("A", 5), rep("B", 3))) %>%
+>>>  ? mutate(y1 = y + 1,
+>>>  ???????? y2 = y + 2) -> tmpTibPoints
+>>> tibble(x = c(1, 5, 5, 1), y = c(1, 1, 5, 5), a = rep("a", 4)) -> tmpTibArea1
+>>> tibble(x = c(5, 10, 10, 5), y = c(1, 1, 5, 5), a = rep("b", 4)) -> tmpTibArea2
+>>> tibble(x = c(1, 5, 5, 1), y = c(5, 5, 10, 10), a = rep("c", 4)) -> tmpTibArea3
+>>> tibble(x = c(5, 10, 10, 5), y = c(5, 5, 10, 10), a = rep("d", 4)) -> tmpTibArea4
+>>> bind_rows(tmpTibArea1,
+>>>  ?????????? tmpTibArea2,
+>>>  ?????????? tmpTibArea3,
+>>>  ?????????? tmpTibArea4) -> tmpTibAreas
+>>> 
+>>> # Unicode characters for black up- and down-pointing characters
+>>> pts_shapes <- c("\U25B2", "\U25BC") |> setNames(c("A", "B"))
+>>> pts_colors <- c("blue", "red") |> setNames(c("A", "B"))
+>>> 
+>>> pts_shapes
+>>> 
+>>> ggplot() +
+>>>  ? ### this was the suggestion from Rui Barradas
+>>>  ? geom_point(data = tmpTibPoints,
+>>>  ???????????? aes(x = x, y = y, color = c, shape = c),
+>>>  ???????????? size = 6) +
+>>>  ? ### checking what happens using geom_text (for amusement really)
+>>>  ? geom_text(data = tmpTibPoints,
+>>>  ??????????? aes(x = x, y = y1, label = c)) +
+>>>  ? ### and checking using the UTF characters in annotate() too (ditto)
+>>>  ? annotate(geom = "text", x = 2.5, y = 8.5, label = paste(pts_shapes, collapse = "? ")) +
+>>>  ? scale_shape_manual(values = pts_shapes) +
+>>>  ? scale_color_manual(values = pts_colors)
+>>> 
+>>> Output attached.? Thanks to Jan and Rui particularly.? R-help providing wide and deep R education as ever.
+>>> 
+>>> 
+>>> On 06/10/2023 17:05, Jeff Newmiller wrote:
+>>>> Doesn't the outcome of this suggestion still depend on which fonts and output device you are using? ... and that is to some degree still system dependent...
+>>>> 
+>>>> On October 6, 2023 7:50:00 AM PDT, Rui Barradas<ruipbarradas at sapo.pt>  wrote:
+>>>>> ?s 10:09 de 06/10/2023, Chris Evans via R-help escreveu:
+>>>>>> The reason I am asking is that I would like to mark areas on a plot using geom_polygon() and aes(fill = variable) to fill various polygons forming the background of a plot with different colours. Then I would like to overlay that with points representing direction of change: improved, no reliable change, deteriorated. The obvious symbols to use for those three directions are an upward arrow, a circle or square and a downward pointing arrow.? There is a solid upward point triangle symbol in R (ph = 17) and there are both upward and downward pointing open triangle symbols (pch 21 and 25) but to fill those with a solid colour so they will be visible over the background requires that I use a fill aesthetic and that gets me a mess with the legend as I will have used a different fill mapping to fill the polygons.? This silly reprex shows the issue I think.
+>>>>>> 
+>>>>>> library(tidyverse)
+>>>>>> tibble(x = 2:9, y = 2:9, c = c(rep("A", 5), rep("B", 3))) -> tmpTibPoints
+>>>>>> tibble(x = c(1, 5, 5, 1), y = c(1, 1, 5, 5), a = rep("a", 4)) -> tmpTibArea1
+>>>>>> tibble(x = c(5, 10, 10, 5), y = c(1, 1, 5, 5), a = rep("b", 4)) -> tmpTibArea2
+>>>>>> tibble(x = c(1, 5, 5, 1), y = c(5, 5, 10, 10), a = rep("c", 4)) -> tmpTibArea3
+>>>>>> tibble(x = c(5, 10, 10, 5), y = c(5, 5, 10, 10), a = rep("d", 4)) -> tmpTibArea4
+>>>>>> bind_rows(tmpTibArea1,
+>>>>>>    ????????? tmpTibArea2,
+>>>>>>    ????????? tmpTibArea3,
+>>>>>>    ????????? tmpTibArea4) -> tmpTibAreas
+>>>>>> ggplot(data = tmpTib,
+>>>>>>    ?????? aes(x = x, y = y)) +
+>>>>>>    ? geom_polygon(data = tmpTibAreas,
+>>>>>>    ?????????????? aes(x = x, y = y, fill = a)) +
+>>>>>>    ? geom_point(data = tmpTibPoints,
+>>>>>>    ???????????? aes(x = x, y = y, fill = c),
+>>>>>>    ???????????? pch = 24,
+>>>>>>    ???????????? size = 6)
+>>>>>> 
+>>>>>> Does anyone know a way to create a solid downward pointing symbol?? Or another workaround?
+>>>>>> 
+>>>>>> TIA,
+>>>>>> 
+>>>>>> Chris
+>>>>>> 
+>>>>> Hello,
+>>>>> 
+>>>>> Maybe you can solve the problem with unicode characters.
+>>>>> See the two scale_*_manual at the end of the plot.
+>>>>> 
+>>>>> 
+>>>>> 
+>>>>> # Unicode characters for black up- and down-pointing characters
+>>>>> pts_shapes <- c("\U25B2", "\U25BC") |> setNames(c("A", "B"))
+>>>>> pts_colors <- c("blue", "red") |> setNames(c("A", "B"))
+>>>>> 
+>>>>> ggplot(data = tmpTibAreas,
+>>>>>         aes(x = x, y = y)) +
+>>>>>    geom_polygon(data = tmpTibAreas,
+>>>>>                 aes(x = x, y = y, fill = a)) +
+>>>>>    geom_point(data = tmpTibPoints,
+>>>>>               aes(x = x, y = y, color = c, shape = c),
+>>>>>               size = 6) +
+>>>>>    scale_shape_manual(values = pts_shapes) +
+>>>>>    scale_color_manual(values = pts_colors)
+>>>>> 
+>>>>> 
+>>>>> 
+>>>>> 
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From tr@xp|@yer @end|ng |rom gm@||@com  Mon Oct  9 00:00:35 2023
+From: tr@xp|@yer @end|ng |rom gm@||@com (=?UTF-8?Q?Martin_M=C3=B8ller_Skarbiniks_Pedersen?=)
+Date: Mon, 9 Oct 2023 00:00:35 +0200
+Subject: [R] Confirming MySQL Alive
+In-Reply-To: <21cebfe8-465f-c3aa-d71d-d1ae8b7886b5@shdawson.com>
+References: <21cebfe8-465f-c3aa-d71d-d1ae8b7886b5@shdawson.com>
+Message-ID: <CAGAA5bejO6Bi1wq8C-DGmfvw0DZGkR-+mLTmofTWX+D+rpOcBg@mail.gmail.com>
+
+You don't need sudo to run:
+systemctl status
+
+On Sat, Oct 7, 2023, 17:09 Stephen H. Dawson, DSL via R-help <
+r-help at r-project.org> wrote:
+
+> Hi,
+>
+>
+> Getting some data from an older MySQL box. I had an event recently where
+> the MySQL box went off-line for maintenance without a prior announcement
+> of service disruption.
+>
+> I decided to add a line on my local version of MySQL as I considered how
+> to handle this condition going forward.
+>
+> system("sudo systemctl status mysql", input =
+> rstudioapi::askForPassword("sudo password"))
+>
+> system("sudo systemctl status mysql",input=readline("Enter Password: "))
+>
+>
+> Both fail for the same reason, saying I need a terminal.
+>
+>
+>  > system("sudo systemctl status mysql", input =
+> rstudioapi::askForPassword("sudo password"))
+> sudo: a terminal is required to read the password; either use the -S
+> option to read from standard input or configure an askpass helper
+> sudo: a password is required
+>  >
+>
+>
+>
+>  > system("sudo systemctl status mysql",input=readline("Enter Password: "))
+> Enter Password: ***REDACTED***
+> sudo: a terminal is required to read the password; either use the -S
+> option to read from standard input or configure an askpass helper
+> sudo: a password is required
+>  >
+>
+>
+>
+> I can run the code segments for things like ls and pwd. So, there is
+> something unique about systemctl and R that is beyond my understanding
+> today.
+>
+> QUESTIONS
+> What is so special about systemctl and R in a system syntax statement?
+>
+> What are some of the best practices to confirm a box I am hitting for
+> data with R , either local or across the network, has MySQL up and running?
+>
+>
+> Thanks,
+> --
+> *Stephen Dawson, DSL*
+> /Executive Strategy Consultant/
+> Business & Technology
+> +1 (865) 804-3454
+> http://www.shdawson.com
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
