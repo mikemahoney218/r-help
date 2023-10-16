@@ -8252,3 +8252,1037 @@ On October 14, 2023 8:10:56 AM PDT, Bert Gunter <bgunter.4567 at gmail.com> wrot
 Sent from my phone. Please excuse my brevity.
 
 
+From j@@on@@tout @end|ng |rom duke@edu  Sat Oct 14 13:57:48 2023
+From: j@@on@@tout @end|ng |rom duke@edu (Jason Stout, M.D.)
+Date: Sat, 14 Oct 2023 11:57:48 +0000
+Subject: [R] Create new data frame with conditional sums
+Message-ID: <BN8PR05MB60667866B11762918BA242E581D1A@BN8PR05MB6066.namprd05.prod.outlook.com>
+
+After I sent this, a colleague referred me to the GPT-4 interface on Bing.  I entered the exact email query below and it provided the following solution, which worked for the toy example and was successfully adapted to my application:
+
+# Define the cutoffs
+cutoffs <- seq(0, 0.15, by = 0.01)
+
+# Create a new column with cutoffs
+dummydata$Cutoff <- cut(dummydata$Pct, breaks = cutoffs, labels = cutoffs[-1])
+
+# Aggregate Totpop by Cutoff
+result <- aggregate(Totpop ~ Cutoff, data = dummydata, sum)
+
+# Rename the columns
+names(result) <- c("Cutoff", "Pop")
+
+# Print the result
+result
+
+So thanks to all for considering this query?we're in a brave new world of AI-generated coding.
+
+Message: 3
+Date: Fri, 13 Oct 2023 20:13:56 +0000
+From: "Jason Stout, M.D." <jason.stout at duke.edu>
+To: "r-help at r-project.org" <r-help at r-project.org>
+Subject: [R] Create new data frame with conditional sums
+Message-ID:
+        <BN8PR05MB60663B9D27B40E8C240A387981D2A at BN8PR05MB6066.namprd05.prod.outlook.com>
+
+Content-Type: text/plain; charset="utf-8"
+
+This seems like it should be simple but I can't get it to work properly.  I'm starting with a data frame like this:
+
+Tract      Pct          Totpop
+1              0.05        4000
+2              0.03        3500
+3              0.01        4500
+4              0.12        4100
+5              0.21        3900
+6              0.04        4250
+7              0.07        5100
+8              0.09        4700
+9              0.06        4950
+10           0.03        4800
+
+And I want to end up with a data frame with two columns, a "Cutoff" column that is a simple sequence of equally spaced cutoffs (let's say in this case from 0-0.15 by 0.01) and a "Pop" column which equals the sum of "Totpop" in the prior data frame in which "Pct" is greater than or equal to "cutoff."  So in this toy example, this is what I want for a result:
+
+   Cutoff   Pop
+1    0.00 43800
+2    0.01 43800
+3    0.02 39300
+4    0.03 39300
+5    0.04 31000
+6    0.05 26750
+7    0.06 22750
+8    0.07 17800
+9    0.08 12700
+10   0.09 12700
+11   0.10  8000
+12   0.11  8000
+13   0.12  8000
+14   0.13  3900
+15   0.14  3900
+16   0.15  3900
+
+I can do this with a for loop but it seems there should be an easier, vectorized way that would be more efficient.  Here is a reproducible example:
+
+dummydata<-data.frame(Tract=seq(1,10,by=1),Pct=c(0.05,0.03,0.01,0.12,0.21,0.04,0.07,0.09,0.06,0.03),Totpop=c(4000,3500,4500,4100,
+                                                                                                             3900,4250,5100,4700,
+                                                                                                             4950,4800))
+dfrm<-data.frame(matrix(ncol=2,nrow=0,dimnames=list(NULL,c("Cutoff","Pop"))))
+for (i in seq(0,0.15,by=0.01)) {
+ temp<-sum(dummydata[dummydata$Pct>=i,"Totpop"])
+dfrm[nrow(dfrm)+1,]<-c(i,temp)
+}
+
+Jason Stout, MD, MHS
+Box 102359-DUMC
+Durham, NC 27710
+FAX 919-681-7494
+
+	[[alternative HTML version deleted]]
+
+
+From j@@on@@tout @end|ng |rom duke@edu  Sat Oct 14 16:16:27 2023
+From: j@@on@@tout @end|ng |rom duke@edu (Jason Stout, M.D.)
+Date: Sat, 14 Oct 2023 14:16:27 +0000
+Subject: [R] Create new data frame with conditional sums
+In-Reply-To: <e317e5b0-a730-4ff4-ba75-85afeff154c9@mcmaster.ca>
+References: <BN8PR05MB60663B9D27B40E8C240A387981D2A@BN8PR05MB6066.namprd05.prod.outlook.com>
+ <e317e5b0-a730-4ff4-ba75-85afeff154c9@mcmaster.ca>
+Message-ID: <BN8PR05MB6066584D588B76E138583D3481D1A@BN8PR05MB6066.namprd05.prod.outlook.com>
+
+That's very helpful and instructive, thank you!
+
+Jason Stout, MD, MHS
+Box 102359-DUMC
+Durham, NC 27710
+FAX 919-681-7494
+________________________________
+From: John Fox <jfox at mcmaster.ca>
+Sent: Saturday, October 14, 2023 10:13 AM
+To: Jason Stout, M.D. <jason.stout at duke.edu>
+Cc: r-help at r-project.org <r-help at r-project.org>
+Subject: Re: [R] Create new data frame with conditional sums
+
+Dear Jason,
+
+I don't think that there's anything wrong with using a loop to solve
+this problem, but it's generally a good idea to pre-allocate space for
+the result rather than build it up one value at a time, which may cause
+unnecessary copying of the object.
+
+Here are three solutions:
+
+f1 <- function(Cutoff, Pct, Totpop){
+   Pop <- numeric(0)
+   for (i in seq_along(Cutoff))
+     Pop[i] <- sum(Totpop[Pct >= Cutoff[i]])
+   cbind(Cutoff, Pop)
+}
+
+f2 <- function(Cutoff, Pct, Totpop){
+   Pop <- numeric(length(Cutoff))
+   for (i in seq_along(Cutoff))
+     Pop[i] <- sum(Totpop[Pct >= Cutoff[i]])
+   cbind(Cutoff, Pop)
+}
+
+f3 <- function(Cutoff, Pct, Totpop){
+   Pop <- sapply(Cutoff, function(c) sum(Totpop[Pct >= c]))
+   cbind(Cutoff, Pop)
+}
+
+The first is similar to yours; the second pre-allocates space for the
+result but still uses a loop; and the third avoids the loop. All produce
+the same result, for example,
+
+ > with(dummydata, f3(seq(0, 0.15, by=0.01), Pct, Totpop))
+       Cutoff   Pop
+  [1,]   0.00 43800
+  [2,]   0.01 43800
+  [3,]   0.02 39300
+  [4,]   0.03 39300
+  [5,]   0.04 31000
+  [6,]   0.05 26750
+  [7,]   0.06 22750
+  [8,]   0.07 17800
+  [9,]   0.08 12700
+[10,]   0.09 12700
+[11,]   0.10  8000
+[12,]   0.11  8000
+[13,]   0.12  8000
+[14,]   0.13  3900
+[15,]   0.14  3900
+[16,]   0.15  3900
+
+Here are some timings:
+
+ > microbenchmark::microbenchmark(
++   preallocate=with(dummydata, f2(seq(0, 0.15, by=0.01),
++                                  Pct, Totpop)),
++   yourloop=with(dummydata, f1(seq(0, 0.15, by=0.01),
++                               Pct, Totpop)),
++   sapply=with(dummydata, f3(seq(0, 0.15, by=0.01),
++                             Pct, Totpop)),
++   times=1000
++ )
+Unit: microseconds
+         expr    min      lq     mean  median     uq    max neval cld
+  preallocate 13.776 14.3910 15.74195 14.9240 16.318 56.908  1000 a
+     yourloop 15.129 15.7645 17.26809 16.3795 18.368 73.964  1000  b
+       sapply 22.304 23.2060 25.19868 24.1080 26.814 48.544  1000   c
+
+So, for this very small problem, there are small but reliable
+differences in timing among the three solutions, and the version that
+avoids the loop is slowest. I suspect, but haven't verified, that for a
+much larger problem, your solution would be slowest.
+
+I hope this helps,
+  John
+
+--
+John Fox, Professor Emeritus
+McMaster University
+Hamilton, Ontario, Canada
+web: https://urldefense.com/v3/__https://www.john-fox.ca/__;!!OToaGQ!s5vzmg4dxnnS0zohDtpWBBey7cb53uSXIPTTqs5fgaz-BKlNnWzpCfBz6aP0YhCGemy-bP6xEtJEwobdDQ$
+On 2023-10-13 4:13 p.m., Jason Stout, M.D. wrote:
+> Caution: External email.
+>
+>
+> This seems like it should be simple but I can't get it to work properly.  I'm starting with a data frame like this:
+>
+> Tract      Pct          Totpop
+> 1              0.05        4000
+> 2              0.03        3500
+> 3              0.01        4500
+> 4              0.12        4100
+> 5              0.21        3900
+> 6              0.04        4250
+> 7              0.07        5100
+> 8              0.09        4700
+> 9              0.06        4950
+> 10           0.03        4800
+>
+> And I want to end up with a data frame with two columns, a "Cutoff" column that is a simple sequence of equally spaced cutoffs (let's say in this case from 0-0.15 by 0.01) and a "Pop" column which equals the sum of "Totpop" in the prior data frame in which "Pct" is greater than or equal to "cutoff."  So in this toy example, this is what I want for a result:
+>
+>     Cutoff   Pop
+> 1    0.00 43800
+> 2    0.01 43800
+> 3    0.02 39300
+> 4    0.03 39300
+> 5    0.04 31000
+> 6    0.05 26750
+> 7    0.06 22750
+> 8    0.07 17800
+> 9    0.08 12700
+> 10   0.09 12700
+> 11   0.10  8000
+> 12   0.11  8000
+> 13   0.12  8000
+> 14   0.13  3900
+> 15   0.14  3900
+> 16   0.15  3900
+>
+> I can do this with a for loop but it seems there should be an easier, vectorized way that would be more efficient.  Here is a reproducible example:
+>
+> dummydata<-data.frame(Tract=seq(1,10,by=1),Pct=c(0.05,0.03,0.01,0.12,0.21,0.04,0.07,0.09,0.06,0.03),Totpop=c(4000,3500,4500,4100,
+>                                                                                                               3900,4250,5100,4700,
+>                                                                                                               4950,4800))
+> dfrm<-data.frame(matrix(ncol=2,nrow=0,dimnames=list(NULL,c("Cutoff","Pop"))))
+> for (i in seq(0,0.15,by=0.01)) {
+>   temp<-sum(dummydata[dummydata$Pct>=i,"Totpop"])
+> dfrm[nrow(dfrm)+1,]<-c(i,temp)
+> }
+>
+> Jason Stout, MD, MHS
+> Division of Infectious Diseases
+> Dept of Medicine
+> Duke University
+> Box 102359-DUMC
+> Durham, NC 27710
+> FAX 919-681-7494
+>
+>
+>          [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!OToaGQ!s5vzmg4dxnnS0zohDtpWBBey7cb53uSXIPTTqs5fgaz-BKlNnWzpCfBz6aP0YhCGemy-bP6xEtL8RrekaA$
+> PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!OToaGQ!s5vzmg4dxnnS0zohDtpWBBey7cb53uSXIPTTqs5fgaz-BKlNnWzpCfBz6aP0YhCGemy-bP6xEtKGvEhDNw$
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Oct 15 16:29:36 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 15 Oct 2023 07:29:36 -0700
+Subject: [R] Create new data frame with conditional sums
+In-Reply-To: <BN8PR05MB6066584D588B76E138583D3481D1A@BN8PR05MB6066.namprd05.prod.outlook.com>
+References: <BN8PR05MB60663B9D27B40E8C240A387981D2A@BN8PR05MB6066.namprd05.prod.outlook.com>
+ <e317e5b0-a730-4ff4-ba75-85afeff154c9@mcmaster.ca>
+ <BN8PR05MB6066584D588B76E138583D3481D1A@BN8PR05MB6066.namprd05.prod.outlook.com>
+Message-ID: <CAGxFJbRvqOrNvz68cZck7dgj+X0xN96kzenBoV-HAupQabj-4Q@mail.gmail.com>
+
+Under the hood, sapply() is also a loop (at the interpreted level). As
+is lapply(), etc.
+
+-- Bert
+
+On Sun, Oct 15, 2023 at 2:34?AM Jason Stout, M.D. <jason.stout at duke.edu> wrote:
+>
+> That's very helpful and instructive, thank you!
+>
+> Jason Stout, MD, MHS
+> Box 102359-DUMC
+> Durham, NC 27710
+> FAX 919-681-7494
+> ________________________________
+> From: John Fox <jfox at mcmaster.ca>
+> Sent: Saturday, October 14, 2023 10:13 AM
+> To: Jason Stout, M.D. <jason.stout at duke.edu>
+> Cc: r-help at r-project.org <r-help at r-project.org>
+> Subject: Re: [R] Create new data frame with conditional sums
+>
+> Dear Jason,
+>
+> I don't think that there's anything wrong with using a loop to solve
+> this problem, but it's generally a good idea to pre-allocate space for
+> the result rather than build it up one value at a time, which may cause
+> unnecessary copying of the object.
+>
+> Here are three solutions:
+>
+> f1 <- function(Cutoff, Pct, Totpop){
+>    Pop <- numeric(0)
+>    for (i in seq_along(Cutoff))
+>      Pop[i] <- sum(Totpop[Pct >= Cutoff[i]])
+>    cbind(Cutoff, Pop)
+> }
+>
+> f2 <- function(Cutoff, Pct, Totpop){
+>    Pop <- numeric(length(Cutoff))
+>    for (i in seq_along(Cutoff))
+>      Pop[i] <- sum(Totpop[Pct >= Cutoff[i]])
+>    cbind(Cutoff, Pop)
+> }
+>
+> f3 <- function(Cutoff, Pct, Totpop){
+>    Pop <- sapply(Cutoff, function(c) sum(Totpop[Pct >= c]))
+>    cbind(Cutoff, Pop)
+> }
+>
+> The first is similar to yours; the second pre-allocates space for the
+> result but still uses a loop; and the third avoids the loop. All produce
+> the same result, for example,
+>
+>  > with(dummydata, f3(seq(0, 0.15, by=0.01), Pct, Totpop))
+>        Cutoff   Pop
+>   [1,]   0.00 43800
+>   [2,]   0.01 43800
+>   [3,]   0.02 39300
+>   [4,]   0.03 39300
+>   [5,]   0.04 31000
+>   [6,]   0.05 26750
+>   [7,]   0.06 22750
+>   [8,]   0.07 17800
+>   [9,]   0.08 12700
+> [10,]   0.09 12700
+> [11,]   0.10  8000
+> [12,]   0.11  8000
+> [13,]   0.12  8000
+> [14,]   0.13  3900
+> [15,]   0.14  3900
+> [16,]   0.15  3900
+>
+> Here are some timings:
+>
+>  > microbenchmark::microbenchmark(
+> +   preallocate=with(dummydata, f2(seq(0, 0.15, by=0.01),
+> +                                  Pct, Totpop)),
+> +   yourloop=with(dummydata, f1(seq(0, 0.15, by=0.01),
+> +                               Pct, Totpop)),
+> +   sapply=with(dummydata, f3(seq(0, 0.15, by=0.01),
+> +                             Pct, Totpop)),
+> +   times=1000
+> + )
+> Unit: microseconds
+>          expr    min      lq     mean  median     uq    max neval cld
+>   preallocate 13.776 14.3910 15.74195 14.9240 16.318 56.908  1000 a
+>      yourloop 15.129 15.7645 17.26809 16.3795 18.368 73.964  1000  b
+>        sapply 22.304 23.2060 25.19868 24.1080 26.814 48.544  1000   c
+>
+> So, for this very small problem, there are small but reliable
+> differences in timing among the three solutions, and the version that
+> avoids the loop is slowest. I suspect, but haven't verified, that for a
+> much larger problem, your solution would be slowest.
+>
+> I hope this helps,
+>   John
+>
+> --
+> John Fox, Professor Emeritus
+> McMaster University
+> Hamilton, Ontario, Canada
+> web: https://urldefense.com/v3/__https://www.john-fox.ca/__;!!OToaGQ!s5vzmg4dxnnS0zohDtpWBBey7cb53uSXIPTTqs5fgaz-BKlNnWzpCfBz6aP0YhCGemy-bP6xEtJEwobdDQ$
+> On 2023-10-13 4:13 p.m., Jason Stout, M.D. wrote:
+> > Caution: External email.
+> >
+> >
+> > This seems like it should be simple but I can't get it to work properly.  I'm starting with a data frame like this:
+> >
+> > Tract      Pct          Totpop
+> > 1              0.05        4000
+> > 2              0.03        3500
+> > 3              0.01        4500
+> > 4              0.12        4100
+> > 5              0.21        3900
+> > 6              0.04        4250
+> > 7              0.07        5100
+> > 8              0.09        4700
+> > 9              0.06        4950
+> > 10           0.03        4800
+> >
+> > And I want to end up with a data frame with two columns, a "Cutoff" column that is a simple sequence of equally spaced cutoffs (let's say in this case from 0-0.15 by 0.01) and a "Pop" column which equals the sum of "Totpop" in the prior data frame in which "Pct" is greater than or equal to "cutoff."  So in this toy example, this is what I want for a result:
+> >
+> >     Cutoff   Pop
+> > 1    0.00 43800
+> > 2    0.01 43800
+> > 3    0.02 39300
+> > 4    0.03 39300
+> > 5    0.04 31000
+> > 6    0.05 26750
+> > 7    0.06 22750
+> > 8    0.07 17800
+> > 9    0.08 12700
+> > 10   0.09 12700
+> > 11   0.10  8000
+> > 12   0.11  8000
+> > 13   0.12  8000
+> > 14   0.13  3900
+> > 15   0.14  3900
+> > 16   0.15  3900
+> >
+> > I can do this with a for loop but it seems there should be an easier, vectorized way that would be more efficient.  Here is a reproducible example:
+> >
+> > dummydata<-data.frame(Tract=seq(1,10,by=1),Pct=c(0.05,0.03,0.01,0.12,0.21,0.04,0.07,0.09,0.06,0.03),Totpop=c(4000,3500,4500,4100,
+> >                                                                                                               3900,4250,5100,4700,
+> >                                                                                                               4950,4800))
+> > dfrm<-data.frame(matrix(ncol=2,nrow=0,dimnames=list(NULL,c("Cutoff","Pop"))))
+> > for (i in seq(0,0.15,by=0.01)) {
+> >   temp<-sum(dummydata[dummydata$Pct>=i,"Totpop"])
+> > dfrm[nrow(dfrm)+1,]<-c(i,temp)
+> > }
+> >
+> > Jason Stout, MD, MHS
+> > Division of Infectious Diseases
+> > Dept of Medicine
+> > Duke University
+> > Box 102359-DUMC
+> > Durham, NC 27710
+> > FAX 919-681-7494
+> >
+> >
+> >          [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!OToaGQ!s5vzmg4dxnnS0zohDtpWBBey7cb53uSXIPTTqs5fgaz-BKlNnWzpCfBz6aP0YhCGemy-bP6xEtL8RrekaA$
+> > PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!OToaGQ!s5vzmg4dxnnS0zohDtpWBBey7cb53uSXIPTTqs5fgaz-BKlNnWzpCfBz6aP0YhCGemy-bP6xEtKGvEhDNw$
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Sun Oct 15 16:39:59 2023
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Sun, 15 Oct 2023 10:39:59 -0400
+Subject: [R] Create new data frame with conditional sums
+In-Reply-To: <CAGxFJbRvqOrNvz68cZck7dgj+X0xN96kzenBoV-HAupQabj-4Q@mail.gmail.com>
+References: <BN8PR05MB60663B9D27B40E8C240A387981D2A@BN8PR05MB6066.namprd05.prod.outlook.com>
+ <e317e5b0-a730-4ff4-ba75-85afeff154c9@mcmaster.ca>
+ <BN8PR05MB6066584D588B76E138583D3481D1A@BN8PR05MB6066.namprd05.prod.outlook.com>
+ <CAGxFJbRvqOrNvz68cZck7dgj+X0xN96kzenBoV-HAupQabj-4Q@mail.gmail.com>
+Message-ID: <eb9e0a67-1e3e-426f-824e-0ea069a0953a@mcmaster.ca>
+
+Dear Bert,
+
+On 2023-10-15 10:29 a.m., Bert Gunter wrote:
+
+> 
+> 
+> Under the hood, sapply() is also a loop (at the interpreted level). As
+> is lapply(), etc.
+
+Indeed. I think that there's a neurotic aversion to using loops in R in 
+favour of functions in the apply family. Sometimes one approach leads to 
+a more transparent solution, sometimes the other.
+
+Many years ago, Uwe Ligges and I wrote an R News (the predecessor of the 
+R Journal) "Help Desk" article about loops in R, available at 
+<https://cran.r-project.org/doc/Rnews/Rnews_2008-1.pdf>. Some of the 
+advice there is probably outdated due to internal changes in R, but much 
+of it is probably still valide.
+
+BTW, I don't think that my original posting ever made it to r-help. It 
+was intercepted by r-help's filters and I eventually deleted it because 
+so many other people had by then responded. Let's hope that this message 
+makes it to the list.
+
+Best,
+  John
+
+> 
+> -- Bert
+> 
+> On Sun, Oct 15, 2023 at 2:34?AM Jason Stout, M.D. <jason.stout at duke.edu> wrote:
+>>
+>> That's very helpful and instructive, thank you!
+>>
+>> Jason Stout, MD, MHS
+>> Box 102359-DUMC
+>> Durham, NC 27710
+>> FAX 919-681-7494
+>> ________________________________
+>> From: John Fox <jfox at mcmaster.ca>
+>> Sent: Saturday, October 14, 2023 10:13 AM
+>> To: Jason Stout, M.D. <jason.stout at duke.edu>
+>> Cc: r-help at r-project.org <r-help at r-project.org>
+>> Subject: Re: [R] Create new data frame with conditional sums
+>>
+>> Dear Jason,
+>>
+>> I don't think that there's anything wrong with using a loop to solve
+>> this problem, but it's generally a good idea to pre-allocate space for
+>> the result rather than build it up one value at a time, which may cause
+>> unnecessary copying of the object.
+>>
+>> Here are three solutions:
+>>
+>> f1 <- function(Cutoff, Pct, Totpop){
+>>     Pop <- numeric(0)
+>>     for (i in seq_along(Cutoff))
+>>       Pop[i] <- sum(Totpop[Pct >= Cutoff[i]])
+>>     cbind(Cutoff, Pop)
+>> }
+>>
+>> f2 <- function(Cutoff, Pct, Totpop){
+>>     Pop <- numeric(length(Cutoff))
+>>     for (i in seq_along(Cutoff))
+>>       Pop[i] <- sum(Totpop[Pct >= Cutoff[i]])
+>>     cbind(Cutoff, Pop)
+>> }
+>>
+>> f3 <- function(Cutoff, Pct, Totpop){
+>>     Pop <- sapply(Cutoff, function(c) sum(Totpop[Pct >= c]))
+>>     cbind(Cutoff, Pop)
+>> }
+>>
+>> The first is similar to yours; the second pre-allocates space for the
+>> result but still uses a loop; and the third avoids the loop. All produce
+>> the same result, for example,
+>>
+>>   > with(dummydata, f3(seq(0, 0.15, by=0.01), Pct, Totpop))
+>>         Cutoff   Pop
+>>    [1,]   0.00 43800
+>>    [2,]   0.01 43800
+>>    [3,]   0.02 39300
+>>    [4,]   0.03 39300
+>>    [5,]   0.04 31000
+>>    [6,]   0.05 26750
+>>    [7,]   0.06 22750
+>>    [8,]   0.07 17800
+>>    [9,]   0.08 12700
+>> [10,]   0.09 12700
+>> [11,]   0.10  8000
+>> [12,]   0.11  8000
+>> [13,]   0.12  8000
+>> [14,]   0.13  3900
+>> [15,]   0.14  3900
+>> [16,]   0.15  3900
+>>
+>> Here are some timings:
+>>
+>>   > microbenchmark::microbenchmark(
+>> +   preallocate=with(dummydata, f2(seq(0, 0.15, by=0.01),
+>> +                                  Pct, Totpop)),
+>> +   yourloop=with(dummydata, f1(seq(0, 0.15, by=0.01),
+>> +                               Pct, Totpop)),
+>> +   sapply=with(dummydata, f3(seq(0, 0.15, by=0.01),
+>> +                             Pct, Totpop)),
+>> +   times=1000
+>> + )
+>> Unit: microseconds
+>>           expr    min      lq     mean  median     uq    max neval cld
+>>    preallocate 13.776 14.3910 15.74195 14.9240 16.318 56.908  1000 a
+>>       yourloop 15.129 15.7645 17.26809 16.3795 18.368 73.964  1000  b
+>>         sapply 22.304 23.2060 25.19868 24.1080 26.814 48.544  1000   c
+>>
+>> So, for this very small problem, there are small but reliable
+>> differences in timing among the three solutions, and the version that
+>> avoids the loop is slowest. I suspect, but haven't verified, that for a
+>> much larger problem, your solution would be slowest.
+>>
+>> I hope this helps,
+>>    John
+>>
+>> --
+>> John Fox, Professor Emeritus
+>> McMaster University
+>> Hamilton, Ontario, Canada
+>> web: https://urldefense.com/v3/__https://www.john-fox.ca/__;!!OToaGQ!s5vzmg4dxnnS0zohDtpWBBey7cb53uSXIPTTqs5fgaz-BKlNnWzpCfBz6aP0YhCGemy-bP6xEtJEwobdDQ$
+>> On 2023-10-13 4:13 p.m., Jason Stout, M.D. wrote:
+>>> Caution: External email.
+>>>
+>>>
+>>> This seems like it should be simple but I can't get it to work properly.  I'm starting with a data frame like this:
+>>>
+>>> Tract      Pct          Totpop
+>>> 1              0.05        4000
+>>> 2              0.03        3500
+>>> 3              0.01        4500
+>>> 4              0.12        4100
+>>> 5              0.21        3900
+>>> 6              0.04        4250
+>>> 7              0.07        5100
+>>> 8              0.09        4700
+>>> 9              0.06        4950
+>>> 10           0.03        4800
+>>>
+>>> And I want to end up with a data frame with two columns, a "Cutoff" column that is a simple sequence of equally spaced cutoffs (let's say in this case from 0-0.15 by 0.01) and a "Pop" column which equals the sum of "Totpop" in the prior data frame in which "Pct" is greater than or equal to "cutoff."  So in this toy example, this is what I want for a result:
+>>>
+>>>      Cutoff   Pop
+>>> 1    0.00 43800
+>>> 2    0.01 43800
+>>> 3    0.02 39300
+>>> 4    0.03 39300
+>>> 5    0.04 31000
+>>> 6    0.05 26750
+>>> 7    0.06 22750
+>>> 8    0.07 17800
+>>> 9    0.08 12700
+>>> 10   0.09 12700
+>>> 11   0.10  8000
+>>> 12   0.11  8000
+>>> 13   0.12  8000
+>>> 14   0.13  3900
+>>> 15   0.14  3900
+>>> 16   0.15  3900
+>>>
+>>> I can do this with a for loop but it seems there should be an easier, vectorized way that would be more efficient.  Here is a reproducible example:
+>>>
+>>> dummydata<-data.frame(Tract=seq(1,10,by=1),Pct=c(0.05,0.03,0.01,0.12,0.21,0.04,0.07,0.09,0.06,0.03),Totpop=c(4000,3500,4500,4100,
+>>>                                                                                                                3900,4250,5100,4700,
+>>>                                                                                                                4950,4800))
+>>> dfrm<-data.frame(matrix(ncol=2,nrow=0,dimnames=list(NULL,c("Cutoff","Pop"))))
+>>> for (i in seq(0,0.15,by=0.01)) {
+>>>    temp<-sum(dummydata[dummydata$Pct>=i,"Totpop"])
+>>> dfrm[nrow(dfrm)+1,]<-c(i,temp)
+>>> }
+>>>
+>>> Jason Stout, MD, MHS
+>>> Division of Infectious Diseases
+>>> Dept of Medicine
+>>> Duke University
+>>> Box 102359-DUMC
+>>> Durham, NC 27710
+>>> FAX 919-681-7494
+>>>
+>>>
+>>>           [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!OToaGQ!s5vzmg4dxnnS0zohDtpWBBey7cb53uSXIPTTqs5fgaz-BKlNnWzpCfBz6aP0YhCGemy-bP6xEtL8RrekaA$
+>>> PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!OToaGQ!s5vzmg4dxnnS0zohDtpWBBey7cb53uSXIPTTqs5fgaz-BKlNnWzpCfBz6aP0YhCGemy-bP6xEtKGvEhDNw$
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>>
+>>          [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @hu|@|@cheung @end|ng |rom gm@||@com  Sun Oct 15 17:04:00 2023
+From: @hu|@|@cheung @end|ng |rom gm@||@com (Shu Fai Cheung)
+Date: Sun, 15 Oct 2023 23:04:00 +0800
+Subject: [R] Plot to a device and examine the plot?
+Message-ID: <CAPVJd2WBzkOZoN7gwFnX3K8g5oVV4VhyRcXXhG5Uve3ODu_qww@mail.gmail.com>
+
+Hi All,
+
+I want to inspect the content of a plot generated by another function.
+
+For example:
+
+plot.new()
+polygon(c(.5, .5, .75, .8), c(.25, .3, .4, .5))
+
+A polygon will be drawn. If I do not know what has been done to generate
+the plot, is it possible to query the content in the active device?
+
+Regards,
+Shu Fai
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sun Oct 15 17:31:38 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sun, 15 Oct 2023 08:31:38 -0700
+Subject: [R] Plot to a device and examine the plot?
+In-Reply-To: <CAPVJd2WBzkOZoN7gwFnX3K8g5oVV4VhyRcXXhG5Uve3ODu_qww@mail.gmail.com>
+References: <CAPVJd2WBzkOZoN7gwFnX3K8g5oVV4VhyRcXXhG5Uve3ODu_qww@mail.gmail.com>
+Message-ID: <70552651-A1F4-422E-A12E-49DA80F70ACC@dcn.davis.ca.us>
+
+This question is not clear to me. What is it you hope to retrieve from the device?
+
+Note that the type of device in your example is system-dependent. The content in a png() would be different than the content in a win.graph() device.
+
+On October 15, 2023 8:04:00 AM PDT, Shu Fai Cheung <shufai.cheung at gmail.com> wrote:
+>Hi All,
+>
+>I want to inspect the content of a plot generated by another function.
+>
+>For example:
+>
+>plot.new()
+>polygon(c(.5, .5, .75, .8), c(.25, .3, .4, .5))
+>
+>A polygon will be drawn. If I do not know what has been done to generate
+>the plot, is it possible to query the content in the active device?
+>
+>Regards,
+>Shu Fai
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From @hu|@|@cheung @end|ng |rom gm@||@com  Sun Oct 15 17:44:29 2023
+From: @hu|@|@cheung @end|ng |rom gm@||@com (Shu Fai Cheung)
+Date: Sun, 15 Oct 2023 23:44:29 +0800
+Subject: [R] Plot to a device and examine the plot?
+In-Reply-To: <70552651-A1F4-422E-A12E-49DA80F70ACC@dcn.davis.ca.us>
+References: <CAPVJd2WBzkOZoN7gwFnX3K8g5oVV4VhyRcXXhG5Uve3ODu_qww@mail.gmail.com>
+ <70552651-A1F4-422E-A12E-49DA80F70ACC@dcn.davis.ca.us>
+Message-ID: <CAPVJd2UafHmz0SHqqwZDk37YLKKuJ7i3EdwJQVo+Prj-XuBgbw@mail.gmail.com>
+
+Sorry that I did not make my question clear enough.
+
+If the device is file based (e.g., a PNG file), then I believe I can do
+that, by using functions that can inspect an image. This is the solution I
+originally wanted to try. However, it requires creating a file in the
+process.
+
+I would like to see whether it is possible to inspect the canvas if the
+device is an on-screen one, like the pop-up window in R for Windows.
+
+Regards,
+Shu Fai
+
+
+On Sun, Oct 15, 2023 at 11:31?PM Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+wrote:
+
+> This question is not clear to me. What is it you hope to retrieve from the
+> device?
+>
+> Note that the type of device in your example is system-dependent. The
+> content in a png() would be different than the content in a win.graph()
+> device.
+>
+> On October 15, 2023 8:04:00 AM PDT, Shu Fai Cheung <
+> shufai.cheung at gmail.com> wrote:
+> >Hi All,
+> >
+> >I want to inspect the content of a plot generated by another function.
+> >
+> >For example:
+> >
+> >plot.new()
+> >polygon(c(.5, .5, .75, .8), c(.25, .3, .4, .5))
+> >
+> >A polygon will be drawn. If I do not know what has been done to generate
+> >the plot, is it possible to query the content in the active device?
+> >
+> >Regards,
+> >Shu Fai
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> >______________________________________________
+> >R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >https://stat.ethz.ch/mailman/listinfo/r-help
+> >PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> >and provide commented, minimal, self-contained, reproducible code.
+>
+> --
+> Sent from my phone. Please excuse my brevity.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @hu|@|@cheung @end|ng |rom gm@||@com  Sun Oct 15 18:05:30 2023
+From: @hu|@|@cheung @end|ng |rom gm@||@com (Shu Fai Cheung)
+Date: Mon, 16 Oct 2023 00:05:30 +0800
+Subject: [R] Plot to a device and examine the plot?
+In-Reply-To: <CAPVJd2UafHmz0SHqqwZDk37YLKKuJ7i3EdwJQVo+Prj-XuBgbw@mail.gmail.com>
+References: <CAPVJd2WBzkOZoN7gwFnX3K8g5oVV4VhyRcXXhG5Uve3ODu_qww@mail.gmail.com>
+ <70552651-A1F4-422E-A12E-49DA80F70ACC@dcn.davis.ca.us>
+ <CAPVJd2UafHmz0SHqqwZDk37YLKKuJ7i3EdwJQVo+Prj-XuBgbw@mail.gmail.com>
+Message-ID: <CAPVJd2V96Jzig=L2=E4cumkr4U2mRJLyd3ZH0L59ZMi+8qhHPw@mail.gmail.com>
+
+Let me clarify my question:
+
+plot.new()
+polygon(c(.5, .5, .75, .8), c(.25, .3, .4, .5))
+
+If the device is an on-screen device, can I check whether a particular area
+has anything drawn on it, or, to be precise, whether the color of a
+particular area has all pixels equal to the background color. That is, if
+the background is white, can I know whether a particular area is white?
+
+E.g.,  in the case above, the area bounded by rect(0, 0, .25, .25) is
+completely white, while the area bounded by rect(0, 0, .75, .75) is not
+because part of border of the polygon, black by default, has been drawn in
+this area.
+
+If the device is an image file, then I can check the color of a pixel. I
+would like to know whether I can do the same with an on-screen device.
+
+Thanks.
+
+Regards,
+Shu Fai
+
+
+On Sun, Oct 15, 2023 at 11:44?PM Shu Fai Cheung <shufai.cheung at gmail.com>
+wrote:
+
+> Sorry that I did not make my question clear enough.
+>
+> If the device is file based (e.g., a PNG file), then I believe I can do
+> that, by using functions that can inspect an image. This is the solution I
+> originally wanted to try. However, it requires creating a file in the
+> process.
+>
+> I would like to see whether it is possible to inspect the canvas if the
+> device is an on-screen one, like the pop-up window in R for Windows.
+>
+> Regards,
+> Shu Fai
+>
+>
+> On Sun, Oct 15, 2023 at 11:31?PM Jeff Newmiller <jdnewmil at dcn.davis.ca.us>
+> wrote:
+>
+>> This question is not clear to me. What is it you hope to retrieve from
+>> the device?
+>>
+>> Note that the type of device in your example is system-dependent. The
+>> content in a png() would be different than the content in a win.graph()
+>> device.
+>>
+>> On October 15, 2023 8:04:00 AM PDT, Shu Fai Cheung <
+>> shufai.cheung at gmail.com> wrote:
+>> >Hi All,
+>> >
+>> >I want to inspect the content of a plot generated by another function.
+>> >
+>> >For example:
+>> >
+>> >plot.new()
+>> >polygon(c(.5, .5, .75, .8), c(.25, .3, .4, .5))
+>> >
+>> >A polygon will be drawn. If I do not know what has been done to generate
+>> >the plot, is it possible to query the content in the active device?
+>> >
+>> >Regards,
+>> >Shu Fai
+>> >
+>> >       [[alternative HTML version deleted]]
+>> >
+>> >______________________________________________
+>> >R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> >https://stat.ethz.ch/mailman/listinfo/r-help
+>> >PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> >and provide commented, minimal, self-contained, reproducible code.
+>>
+>> --
+>> Sent from my phone. Please excuse my brevity.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sun Oct 15 18:24:25 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sun, 15 Oct 2023 12:24:25 -0400
+Subject: [R] Plot to a device and examine the plot?
+In-Reply-To: <CAPVJd2V96Jzig=L2=E4cumkr4U2mRJLyd3ZH0L59ZMi+8qhHPw@mail.gmail.com>
+References: <CAPVJd2WBzkOZoN7gwFnX3K8g5oVV4VhyRcXXhG5Uve3ODu_qww@mail.gmail.com>
+ <70552651-A1F4-422E-A12E-49DA80F70ACC@dcn.davis.ca.us>
+ <CAPVJd2UafHmz0SHqqwZDk37YLKKuJ7i3EdwJQVo+Prj-XuBgbw@mail.gmail.com>
+ <CAPVJd2V96Jzig=L2=E4cumkr4U2mRJLyd3ZH0L59ZMi+8qhHPw@mail.gmail.com>
+Message-ID: <16477b3d-5399-41b7-850d-fdeffe2b9fee@gmail.com>
+
+On 15/10/2023 12:05 p.m., Shu Fai Cheung wrote:
+> Let me clarify my question:
+> 
+> plot.new()
+> polygon(c(.5, .5, .75, .8), c(.25, .3, .4, .5))
+> 
+> If the device is an on-screen device, can I check whether a particular area
+> has anything drawn on it, or, to be precise, whether the color of a
+> particular area has all pixels equal to the background color. That is, if
+> the background is white, can I know whether a particular area is white?
+> 
+> E.g.,  in the case above, the area bounded by rect(0, 0, .25, .25) is
+> completely white, while the area bounded by rect(0, 0, .75, .75) is not
+> because part of border of the polygon, black by default, has been drawn in
+> this area.
+> 
+> If the device is an image file, then I can check the color of a pixel. I
+> would like to know whether I can do the same with an on-screen device.
+> 
+
+I think the answer is that you can't do that in general.  However, in 
+general you can copy a plot to a different device using dev.copy() and 
+examine it there.  It won't be pixel-by-pixel identical, but will 
+contain the same components, likely with slightly different scaling and 
+positioning if the new device isn't the same as the old one.
+
+You can also save the commands that drew the plot using recordPlot() and 
+redraw it using replayPlot() (which is essentially what dev.copy() 
+does), but the format of the object saved by recordPlot() is not 
+documented, and is subject to change with R version changes.
+
+Duncan Murdoch
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Sun Oct 15 18:41:24 2023
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Sun, 15 Oct 2023 19:41:24 +0300
+Subject: [R] Create new data frame with conditional sums
+Message-ID: <127afb3d-e376-4acf-9057-fc84b37e792a@syonic.eu>
+
+Dear Jason,
+
+
+I do not think that the solution based on aggregate offered by GPT was 
+correct. That quasi-solution only aggregates for every individual level.
+
+
+As I understand, you want the cumulative sum. The idea was proposed by 
+Bert; you need only to sort first based on the cutoff (e.g. using an 
+ordered factor). And then only extract the last value for each level. If 
+Pct is unique, than you can skip this last step and use directly the 
+cumsum (but on the sorted data set).
+
+
+Alternatives: see the solutions with loops or with sapply.
+
+
+Sincerely,
+
+
+Leonard
+
+
+From p@u| @end|ng |rom @t@t@@uck|@nd@@c@nz  Sun Oct 15 21:39:40 2023
+From: p@u| @end|ng |rom @t@t@@uck|@nd@@c@nz (Paul Murrell)
+Date: Mon, 16 Oct 2023 08:39:40 +1300
+Subject: [R] Plot to a device and examine the plot?
+In-Reply-To: <16477b3d-5399-41b7-850d-fdeffe2b9fee@gmail.com>
+References: <CAPVJd2WBzkOZoN7gwFnX3K8g5oVV4VhyRcXXhG5Uve3ODu_qww@mail.gmail.com>
+ <70552651-A1F4-422E-A12E-49DA80F70ACC@dcn.davis.ca.us>
+ <CAPVJd2UafHmz0SHqqwZDk37YLKKuJ7i3EdwJQVo+Prj-XuBgbw@mail.gmail.com>
+ <CAPVJd2V96Jzig=L2=E4cumkr4U2mRJLyd3ZH0L59ZMi+8qhHPw@mail.gmail.com>
+ <16477b3d-5399-41b7-850d-fdeffe2b9fee@gmail.com>
+Message-ID: <27bfaea1-13de-44d1-a058-26c5d2565fe1@stat.auckland.ac.nz>
+
+Hi
+
+You could also look at dev.capture(), depending on which screen device 
+you are using.
+
+Paul
+
+On 16/10/23 05:24, Duncan Murdoch wrote:
+> On 15/10/2023 12:05 p.m., Shu Fai Cheung wrote:
+>  > Let me clarify my question:
+>  >
+>  > plot.new()
+>  > polygon(c(.5, .5, .75, .8), c(.25, .3, .4, .5))
+>  >
+>  > If the device is an on-screen device, can I check whether a 
+> particular area
+>  > has anything drawn on it, or, to be precise, whether the color of a
+>  > particular area has all pixels equal to the background color. That is, if
+>  > the background is white, can I know whether a particular area is white?
+>  >
+>  > E.g., in the case above, the area bounded by rect(0, 0, .25, .25) is
+>  > completely white, while the area bounded by rect(0, 0, .75, .75) is not
+>  > because part of border of the polygon, black by default, has been 
+> drawn in
+>  > this area.
+>  >
+>  > If the device is an image file, then I can check the color of a pixel. I
+>  > would like to know whether I can do the same with an on-screen device.
+>  >
+> 
+> I think the answer is that you can't do that in general. However, in
+> general you can copy a plot to a different device using dev.copy() and
+> examine it there. It won't be pixel-by-pixel identical, but will
+> contain the same components, likely with slightly different scaling and
+> positioning if the new device isn't the same as the old one.
+> 
+> You can also save the commands that drew the plot using recordPlot() and
+> redraw it using replayPlot() (which is essentially what dev.copy()
+> does), but the format of the object saved by recordPlot() is not
+> documented, and is subject to change with R version changes.
+> 
+> Duncan Murdoch
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help 
+> <https://stat.ethz.ch/mailman/listinfo/r-help>
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html 
+> <http://www.R-project.org/posting-guide.html>
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Dr Paul Murrell
+Te Kura Tatauranga | Department of Statistics
+Waipapa Taumata Rau | The University of Auckland
+Private Bag 92019, Auckland 1142, New Zealand
+64 9 3737599 x85392
+paul at stat.auckland.ac.nz
+www.stat.auckland.ac.nz/~paul/
+
+
