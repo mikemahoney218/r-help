@@ -10773,3 +10773,1366 @@ On Tue, Oct 17, 2023 at 3:33?PM <avi.e.gross at gmail.com> wrote:
 >
 
 
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Wed Oct 18 16:59:01 2023
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Wed, 18 Oct 2023 17:59:01 +0300
+Subject: [R] Best way to test for numeric digits?
+Message-ID: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+
+Dear List members,
+
+What is the best way to test for numeric digits?
+
+suppressWarnings(as.double(c("Li", "Na", "K",? "2", "Rb", "Ca", "3")))
+# [1] NA NA NA? 2 NA NA? 3
+The above requires the use of the suppressWarnings function. Are there 
+any better ways?
+
+I was working to extract chemical elements from a formula, something 
+like this:
+split.symbol.character = function(x, rm.digits = TRUE) {
+ ?? ?# Perl is partly broken in R 4.3, but this works:
+ ?? ?regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+ ?? ?# stringi::stri_split(x, regex = regex);
+ ?? ?s = strsplit(x, regex, perl = TRUE);
+ ?? ?if(rm.digits) {
+ ?? ???? s = lapply(s, function(s) {
+ ?? ???? ??? isNotD = is.na(suppressWarnings(as.numeric(s)));
+ ?? ???? ??? s = s[isNotD];
+ ?? ???? });
+ ?? ?}
+ ?? ?return(s);
+}
+
+split.symbol.character(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"))
+
+
+Sincerely,
+
+
+Leonard
+
+
+Note:
+# works:
+regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+
+
+# broken in R 4.3.1
+# only slightly "erroneous" with stringi::stri_split
+regex = "(?<=[A-Z])(?![a-z]|$)|(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+
+
+From bbo|ker @end|ng |rom gm@||@com  Wed Oct 18 17:08:36 2023
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Wed, 18 Oct 2023 11:08:36 -0400
+Subject: [R] Best way to test for numeric digits?
+In-Reply-To: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+References: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+Message-ID: <f582ec27-7294-4a87-8f45-eb387fc9c918@gmail.com>
+
+    There are some answers on Stack Overflow:
+
+https://stackoverflow.com/questions/14984989/how-to-avoid-warning-when-introducing-nas-by-coercion
+
+
+
+On 2023-10-18 10:59 a.m., Leonard Mada via R-help wrote:
+> Dear List members,
+> 
+> What is the best way to test for numeric digits?
+> 
+> suppressWarnings(as.double(c("Li", "Na", "K",? "2", "Rb", "Ca", "3")))
+> # [1] NA NA NA? 2 NA NA? 3
+> The above requires the use of the suppressWarnings function. Are there 
+> any better ways?
+> 
+> I was working to extract chemical elements from a formula, something 
+> like this:
+> split.symbol.character = function(x, rm.digits = TRUE) {
+>  ?? ?# Perl is partly broken in R 4.3, but this works:
+>  ?? ?regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+>  ?? ?# stringi::stri_split(x, regex = regex);
+>  ?? ?s = strsplit(x, regex, perl = TRUE);
+>  ?? ?if(rm.digits) {
+>  ?? ???? s = lapply(s, function(s) {
+>  ?? ???? ??? isNotD = is.na(suppressWarnings(as.numeric(s)));
+>  ?? ???? ??? s = s[isNotD];
+>  ?? ???? });
+>  ?? ?}
+>  ?? ?return(s);
+> }
+> 
+> split.symbol.character(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"))
+> 
+> 
+> Sincerely,
+> 
+> 
+> Leonard
+> 
+> 
+> Note:
+> # works:
+> regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+> strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+> 
+> 
+> # broken in R 4.3.1
+> # only slightly "erroneous" with stringi::stri_split
+> regex = "(?<=[A-Z])(?![a-z]|$)|(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+> strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Oct 18 17:12:39 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Wed, 18 Oct 2023 08:12:39 -0700
+Subject: [R] Best way to test for numeric digits?
+In-Reply-To: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+References: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+Message-ID: <7D10FE48-843C-4958-B454-2DB41F3642C9@dcn.davis.ca.us>
+
+Use any occurrence of one or more digits as a separator?
+
+s <- c( "CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl" )
+strsplit( s, "\\d+" )
+
+
+On October 18, 2023 7:59:01 AM PDT, Leonard Mada via R-help <r-help at r-project.org> wrote:
+>Dear List members,
+>
+>What is the best way to test for numeric digits?
+>
+>suppressWarnings(as.double(c("Li", "Na", "K",? "2", "Rb", "Ca", "3")))
+># [1] NA NA NA? 2 NA NA? 3
+>The above requires the use of the suppressWarnings function. Are there any better ways?
+>
+>I was working to extract chemical elements from a formula, something like this:
+>split.symbol.character = function(x, rm.digits = TRUE) {
+>?? ?# Perl is partly broken in R 4.3, but this works:
+>?? ?regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+>?? ?# stringi::stri_split(x, regex = regex);
+>?? ?s = strsplit(x, regex, perl = TRUE);
+>?? ?if(rm.digits) {
+>?? ???? s = lapply(s, function(s) {
+>?? ???? ??? isNotD = is.na(suppressWarnings(as.numeric(s)));
+>?? ???? ??? s = s[isNotD];
+>?? ???? });
+>?? ?}
+>?? ?return(s);
+>}
+>
+>split.symbol.character(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"))
+>
+>
+>Sincerely,
+>
+>
+>Leonard
+>
+>
+>Note:
+># works:
+>regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+>strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+>
+>
+># broken in R 4.3.1
+># only slightly "erroneous" with stringi::stri_split
+>regex = "(?<=[A-Z])(?![a-z]|$)|(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+>strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Oct 18 17:26:27 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 18 Oct 2023 18:26:27 +0300
+Subject: [R] Best way to test for numeric digits?
+In-Reply-To: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+References: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+Message-ID: <20231018182627.3e32cc5d@arachnoid>
+
+? Wed, 18 Oct 2023 17:59:01 +0300
+Leonard Mada via R-help <r-help at r-project.org> ?????:
+
+> What is the best way to test for numeric digits?
+> 
+> suppressWarnings(as.double(c("Li", "Na", "K",? "2", "Rb", "Ca", "3")))
+> # [1] NA NA NA? 2 NA NA? 3
+> The above requires the use of the suppressWarnings function. Are
+> there any better ways?
+
+This test also has the downside of accepting things like "1.2" and
+"+1e-100". Since you need digits only, why not use a regular expression
+to test for '^[0-9]+$'?
+
+> I was working to extract chemical elements from a formula, something 
+> like this:
+
+> split.symbol.character(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"))
+
+Perhaps the following function could be made to work in your cases?
+
+function(x) regmatches(x, gregexec('([A-Z][a-z]*)([0-9]*)', x))
+
+retval[2,] is the element and retval[3,] is the coefficient. Do you
+need brackets? Charges? Non-stoichiometric compounds? (SMILES?)
+
+> # broken in R 4.3.1
+> # only slightly "erroneous" with stringi::stri_split
+> regex = "(?<=[A-Z])(?![a-z]|$)|(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+> strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl =
+> T)
+
+strsplit() has special historical behaviour about empty matches:
+https://bugs.r-project.org/show_bug.cgi?id=16745
+
+It's unfortunate that it doesn't split on empty matches the way you
+would intuitively expect it to, but changing the behaviour at this
+point is hard. Even adding a flag may be complicated to implement. Do
+you want such a flag?
+
+-- 
+Best regards,
+Ivan
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Wed Oct 18 17:53:42 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Wed, 18 Oct 2023 16:53:42 +0100
+Subject: [R] Best way to test for numeric digits?
+In-Reply-To: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+References: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+Message-ID: <c5fabf84-2032-4fce-b913-502654494f9b@sapo.pt>
+
+?s 15:59 de 18/10/2023, Leonard Mada via R-help escreveu:
+> Dear List members,
+> 
+> What is the best way to test for numeric digits?
+> 
+> suppressWarnings(as.double(c("Li", "Na", "K",? "2", "Rb", "Ca", "3")))
+> # [1] NA NA NA? 2 NA NA? 3
+> The above requires the use of the suppressWarnings function. Are there 
+> any better ways?
+> 
+> I was working to extract chemical elements from a formula, something 
+> like this:
+> split.symbol.character = function(x, rm.digits = TRUE) {
+>  ?? ?# Perl is partly broken in R 4.3, but this works:
+>  ?? ?regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+>  ?? ?# stringi::stri_split(x, regex = regex);
+>  ?? ?s = strsplit(x, regex, perl = TRUE);
+>  ?? ?if(rm.digits) {
+>  ?? ???? s = lapply(s, function(s) {
+>  ?? ???? ??? isNotD = is.na(suppressWarnings(as.numeric(s)));
+>  ?? ???? ??? s = s[isNotD];
+>  ?? ???? });
+>  ?? ?}
+>  ?? ?return(s);
+> }
+> 
+> split.symbol.character(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"))
+> 
+> 
+> Sincerely,
+> 
+> 
+> Leonard
+> 
+> 
+> Note:
+> # works:
+> regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+> strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+> 
+> 
+> # broken in R 4.3.1
+> # only slightly "erroneous" with stringi::stri_split
+> regex = "(?<=[A-Z])(?![a-z]|$)|(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+> strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+If you want to extract chemical elements symbols, the following might work.
+It uses the periodic table in GitHub package chemr and a package stringr 
+function.
+
+
+devtools::install_github("paleolimbot/chemr")
+
+
+
+split_chem_elements <- function(x) {
+   data(pt, package = "chemr", envir = environment())
+   el <- pt$symbol[order(nchar(pt$symbol), decreasing = TRUE)]
+   pat <- paste(el, collapse = "|")
+   stringr::str_extract_all(x, pat)
+}
+
+mol <- c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl")
+split_chem_elements(mol)
+#> [[1]]
+#> [1] "C"  "Cl" "F"
+#>
+#> [[2]]
+#> [1] "Li" "Al" "H"
+#>
+#> [[3]]
+#>  [1] "C"  "Cl" "C"  "O"  "Al" "P"  "O"  "Si" "O"  "Cl"
+
+
+It is also possible to rewrite the function without calls to non base 
+packages but that will take some more work.
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Wed Oct 18 18:24:16 2023
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Wed, 18 Oct 2023 19:24:16 +0300
+Subject: [R] Best way to test for numeric digits?
+In-Reply-To: <c5fabf84-2032-4fce-b913-502654494f9b@sapo.pt>
+References: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+ <c5fabf84-2032-4fce-b913-502654494f9b@sapo.pt>
+Message-ID: <b6bae903-51b3-413e-9c8a-d97836fec9ac@syonic.eu>
+
+Dear Rui,
+
+Thank you for your reply.
+
+I do have actually access to the chemical symbols: I have started to 
+refactor and enhance the Rpdb package, see Rpdb::elements:
+https://github.com/discoleo/Rpdb
+
+However, the regex that you have constructed is quite heavy, as it needs 
+to iterate through all chemical symbols (in decreasing nchar). Elements 
+like C, and especially O, P or S, appear late in the regex expression - 
+but are quite common in chemistry.
+
+The alternative regex is (in this respect) simpler. It actually works 
+(once you know about the workaround).
+
+Q: My question focused if there is anything like is.numeric, but to 
+parse each element of a vector.
+
+Sincerely,
+
+
+Leonard
+
+
+On 10/18/2023 6:53 PM, Rui Barradas wrote:
+> ?s 15:59 de 18/10/2023, Leonard Mada via R-help escreveu:
+>> Dear List members,
+>>
+>> What is the best way to test for numeric digits?
+>>
+>> suppressWarnings(as.double(c("Li", "Na", "K",? "2", "Rb", "Ca", "3")))
+>> # [1] NA NA NA? 2 NA NA? 3
+>> The above requires the use of the suppressWarnings function. Are there
+>> any better ways?
+>>
+>> I was working to extract chemical elements from a formula, something
+>> like this:
+>> split.symbol.character = function(x, rm.digits = TRUE) {
+>>   ?? ?# Perl is partly broken in R 4.3, but this works:
+>>   ?? ?regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+>>   ?? ?# stringi::stri_split(x, regex = regex);
+>>   ?? ?s = strsplit(x, regex, perl = TRUE);
+>>   ?? ?if(rm.digits) {
+>>   ?? ???? s = lapply(s, function(s) {
+>>   ?? ???? ??? isNotD = is.na(suppressWarnings(as.numeric(s)));
+>>   ?? ???? ??? s = s[isNotD];
+>>   ?? ???? });
+>>   ?? ?}
+>>   ?? ?return(s);
+>> }
+>>
+>> split.symbol.character(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"))
+>>
+>>
+>> Sincerely,
+>>
+>>
+>> Leonard
+>>
+>>
+>> Note:
+>> # works:
+>> regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+>> strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+>>
+>>
+>> # broken in R 4.3.1
+>> # only slightly "erroneous" with stringi::stri_split
+>> regex = "(?<=[A-Z])(?![a-z]|$)|(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+>> strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://eu01.z.antigena.com/l/boS9jwics77ZHEe0yO-Lt8AIDZm9-s6afEH4ulMO3sMyE9mLHNAR603_eeHQG2-_t0N2KsFVQRcldL-XDy~dLMhLtJWX69QR9Y0E8BCSopItW8RqG76PPj7ejTkm7UOsLQcy9PUV0-uTjKs2zeC_oxUOrjaFUWIhk8xuDJWb
+>> PLEASE do read the posting guide
+>> https://eu01.z.antigena.com/l/rUSt2cEKjOO0HrIFcEgHH_NROfU9g5sZ8MaK28fnBl9G6CrCrrQyqd~_vNxLYzQ7Ruvlxfq~P_77QvT1BngSg~NLk7joNyC4dSEagQsiroWozpyhR~tbGOGCRg5cGlOszZLsmq2~w6qHO5T~8b5z8ZBTJkCZ8CBDi5KYD33-OK
+>> and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+>
+> If you want to extract chemical elements symbols, the following might work.
+> It uses the periodic table in GitHub package chemr and a package stringr
+> function.
+>
+>
+> devtools::install_github("paleolimbot/chemr")
+>
+>
+>
+> split_chem_elements <- function(x) {
+>     data(pt, package = "chemr", envir = environment())
+>     el <- pt$symbol[order(nchar(pt$symbol), decreasing = TRUE)]
+>     pat <- paste(el, collapse = "|")
+>     stringr::str_extract_all(x, pat)
+> }
+>
+> mol <- c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl")
+> split_chem_elements(mol)
+> #> [[1]]
+> #> [1] "C"  "Cl" "F"
+> #>
+> #> [[2]]
+> #> [1] "Li" "Al" "H"
+> #>
+> #> [[3]]
+> #>  [1] "C"  "Cl" "C"  "O"  "Al" "P"  "O"  "Si" "O"  "Cl"
+>
+>
+> It is also possible to rewrite the function without calls to non base
+> packages but that will take some more work.
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Wed Oct 18 19:19:28 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Wed, 18 Oct 2023 13:19:28 -0400
+Subject: [R] Best way to test for numeric digits?
+In-Reply-To: <b6bae903-51b3-413e-9c8a-d97836fec9ac@syonic.eu>
+References: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+ <c5fabf84-2032-4fce-b913-502654494f9b@sapo.pt>
+ <b6bae903-51b3-413e-9c8a-d97836fec9ac@syonic.eu>
+Message-ID: <003701da01e7$40a9bd70$c1fd3850$@gmail.com>
+
+Rui,
+
+The problem with searching for elements, as with many kinds of text, is that the optimal search order may depend on the probabilities of what is involved. There can be more elements added such as Unobtainium in the future with whatever abbreviations that may then change the algorithm you may have chosen but then again, who actually looks for elements with a negligible half-life?
+
+If you had an application focused on Organic Chemistry, a relatively few of the elements would normally be present while for something like electronics components of some kind, a different overlapping palette with probabilities can be found.
+
+Just how important is the efficiency for you? If this was in a language like python, I would consider using a dictionary or set and I think there are packages in R that support a version of this.  In your case, one solution can be to pre-create a dictionary of all the elements, or just a set, and take your word tokens and check if they are in the dictionary/set or not. Any that aren't can then be further examined as needed and if your data is set a specific way, they may all just end up to be numeric. The cost is the hashing and of course memory used. Your corpus of elements is small enough that this may not be as helpful as parsing text that can contain many thousands of words.
+
+Even in plain R, you can probably also use something like:
+
+elements = c("H", "He", "Li", ...)
+If (text %in% elements) ...
+
+Something like the above may not be faster but can be quite a bit more readable than the regular expressions
+
+But plenty of the solutions others offered may well be great for your current need.
+
+Some may even work with Handwavium.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Leonard Mada via R-help
+Sent: Wednesday, October 18, 2023 12:24 PM
+To: Rui Barradas <ruipbarradas at sapo.pt>; R-help Mailing List <r-help at r-project.org>
+Subject: Re: [R] Best way to test for numeric digits?
+
+Dear Rui,
+
+Thank you for your reply.
+
+I do have actually access to the chemical symbols: I have started to 
+refactor and enhance the Rpdb package, see Rpdb::elements:
+https://github.com/discoleo/Rpdb
+
+However, the regex that you have constructed is quite heavy, as it needs 
+to iterate through all chemical symbols (in decreasing nchar). Elements 
+like C, and especially O, P or S, appear late in the regex expression - 
+but are quite common in chemistry.
+
+The alternative regex is (in this respect) simpler. It actually works 
+(once you know about the workaround).
+
+Q: My question focused if there is anything like is.numeric, but to 
+parse each element of a vector.
+
+Sincerely,
+
+
+Leonard
+
+
+On 10/18/2023 6:53 PM, Rui Barradas wrote:
+> ?s 15:59 de 18/10/2023, Leonard Mada via R-help escreveu:
+>> Dear List members,
+>>
+>> What is the best way to test for numeric digits?
+>>
+>> suppressWarnings(as.double(c("Li", "Na", "K",  "2", "Rb", "Ca", "3")))
+>> # [1] NA NA NA  2 NA NA  3
+>> The above requires the use of the suppressWarnings function. Are there
+>> any better ways?
+>>
+>> I was working to extract chemical elements from a formula, something
+>> like this:
+>> split.symbol.character = function(x, rm.digits = TRUE) {
+>>       # Perl is partly broken in R 4.3, but this works:
+>>       regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+>>       # stringi::stri_split(x, regex = regex);
+>>       s = strsplit(x, regex, perl = TRUE);
+>>       if(rm.digits) {
+>>           s = lapply(s, function(s) {
+>>               isNotD = is.na(suppressWarnings(as.numeric(s)));
+>>               s = s[isNotD];
+>>           });
+>>       }
+>>       return(s);
+>> }
+>>
+>> split.symbol.character(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"))
+>>
+>>
+>> Sincerely,
+>>
+>>
+>> Leonard
+>>
+>>
+>> Note:
+>> # works:
+>> regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+>> strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+>>
+>>
+>> # broken in R 4.3.1
+>> # only slightly "erroneous" with stringi::stri_split
+>> regex = "(?<=[A-Z])(?![a-z]|$)|(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+>> strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://eu01.z.antigena.com/l/boS9jwics77ZHEe0yO-Lt8AIDZm9-s6afEH4ulMO3sMyE9mLHNAR603_eeHQG2-_t0N2KsFVQRcldL-XDy~dLMhLtJWX69QR9Y0E8BCSopItW8RqG76PPj7ejTkm7UOsLQcy9PUV0-uTjKs2zeC_oxUOrjaFUWIhk8xuDJWb
+>> PLEASE do read the posting guide
+>> https://eu01.z.antigena.com/l/rUSt2cEKjOO0HrIFcEgHH_NROfU9g5sZ8MaK28fnBl9G6CrCrrQyqd~_vNxLYzQ7Ruvlxfq~P_77QvT1BngSg~NLk7joNyC4dSEagQsiroWozpyhR~tbGOGCRg5cGlOszZLsmq2~w6qHO5T~8b5z8ZBTJkCZ8CBDi5KYD33-OK
+>> and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+>
+> If you want to extract chemical elements symbols, the following might work.
+> It uses the periodic table in GitHub package chemr and a package stringr
+> function.
+>
+>
+> devtools::install_github("paleolimbot/chemr")
+>
+>
+>
+> split_chem_elements <- function(x) {
+>     data(pt, package = "chemr", envir = environment())
+>     el <- pt$symbol[order(nchar(pt$symbol), decreasing = TRUE)]
+>     pat <- paste(el, collapse = "|")
+>     stringr::str_extract_all(x, pat)
+> }
+>
+> mol <- c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl")
+> split_chem_elements(mol)
+> #> [[1]]
+> #> [1] "C"  "Cl" "F"
+> #>
+> #> [[2]]
+> #> [1] "Li" "Al" "H"
+> #>
+> #> [[3]]
+> #>  [1] "C"  "Cl" "C"  "O"  "Al" "P"  "O"  "Si" "O"  "Cl"
+>
+>
+> It is also possible to rewrite the function without calls to non base
+> packages but that will take some more work.
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Wed Oct 18 19:45:04 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Wed, 18 Oct 2023 18:45:04 +0100
+Subject: [R] Best way to test for numeric digits?
+In-Reply-To: <b6bae903-51b3-413e-9c8a-d97836fec9ac@syonic.eu>
+References: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+ <c5fabf84-2032-4fce-b913-502654494f9b@sapo.pt>
+ <b6bae903-51b3-413e-9c8a-d97836fec9ac@syonic.eu>
+Message-ID: <7e0724d4-afff-4275-b0ba-be6b6d9de0ff@sapo.pt>
+
+?s 17:24 de 18/10/2023, Leonard Mada escreveu:
+> Dear Rui,
+> 
+> Thank you for your reply.
+> 
+> I do have actually access to the chemical symbols: I have started to 
+> refactor and enhance the Rpdb package, see Rpdb::elements:
+> https://github.com/discoleo/Rpdb
+> 
+> However, the regex that you have constructed is quite heavy, as it needs 
+> to iterate through all chemical symbols (in decreasing nchar). Elements 
+> like C, and especially O, P or S, appear late in the regex expression - 
+> but are quite common in chemistry.
+> 
+> The alternative regex is (in this respect) simpler. It actually works 
+> (once you know about the workaround).
+> 
+> Q: My question focused if there is anything like is.numeric, but to 
+> parse each element of a vector.
+> 
+> Sincerely,
+> 
+> 
+> Leonard
+> 
+> 
+> On 10/18/2023 6:53 PM, Rui Barradas wrote:
+>> ?s 15:59 de 18/10/2023, Leonard Mada via R-help escreveu:
+>>> Dear List members,
+>>>
+>>> What is the best way to test for numeric digits?
+>>>
+>>> suppressWarnings(as.double(c("Li", "Na", "K",? "2", "Rb", "Ca", "3")))
+>>> # [1] NA NA NA? 2 NA NA? 3
+>>> The above requires the use of the suppressWarnings function. Are there
+>>> any better ways?
+>>>
+>>> I was working to extract chemical elements from a formula, something
+>>> like this:
+>>> split.symbol.character = function(x, rm.digits = TRUE) {
+>>> ? ?? ?# Perl is partly broken in R 4.3, but this works:
+>>> ? ?? ?regex = 
+>>> "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+>>> ? ?? ?# stringi::stri_split(x, regex = regex);
+>>> ? ?? ?s = strsplit(x, regex, perl = TRUE);
+>>> ? ?? ?if(rm.digits) {
+>>> ? ?? ???? s = lapply(s, function(s) {
+>>> ? ?? ???? ??? isNotD = is.na(suppressWarnings(as.numeric(s)));
+>>> ? ?? ???? ??? s = s[isNotD];
+>>> ? ?? ???? });
+>>> ? ?? ?}
+>>> ? ?? ?return(s);
+>>> }
+>>>
+>>> split.symbol.character(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"))
+>>>
+>>>
+>>> Sincerely,
+>>>
+>>>
+>>> Leonard
+>>>
+>>>
+>>> Note:
+>>> # works:
+>>> regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+>>> strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+>>>
+>>>
+>>> # broken in R 4.3.1
+>>> # only slightly "erroneous" with stringi::stri_split
+>>> regex = "(?<=[A-Z])(?![a-z]|$)|(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+>>> strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://eu01.z.antigena.com/l/boS9jwics77ZHEe0yO-Lt8AIDZm9-s6afEH4ulMO3sMyE9mLHNAR603_eeHQG2-_t0N2KsFVQRcldL-XDy~dLMhLtJWX69QR9Y0E8BCSopItW8RqG76PPj7ejTkm7UOsLQcy9PUV0-uTjKs2zeC_oxUOrjaFUWIhk8xuDJWb
+>>> PLEASE do read the posting guide
+>>> https://eu01.z.antigena.com/l/rUSt2cEKjOO0HrIFcEgHH_NROfU9g5sZ8MaK28fnBl9G6CrCrrQyqd~_vNxLYzQ7Ruvlxfq~P_77QvT1BngSg~NLk7joNyC4dSEagQsiroWozpyhR~tbGOGCRg5cGlOszZLsmq2~w6qHO5T~8b5z8ZBTJkCZ8CBDi5KYD33-OK
+>>> and provide commented, minimal, self-contained, reproducible code.
+>> Hello,
+>>
+>> If you want to extract chemical elements symbols, the following might 
+>> work.
+>> It uses the periodic table in GitHub package chemr and a package stringr
+>> function.
+>>
+>>
+>> devtools::install_github("paleolimbot/chemr")
+>>
+>>
+>>
+>> split_chem_elements <- function(x) {
+>> ??? data(pt, package = "chemr", envir = environment())
+>> ??? el <- pt$symbol[order(nchar(pt$symbol), decreasing = TRUE)]
+>> ??? pat <- paste(el, collapse = "|")
+>> ??? stringr::str_extract_all(x, pat)
+>> }
+>>
+>> mol <- c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl")
+>> split_chem_elements(mol)
+>> #> [[1]]
+>> #> [1] "C"? "Cl" "F"
+>> #>
+>> #> [[2]]
+>> #> [1] "Li" "Al" "H"
+>> #>
+>> #> [[3]]
+>> #>? [1] "C"? "Cl" "C"? "O"? "Al" "P"? "O"? "Si" "O"? "Cl"
+>>
+>>
+>> It is also possible to rewrite the function without calls to non base
+>> packages but that will take some more work.
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>>
+Hello,
+
+You and Avi are right, my function's performance is terrible. The 
+following is much faster.
+
+As for how to not have digits throw warnings, the lapply in the version 
+of your function below solves it by setting grep argument invert = TRUE. 
+This will get all strings where digits do not occur.
+
+
+
+split_chem_elements <- function(x, rm.digits = TRUE) {
+   regex <- "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])"
+   if(rm.digits) {
+     stringr::str_replace_all(mol, regex, "#") |>
+       strsplit("#|[[:digit:]]") |>
+       lapply(\(x) x[nchar(x) > 0L])
+   } else {
+     strsplit(x, regex, perl = TRUE)
+   }
+}
+
+split.symbol.character = function(x, rm.digits = TRUE) {
+   # Perl is partly broken in R 4.3, but this works:
+   regex <- "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])"
+   s <- strsplit(x, regex, perl = TRUE)
+   if(rm.digits) {
+     s <- lapply(s, \(x) x[grep("[[:digit:]]+", x, invert = TRUE)])
+   }
+   s
+}
+
+mol <- c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl")
+split_chem_elements(mol)
+#> [[1]]
+#> [1] "C"  "Cl" "F"
+#>
+#> [[2]]
+#> [1] "Li" "Al" "H"
+#>
+#> [[3]]
+#>  [1] "C"  "Cl" "C"  "O"  "Al" "P"  "O"  "Si" "O"  "Cl"
+split.symbol.character(mol)
+#> [[1]]
+#> [1] "C"  "Cl" "F"
+#>
+#> [[2]]
+#> [1] "Li" "Al" "H"
+#>
+#> [[3]]
+#>  [1] "C"  "Cl" "C"  "O"  "Al" "P"  "O"  "Si" "O"  "Cl"
+
+mol10000 <- rep(mol, 10000)
+
+system.time(
+   split_chem_elements(mol10000)
+)
+#>    user  system elapsed
+#>    0.01    0.00    0.02
+system.time(
+   split.symbol.character(mol10000)
+)
+#>    user  system elapsed
+#>    0.35    0.07    0.47
+
+
+
+Hope this helps,
+
+Rui Barradas
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Wed Oct 18 20:35:38 2023
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Wed, 18 Oct 2023 21:35:38 +0300
+Subject: [R] Best way to test for numeric digits?
+In-Reply-To: <7e0724d4-afff-4275-b0ba-be6b6d9de0ff@sapo.pt>
+References: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+ <c5fabf84-2032-4fce-b913-502654494f9b@sapo.pt>
+ <b6bae903-51b3-413e-9c8a-d97836fec9ac@syonic.eu>
+ <7e0724d4-afff-4275-b0ba-be6b6d9de0ff@sapo.pt>
+Message-ID: <8314deb9-1e71-4a7d-ad0d-ade1f7c7008a@syonic.eu>
+
+Dear Rui,
+
+On 10/18/2023 8:45 PM, Rui Barradas wrote:
+> split_chem_elements <- function(x, rm.digits = TRUE) {
+> ? regex <- "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])"
+> ? if(rm.digits) {
+> ??? stringr::str_replace_all(mol, regex, "#") |>
+> ????? strsplit("#|[[:digit:]]") |>
+> ????? lapply(\(x) x[nchar(x) > 0L])
+> ? } else {
+> ??? strsplit(x, regex, perl = TRUE)
+> ? }
+> }
+>
+> split.symbol.character = function(x, rm.digits = TRUE) {
+> ? # Perl is partly broken in R 4.3, but this works:
+> ? regex <- "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])"
+> ? s <- strsplit(x, regex, perl = TRUE)
+> ? if(rm.digits) {
+> ??? s <- lapply(s, \(x) x[grep("[[:digit:]]+", x, invert = TRUE)])
+> ? }
+> ? s
+> }
+
+You have a glitch (mol is hardcoded) in the code of the first function. 
+The times are similar, after correcting for that glitch.
+
+Note:
+- grep("[[:digit:]]", ...) behaves almost twice as slow as grep("[0-9]", 
+...)!
+- corrected results below;
+
+Sincerely,
+
+Leonard
+#######
+
+split_chem_elements <- function(x, rm.digits = TRUE) {
+ ? regex <- "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])"
+ ? if(rm.digits) {
+ ??? stringr::str_replace_all(x, regex, "#") |>
+ ????? strsplit("#|[[:digit:]]") |>
+ ????? lapply(\(x) x[nchar(x) > 0L])
+ ? } else {
+ ??? strsplit(x, regex, perl = TRUE)
+ ? }
+}
+
+split.symbol.character = function(x, rm.digits = TRUE) {
+ ? # Perl is partly broken in R 4.3, but this works:
+ ? regex <- "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])"
+ ? s <- strsplit(x, regex, perl = TRUE)
+ ? if(rm.digits) {
+ ??? s <- lapply(s, \(x) x[grep("[0-9]", x, invert = TRUE)])
+ ? }
+ ? s
+}
+
+mol <- c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl")
+mol10000 <- rep(mol, 10000)
+
+system.time(
+ ? split_chem_elements(mol10000)
+)
+#?? user? system elapsed
+#?? 0.58??? 0.00??? 0.58
+
+system.time(
+ ? split.symbol.character(mol10000)
+)
+#?? user? system elapsed
+#?? 0.67??? 0.00??? 0.67
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Wed Oct 18 20:54:32 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Wed, 18 Oct 2023 19:54:32 +0100
+Subject: [R] Best way to test for numeric digits?
+In-Reply-To: <8314deb9-1e71-4a7d-ad0d-ade1f7c7008a@syonic.eu>
+References: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+ <c5fabf84-2032-4fce-b913-502654494f9b@sapo.pt>
+ <b6bae903-51b3-413e-9c8a-d97836fec9ac@syonic.eu>
+ <7e0724d4-afff-4275-b0ba-be6b6d9de0ff@sapo.pt>
+ <8314deb9-1e71-4a7d-ad0d-ade1f7c7008a@syonic.eu>
+Message-ID: <4bc2d866-15fb-4fb0-801f-f6ad4c445280@sapo.pt>
+
+?s 19:35 de 18/10/2023, Leonard Mada escreveu:
+> Dear Rui,
+> 
+> On 10/18/2023 8:45 PM, Rui Barradas wrote:
+>> split_chem_elements <- function(x, rm.digits = TRUE) {
+>> ? regex <- "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])"
+>> ? if(rm.digits) {
+>> ??? stringr::str_replace_all(mol, regex, "#") |>
+>> ????? strsplit("#|[[:digit:]]") |>
+>> ????? lapply(\(x) x[nchar(x) > 0L])
+>> ? } else {
+>> ??? strsplit(x, regex, perl = TRUE)
+>> ? }
+>> }
+>>
+>> split.symbol.character = function(x, rm.digits = TRUE) {
+>> ? # Perl is partly broken in R 4.3, but this works:
+>> ? regex <- "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])"
+>> ? s <- strsplit(x, regex, perl = TRUE)
+>> ? if(rm.digits) {
+>> ??? s <- lapply(s, \(x) x[grep("[[:digit:]]+", x, invert = TRUE)])
+>> ? }
+>> ? s
+>> }
+> 
+> You have a glitch (mol is hardcoded) in the code of the first function. 
+> The times are similar, after correcting for that glitch.
+> 
+> Note:
+> - grep("[[:digit:]]", ...) behaves almost twice as slow as grep("[0-9]", 
+> ...)!
+> - corrected results below;
+> 
+> Sincerely,
+> 
+> Leonard
+> #######
+> 
+> split_chem_elements <- function(x, rm.digits = TRUE) {
+>  ? regex <- "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])"
+>  ? if(rm.digits) {
+>  ??? stringr::str_replace_all(x, regex, "#") |>
+>  ????? strsplit("#|[[:digit:]]") |>
+>  ????? lapply(\(x) x[nchar(x) > 0L])
+>  ? } else {
+>  ??? strsplit(x, regex, perl = TRUE)
+>  ? }
+> }
+> 
+> split.symbol.character = function(x, rm.digits = TRUE) {
+>  ? # Perl is partly broken in R 4.3, but this works:
+>  ? regex <- "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])"
+>  ? s <- strsplit(x, regex, perl = TRUE)
+>  ? if(rm.digits) {
+>  ??? s <- lapply(s, \(x) x[grep("[0-9]", x, invert = TRUE)])
+>  ? }
+>  ? s
+> }
+> 
+> mol <- c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl")
+> mol10000 <- rep(mol, 10000)
+> 
+> system.time(
+>  ? split_chem_elements(mol10000)
+> )
+> #?? user? system elapsed
+> #?? 0.58??? 0.00??? 0.58
+> 
+> system.time(
+>  ? split.symbol.character(mol10000)
+> )
+> #?? user? system elapsed
+> #?? 0.67??? 0.00??? 0.67
+> 
+Hello,
+
+You are right, sorry for the blunder :(.
+In the code below I have replaced stringr::str_replace_all by the 
+package stringi function stri_replace_all_regex and the improvement is 
+significant.
+
+
+split_chem_elements <- function(x, rm.digits = TRUE) {
+   regex <- "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])"
+   if(rm.digits) {
+     stringi::stri_replace_all_regex(x, "#", regex) |>
+       strsplit("#|[0-9]") |>
+       lapply(\(x) x[nchar(x) > 0L])
+   } else {
+     strsplit(x, regex, perl = TRUE)
+   }
+}
+
+# system.time(
+#   split_chem_elements(mol10000)
+# )
+#  user  system elapsed
+#  0.06    0.00    0.09
+# system.time(
+#   split.symbol.character(mol10000)
+# )
+#  user  system elapsed
+#  0.25    0.00    0.28
+
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Wed Oct 18 21:26:20 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 18 Oct 2023 22:26:20 +0300
+Subject: [R] Best way to test for numeric digits?
+In-Reply-To: <4bc2d866-15fb-4fb0-801f-f6ad4c445280@sapo.pt>
+References: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+ <c5fabf84-2032-4fce-b913-502654494f9b@sapo.pt>
+ <b6bae903-51b3-413e-9c8a-d97836fec9ac@syonic.eu>
+ <7e0724d4-afff-4275-b0ba-be6b6d9de0ff@sapo.pt>
+ <8314deb9-1e71-4a7d-ad0d-ade1f7c7008a@syonic.eu>
+ <4bc2d866-15fb-4fb0-801f-f6ad4c445280@sapo.pt>
+Message-ID: <20231018222620.725e5aa1@Tarkus>
+
+The matching approach is also competitive:
+
+match.symbol2 <- function(x, rm.digits = TRUE) {
+ if (rm.digits) stringi::stri_extract_all(x, regex = '[A-Z][a-z]*') else
+ lapply(
+  stringi::stri_match_all(x, regex = '([A-Z][a-z]*)([0-9]*)'), \(m) {
+   m <- t(m[,2:3]); m[nzchar(m)]
+  }
+ )
+}
+mol50000 <- rep(mol, 50000)
+system.time(split.symbol.character(mol50000))
+#   user  system elapsed 
+#  1.518   0.000   1.518 
+system.time(split_chem_elements(mol50000))
+#   user  system elapsed 
+#  0.435   0.000   0.436 
+system.time(match.symbol2(mol50000))
+#   user  system elapsed 
+#  0.117   0.000   0.117 
+
+-- 
+Best regards,
+Ivan
+
+
+From drj|m|emon @end|ng |rom gm@||@com  Thu Oct 19 01:38:48 2023
+From: drj|m|emon @end|ng |rom gm@||@com (Jim Lemon)
+Date: Thu, 19 Oct 2023 10:38:48 +1100
+Subject: [R] Best way to test for numeric digits?
+In-Reply-To: <f582ec27-7294-4a87-8f45-eb387fc9c918@gmail.com>
+References: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+ <f582ec27-7294-4a87-8f45-eb387fc9c918@gmail.com>
+Message-ID: <CA+8X3fXbzS+cOmS6Fj3p5u4L4aQKdES0DJ8uZ4n+-bufVOdnwA@mail.gmail.com>
+
+Please delete drjimlemon at bitwrit.com from your mailing list. He passed away
+a month ago.
+Regards,
+Juel (wife)
+
+On Thu, 19 Oct 2023, 02:09 Ben Bolker <bbolker at gmail.com wrote:
+
+>     There are some answers on Stack Overflow:
+>
+>
+> https://stackoverflow.com/questions/14984989/how-to-avoid-warning-when-introducing-nas-by-coercion
+>
+>
+>
+> On 2023-10-18 10:59 a.m., Leonard Mada via R-help wrote:
+> > Dear List members,
+> >
+> > What is the best way to test for numeric digits?
+> >
+> > suppressWarnings(as.double(c("Li", "Na", "K",  "2", "Rb", "Ca", "3")))
+> > # [1] NA NA NA  2 NA NA  3
+> > The above requires the use of the suppressWarnings function. Are there
+> > any better ways?
+> >
+> > I was working to extract chemical elements from a formula, something
+> > like this:
+> > split.symbol.character = function(x, rm.digits = TRUE) {
+> >      # Perl is partly broken in R 4.3, but this works:
+> >      regex =
+> "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+> >      # stringi::stri_split(x, regex = regex);
+> >      s = strsplit(x, regex, perl = TRUE);
+> >      if(rm.digits) {
+> >          s = lapply(s, function(s) {
+> >              isNotD = is.na(suppressWarnings(as.numeric(s)));
+> >              s = s[isNotD];
+> >          });
+> >      }
+> >      return(s);
+> > }
+> >
+> > split.symbol.character(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"))
+> >
+> >
+> > Sincerely,
+> >
+> >
+> > Leonard
+> >
+> >
+> > Note:
+> > # works:
+> > regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+> > strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+> >
+> >
+> > # broken in R 4.3.1
+> > # only slightly "erroneous" with stringi::stri_split
+> > regex = "(?<=[A-Z])(?![a-z]|$)|(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+> > strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> > http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From drj|m|emon @end|ng |rom gm@||@com  Thu Oct 19 01:49:25 2023
+From: drj|m|emon @end|ng |rom gm@||@com (Jim Lemon)
+Date: Thu, 19 Oct 2023 10:49:25 +1100
+Subject: [R] Fwd: r-stats: Geometric Distribution
+In-Reply-To: <CAPod2kFfoFUOtuTP8CoGGTqtav3xiagmwc2-y178DmThcGka4g@mail.gmail.com>
+References: <CAPod2kH9YDs4WRt3Nay1PjLZocTBOdAad3Um=k7ybE-SejJsZA@mail.gmail.com>
+ <CAPod2kFfoFUOtuTP8CoGGTqtav3xiagmwc2-y178DmThcGka4g@mail.gmail.com>
+Message-ID: <CA+8X3fVg2cufkRLfH0MB8buRQNnj3yF00UdNyM06C8qK7ydEOQ@mail.gmail.com>
+
+Please delete drjimlemon at gmail.com from your mailing lists. He passed away
+a mknth ago.
+Regards,
+Juel
+Wife
+
+On Tue, 17 Oct 2023, 22:58 Sahil Sharma <sahilsharmahimalaya at gmail.com
+wrote:
+
+> ---------- Forwarded message ---------
+> From: Sahil Sharma <sahilsharmahimalaya at gmail.com>
+> Date: Tue, Oct 17, 2023 at 12:10?PM
+> Subject: r-stats: Geometric Distribution
+> To: <do-use-Contact-address at r-project.org>
+>
+>
+> Hey I want to raise one issue in *r-stats **geometric distribution *
+> function.
+>
+> I have found the dgeom(x,p) which denotes probability density function of
+> geometric distribution, is not reducing 1 from x.
+>
+> The original formula for Geometric Distribution PDF is *((1-p)^x-1)*P*.
+> However, the current r function *dgeom(x, p)* is doing this: *((1-p)^x)*P,
+> *it
+> is not reducing 1 from x.
+>
+> I don't know whether this it is kept as it is intentionally, but I thought
+> of just informing you, in case it's an error, so you can correct it.
+>
+> Thanks.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From r@oknz @end|ng |rom gm@||@com  Thu Oct 19 02:45:09 2023
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Thu, 19 Oct 2023 13:45:09 +1300
+Subject: [R] Best way to test for numeric digits?
+In-Reply-To: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+References: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+Message-ID: <CABcYAd+CRJ+pCpcUx6WCJ+-GTxs4wtwkALNqJomvMnB2X6LPTg@mail.gmail.com>
+
+This seems unnecessarily complex.  Or rather,
+it pushes the complexity into an arcane notation
+What we really want is something that says "here is a string,
+here is a pattern, give me all the substrings that match."
+What we're given is a function that tells us where those
+substrings are.
+
+# greg.matches(pattern, text)
+# accepts a POSIX regular expression, pattern
+# and a text to search in.  Both arguments must be character strings
+# (length(...) = 1) not longer vectors of strings.
+# It returns a character vector of all the (non-overlapping)
+# substrings of text as determined by gregexpr.
+
+greg.matches <- function (pattern, text) {
+    if (length(pattern) > 1) stop("pattern has too many elements")
+    if (length(text)    > 1) stop(   "text has too many elements")
+    match.info <- gregexpr(pattern, text)
+    starts <- match.info[[1]]
+    stops <- attr(starts, "match.length") - 1 + starts
+    sapply(seq(along=starts), function (i) {
+       substr(text, starts[i], stops[i])
+    })
+}
+
+Given greg.matches, we can do the rest with very simple
+and easily comprehended regular expressions.
+
+# parse.chemical(formula)
+# takes a simple chemical formula "<element><count>..." and
+# returns a list with components
+# $elements -- character -- the atom symbols
+# $counts   -- number    -- the counts (missing counts taken as 1).
+# BEWARE.  This does not handle formulas like "CH(OH)3".
+
+parse.chemical <- function (formula) {
+    parts <- greg.matches("[A-Z][a-z]*[0-9]*", formula)
+    elements <- gsub("[0-9]+", "", parts)
+    counts <- as.numeric(gsub("[^0-9]+", "", parts))
+    counts <- ifelse(is.na(counts), 1, counts)
+    list(elements=elements, counts=counts)
+}
+
+> parse.chemical("CCl3F")
+$elements
+[1] "C"  "Cl" "F"
+
+$counts
+[1] 1 3 1
+
+> parse.chemical("Li4Al4H16")
+$elements
+[1] "Li" "Al" "H"
+
+$counts
+[1]  4  4 16
+
+> parse.chemical("CCl2CO2AlPO4SiO4Cl")
+$elements
+ [1] "C"  "Cl" "C"  "O"  "Al" "P"  "O"  "Si" "O"  "Cl"
+
+$counts
+ [1] 1 2 1 2 1 1 4 1 4 1
+
+
+On Thu, 19 Oct 2023 at 03:59, Leonard Mada via R-help <r-help at r-project.org>
+wrote:
+
+> Dear List members,
+>
+> What is the best way to test for numeric digits?
+>
+> suppressWarnings(as.double(c("Li", "Na", "K",  "2", "Rb", "Ca", "3")))
+> # [1] NA NA NA  2 NA NA  3
+> The above requires the use of the suppressWarnings function. Are there
+> any better ways?
+>
+> I was working to extract chemical elements from a formula, something
+> like this:
+> split.symbol.character = function(x, rm.digits = TRUE) {
+>      # Perl is partly broken in R 4.3, but this works:
+>      regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+>      # stringi::stri_split(x, regex = regex);
+>      s = strsplit(x, regex, perl = TRUE);
+>      if(rm.digits) {
+>          s = lapply(s, function(s) {
+>              isNotD = is.na(suppressWarnings(as.numeric(s)));
+>              s = s[isNotD];
+>          });
+>      }
+>      return(s);
+> }
+>
+> split.symbol.character(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"))
+>
+>
+> Sincerely,
+>
+>
+> Leonard
+>
+>
+> Note:
+> # works:
+> regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+> strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+>
+>
+> # broken in R 4.3.1
+> # only slightly "erroneous" with stringi::stri_split
+> regex = "(?<=[A-Z])(?![a-z]|$)|(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+> strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
