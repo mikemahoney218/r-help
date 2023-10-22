@@ -12862,3 +12862,260 @@ Stats. Dep't. (secretaries) phone:
 Home phone: +64-9-480-4619
 
 
+From @vi@e@gross m@iii@g oii gm@ii@com  Fri Oct 20 19:27:18 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Fri, 20 Oct 2023 13:27:18 -0400
+Subject: [R] Best way to test for numeric digits?
+In-Reply-To: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+References: <6c4ac344-ddbe-4c3d-8ecd-c5a29657893d@syonic.eu>
+Message-ID: <003001da037a$ad671b80$08355280$@gmail.com>
+
+Leonard,
+
+Since it now seems a main consideration you have is speed/efficiency, maybe a step back might help.
+
+Are there simplifying assumptions that are valid or can you make it simpler, such as converting everything to the same case?
+
+Your sample data was this and I assume your actual data is similar and far longer.
+
+c("Li", "Na", "K",  "2", "Rb", "Ca", "3")
+
+So rather than use complex and costly regular expressions, or other full searches, can you just assume all entries start with either an uppercase letter orn a numeral and test for those usinnd something simple like
+> substr(c("Li", "Na", "K",  "2", "Rb", "Ca", "3"), 1, 1)
+[1] "L" "N" "K" "2" "R" "C" "3"
+
+If you save that in a variable you can check if that is greater than or equal to "A" or perhaps "0" and also perhaps if it is less than or equal to "Z" or perhaps "9" and see if such a test is faster.
+
+orig <- c("Li", "Na", "K",  "2", "Rb", "Ca", "3")
+initial <- substr(orig, 1, 1)
+elements_bool <- initial >= "A" & initial <= "Z"
+
+The latter contains a Boolean vector you can use to index your original and toss away the ones with digits, or any lower case letter versions or any other UNICODE symbols.
+
+orig_elements <- orig[elements_bool]
+
+> orig
+[1] "Li" "Na" "K"  "2"  "Rb" "Ca" "3" 
+> orig_elements
+[1] "Li" "Na" "K"  "Rb" "Ca"
+> orig[!elements_bool]
+[1] "2" "3"
+
+Other approaches you might consider depending on your needs is to encapsulate your data as a column in a data.frame or tibble or other such construct and generate additional columns along the way that keep your information consolidated in what could be an efficient way especially if you shift some of your logic to using faster compiled functionality and perhaps using packages that fit your needs better such as data.table or dplyr and other things in the tidyverse. And note if using pipelines, for many purposes, the new built-in pipelines may be faster.
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Leonard Mada via R-help
+Sent: Wednesday, October 18, 2023 10:59 AM
+To: R-help Mailing List <r-help at r-project.org>
+Subject: [R] Best way to test for numeric digits?
+
+Dear List members,
+
+What is the best way to test for numeric digits?
+
+suppressWarnings(as.double(c("Li", "Na", "K",  "2", "Rb", "Ca", "3")))
+# [1] NA NA NA  2 NA NA  3
+The above requires the use of the suppressWarnings function. Are there 
+any better ways?
+
+I was working to extract chemical elements from a formula, something 
+like this:
+split.symbol.character = function(x, rm.digits = TRUE) {
+     # Perl is partly broken in R 4.3, but this works:
+     regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+     # stringi::stri_split(x, regex = regex);
+     s = strsplit(x, regex, perl = TRUE);
+     if(rm.digits) {
+         s = lapply(s, function(s) {
+             isNotD = is.na(suppressWarnings(as.numeric(s)));
+             s = s[isNotD];
+         });
+     }
+     return(s);
+}
+
+split.symbol.character(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"))
+
+
+Sincerely,
+
+
+Leonard
+
+
+Note:
+# works:
+regex = "(?<=[A-Z])(?![a-z]|$)|(?<=.)(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+
+
+# broken in R 4.3.1
+# only slightly "erroneous" with stringi::stri_split
+regex = "(?<=[A-Z])(?![a-z]|$)|(?=[A-Z])|(?<=[a-z])(?=[^a-z])";
+strsplit(c("CCl3F", "Li4Al4H16", "CCl2CO2AlPO4SiO4Cl"), regex, perl = T)
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Sat Oct 21 21:26:09 2023
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Sat, 21 Oct 2023 22:26:09 +0300
+Subject: [R] Issue from R-devel: subset on table
+Message-ID: <c2a2dd3f-45a0-420c-bb5b-f340aa189d5c@syonic.eu>
+
+Dear List Members,
+
+There was recently an issue on R-devel (which I noticed only very late):
+https://stat.ethz.ch/pipermail/r-devel/2023-October/082943.html
+
+It is possible to use subset as well, almost as initially stated:
+
+subset(table(sample(1:5, 100, T)), table > 10)
+# Error in table > 10 :
+#? comparison (>) is possible only for atomic and list types
+
+subset(table(sample(1:5, 100, T)), 'table' > 10)
+#? 1? 2? 3? 4? 5
+# 21 13 15 28 23
+
+Works with the letters-example as well.
+
+Sincerely,
+
+Leonard
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Sat Oct 21 21:38:16 2023
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Sat, 21 Oct 2023 22:38:16 +0300
+Subject: [R] Issue from R-devel: subset on table
+In-Reply-To: <c2a2dd3f-45a0-420c-bb5b-f340aa189d5c@syonic.eu>
+References: <c2a2dd3f-45a0-420c-bb5b-f340aa189d5c@syonic.eu>
+Message-ID: <142f3b97-f9c5-4f92-a5fb-0d12cc5d30e9@syonic.eu>
+
+My mistake!
+
+
+It does actually something else, which is incorrect. One could still use 
+(although the code is more difficult to read):
+
+subset(tmp <- table(sample(1:10, 100, T)), tmp > 10)
+
+
+Sincerely,
+
+
+Leonard
+
+
+On 10/21/2023 10:26 PM, Leonard Mada wrote:
+> Dear List Members,
+>
+> There was recently an issue on R-devel (which I noticed only very late):
+> https://stat.ethz.ch/pipermail/r-devel/2023-October/082943.html
+>
+> It is possible to use subset as well, almost as initially stated:
+>
+> subset(table(sample(1:5, 100, T)), table > 10)
+> # Error in table > 10 :
+> #? comparison (>) is possible only for atomic and list types
+>
+> subset(table(sample(1:5, 100, T)), 'table' > 10)
+> #? 1? 2? 3? 4? 5
+> # 21 13 15 28 23
+
+
+Note: The result was ok only by chance! But it is incorrect in general.
+
+
+>
+> Works with the letters-example as well.
+>
+> Sincerely,
+>
+> Leonard
+>
+>
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Sat Oct 21 22:04:13 2023
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Sat, 21 Oct 2023 23:04:13 +0300
+Subject: [R] Issue from R-devel: subset on table
+In-Reply-To: <142f3b97-f9c5-4f92-a5fb-0d12cc5d30e9@syonic.eu>
+References: <c2a2dd3f-45a0-420c-bb5b-f340aa189d5c@syonic.eu>
+ <142f3b97-f9c5-4f92-a5fb-0d12cc5d30e9@syonic.eu>
+Message-ID: <b736f9e8-9ae1-4fce-8531-eec3488d1cd5@syonic.eu>
+
+Another solution could also be possible - see below.
+
+
+On 10/21/2023 10:38 PM, Leonard Mada wrote:
+> My mistake!
+>
+> It does actually something else, which is incorrect. One could still 
+> use (although the code is more difficult to read):
+>
+> subset(tmp <- table(sample(1:10, 100, T)), tmp > 10)
+
+2) Alternative solution
+Enhance subset.default to accept also formulas, e.g.:
+
+subset.default = function (x, subset, ...)
+{
+ ?? ?if(inherits(subset, "formula")) {
+ ?? ???? subset = subset[[2]];
+ ?? ???? subset = eval(subset, list("." = x));
+ ?? ?} else if (! is.logical(subset))
+ ?? ???? stop("'subset' must be logical")
+ ?? ?x[subset & ! is.na(subset)]
+}
+
+# it works now: but results depend on sample()
+subset(table(sample(1:10, 100, T)), ~ . > 10)
+subset(table(sample(1:10, 100, T)), ~ . > 10 & . < 13)
+
+
+>
+>
+> Sincerely,
+>
+>
+> Leonard
+>
+>
+> On 10/21/2023 10:26 PM, Leonard Mada wrote:
+>> Dear List Members,
+>>
+>> There was recently an issue on R-devel (which I noticed only very late):
+>> https://stat.ethz.ch/pipermail/r-devel/2023-October/082943.html
+>>
+>> It is possible to use subset as well, almost as initially stated:
+>>
+>> subset(table(sample(1:5, 100, T)), table > 10)
+>> # Error in table > 10 :
+>> #? comparison (>) is possible only for atomic and list types
+>>
+>> subset(table(sample(1:5, 100, T)), 'table' > 10)
+>> #? 1? 2? 3? 4? 5
+>> # 21 13 15 28 23
+>
+>
+> Note: The result was ok only by chance! But it is incorrect in general.
+>
+>
+>>
+>> Works with the letters-example as well.
+>>
+>> Sincerely,
+>>
+>> Leonard
+>>
+>>
+
+
