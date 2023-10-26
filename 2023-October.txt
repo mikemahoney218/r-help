@@ -15633,3 +15633,1361 @@ Cell phone 443-418-5382
 
 
 
+From @hu|@|@cheung @end|ng |rom gm@||@com  Wed Oct 25 11:09:23 2023
+From: @hu|@|@cheung @end|ng |rom gm@||@com (Shu Fai Cheung)
+Date: Wed, 25 Oct 2023 17:09:23 +0800
+Subject: [R] Create a call but evaluate only some elements
+Message-ID: <CAPVJd2XmZL_FjOpYfiZ2skGW2uzUM7+ZwWcf1+CMpiLwuyUeDQ@mail.gmail.com>
+
+Hi All,
+
+I have a problem that may have a simple solution, but I am not
+familiar with creating calls manually.
+
+This is example calling lm()
+
+``` r
+set.seed(1234)
+n <- 10
+dat <- data.frame(x1 = rnorm(n),
+                  x2 = rnorm(n),
+                  y = rnorm(n))
+
+lm_out <- lm(y ~ x1 + x2, dat)
+lm_out
+#>
+#> Call:
+#> lm(formula = y ~ x1 + x2, data = dat)
+#>
+#> Coefficients:
+#> (Intercept)           x1           x2
+#>     -0.5755      -0.4151      -0.2411
+lm_out$call
+#> lm(formula = y ~ x1 + x2, data = dat)
+```
+
+The call is stored, "lm(formula = y ~ x1 + x2, data = dat)", and names
+are not evaluated.
+
+I want to create a similar call, but only one of the elements is from a string.
+
+```r
+mod <- "y ~ x1 + x2"
+```
+
+This is what I tried but failed:
+
+```r
+lm_out2 <- do.call("lm",
+                   list(formula = as.formula(mod),
+                        data = dat))
+lm_out2
+#>
+#> Call:
+#> lm(formula = y ~ x1 + x2, data = structure(list(x1 = c(-1.20706574938542,
+#> 0.27742924211066, 1.08444117668306, -2.34569770262935, 0.42912468881105,
+#> 0.506055892157574, -0.574739960134649, -0.546631855784187,
+-0.564451999093283,
+#> -0.890037829044104), x2 = c(-0.477192699753547, -0.998386444859704,
+#> -0.77625389463799, 0.0644588172762693, 0.959494058970771, -0.110285494390774,
+#> -0.511009505806642, -0.911195416629811, -0.83717168026894, 2.41583517848934
+#> ), y = c(0.134088220152031, -0.490685896690943, -0.440547872353227,
+#> 0.459589441005854, -0.693720246937475, -1.44820491038647, 0.574755720900728,
+#> -1.02365572296388, -0.0151383003641817, -0.935948601168394)), class
+= "data.frame", row.names = c(NA,
+#> -10L)))
+#>
+#> Coefficients:
+#> (Intercept)           x1           x2
+#>     -0.5755      -0.4151      -0.2411
+```
+
+It does not have the formula, "as a formula": y ~ x1 + x2.
+However, the name "dat" is evaluated. Therefore, the call stored does
+not have the name 'dat', but has the evaluated content.
+
+The following fits the same model. However, the call stores the name,
+'mod', not the evaluated result, y ~ x1 + x2.
+
+```r
+lm_out3 <- lm(mod, data = dat)
+lm_out3
+#>
+#> Call:
+#> lm(formula = mod, data = dat)
+#>
+#> Coefficients:
+#> (Intercept)           x1           x2
+#>     -0.5755      -0.4151      -0.2411
+```
+
+The following method works. However, I have to do a dummy call,
+extract the stored call, and set formula to the result of
+as.formula(mod):
+
+```r
+lm_out3 <- lm(mod, data = dat)
+lm_out3
+#>
+#> Call:
+#> lm(formula = mod, data = dat)
+#>
+#> Coefficients:
+#> (Intercept)           x1           x2
+#>     -0.5755      -0.4151      -0.2411
+
+call1 <- lm_out3$call
+call1$formula <- as.formula(mod)
+lm_out4 <- eval(call1)
+lm_out4
+#>
+#> Call:
+#> lm(formula = y ~ x1 + x2, data = dat)
+#>
+#> Coefficients:
+#> (Intercept)           x1           x2
+#>     -0.5755      -0.4151      -0.2411
+```
+
+Is it possible to create the call directly, with only 'mod' evaluated,
+and other arguments, e.g., 'dat', not evaluated?
+
+Regards,
+Shu Fai
+
+
+From @hu|@|@cheung @end|ng |rom gm@||@com  Wed Oct 25 11:11:50 2023
+From: @hu|@|@cheung @end|ng |rom gm@||@com (Shu Fai Cheung)
+Date: Wed, 25 Oct 2023 17:11:50 +0800
+Subject: [R] Create a call but evaluate only some elements
+In-Reply-To: <CAPVJd2XmZL_FjOpYfiZ2skGW2uzUM7+ZwWcf1+CMpiLwuyUeDQ@mail.gmail.com>
+References: <CAPVJd2XmZL_FjOpYfiZ2skGW2uzUM7+ZwWcf1+CMpiLwuyUeDQ@mail.gmail.com>
+Message-ID: <CAPVJd2U9B9ZyMXHC12ns0EUaEdQ-6w9Xor29FgbSpFbZpG_FLA@mail.gmail.com>
+
+Sorry for a typo, regarding the first attempt, lm_out2, using
+do.call(), I meant:
+
+'It does have the formula, "as a formula": y ~ x1 + x2.
+However, the name "dat" is evaluated. ...'
+
+Regards,
+Shu Fai
+
+On Wed, Oct 25, 2023 at 5:09?PM Shu Fai Cheung <shufai.cheung at gmail.com> wrote:
+>
+> Hi All,
+>
+> I have a problem that may have a simple solution, but I am not
+> familiar with creating calls manually.
+>
+> This is example calling lm()
+>
+> ``` r
+> set.seed(1234)
+> n <- 10
+> dat <- data.frame(x1 = rnorm(n),
+>                   x2 = rnorm(n),
+>                   y = rnorm(n))
+>
+> lm_out <- lm(y ~ x1 + x2, dat)
+> lm_out
+> #>
+> #> Call:
+> #> lm(formula = y ~ x1 + x2, data = dat)
+> #>
+> #> Coefficients:
+> #> (Intercept)           x1           x2
+> #>     -0.5755      -0.4151      -0.2411
+> lm_out$call
+> #> lm(formula = y ~ x1 + x2, data = dat)
+> ```
+>
+> The call is stored, "lm(formula = y ~ x1 + x2, data = dat)", and names
+> are not evaluated.
+>
+> I want to create a similar call, but only one of the elements is from a string.
+>
+> ```r
+> mod <- "y ~ x1 + x2"
+> ```
+>
+> This is what I tried but failed:
+>
+> ```r
+> lm_out2 <- do.call("lm",
+>                    list(formula = as.formula(mod),
+>                         data = dat))
+> lm_out2
+> #>
+> #> Call:
+> #> lm(formula = y ~ x1 + x2, data = structure(list(x1 = c(-1.20706574938542,
+> #> 0.27742924211066, 1.08444117668306, -2.34569770262935, 0.42912468881105,
+> #> 0.506055892157574, -0.574739960134649, -0.546631855784187,
+> -0.564451999093283,
+> #> -0.890037829044104), x2 = c(-0.477192699753547, -0.998386444859704,
+> #> -0.77625389463799, 0.0644588172762693, 0.959494058970771, -0.110285494390774,
+> #> -0.511009505806642, -0.911195416629811, -0.83717168026894, 2.41583517848934
+> #> ), y = c(0.134088220152031, -0.490685896690943, -0.440547872353227,
+> #> 0.459589441005854, -0.693720246937475, -1.44820491038647, 0.574755720900728,
+> #> -1.02365572296388, -0.0151383003641817, -0.935948601168394)), class
+> = "data.frame", row.names = c(NA,
+> #> -10L)))
+> #>
+> #> Coefficients:
+> #> (Intercept)           x1           x2
+> #>     -0.5755      -0.4151      -0.2411
+> ```
+>
+> It does not have the formula, "as a formula": y ~ x1 + x2.
+> However, the name "dat" is evaluated. Therefore, the call stored does
+> not have the name 'dat', but has the evaluated content.
+>
+> The following fits the same model. However, the call stores the name,
+> 'mod', not the evaluated result, y ~ x1 + x2.
+>
+> ```r
+> lm_out3 <- lm(mod, data = dat)
+> lm_out3
+> #>
+> #> Call:
+> #> lm(formula = mod, data = dat)
+> #>
+> #> Coefficients:
+> #> (Intercept)           x1           x2
+> #>     -0.5755      -0.4151      -0.2411
+> ```
+>
+> The following method works. However, I have to do a dummy call,
+> extract the stored call, and set formula to the result of
+> as.formula(mod):
+>
+> ```r
+> lm_out3 <- lm(mod, data = dat)
+> lm_out3
+> #>
+> #> Call:
+> #> lm(formula = mod, data = dat)
+> #>
+> #> Coefficients:
+> #> (Intercept)           x1           x2
+> #>     -0.5755      -0.4151      -0.2411
+>
+> call1 <- lm_out3$call
+> call1$formula <- as.formula(mod)
+> lm_out4 <- eval(call1)
+> lm_out4
+> #>
+> #> Call:
+> #> lm(formula = y ~ x1 + x2, data = dat)
+> #>
+> #> Coefficients:
+> #> (Intercept)           x1           x2
+> #>     -0.5755      -0.4151      -0.2411
+> ```
+>
+> Is it possible to create the call directly, with only 'mod' evaluated,
+> and other arguments, e.g., 'dat', not evaluated?
+>
+> Regards,
+> Shu Fai
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Wed Oct 25 11:23:49 2023
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Wed, 25 Oct 2023 05:23:49 -0400
+Subject: [R] Create a call but evaluate only some elements
+In-Reply-To: <CAPVJd2XmZL_FjOpYfiZ2skGW2uzUM7+ZwWcf1+CMpiLwuyUeDQ@mail.gmail.com>
+References: <CAPVJd2XmZL_FjOpYfiZ2skGW2uzUM7+ZwWcf1+CMpiLwuyUeDQ@mail.gmail.com>
+Message-ID: <CADNULg_bpLo2VyGPW+hkswpTDPJUvvDpEhXWnKVKoFzLtZ-h3g@mail.gmail.com>
+
+You can try either of these:
+
+expr <- bquote(lm(.(as.formula(mod)), dat))
+lm_out5 <- eval(expr)
+
+expr <- call("lm", as.formula(mod), as.symbol("dat"))
+lm_out6 <- eval(expr)
+
+but bquote is usually easier and good enough.
+
+On Wed, Oct 25, 2023, 05:10 Shu Fai Cheung <shufai.cheung at gmail.com> wrote:
+
+> Hi All,
+>
+> I have a problem that may have a simple solution, but I am not
+> familiar with creating calls manually.
+>
+> This is example calling lm()
+>
+> ``` r
+> set.seed(1234)
+> n <- 10
+> dat <- data.frame(x1 = rnorm(n),
+>                   x2 = rnorm(n),
+>                   y = rnorm(n))
+>
+> lm_out <- lm(y ~ x1 + x2, dat)
+> lm_out
+> #>
+> #> Call:
+> #> lm(formula = y ~ x1 + x2, data = dat)
+> #>
+> #> Coefficients:
+> #> (Intercept)           x1           x2
+> #>     -0.5755      -0.4151      -0.2411
+> lm_out$call
+> #> lm(formula = y ~ x1 + x2, data = dat)
+> ```
+>
+> The call is stored, "lm(formula = y ~ x1 + x2, data = dat)", and names
+> are not evaluated.
+>
+> I want to create a similar call, but only one of the elements is from a
+> string.
+>
+> ```r
+> mod <- "y ~ x1 + x2"
+> ```
+>
+> This is what I tried but failed:
+>
+> ```r
+> lm_out2 <- do.call("lm",
+>                    list(formula = as.formula(mod),
+>                         data = dat))
+> lm_out2
+> #>
+> #> Call:
+> #> lm(formula = y ~ x1 + x2, data = structure(list(x1 =
+> c(-1.20706574938542,
+> #> 0.27742924211066, 1.08444117668306, -2.34569770262935, 0.42912468881105,
+> #> 0.506055892157574, -0.574739960134649, -0.546631855784187,
+> -0.564451999093283,
+> #> -0.890037829044104), x2 = c(-0.477192699753547, -0.998386444859704,
+> #> -0.77625389463799, 0.0644588172762693, 0.959494058970771,
+> -0.110285494390774,
+> #> -0.511009505806642, -0.911195416629811, -0.83717168026894,
+> 2.41583517848934
+> #> ), y = c(0.134088220152031, -0.490685896690943, -0.440547872353227,
+> #> 0.459589441005854, -0.693720246937475, -1.44820491038647,
+> 0.574755720900728,
+> #> -1.02365572296388, -0.0151383003641817, -0.935948601168394)), class
+> = "data.frame", row.names = c(NA,
+> #> -10L)))
+> #>
+> #> Coefficients:
+> #> (Intercept)           x1           x2
+> #>     -0.5755      -0.4151      -0.2411
+> ```
+>
+> It does not have the formula, "as a formula": y ~ x1 + x2.
+> However, the name "dat" is evaluated. Therefore, the call stored does
+> not have the name 'dat', but has the evaluated content.
+>
+> The following fits the same model. However, the call stores the name,
+> 'mod', not the evaluated result, y ~ x1 + x2.
+>
+> ```r
+> lm_out3 <- lm(mod, data = dat)
+> lm_out3
+> #>
+> #> Call:
+> #> lm(formula = mod, data = dat)
+> #>
+> #> Coefficients:
+> #> (Intercept)           x1           x2
+> #>     -0.5755      -0.4151      -0.2411
+> ```
+>
+> The following method works. However, I have to do a dummy call,
+> extract the stored call, and set formula to the result of
+> as.formula(mod):
+>
+> ```r
+> lm_out3 <- lm(mod, data = dat)
+> lm_out3
+> #>
+> #> Call:
+> #> lm(formula = mod, data = dat)
+> #>
+> #> Coefficients:
+> #> (Intercept)           x1           x2
+> #>     -0.5755      -0.4151      -0.2411
+>
+> call1 <- lm_out3$call
+> call1$formula <- as.formula(mod)
+> lm_out4 <- eval(call1)
+> lm_out4
+> #>
+> #> Call:
+> #> lm(formula = y ~ x1 + x2, data = dat)
+> #>
+> #> Coefficients:
+> #> (Intercept)           x1           x2
+> #>     -0.5755      -0.4151      -0.2411
+> ```
+>
+> Is it possible to create the call directly, with only 'mod' evaluated,
+> and other arguments, e.g., 'dat', not evaluated?
+>
+> Regards,
+> Shu Fai
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @hu|@|@cheung @end|ng |rom gm@||@com  Wed Oct 25 12:55:48 2023
+From: @hu|@|@cheung @end|ng |rom gm@||@com (Shu Fai Cheung)
+Date: Wed, 25 Oct 2023 18:55:48 +0800
+Subject: [R] Create a call but evaluate only some elements
+In-Reply-To: <CADNULg_bpLo2VyGPW+hkswpTDPJUvvDpEhXWnKVKoFzLtZ-h3g@mail.gmail.com>
+References: <CAPVJd2XmZL_FjOpYfiZ2skGW2uzUM7+ZwWcf1+CMpiLwuyUeDQ@mail.gmail.com>
+ <CADNULg_bpLo2VyGPW+hkswpTDPJUvvDpEhXWnKVKoFzLtZ-h3g@mail.gmail.com>
+Message-ID: <CAPVJd2XS8EJs8wMJpgu_k7fWyOQGWMA2Xr3Hu=1kbHatKbNc-Q@mail.gmail.com>
+
+Dear Iris,
+
+Many many thanks! This is exactly what I need! I have never heard
+about bquote(). This function will also be useful to me on other
+occasions.
+
+I still have a lot to learn about the R language ...
+
+Regards,
+Shu Fai
+
+
+On Wed, Oct 25, 2023 at 5:24?PM Iris Simmons <ikwsimmo at gmail.com> wrote:
+>
+> You can try either of these:
+>
+> expr <- bquote(lm(.(as.formula(mod)), dat))
+> lm_out5 <- eval(expr)
+>
+> expr <- call("lm", as.formula(mod), as.symbol("dat"))
+> lm_out6 <- eval(expr)
+>
+> but bquote is usually easier and good enough.
+>
+> On Wed, Oct 25, 2023, 05:10 Shu Fai Cheung <shufai.cheung at gmail.com> wrote:
+>>
+>> Hi All,
+>>
+>> I have a problem that may have a simple solution, but I am not
+>> familiar with creating calls manually.
+>>
+>> This is example calling lm()
+>>
+>> ``` r
+>> set.seed(1234)
+>> n <- 10
+>> dat <- data.frame(x1 = rnorm(n),
+>>                   x2 = rnorm(n),
+>>                   y = rnorm(n))
+>>
+>> lm_out <- lm(y ~ x1 + x2, dat)
+>> lm_out
+>> #>
+>> #> Call:
+>> #> lm(formula = y ~ x1 + x2, data = dat)
+>> #>
+>> #> Coefficients:
+>> #> (Intercept)           x1           x2
+>> #>     -0.5755      -0.4151      -0.2411
+>> lm_out$call
+>> #> lm(formula = y ~ x1 + x2, data = dat)
+>> ```
+>>
+>> The call is stored, "lm(formula = y ~ x1 + x2, data = dat)", and names
+>> are not evaluated.
+>>
+>> I want to create a similar call, but only one of the elements is from a string.
+>>
+>> ```r
+>> mod <- "y ~ x1 + x2"
+>> ```
+>>
+>> This is what I tried but failed:
+>>
+>> ```r
+>> lm_out2 <- do.call("lm",
+>>                    list(formula = as.formula(mod),
+>>                         data = dat))
+>> lm_out2
+>> #>
+>> #> Call:
+>> #> lm(formula = y ~ x1 + x2, data = structure(list(x1 = c(-1.20706574938542,
+>> #> 0.27742924211066, 1.08444117668306, -2.34569770262935, 0.42912468881105,
+>> #> 0.506055892157574, -0.574739960134649, -0.546631855784187,
+>> -0.564451999093283,
+>> #> -0.890037829044104), x2 = c(-0.477192699753547, -0.998386444859704,
+>> #> -0.77625389463799, 0.0644588172762693, 0.959494058970771, -0.110285494390774,
+>> #> -0.511009505806642, -0.911195416629811, -0.83717168026894, 2.41583517848934
+>> #> ), y = c(0.134088220152031, -0.490685896690943, -0.440547872353227,
+>> #> 0.459589441005854, -0.693720246937475, -1.44820491038647, 0.574755720900728,
+>> #> -1.02365572296388, -0.0151383003641817, -0.935948601168394)), class
+>> = "data.frame", row.names = c(NA,
+>> #> -10L)))
+>> #>
+>> #> Coefficients:
+>> #> (Intercept)           x1           x2
+>> #>     -0.5755      -0.4151      -0.2411
+>> ```
+>>
+>> It does not have the formula, "as a formula": y ~ x1 + x2.
+>> However, the name "dat" is evaluated. Therefore, the call stored does
+>> not have the name 'dat', but has the evaluated content.
+>>
+>> The following fits the same model. However, the call stores the name,
+>> 'mod', not the evaluated result, y ~ x1 + x2.
+>>
+>> ```r
+>> lm_out3 <- lm(mod, data = dat)
+>> lm_out3
+>> #>
+>> #> Call:
+>> #> lm(formula = mod, data = dat)
+>> #>
+>> #> Coefficients:
+>> #> (Intercept)           x1           x2
+>> #>     -0.5755      -0.4151      -0.2411
+>> ```
+>>
+>> The following method works. However, I have to do a dummy call,
+>> extract the stored call, and set formula to the result of
+>> as.formula(mod):
+>>
+>> ```r
+>> lm_out3 <- lm(mod, data = dat)
+>> lm_out3
+>> #>
+>> #> Call:
+>> #> lm(formula = mod, data = dat)
+>> #>
+>> #> Coefficients:
+>> #> (Intercept)           x1           x2
+>> #>     -0.5755      -0.4151      -0.2411
+>>
+>> call1 <- lm_out3$call
+>> call1$formula <- as.formula(mod)
+>> lm_out4 <- eval(call1)
+>> lm_out4
+>> #>
+>> #> Call:
+>> #> lm(formula = y ~ x1 + x2, data = dat)
+>> #>
+>> #> Coefficients:
+>> #> (Intercept)           x1           x2
+>> #>     -0.5755      -0.4151      -0.2411
+>> ```
+>>
+>> Is it possible to create the call directly, with only 'mod' evaluated,
+>> and other arguments, e.g., 'dat', not evaluated?
+>>
+>> Regards,
+>> Shu Fai
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Wed Oct 25 14:43:09 2023
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leonard Mada)
+Date: Wed, 25 Oct 2023 15:43:09 +0300
+Subject: [R] by function does not separate output from function with,
+ mulliple parts
+Message-ID: <81aa0249-c42d-4b00-beac-6a5c89a1a61f@syonic.eu>
+
+Dear John,
+
+Printing inside the function is problematic. Your function itself does 
+NOT print the labels.
+
+Just as a clarification:
+
+F = factor(rep(1:2, 2))
+by(data.frame(V = 1:4, F = F), F, function(x) { print(x); return(NULL); } )
+#?? V F
+# 1 1 1
+# 3 3 1
+#?? V F
+# 2 2 2
+# 4 4 2
+# F: 1 <- this is NOT printed inside the function
+# NULL
+# ---------------------------------------------------------
+# F: 2
+# NULL
+
+### Return Results
+by(data.frame(V = 1:4, F = F), F, function(x) { return(x); } )
+# F: 1
+# ? V F
+# 1 1 1
+# 3 3 1
+# --------------------------------------------------
+# F: 2
+#?? V F
+# 2 2 2
+# 4 4 2
+
+Maybe others on the list can offer further assistance.
+
+Sincerely,
+
+Leonard
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Wed Oct 25 17:24:53 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Wed, 25 Oct 2023 16:24:53 +0100
+Subject: [R] by function does not separate output from function with
+ mulliple parts
+In-Reply-To: <MW4PR03MB636325EB10248F0EB0061CFCE2DFA@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <MW4PR03MB636325EB10248F0EB0061CFCE2DFA@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <74492d46-9bcd-4199-a337-f6b5798941c1@sapo.pt>
+
+?s 00:22 de 25/10/2023, Sorkin, John escreveu:
+> Colleagues,
+> 
+> I have written an R function (see fully annotated code below), with which I want to process a dataframe within levels of the variable StepType. My program works, it processes the data within levels of StepType, but the usual headers that separate the output by levels of StepType are at the end of the listing rather than being used as separators, i.e. I get
+> 
+> Regression results StepType First
+> Contrast results StepType First
+> Regression results StepType Second
+> Contrast results StepType Second
+> 
+> and only after the results are displayed do I get the usual separators:
+> mydata$StepType: First
+> NULL
+> ------------------------------------------------------------------------------
+> mydata$StepType: Second
+> NULL
+> 
+> 
+> What I want to get is output that includes the separators i.e.,
+> 
+> mydata$StepType: First
+> Regression results StepType First
+> Contrast results StepType First
+> ------------------------------------------------------------------------------
+> mydata$StepType: Second
+> Regression results StepType Second
+> Contrast results StepType Second
+> 
+> Can you help me get the separators included in the printed otput?
+> Thank you,
+> John
+> 
+> ####################
+> # Create Dataframe #
+> ####################
+> mydata <- structure(list(HipFlex = c(19.44, 4.44, 3.71, 1.95, 2.07, 1.55,
+>        0.44, 0.23, 2.15, 0.41, 2.3, 0.22, 2.08, 4.61, 4.19, 5.65, 2.73,
+>        1.46, 10.02, 7.41, 6.91, 5.28, 9.56, 2.46, 6, 3.85, 6.43, 3.73,
+>        1.08, 1.43, 1.82, 2.22, 0.34, 5.11, 0.94, 0.98, 2.04, 1.73, 0.94,
+>        18.41, 0.77, 2.31, 0.22, 1.06, 0.13, 0.36, 2.84, 5.2, 2.39, 2.99),
+>         jSex = structure(c(1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,
+>        1L, 1L, 2L, 2L, 2L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L,
+>        1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 1L, 2L, 2L, 2L, 2L,
+>        2L, 2L, 2L, 2L, 1L, 1L, 1L, 1L), levels = c("Male", "Female"), class = "factor")),
+>        row.names = c(NA, 50L), class = "data.frame")
+> 
+> mydata[,"StepType"] <- rep(c("First","Second"),25)
+> mydata
+> ########################
+> # END Create Dataframe #
+> ########################
+> 
+> ############################
+> # Define function to be run#
+> ############################
+> DoReg <- function(x){
+>      fit0<-lm(as.numeric(HipFlex) ~ jSex,data=x)
+>    print(summary(fit0))
+>    
+>    cat("\nMale\n")
+>    print(contrast(fit0,
+>                   list(jSex="Male")))
+>    
+>    cat("\nFemale\n")
+>    print(contrast(fit0,
+>                   list(jSex="Female")))
+>    
+>    cat("\nDifference\n")
+>    print(contrast(fit0,
+>                   a=list(jSex="Male"),
+>                   b=list(jSex="Female")))
+> }
+> ################################
+> # END Define function to be run#
+> ################################
+> 
+> #########################################
+> # Run function within levels of Steptype#
+> #########################################
+> by(mydata,mydata$StepType,DoReg)
+> #############################################
+> # END Run function within levels of Steptype#
+> #############################################
+> 
+> 
+> 
+> 
+> John David Sorkin M.D., Ph.D.
+> Professor of Medicine, University of Maryland School of Medicine;
+> Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+> PI?Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+> Senior Statistician University of Maryland Center for Vascular Research;
+> Division of Gerontology and Paliative Care,
+> 10 North Greene Street
+> GRECC (BT/18/GR)
+> Baltimore, MD 21201-1524
+> Cell phone 443-418-5382
+> 
+> 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+What you are seeing is the prints and cats in the function DoReg, not 
+its output. The code below works as expected.
+Also, you didn't load the package where function contrast() is found.
+
+
+library(contrast)
+
+############################
+# Define function to be run#
+############################
+DoReg <- function(x){
+   fit0 <- lm(as.numeric(HipFlex) ~ jSex,data=x)
+
+   contrast(
+     fit0,
+     a=list(jSex="Male"),
+     b=list(jSex="Female")
+   )
+}
+################################
+# END Define function to be run#
+################################
+
+#########################################
+# Run function within levels of Steptype#
+#########################################
+by(mydata,mydata$StepType,DoReg)
+#> mydata$StepType: First
+#> lm model parameter contrast
+#>
+#>   Contrast     S.E.    Lower    Upper    t df Pr(>|t|)
+#> 1  2.99114 1.956013 -1.05518 7.037461 1.53 23   0.1399
+#> ------------------------------------------------------------
+#> mydata$StepType: Second
+#> lm model parameter contrast
+#>
+#>   Contrast     S.E.     Lower    Upper     t df Pr(>|t|)
+#> 1   -2.435 1.819421 -6.198759 1.328759 -1.34 23   0.1939
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Wed Oct 25 21:23:42 2023
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Wed, 25 Oct 2023 19:23:42 +0000
+Subject: [R] Error running gee function. I neither understand the error
+ message, nor know what needs to be done the get the gee to run
+Message-ID: <MW4PR03MB6363F4FE1503EFBDD86BEDF6E2DEA@MW4PR03MB6363.namprd03.prod.outlook.com>
+
+Colleagues,
+
+I am receiving several error messages from the gee function. I don't understand the ides the error messages are trying to impart, and I don't know how to debug or correct the error. The error messages follow:
+
+
+> fitgee <- gee(HipFlex ~ StepHeight,data=datashort,id=PID,corstr="exchangeable",na.action=na.omit)
+
+Beginning Cgee S-function, @(#) geeformula.q 4.13 98/01/27
+
+running glm to get initial regression estimate
+
+(Intercept)  StepHeight
+
+   1.400319   58.570236
+
+Error in gee(HipFlex ~ StepHeight, data = datashort, id = PID, corstr = "exchangeable",  :
+
+  NA/NaN/Inf in foreign function call (arg 3)
+
+In addition: Warning message:
+
+In gee(HipFlex ~ StepHeight, data = datashort, id = PID, corstr = "exchangeable",  :
+
+  NAs introduced by coercion
+
+Of note, when the analysis is run using lm, there is no problem. My fully data and code follow:
+Thank you,
+John
+
+
+CODE:
+
+if (!require(gee)) {install.packages("gee")}
+library(gee)
+
+datashort <- structure(list(HipFlex =   c(1.95, 2.07,  1.55,  0.44,  0.23, 0.41,
+ 0.22, 4.61, 10.02,  1.08, 1.43, 1.82,  0.34,  0.77,  0.22, 1.06,
+ 0.13, 0.36,  2.84,  5.2, 12.27, 1.37,  2.33,  3.48,  4.76, 1.92,  2.09,
+ 4.67, 2.94,  0.75,  0.11, 3.56, 1.63,  0.8,   1.54,  5.06, NA,    5.41,
+ 6.18, 3.75,  3.12, 17.43, 3.18, 0.85, 14.54, 14.34, 21.92, 4.91,
+ 1.52, 0.38,  0.43,  0.47, 0.56, 6.4,  12.4,   3.98,  0.57, 1.84, 12.06,
+ 0.45, 8.16,  0.02,  0,    0.05, 0.52,  0.11,  0.48,  1.5,  3.29,  2.58,
+ 2.07, 6.06,  1.46,  1.06, 3.82, 1.09,  2.86,  3.47,  2.22, 1.89, NA,
+ 3.48, 6.38,  3.58,  1.83, 2.8,  8.28,  7.15,  4.77,  4.93, 0,     0.11,
+ 1.99, 2.01,  2.3,   1.24, 1.33, 2, 1.01), PID = c("HIPS004", "HIPS004",
+ "HIPS005", "HIPS005", "HIPS005", "HIPS006", "HIPS006", "HIPS008",
+ "HIPS010", "HIPS024", "HIPS024", "HIPS024", "HIPS025", "HIPS028",
+ "HIPS028", "HIPS030", "HIPS030", "HIPS030", "HIPS035", "HIPS035",
+ "HIPS035", "HIPS036", "HIPS036", "HIPS037", "HIPS044", "HIPS047",
+ "HIPS047", "HIPS056", "HIPS056", "HIPS057", "HIPS057", "HIPS057",
+ "HIPS058", "HIPS059", "HIPS059", "HIPS061", "HIPS062", "HIPS062",
+ "HIPS062", "HIPS064", "HIPS074", "HIPS079", "HIPS084", "HIPS089",
+ "HIPS090", "HIPS090", "HIPS090", "HIPS091", "HIPS091", "HIPS092",
+ "HIPS092", "HIPS092", "HIPS001", "HIPS001", "HIPS001", "HIPS004",
+ "HIPS004", "HIPS004", "HIPS005", "HIPS005", "HIPS005", "HIPS006",
+ "HIPS006", "HIPS008", "HIPS022", "HIPS024", "HIPS028", "HIPS030",
+ "HIPS035", "HIPS036", "HIPS036", "HIPS039", "HIPS044", "HIPS047",
+ "HIPS051", "HIPS056", "HIPS058", "HIPS058", "HIPS059", "HIPS059",
+ "HIPS062", "HIPS062", "HIPS062", "HIPS069", "HIPS069", "HIPS071",
+ "HIPS074", "HIPS079", "HIPS084", "HIPS084", "HIPS085", "HIPS089",
+ "HIPS090", "HIPS091", "HIPS091", "HIPS091", "HIPS092", "HIPS092",
+ "HIPS093"), StepHeight =  c(0.005, 0.008, 0.072, 0.003, 0.014,
+ 0.01,  0.027, 0.074, 0.128, 0.048, 0.036, 0.024, 0.021, 0.026,
+ 0.03,  0.004, 0.006, 0.006, 0.011, 0.006, 0.053, 0.028, 0.073,
+ 0.041, 0.005, 0.007, 0.013, 0.012, 0.021, 0.053, 0.013, 0.071,
+ 0.012, 0.016, 0.023, 0.024, 0.011, 0.019, 0.014, 0.022, 0.011,
+ 0.129, 0.03,  0.012, 0.062, 0.145, 0.077, 0.028, 0.006, 0.019,
+ 0.008, 0.006, 0.034, 0.109, 0.09,  0.005, 0.016, 0.005, 0.257,
+ 0.011, 0.205, 0.01,  0.017, 0.039, 0.01,  0.016, 0.043, 0.004,
+ 0.008, 0.04,  0.068, 0.006, 0.008, 0.005, 0.097, 0.015, 0.016,
+ 0.01,  0.021, 0.008, 0.01,  0.006, 0.016, 0.021, 0.012, 0.009,
+ 0.032, 0.055, 0.006, 0.066, 0.018, 0.01,  0.018, 0.017, 0.015,
+ 0.01,  0.017, 0.02,  0.022)), class = "data.frame", row.names = c(4L,
+  5L,   6L,    7L,   8L,  10L,  12L,  14L,  19L,  29L,  30L,  31L, 33L, 41L,
+  43L,  44L,  45L,  46L,  47L,  48L,  51L,  52L,  53L,  58L,  62L, 65L, 67L,
+  70L,  72L,  74L,  75L,  77L,  79L,  82L,  83L,  86L,  88L,  89L, 90L, 93L,
+ 109L, 114L, 117L, 129L, 131L, 132L, 133L, 134L, 135L, 136L, 137L,
+ 138L, 142L, 143L, 144L, 145L, 146L, 147L, 148L, 149L, 150L, 151L,
+ 152L, 155L, 165L, 167L, 172L, 173L, 174L, 176L, 178L, 179L, 185L,
+ 186L, 188L, 192L, 193L, 195L, 197L, 199L, 202L, 203L, 204L, 214L,
+ 216L, 221L, 225L, 234L, 236L, 237L, 238L, 250L, 252L, 255L, 256L,
+ 257L, 258L, 260L, 261L))
+
+datashort
+
+# This does not work:
+fitgee <- gee(HipFlex ~ StepHeight,data=datashort,id=PID,corstr="exchangeable",na.action=na.omit)
+summary(fitgee)
+
+# This works.
+fitlm <- lm(HipFlex ~ StepHeight,data=datashort)
+summary(fitlm)
+
+
+John David Sorkin M.D., Ph.D.
+Professor of Medicine, University of Maryland School of Medicine;
+
+Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+
+PI Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+
+Senior Statistician University of Maryland Center for Vascular Research;
+
+Division of Gerontology and Paliative Care,
+10 North Greene Street
+GRECC (BT/18/GR)
+Baltimore, MD 21201-1524
+Cell phone 443-418-5382
+
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Oct 25 21:38:18 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 25 Oct 2023 15:38:18 -0400
+Subject: [R] Error running gee function. I neither understand the error
+ message, nor know what needs to be done the get the gee to run
+In-Reply-To: <MW4PR03MB6363F4FE1503EFBDD86BEDF6E2DEA@MW4PR03MB6363.namprd03.prod.outlook.com>
+References: <MW4PR03MB6363F4FE1503EFBDD86BEDF6E2DEA@MW4PR03MB6363.namprd03.prod.outlook.com>
+Message-ID: <a0967b24-92b5-470c-b927-20fd3769c540@gmail.com>
+
+I don't see it documented, but it appears that the gee() function 
+assumes the id variable can be coerced to a number.  Your ids are in 
+PID, and are strings like "HIPS004", etc.  Change that to "004" or a 
+numeric 4 and the error goes away.
+
+Duncan Murdoch
+
+On 25/10/2023 3:23 p.m., Sorkin, John wrote:
+> Colleagues,
+> 
+> I am receiving several error messages from the gee function. I don't understand the ides the error messages are trying to impart, and I don't know how to debug or correct the error. The error messages follow:
+> 
+> 
+>> fitgee <- gee(HipFlex ~ StepHeight,data=datashort,id=PID,corstr="exchangeable",na.action=na.omit)
+> 
+> Beginning Cgee S-function, @(#) geeformula.q 4.13 98/01/27
+> 
+> running glm to get initial regression estimate
+> 
+> (Intercept)  StepHeight
+> 
+>     1.400319   58.570236
+> 
+> Error in gee(HipFlex ~ StepHeight, data = datashort, id = PID, corstr = "exchangeable",  :
+> 
+>    NA/NaN/Inf in foreign function call (arg 3)
+> 
+> In addition: Warning message:
+> 
+> In gee(HipFlex ~ StepHeight, data = datashort, id = PID, corstr = "exchangeable",  :
+> 
+>    NAs introduced by coercion
+> 
+> Of note, when the analysis is run using lm, there is no problem. My fully data and code follow:
+> Thank you,
+> John
+> 
+> 
+> CODE:
+> 
+> if (!require(gee)) {install.packages("gee")}
+> library(gee)
+> 
+> datashort <- structure(list(HipFlex =   c(1.95, 2.07,  1.55,  0.44,  0.23, 0.41,
+>   0.22, 4.61, 10.02,  1.08, 1.43, 1.82,  0.34,  0.77,  0.22, 1.06,
+>   0.13, 0.36,  2.84,  5.2, 12.27, 1.37,  2.33,  3.48,  4.76, 1.92,  2.09,
+>   4.67, 2.94,  0.75,  0.11, 3.56, 1.63,  0.8,   1.54,  5.06, NA,    5.41,
+>   6.18, 3.75,  3.12, 17.43, 3.18, 0.85, 14.54, 14.34, 21.92, 4.91,
+>   1.52, 0.38,  0.43,  0.47, 0.56, 6.4,  12.4,   3.98,  0.57, 1.84, 12.06,
+>   0.45, 8.16,  0.02,  0,    0.05, 0.52,  0.11,  0.48,  1.5,  3.29,  2.58,
+>   2.07, 6.06,  1.46,  1.06, 3.82, 1.09,  2.86,  3.47,  2.22, 1.89, NA,
+>   3.48, 6.38,  3.58,  1.83, 2.8,  8.28,  7.15,  4.77,  4.93, 0,     0.11,
+>   1.99, 2.01,  2.3,   1.24, 1.33, 2, 1.01), PID = c("HIPS004", "HIPS004",
+>   "HIPS005", "HIPS005", "HIPS005", "HIPS006", "HIPS006", "HIPS008",
+>   "HIPS010", "HIPS024", "HIPS024", "HIPS024", "HIPS025", "HIPS028",
+>   "HIPS028", "HIPS030", "HIPS030", "HIPS030", "HIPS035", "HIPS035",
+>   "HIPS035", "HIPS036", "HIPS036", "HIPS037", "HIPS044", "HIPS047",
+>   "HIPS047", "HIPS056", "HIPS056", "HIPS057", "HIPS057", "HIPS057",
+>   "HIPS058", "HIPS059", "HIPS059", "HIPS061", "HIPS062", "HIPS062",
+>   "HIPS062", "HIPS064", "HIPS074", "HIPS079", "HIPS084", "HIPS089",
+>   "HIPS090", "HIPS090", "HIPS090", "HIPS091", "HIPS091", "HIPS092",
+>   "HIPS092", "HIPS092", "HIPS001", "HIPS001", "HIPS001", "HIPS004",
+>   "HIPS004", "HIPS004", "HIPS005", "HIPS005", "HIPS005", "HIPS006",
+>   "HIPS006", "HIPS008", "HIPS022", "HIPS024", "HIPS028", "HIPS030",
+>   "HIPS035", "HIPS036", "HIPS036", "HIPS039", "HIPS044", "HIPS047",
+>   "HIPS051", "HIPS056", "HIPS058", "HIPS058", "HIPS059", "HIPS059",
+>   "HIPS062", "HIPS062", "HIPS062", "HIPS069", "HIPS069", "HIPS071",
+>   "HIPS074", "HIPS079", "HIPS084", "HIPS084", "HIPS085", "HIPS089",
+>   "HIPS090", "HIPS091", "HIPS091", "HIPS091", "HIPS092", "HIPS092",
+>   "HIPS093"), StepHeight =  c(0.005, 0.008, 0.072, 0.003, 0.014,
+>   0.01,  0.027, 0.074, 0.128, 0.048, 0.036, 0.024, 0.021, 0.026,
+>   0.03,  0.004, 0.006, 0.006, 0.011, 0.006, 0.053, 0.028, 0.073,
+>   0.041, 0.005, 0.007, 0.013, 0.012, 0.021, 0.053, 0.013, 0.071,
+>   0.012, 0.016, 0.023, 0.024, 0.011, 0.019, 0.014, 0.022, 0.011,
+>   0.129, 0.03,  0.012, 0.062, 0.145, 0.077, 0.028, 0.006, 0.019,
+>   0.008, 0.006, 0.034, 0.109, 0.09,  0.005, 0.016, 0.005, 0.257,
+>   0.011, 0.205, 0.01,  0.017, 0.039, 0.01,  0.016, 0.043, 0.004,
+>   0.008, 0.04,  0.068, 0.006, 0.008, 0.005, 0.097, 0.015, 0.016,
+>   0.01,  0.021, 0.008, 0.01,  0.006, 0.016, 0.021, 0.012, 0.009,
+>   0.032, 0.055, 0.006, 0.066, 0.018, 0.01,  0.018, 0.017, 0.015,
+>   0.01,  0.017, 0.02,  0.022)), class = "data.frame", row.names = c(4L,
+>    5L,   6L,    7L,   8L,  10L,  12L,  14L,  19L,  29L,  30L,  31L, 33L, 41L,
+>    43L,  44L,  45L,  46L,  47L,  48L,  51L,  52L,  53L,  58L,  62L, 65L, 67L,
+>    70L,  72L,  74L,  75L,  77L,  79L,  82L,  83L,  86L,  88L,  89L, 90L, 93L,
+>   109L, 114L, 117L, 129L, 131L, 132L, 133L, 134L, 135L, 136L, 137L,
+>   138L, 142L, 143L, 144L, 145L, 146L, 147L, 148L, 149L, 150L, 151L,
+>   152L, 155L, 165L, 167L, 172L, 173L, 174L, 176L, 178L, 179L, 185L,
+>   186L, 188L, 192L, 193L, 195L, 197L, 199L, 202L, 203L, 204L, 214L,
+>   216L, 221L, 225L, 234L, 236L, 237L, 238L, 250L, 252L, 255L, 256L,
+>   257L, 258L, 260L, 261L))
+> 
+> datashort
+> 
+> # This does not work:
+> fitgee <- gee(HipFlex ~ StepHeight,data=datashort,id=PID,corstr="exchangeable",na.action=na.omit)
+> summary(fitgee)
+> 
+> # This works.
+> fitlm <- lm(HipFlex ~ StepHeight,data=datashort)
+> summary(fitlm)
+> 
+> 
+> John David Sorkin M.D., Ph.D.
+> Professor of Medicine, University of Maryland School of Medicine;
+> 
+> Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+> 
+> PI Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+> 
+> Senior Statistician University of Maryland Center for Vascular Research;
+> 
+> Division of Gerontology and Paliative Care,
+> 10 North Greene Street
+> GRECC (BT/18/GR)
+> Baltimore, MD 21201-1524
+> Cell phone 443-418-5382
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Oct 25 22:22:22 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 25 Oct 2023 16:22:22 -0400
+Subject: [R] Error running gee function. I neither understand the error
+ message, nor know what needs to be done the get the gee to run
+In-Reply-To: <a0967b24-92b5-470c-b927-20fd3769c540@gmail.com>
+References: <MW4PR03MB6363F4FE1503EFBDD86BEDF6E2DEA@MW4PR03MB6363.namprd03.prod.outlook.com>
+ <a0967b24-92b5-470c-b927-20fd3769c540@gmail.com>
+Message-ID: <b51a4ea0-49ee-47b2-85fe-31b1456bca88@gmail.com>
+
+Actually a better solution would be to make PID into a factor.  They can 
+always be coerced to a number, but will display with your meaningful labels.
+
+Duncan Murdoch
+
+On 25/10/2023 3:38 p.m., Duncan Murdoch wrote:
+> I don't see it documented, but it appears that the gee() function
+> assumes the id variable can be coerced to a number.  Your ids are in
+> PID, and are strings like "HIPS004", etc.  Change that to "004" or a
+> numeric 4 and the error goes away.
+> 
+> Duncan Murdoch
+> 
+> On 25/10/2023 3:23 p.m., Sorkin, John wrote:
+>> Colleagues,
+>>
+>> I am receiving several error messages from the gee function. I don't understand the ides the error messages are trying to impart, and I don't know how to debug or correct the error. The error messages follow:
+>>
+>>
+>>> fitgee <- gee(HipFlex ~ StepHeight,data=datashort,id=PID,corstr="exchangeable",na.action=na.omit)
+>>
+>> Beginning Cgee S-function, @(#) geeformula.q 4.13 98/01/27
+>>
+>> running glm to get initial regression estimate
+>>
+>> (Intercept)  StepHeight
+>>
+>>      1.400319   58.570236
+>>
+>> Error in gee(HipFlex ~ StepHeight, data = datashort, id = PID, corstr = "exchangeable",  :
+>>
+>>     NA/NaN/Inf in foreign function call (arg 3)
+>>
+>> In addition: Warning message:
+>>
+>> In gee(HipFlex ~ StepHeight, data = datashort, id = PID, corstr = "exchangeable",  :
+>>
+>>     NAs introduced by coercion
+>>
+>> Of note, when the analysis is run using lm, there is no problem. My fully data and code follow:
+>> Thank you,
+>> John
+>>
+>>
+>> CODE:
+>>
+>> if (!require(gee)) {install.packages("gee")}
+>> library(gee)
+>>
+>> datashort <- structure(list(HipFlex =   c(1.95, 2.07,  1.55,  0.44,  0.23, 0.41,
+>>    0.22, 4.61, 10.02,  1.08, 1.43, 1.82,  0.34,  0.77,  0.22, 1.06,
+>>    0.13, 0.36,  2.84,  5.2, 12.27, 1.37,  2.33,  3.48,  4.76, 1.92,  2.09,
+>>    4.67, 2.94,  0.75,  0.11, 3.56, 1.63,  0.8,   1.54,  5.06, NA,    5.41,
+>>    6.18, 3.75,  3.12, 17.43, 3.18, 0.85, 14.54, 14.34, 21.92, 4.91,
+>>    1.52, 0.38,  0.43,  0.47, 0.56, 6.4,  12.4,   3.98,  0.57, 1.84, 12.06,
+>>    0.45, 8.16,  0.02,  0,    0.05, 0.52,  0.11,  0.48,  1.5,  3.29,  2.58,
+>>    2.07, 6.06,  1.46,  1.06, 3.82, 1.09,  2.86,  3.47,  2.22, 1.89, NA,
+>>    3.48, 6.38,  3.58,  1.83, 2.8,  8.28,  7.15,  4.77,  4.93, 0,     0.11,
+>>    1.99, 2.01,  2.3,   1.24, 1.33, 2, 1.01), PID = c("HIPS004", "HIPS004",
+>>    "HIPS005", "HIPS005", "HIPS005", "HIPS006", "HIPS006", "HIPS008",
+>>    "HIPS010", "HIPS024", "HIPS024", "HIPS024", "HIPS025", "HIPS028",
+>>    "HIPS028", "HIPS030", "HIPS030", "HIPS030", "HIPS035", "HIPS035",
+>>    "HIPS035", "HIPS036", "HIPS036", "HIPS037", "HIPS044", "HIPS047",
+>>    "HIPS047", "HIPS056", "HIPS056", "HIPS057", "HIPS057", "HIPS057",
+>>    "HIPS058", "HIPS059", "HIPS059", "HIPS061", "HIPS062", "HIPS062",
+>>    "HIPS062", "HIPS064", "HIPS074", "HIPS079", "HIPS084", "HIPS089",
+>>    "HIPS090", "HIPS090", "HIPS090", "HIPS091", "HIPS091", "HIPS092",
+>>    "HIPS092", "HIPS092", "HIPS001", "HIPS001", "HIPS001", "HIPS004",
+>>    "HIPS004", "HIPS004", "HIPS005", "HIPS005", "HIPS005", "HIPS006",
+>>    "HIPS006", "HIPS008", "HIPS022", "HIPS024", "HIPS028", "HIPS030",
+>>    "HIPS035", "HIPS036", "HIPS036", "HIPS039", "HIPS044", "HIPS047",
+>>    "HIPS051", "HIPS056", "HIPS058", "HIPS058", "HIPS059", "HIPS059",
+>>    "HIPS062", "HIPS062", "HIPS062", "HIPS069", "HIPS069", "HIPS071",
+>>    "HIPS074", "HIPS079", "HIPS084", "HIPS084", "HIPS085", "HIPS089",
+>>    "HIPS090", "HIPS091", "HIPS091", "HIPS091", "HIPS092", "HIPS092",
+>>    "HIPS093"), StepHeight =  c(0.005, 0.008, 0.072, 0.003, 0.014,
+>>    0.01,  0.027, 0.074, 0.128, 0.048, 0.036, 0.024, 0.021, 0.026,
+>>    0.03,  0.004, 0.006, 0.006, 0.011, 0.006, 0.053, 0.028, 0.073,
+>>    0.041, 0.005, 0.007, 0.013, 0.012, 0.021, 0.053, 0.013, 0.071,
+>>    0.012, 0.016, 0.023, 0.024, 0.011, 0.019, 0.014, 0.022, 0.011,
+>>    0.129, 0.03,  0.012, 0.062, 0.145, 0.077, 0.028, 0.006, 0.019,
+>>    0.008, 0.006, 0.034, 0.109, 0.09,  0.005, 0.016, 0.005, 0.257,
+>>    0.011, 0.205, 0.01,  0.017, 0.039, 0.01,  0.016, 0.043, 0.004,
+>>    0.008, 0.04,  0.068, 0.006, 0.008, 0.005, 0.097, 0.015, 0.016,
+>>    0.01,  0.021, 0.008, 0.01,  0.006, 0.016, 0.021, 0.012, 0.009,
+>>    0.032, 0.055, 0.006, 0.066, 0.018, 0.01,  0.018, 0.017, 0.015,
+>>    0.01,  0.017, 0.02,  0.022)), class = "data.frame", row.names = c(4L,
+>>     5L,   6L,    7L,   8L,  10L,  12L,  14L,  19L,  29L,  30L,  31L, 33L, 41L,
+>>     43L,  44L,  45L,  46L,  47L,  48L,  51L,  52L,  53L,  58L,  62L, 65L, 67L,
+>>     70L,  72L,  74L,  75L,  77L,  79L,  82L,  83L,  86L,  88L,  89L, 90L, 93L,
+>>    109L, 114L, 117L, 129L, 131L, 132L, 133L, 134L, 135L, 136L, 137L,
+>>    138L, 142L, 143L, 144L, 145L, 146L, 147L, 148L, 149L, 150L, 151L,
+>>    152L, 155L, 165L, 167L, 172L, 173L, 174L, 176L, 178L, 179L, 185L,
+>>    186L, 188L, 192L, 193L, 195L, 197L, 199L, 202L, 203L, 204L, 214L,
+>>    216L, 221L, 225L, 234L, 236L, 237L, 238L, 250L, 252L, 255L, 256L,
+>>    257L, 258L, 260L, 261L))
+>>
+>> datashort
+>>
+>> # This does not work:
+>> fitgee <- gee(HipFlex ~ StepHeight,data=datashort,id=PID,corstr="exchangeable",na.action=na.omit)
+>> summary(fitgee)
+>>
+>> # This works.
+>> fitlm <- lm(HipFlex ~ StepHeight,data=datashort)
+>> summary(fitlm)
+>>
+>>
+>> John David Sorkin M.D., Ph.D.
+>> Professor of Medicine, University of Maryland School of Medicine;
+>>
+>> Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+>>
+>> PI Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+>>
+>> Senior Statistician University of Maryland Center for Vascular Research;
+>>
+>> Division of Gerontology and Paliative Care,
+>> 10 North Greene Street
+>> GRECC (BT/18/GR)
+>> Baltimore, MD 21201-1524
+>> Cell phone 443-418-5382
+>>
+>>
+>> 	[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Wed Oct 25 23:37:57 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Wed, 25 Oct 2023 14:37:57 -0700
+Subject: [R] Create a call but evaluate only some elements
+In-Reply-To: <CAPVJd2XS8EJs8wMJpgu_k7fWyOQGWMA2Xr3Hu=1kbHatKbNc-Q@mail.gmail.com>
+References: <CAPVJd2XmZL_FjOpYfiZ2skGW2uzUM7+ZwWcf1+CMpiLwuyUeDQ@mail.gmail.com>
+ <CADNULg_bpLo2VyGPW+hkswpTDPJUvvDpEhXWnKVKoFzLtZ-h3g@mail.gmail.com>
+ <CAPVJd2XS8EJs8wMJpgu_k7fWyOQGWMA2Xr3Hu=1kbHatKbNc-Q@mail.gmail.com>
+Message-ID: <CAGxFJbRAOTta2TA=M+o4Eewsm-hmqFmLsysoY3mRz40k=dicqQ@mail.gmail.com>
+
+As you seem to have a need for this sort of capability (e.g. bquote),
+see Section 6: "Computing on the Language" in the R Language
+Definition manual. Actually, if you are interested in a concise
+(albeit dense) overview of the R Language, you might consider going
+through the whole manual.
+
+Cheers,
+Bert
+
+On Wed, Oct 25, 2023 at 3:57?AM Shu Fai Cheung <shufai.cheung at gmail.com> wrote:
+>
+> Dear Iris,
+>
+> Many many thanks! This is exactly what I need! I have never heard
+> about bquote(). This function will also be useful to me on other
+> occasions.
+>
+> I still have a lot to learn about the R language ...
+>
+> Regards,
+> Shu Fai
+>
+>
+> On Wed, Oct 25, 2023 at 5:24?PM Iris Simmons <ikwsimmo at gmail.com> wrote:
+> >
+> > You can try either of these:
+> >
+> > expr <- bquote(lm(.(as.formula(mod)), dat))
+> > lm_out5 <- eval(expr)
+> >
+> > expr <- call("lm", as.formula(mod), as.symbol("dat"))
+> > lm_out6 <- eval(expr)
+> >
+> > but bquote is usually easier and good enough.
+> >
+> > On Wed, Oct 25, 2023, 05:10 Shu Fai Cheung <shufai.cheung at gmail.com> wrote:
+> >>
+> >> Hi All,
+> >>
+> >> I have a problem that may have a simple solution, but I am not
+> >> familiar with creating calls manually.
+> >>
+> >> This is example calling lm()
+> >>
+> >> ``` r
+> >> set.seed(1234)
+> >> n <- 10
+> >> dat <- data.frame(x1 = rnorm(n),
+> >>                   x2 = rnorm(n),
+> >>                   y = rnorm(n))
+> >>
+> >> lm_out <- lm(y ~ x1 + x2, dat)
+> >> lm_out
+> >> #>
+> >> #> Call:
+> >> #> lm(formula = y ~ x1 + x2, data = dat)
+> >> #>
+> >> #> Coefficients:
+> >> #> (Intercept)           x1           x2
+> >> #>     -0.5755      -0.4151      -0.2411
+> >> lm_out$call
+> >> #> lm(formula = y ~ x1 + x2, data = dat)
+> >> ```
+> >>
+> >> The call is stored, "lm(formula = y ~ x1 + x2, data = dat)", and names
+> >> are not evaluated.
+> >>
+> >> I want to create a similar call, but only one of the elements is from a string.
+> >>
+> >> ```r
+> >> mod <- "y ~ x1 + x2"
+> >> ```
+> >>
+> >> This is what I tried but failed:
+> >>
+> >> ```r
+> >> lm_out2 <- do.call("lm",
+> >>                    list(formula = as.formula(mod),
+> >>                         data = dat))
+> >> lm_out2
+> >> #>
+> >> #> Call:
+> >> #> lm(formula = y ~ x1 + x2, data = structure(list(x1 = c(-1.20706574938542,
+> >> #> 0.27742924211066, 1.08444117668306, -2.34569770262935, 0.42912468881105,
+> >> #> 0.506055892157574, -0.574739960134649, -0.546631855784187,
+> >> -0.564451999093283,
+> >> #> -0.890037829044104), x2 = c(-0.477192699753547, -0.998386444859704,
+> >> #> -0.77625389463799, 0.0644588172762693, 0.959494058970771, -0.110285494390774,
+> >> #> -0.511009505806642, -0.911195416629811, -0.83717168026894, 2.41583517848934
+> >> #> ), y = c(0.134088220152031, -0.490685896690943, -0.440547872353227,
+> >> #> 0.459589441005854, -0.693720246937475, -1.44820491038647, 0.574755720900728,
+> >> #> -1.02365572296388, -0.0151383003641817, -0.935948601168394)), class
+> >> = "data.frame", row.names = c(NA,
+> >> #> -10L)))
+> >> #>
+> >> #> Coefficients:
+> >> #> (Intercept)           x1           x2
+> >> #>     -0.5755      -0.4151      -0.2411
+> >> ```
+> >>
+> >> It does not have the formula, "as a formula": y ~ x1 + x2.
+> >> However, the name "dat" is evaluated. Therefore, the call stored does
+> >> not have the name 'dat', but has the evaluated content.
+> >>
+> >> The following fits the same model. However, the call stores the name,
+> >> 'mod', not the evaluated result, y ~ x1 + x2.
+> >>
+> >> ```r
+> >> lm_out3 <- lm(mod, data = dat)
+> >> lm_out3
+> >> #>
+> >> #> Call:
+> >> #> lm(formula = mod, data = dat)
+> >> #>
+> >> #> Coefficients:
+> >> #> (Intercept)           x1           x2
+> >> #>     -0.5755      -0.4151      -0.2411
+> >> ```
+> >>
+> >> The following method works. However, I have to do a dummy call,
+> >> extract the stored call, and set formula to the result of
+> >> as.formula(mod):
+> >>
+> >> ```r
+> >> lm_out3 <- lm(mod, data = dat)
+> >> lm_out3
+> >> #>
+> >> #> Call:
+> >> #> lm(formula = mod, data = dat)
+> >> #>
+> >> #> Coefficients:
+> >> #> (Intercept)           x1           x2
+> >> #>     -0.5755      -0.4151      -0.2411
+> >>
+> >> call1 <- lm_out3$call
+> >> call1$formula <- as.formula(mod)
+> >> lm_out4 <- eval(call1)
+> >> lm_out4
+> >> #>
+> >> #> Call:
+> >> #> lm(formula = y ~ x1 + x2, data = dat)
+> >> #>
+> >> #> Coefficients:
+> >> #> (Intercept)           x1           x2
+> >> #>     -0.5755      -0.4151      -0.2411
+> >> ```
+> >>
+> >> Is it possible to create the call directly, with only 'mod' evaluated,
+> >> and other arguments, e.g., 'dat', not evaluated?
+> >>
+> >> Regards,
+> >> Shu Fai
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
