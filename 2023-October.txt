@@ -18480,3 +18480,188 @@ On Thu, Oct 26, 2023 at 1:56?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
 > > and provide commented, minimal, self-contained, reproducible code.
 
 
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Fri Oct 27 09:36:14 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Fri, 27 Oct 2023 08:36:14 +0100
+Subject: [R] Plot for 10 years extrapolation
+In-Reply-To: <1501493895.4453884.1698344597473@mail.yahoo.com>
+References: <1501493895.4453884.1698344597473.ref@mail.yahoo.com>
+ <1501493895.4453884.1698344597473@mail.yahoo.com>
+Message-ID: <71fb1f81-a19e-4479-be87-8ff941daf448@sapo.pt>
+
+?s 19:23 de 26/10/2023, varin sacha via R-help escreveu:
+> Dear R-Experts,
+> 
+> Here below my R code working but I don't know how to complete/finish my R code to get the final plot with the extrapolation for the10 more years.
+> 
+> Indeed, I try to extrapolate my data with a linear fit over the next 10 years. So I create a date sequence for the next 10 years and store as a dataframe to make the prediction possible.
+> Now, I am trying to get the plot with the actual data (from year 2004 to 2018) and with the 10 more years extrapolation.
+> 
+> Thanks for your help.
+> 
+> ####################################################
+> date <-as.Date(c("2018-12-31", "2017-12-31", "2016-12-31", "2015-12-31", "2014-12-31", "2013-12-31", "2012-12-31", "2011-12-31", "2010-12-31", "2009-12-31", "2008-12-31", "2007-12-31", "2006-12-31", "2005-12-31", "2004-12-31"))
+>   
+> value <-c(15348, 13136, 11733, 10737, 15674, 11098, 13721, 13209, 11099, 10087, 14987, 11098, 13421, 9023, 12098)
+>   
+> model <- lm(value~date)
+>   
+> plot(value~date ,col="grey",pch=20,cex=1.5,main="Plot")
+> abline(model,col="darkorange",lwd=2)
+>   
+> dfuture <- data.frame(date=seq(as.Date("2019-12-31"), by="1 year", length.out=10))
+>   
+> predict(model,dfuture,interval="prediction")
+> ########################################################
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Here is a way with base R graphics. Explained in the code comments.
+
+
+
+####################################################
+date <-as.Date(c("2018-12-31", "2017-12-31", "2016-12-31",
+                  "2015-12-31", "2014-12-31", "2013-12-31",
+                  "2012-12-31", "2011-12-31", "2010-12-31",
+                  "2009-12-31", "2008-12-31", "2007-12-31",
+                  "2006-12-31", "2005-12-31", "2004-12-31"))
+
+value <-c(15348, 13136, 11733, 10737, 15674, 11098, 13721, 13209,
+           11099, 10087, 14987, 11098, 13421, 9023, 12098)
+
+model <- lm(value ~ date)
+
+dfuture <- data.frame(date = seq(as.Date("2019-12-31"), by="1 year", 
+length.out=10))
+
+########################################################
+
+predfuture <- predict(model, dfuture, interval="prediction")
+dfuture <- cbind(dfuture, predfuture)
+
+# start the plot with the required x and y limits
+xlim <- range(c(date, dfuture$date))
+ylim <- range(c(value, dfuture$fit))
+
+plot(value ~ date, col="grey", pch=20, cex=1.5, main="Plot"
+      , xlim = xlim, ylim = ylim)
+
+# abline extends the fitted line past the x value (date)
+# limit making the next ten years line ugly and not even
+# completely overplotting the abline drawn line
+abline(model, col="darkorange", lwd=2)
+lines(fit ~ date, dfuture
+       # , lty = "dashed"
+       , lwd=2
+       , col = "black")
+
+# if lines() is used for both the interpolated and extrapolated
+# values you will have a gap between both fitted and predicted lines
+# but it is closer to what you want
+
+# get the fitted values first (interpolated values)
+ypred <- predict(model)
+
+plot(value ~ date, col="grey", pch=20, cex=1.5, main="Plot"
+      , xlim = xlim, ylim = ylim)
+
+# plot the interpolated values
+lines(ypred ~ date, col="darkorange", lwd = 2)
+# and now the extrapolated values
+# I use normal orange to make the difference more obvious
+lines(fit ~ date, dfuture, lty = "dashed", lwd=2, col = "orange")
+
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From J@I@F@||en@chm|d @end|ng |rom t||burgun|ver@|ty@edu  Fri Oct 27 09:41:06 2023
+From: J@I@F@||en@chm|d @end|ng |rom t||burgun|ver@|ty@edu (Jan Failenschmid)
+Date: Fri, 27 Oct 2023 07:41:06 +0000
+Subject: [R] Inquiry about bandwidth rescaling in Ksmooth
+In-Reply-To: <CAGxFJbTBosL7N=s3iEpBgfb4ZOf_zQ_90W-FVVrkE7SssLin0g@mail.gmail.com>
+References: <AS4P195MB1503E870871C02D29EE9C1E0C5DDA@AS4P195MB1503.EURP195.PROD.OUTLOOK.COM>
+ <CAGxFJbTBosL7N=s3iEpBgfb4ZOf_zQ_90W-FVVrkE7SssLin0g@mail.gmail.com>
+Message-ID: <AS4P195MB15034C9BE51411F313594C1CC5DCA@AS4P195MB1503.EURP195.PROD.OUTLOOK.COM>
+
+Dear Bert,
+
+Thank you very much for your quick reply.
+I have tested this, and it indeed appears to be the source of the discrepancy I observed.
+My apologies for overlooking this in the documentation and thank you for clarifying.
+
+Cheers,
+
+Jan
+________________________________
+From: Bert Gunter <bgunter.4567 at gmail.com>
+Sent: Thursday, 26 October 2023 20:19
+To: Jan Failenschmid <J.I.Failenschmid at tilburguniversity.edu>
+Cc: r-help at r-project.org <r-help at r-project.org>
+Subject: Re: [R] Inquiry about bandwidth rescaling in Ksmooth
+
+Apologies in advance if my comments don't help, in which case, no need
+to respond,  but I noted in ?ksmooth:
+
+"bandwidth
+the bandwidth. The kernels are scaled so that their quartiles (viewed
+as probability densities) are at ? 0.25*bandwidth." So, could this be
+a source of the discrepancies you cited?
+
+Given that ?ksmooth explicitly says:
+
+"Note:
+This function was implemented for compatibility with S, although it is
+nowhere near as slow as the S function. Better kernel smoothers are
+available in other packages such as KernSmooth."
+
+One wonder why you bother with it at all? (That was rhetorical -- do
+not answer).
+
+Cheers,
+Bert
+
+On Thu, Oct 26, 2023 at 11:06?AM Jan Failenschmid via R-help
+<r-help at r-project.org> wrote:
+>
+> Dear Sir, Madam, or to whom this may concern,
+>
+> my name is Jan Failenschmid and I am a Ph.D. student at Tilburg University.
+> For my project I have been looking into different types of kernel regression estimators and corresponding R functions.
+> While comparing different functions I noticed that stats::ksmooth returned different estimates for the same bandwidth
+> as other kernel regression estimators that should be equivalent (i.e. the local polynomial estimators KernSmooth::locpoly and
+> locpol::locpol with degree 0). However, when optimizing the bandwidth of ksmooth separately using the same loss function, I find comparable estimates to the other two estimators for a (larger) different bandwidth. To confirm this, I wrote my own Nadaraya-Watson kernel regression estimator, which is consistent with the two local polynomial estimators and shows the same discordance with ksmooth.
+>
+> This led me to the suspicion that the bandwidth that is passed to kmooth is rescaled or transformed within the function. Unfortunately, I was not able to confirm this with either the code of the function or the documentation. It would be of great help to me if you could clarify this for me.
+>
+> Thank you very much for your time and help in advance.
+>
+> Kind regards,
+>
+> Jan Failenschmid
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
