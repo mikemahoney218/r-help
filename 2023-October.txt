@@ -22761,3 +22761,364 @@ there for at least 20 years!
 Duncan Murdoch
 
 
+From @|gbert @end|ng |rom w|w|@hu-ber||n@de  Mon Oct 30 11:28:10 2023
+From: @|gbert @end|ng |rom w|w|@hu-ber||n@de (Sigbert Klinke)
+Date: Mon, 30 Oct 2023 11:28:10 +0100
+Subject: [R] Dynamically create a (convenience) function in a package
+Message-ID: <cf2fd21a-c42e-495f-9b13-b291210cb05c@wiwi.hu-berlin.de>
+
+Hi,
+
+n a package, I have a data object with attributes, and I want to 
+dynamically create a convenience function to access those attributes. 
+This way, instead of using attr(x, "number"), I would like to use number(x).
+
+
+
+Because I don't know in advance which attributes the data object may 
+have, I've used the following algorithm:
+
+x <- structure(pi, number=exp(1))
+
+a <- attributes(x)
+
+for (n in names(a)) {
+
+   if (!exists(n, mode="function")) {
+
+     f <- eval(parse(text=sprintf("function(x) { attr(x, '%s') } ", n))) 
+
+
+     assign(n, f, envir=.GlobalEnv)
+
+   }
+
+}
+
+number(x)
+
+However, I believe modifying the global environment with this is not 
+allowed by CRAN for a package. Is there a way to implement such 
+functionality?
+
+Thanks Sigbert
+
+-- 
+https://hu.berlin/sk
+https://www.stat.de/faqs
+https://hu.berlin/mmstat
+https://hu.berlin/mmstat-ar
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Mon Oct 30 11:37:04 2023
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Mon, 30 Oct 2023 06:37:04 -0400
+Subject: [R] Dynamically create a (convenience) function in a package
+In-Reply-To: <cf2fd21a-c42e-495f-9b13-b291210cb05c@wiwi.hu-berlin.de>
+References: <cf2fd21a-c42e-495f-9b13-b291210cb05c@wiwi.hu-berlin.de>
+Message-ID: <CADNULg8Q4S37Pk=s+sJ7Tj2kwrpK1-CGb+Yog15-XGRs_0GTmw@mail.gmail.com>
+
+If you don't know the name of the attributes in advance, how can you know
+the function name to be able to call it? This seems like a very flawed
+approach.
+
+Also, I would discourage the use of eval(parse(text = )), it's almost
+always not the right way to do what you want to do. In your case,
+
+eval(bquote(function(x) attr(x, .(n))))
+
+would be better.
+
+
+On Mon, Oct 30, 2023, 06:28 Sigbert Klinke <sigbert at wiwi.hu-berlin.de>
+wrote:
+
+> Hi,
+>
+> n a package, I have a data object with attributes, and I want to
+> dynamically create a convenience function to access those attributes.
+> This way, instead of using attr(x, "number"), I would like to use
+> number(x).
+>
+>
+>
+> Because I don't know in advance which attributes the data object may
+> have, I've used the following algorithm:
+>
+> x <- structure(pi, number=exp(1))
+>
+> a <- attributes(x)
+>
+> for (n in names(a)) {
+>
+>    if (!exists(n, mode="function")) {
+>
+>      f <- eval(parse(text=sprintf("function(x) { attr(x, '%s') } ", n)))
+>
+>
+>      assign(n, f, envir=.GlobalEnv)
+>
+>    }
+>
+> }
+>
+> number(x)
+>
+> However, I believe modifying the global environment with this is not
+> allowed by CRAN for a package. Is there a way to implement such
+> functionality?
+>
+> Thanks Sigbert
+>
+> --
+> https://hu.berlin/sk
+> https://www.stat.de/faqs
+> https://hu.berlin/mmstat
+> https://hu.berlin/mmstat-ar
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Mon Oct 30 12:06:53 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Mon, 30 Oct 2023 12:06:53 +0100
+Subject: [R] The argument 'eps.Pvalue' of `printCoefmat()`
+In-Reply-To: <e91ed654-7f37-42d5-833f-4e3998cc97e6@gmail.com>
+References: <CAPVJd2XFhXE=q0mCFh585tu_iNCyN2XCJTC2=_HNQqUWWr=1dA@mail.gmail.com>
+ <e91ed654-7f37-42d5-833f-4e3998cc97e6@gmail.com>
+Message-ID: <25919.36429.414491.514172@stat.math.ethz.ch>
+
+>>>>> Duncan Murdoch 
+>>>>>     on Sun, 29 Oct 2023 04:45:19 -0400 writes:
+
+    > On 29/10/2023 3:48 a.m., Shu Fai Cheung wrote:
+    >> Hi all,
+    >> 
+    >> Just a minor issue that I am not sure whether this is
+    >> considered a "bug." It is about the help page.
+    >> 
+    >> In the help page of printCoefmat(), for the argument
+    >> 'eps.Pvalue', the description is as below:
+    >> 
+    >> number, ..
+    >> 
+    >> I have to read the source to figure out that this
+    >> argument is to be used by format.pval().
+    >> 
+    >> Maybe the description of 'eps.Pvalue' can be revised to
+    >> refer users to the help page of format.pval()?
+
+    > That looks like an oversight by the author of the help
+    > page.  It's been there for at least 20 years!
+
+    > Duncan Murdoch
+
+indeed "!"  -- my fault.
+
+Note that at the R sprint 2023,  printCoefmat() has been one of
+the small topics
+     https://contributor.r-project.org/r-project-sprint-2023/projects/tweak-printCoefmat/
+
+on which we hoped to make progress -- also prompted by your (Shu
+Fai) good question, on this list,
+  https://stat.ethz.ch/pipermail/r-help/2023-July/477688.html
+
+on how to improve the details of the  `zap.ind` setting.
+
+Whereas the R sprint project lead to some investigations, but
+unfortunately did not yet lead to improve the code generally
+... even though we *did* try some changes, but IIRC they all had
+their flaws and hence were not good enough to warrant a change
+of code.
+
+So, for now, we should at least change that part of the help
+page -- finally!
+
+Martin
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Mon Oct 30 14:26:50 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Mon, 30 Oct 2023 14:26:50 +0100
+Subject: [R] Dynamically create a (convenience) function in a package
+In-Reply-To: <CADNULg8Q4S37Pk=s+sJ7Tj2kwrpK1-CGb+Yog15-XGRs_0GTmw@mail.gmail.com>
+References: <cf2fd21a-c42e-495f-9b13-b291210cb05c@wiwi.hu-berlin.de>
+ <CADNULg8Q4S37Pk=s+sJ7Tj2kwrpK1-CGb+Yog15-XGRs_0GTmw@mail.gmail.com>
+Message-ID: <25919.44826.700790.883776@stat.math.ethz.ch>
+
+>>>>> Iris Simmons 
+>>>>>     on Mon, 30 Oct 2023 06:37:04 -0400 writes:
+
+    > If you don't know the name of the attributes in advance,
+    > how can you know the function name to be able to call it?
+    > This seems like a very flawed approach.
+
+    > Also, I would discourage the use of eval(parse(text = )),
+    > it's almost always not the right way to do what you want
+    > to do. In your case,
+
+    > eval(bquote(function(x) attr(x, .(n))))
+
+    > would be better.
+
+Indeed!  Thank you, Iris!
+
+... as an old timer, I'd like to raise
+
+  R> fortunes::fortune("eval(parse")
+
+  Personally I have never regretted trying not to underestimate my own future
+  stupidity.
+     -- Greg Snow (explaining why eval(parse(...)) is often suboptimal, answering
+	a question triggered by the infamous fortune(106))
+	R-help (January 2007)
+
+  R> fortunes::fortune(106)
+
+  If the answer is parse() you should usually rethink the question.
+     -- Thomas Lumley
+	R-help (February 2005)
+
+  R> 
+
+
+Best, Martin
+
+
+
+    > On Mon, Oct 30, 2023, 06:28 Sigbert Klinke
+    > <sigbert at wiwi.hu-berlin.de> wrote:
+
+    >> Hi,
+    >> 
+    >> n a package, I have a data object with attributes, and I
+    >> want to dynamically create a convenience function to
+    >> access those attributes.  This way, instead of using
+    >> attr(x, "number"), I would like to use number(x).
+    >> 
+    >> 
+    >> 
+    >> Because I don't know in advance which attributes the data
+    >> object may have, I've used the following algorithm:
+    >> 
+    >> x <- structure(pi, number=exp(1))
+    >> 
+    >> a <- attributes(x)
+    >> 
+    >> for (n in names(a)) {
+    >> 
+    >> if (!exists(n, mode="function")) {
+    >> 
+    >> f <- eval(parse(text=sprintf("function(x) { attr(x, '%s')
+    >> } ", n)))
+    >> 
+    >> 
+    >> assign(n, f, envir=.GlobalEnv)
+    >> 
+    >> }
+    >> 
+    >> }
+    >> 
+    >> number(x)
+    >> 
+    >> However, I believe modifying the global environment with
+    >> this is not allowed by CRAN for a package. Is there a way
+    >> to implement such functionality?
+    >> 
+    >> Thanks Sigbert
+    >> 
+    >> --
+    >> https://hu.berlin/sk https://www.stat.de/faqs
+    >> https://hu.berlin/mmstat https://hu.berlin/mmstat-ar
+    >> 
+    >> ______________________________________________
+    >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and
+    >> more, see https://stat.ethz.ch/mailman/listinfo/r-help
+    >> PLEASE do read the posting guide
+    >> http://www.R-project.org/posting-guide.html and provide
+    >> commented, minimal, self-contained, reproducible code.
+    >> 
+
+    > 	[[alternative HTML version deleted]]
+
+    > ______________________________________________
+    > R-help at r-project.org mailing list -- To UNSUBSCRIBE and
+    > more, see https://stat.ethz.ch/mailman/listinfo/r-help
+    > PLEASE do read the posting guide
+    > http://www.R-project.org/posting-guide.html and provide
+    > commented, minimal, self-contained, reproducible code.
+
+
+From kev|n @end|ng |rom zembower@org  Mon Oct 30 21:55:17 2023
+From: kev|n @end|ng |rom zembower@org (=?UTF-8?Q?Kevin_Zembower?=)
+Date: Mon, 30 Oct 2023 20:55:17 +0000
+Subject: [R] Missing shapes in legend with scale_shape_manual
+References: <de74fe9fd8084414f37aaaa88e9bbad89ce9c0f8.camel@zembower.org>
+Message-ID: <0100018b825e8f7f-646d2539-f8b5-4e1a-afc3-5d29f961967f-000000@email.amazonses.com>
+
+Hello,
+
+I'm trying to plot a graph of blood glucose versus date. I also record
+conditions, such as missing the previous night's medications, and
+missing exercise on the previous day. My data looks like:
+
+> b2[68:74,]
+# A tibble: 7 ? 5
+  Date       Time      bg missed_meds no_exercise
+  <date>     <time> <dbl> <lgl>       <lgl>      
+1 2023-10-17 08:50    128 TRUE        FALSE      
+2 2023-10-16 06:58    144 FALSE       FALSE      
+3 2023-10-15 09:17    137 FALSE       TRUE       
+4 2023-10-14 09:04    115 FALSE       FALSE      
+5 2023-10-13 08:44    136 FALSE       TRUE       
+6 2023-10-12 08:55    122 FALSE       TRUE       
+7 2023-10-11 07:55    150 TRUE        TRUE       
+> 
+
+This gets me most of the way to what I want:
+
+ggplot(data = b2, aes(x = Date, y = bg)) +
+    geom_line() +
+    geom_point(data = filter(b2, missed_meds),
+               shape = 20,
+               size = 3) +
+    geom_point(data = filter(b2, no_exercise),
+               shape = 4,
+               size = 3) +
+    geom_point(aes(x = Date, y = bg, shape = missed_meds),
+               alpha = 0) + #Invisible point layer for shape mapping
+    scale_y_continuous(name = "Blood glucose (mg/dL)",
+                       breaks = seq(100, 230, by = 20)
+                       ) +
+    geom_hline(yintercept = 130) +
+    scale_shape_manual(name = "Conditions",
+                       labels = c("Missed meds",
+                                  "Missed exercise"),
+                       values = c(20, 4),
+                       ## size = 3
+                       )
+
+However, the legend just prints an empty square in front of the labels.
+What I want is a filled circle (shape 20) in front of "Missed meds" and
+a filled circle (shape 4) in front of "Missed exercise."
+
+My questions are:
+ 1. How can I fix my plot to show the shapes in the legend?
+ 2. Can my overall plotting method be improved? Would you do it this
+way?
+
+Thanks so much for your advice and guidance.
+
+-Kevin
+
+
+
+
