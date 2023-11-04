@@ -226,3 +226,668 @@ David
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From pd@|gd @end|ng |rom gm@||@com  Thu Nov  2 08:28:19 2023
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Thu, 2 Nov 2023 08:28:19 +0100
+Subject: [R] weights vs. offset (negative binomial regression)
+In-Reply-To: <acfecb0b-b3b1-4074-ae8a-ccfc27ce3346@gmail.com>
+References: <CAPFqpxHHhbkVhiJTV8GKMmsRNgbjogHrXrb8d3sZmJm22B53Cw@mail.gmail.com>
+ <322cd6d4-3223-4cbe-b958-e8fd8f38f9cb@gmail.com>
+ <CAPFqpxHp09pQoF+hfhMYPt-Kv-=ahtbKF==uQ7iNn6708x5yoA@mail.gmail.com>
+ <acfecb0b-b3b1-4074-ae8a-ccfc27ce3346@gmail.com>
+Message-ID: <3372ED8B-9C57-44D5-8C7E-EA13CDF8670D@gmail.com>
+
+I think it is more clear-cut than so, at least if the Poisson situation is something to go by. 
+
+There, you can do either of these and get equivalent results
+
+> fit.lung <- glm(cases ~ age + city,  offset=log(pop), 
++                 family=poisson, data=lungcancer)
+> fit.lung2 <- glm(cases/pop ~ age + city,  weights=pop, 
++                 family=poisson, data=lungcancer)
+There were 12 warnings (use warnings() to see them)
+
+(Except for the warnings about non-integer responses, which have annoyed some epidemiologists trying to work with non-log link fuctions.)
+
+The point is that you need to convert to rates on the LHS and then compensate for the fact that this has a smaller variance when the population is larger. Counts on the LHS combined with weights wouldn't be right. So I would expect that the weighted version of the OP's code should model Catch/Effort, although I'm not quite sure how glm.nb reacts to non-integer responses.
+
+-pd
+
+
+> On 31 Oct 2023, at 17:59 , Ben Bolker <bbolker at gmail.com> wrote:
+> 
+>  [Please keep r-help in the cc: list]
+> 
+>  I don't quite know how to interpret the difference between specifying effort as an offset vs. as weights; I would have to spend more time thinking about it/working through it than I have available at the moment.
+> 
+>   I don't know that specifying effort as weights is *wrong*, but I don't know that it's right or what it is doing: if I were the reviewer of a paper (for example) I would require you to explain what the difference is and convince me that it was appropriate. (Furthermore, "I want to do it this way because it gives me significant effects" is automatically suspicious.)
+> 
+>  This would be a good question for CrossValidated (https://stats.stackexchange.com), you could try posting it there (I would be interested in the answer!)
+> 
+>  cheers
+>    Ben Bolker
+> 
+> 
+> On 2023-10-30 8:19 p.m., ??? wrote:
+>> Dear Mr. Bolker,
+>> Thank you for the fast response.
+>> I also know that a poisson (or negative binomial ) regression of glm is  generally modelled using an offset variable.
+>> In this case, when a weights term instead of the offset is used, this gave me significant coefficients of covariance.
+>> I understand that the weights function for exponential family distributions in glm affects the variance of response variable.
+>> I was just wondering whether my first model is a completely wrong model and the use of offset variable is valid in the case that
+>> response variable is  not proportional to offset variable such as my dataset.
+>> Sincerely,
+>> Joon-Taek
+>> 2023? 10? 29? (?) ?? 3:25, Ben Bolker <bbolker at gmail.com <mailto:bbolker at gmail.com>>?? ??:
+>>        Using an offset of log(Effort) as in your second model is the more
+>>    standard way to approach this problem; it corresponds to assuming that
+>>    catch is strictly proportional to effort. Adding log(Effort) as a
+>>    covariate (as illustrated below) tests whether a power-law model (catch
+>>    propto (Effort)^(b+1), b!=0) is a better description of the data.  (In
+>>    this case it is not, although the confidence intervals on b are very
+>>    wide, indicating that we have very little information -- this is not
+>>    surprising since the proportional range of effort is very small
+>>    (246-258) in this data set.
+>>        In general you should *not* check overdispersion of the raw data
+>>    (i.e., the *marginal distribution* of the data, you should check
+>>    overdispersion of a fitted (e.g. Poisson) model, as below.
+>>        cheers
+>>         Ben Bolker
+>>    edata <- data.frame(Catch, Effort, xx1, xx2, xx3)
+>>    ## graphical exploration
+>>    library(ggplot2); theme_set(theme_bw())
+>>    library(tidyr)
+>>    edata_long <- edata |> pivot_longer(names_to="var", cols =-c("Catch",
+>>    "Effort"))
+>>    ggplot(edata_long, aes(value, Catch)) +
+>>          geom_point(alpha = 0.2, aes(size = Effort)) +
+>>          facet_wrap(~var, scale="free_x") +
+>>          geom_smooth(method = "glm", method.args = list(family =
+>>    "quasipoisson"))
+>>    #
+>>    library(MASS)
+>>    g1 <- glm.nb(Catch~xx1+xx2+xx3+offset(log(Effort)), data=edata)
+>>    g2 <- update(g1, . ~ . + log(Effort))
+>>    g0 <- glm(Catch~xx1+xx2+xx3+offset(log(Effort)), data=edata,
+>>                family = poisson)
+>>    performance::check_overdispersion(g0)
+>>    summary(g1)
+>>    summary(g2)
+>>    options(digits = 3)
+>>    confint(g2)
+>>    summary(g1)
+>>    On 2023-10-28 3:30 a.m., ??? wrote:
+>>     > Colleagues,
+>>     >
+>>     >
+>>     >
+>>     > I have a dataset that includes five variables.
+>>     >
+>>     > - Catch: the catch number counted in some species (ind.)
+>>     >
+>>     > - Effort: fishing effort (the number of fishing vessels)
+>>     >
+>>     > - xx1, xx2, xx3: some environmental factors
+>>     >
+>>     > As an overdispersion test on the ?Catch? variable, I modeled with
+>>    negative
+>>     > binomial distribution using a GLM. The ?Effort? variable showed a
+>>    gradually
+>>     > decreasing trend during the study period. I was able to get the
+>>    results I
+>>     > wanted when considered ?Effort? function as a weights function in the
+>>     > negative binomial regression as follows:
+>>     >
+>>     >
+>>     >
+>>     > library(qcc)
+>>     >
+>>     >
+>>    Catch=c(25,2,7,6,75,5,1,4,66,15,9,25,40,8,7,4,36,11,1,14,141,9,74,38,126,3)
+>>     >
+>>     >
+>>    Effort=c(258,258,258,258,258,258,258,254,252,252,252,252,252,252,252,252,252,252,252,248,246,246,246,246,246,246)
+>>     >
+>>     >
+>>    xx1=c(0.8,0.5,1.2,0.5,1.1,1.1,1.0,0.6,0.9,0.5,1.2,0.6,1.2,0.7,1.0,0.6,1.6,0.7,0.8,0.6,1.7,0.9,1.1,0.5,1.4,0.5)
+>>     >
+>>     >
+>>    xx2=c(1.7,1.6,2.7,2.6,1.5,1.5,2.8,2.5,1.7,1.9,2.2,2.4,1.6,1.4,3.0,2.4,1.4,1.5,2.2,2.3,1.7,1.7,1.9,1.9,1.4,1.4)
+>>     >
+>>     >
+>>    xx3=c(188,40,2,10,210,102,117,14,141,28,48,15,220,115,10,14,320,20,3,10,400,150,145,160,460,66)
+>>     >
+>>     > #
+>>     >
+>>     > edata <- data.frame(Catch, Effort, xx1, xx2, xx3)
+>>     >
+>>     > #
+>>     >
+>>     > qcc.overdispersion.test(edata$Catch, type="poisson")
+>>     >
+>>     > #
+>>     >
+>>     > summary(glm.nb(Catch~xx1+xx2+xx3, weights=Effort, data=edata))
+>>     >
+>>     > summary(glm.nb(Catch~xx1+xx2+xx3+offset(log(Effort)), data=edata))
+>>     >
+>>     >
+>>     >
+>>     > I am not sure the application of the weights function to the negative
+>>     > binomial regression is correct. Also I wonder if there is a
+>>    better way
+>>     > doing this. Can anyone help?
+>>     >
+>>     >       [[alternative HTML version deleted]]
+>>     >
+>>     > ______________________________________________
+>>     > R-help at r-project.org <mailto:R-help at r-project.org> mailing list
+>>    -- To UNSUBSCRIBE and more, see
+>>     > https://stat.ethz.ch/mailman/listinfo/r-help
+>>    <https://stat.ethz.ch/mailman/listinfo/r-help>
+>>     > PLEASE do read the posting guide
+>>    http://www.R-project.org/posting-guide.html
+>>    <http://www.R-project.org/posting-guide.html>
+>>     > and provide commented, minimal, self-contained, reproducible code.
+>>    ______________________________________________
+>>    R-help at r-project.org <mailto:R-help at r-project.org> mailing list --
+>>    To UNSUBSCRIBE and more, see
+>>    https://stat.ethz.ch/mailman/listinfo/r-help
+>>    <https://stat.ethz.ch/mailman/listinfo/r-help>
+>>    PLEASE do read the posting guide
+>>    http://www.R-project.org/posting-guide.html
+>>    <http://www.R-project.org/posting-guide.html>
+>>    and provide commented, minimal, self-contained, reproducible code.
+>> 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Thu Nov  2 12:27:12 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Thu, 2 Nov 2023 14:27:12 +0300
+Subject: [R] Bug in print for data frames?
+In-Reply-To: <a52edbd7-3291-4c99-b42e-5ff9aeaefdc9@app.fastmail.com>
+References: <a52edbd7-3291-4c99-b42e-5ff9aeaefdc9@app.fastmail.com>
+Message-ID: <20231102142712.16321aed@arachnoid>
+
+? Wed, 25 Oct 2023 09:18:26 +0300
+"Christian Asseburg" <rhelp at moin.fi> ?????:
+
+> > str(x)  
+> 'data.frame':   1 obs. of  3 variables:
+>  $ A: num 1
+>  $ B: num 1
+>  $ C:'data.frame':      1 obs. of  1 variable:
+>   ..$ A: num 1
+> 
+> Why does the print(x) not show "C" as the name of the third element?
+
+Interesting problem.
+
+print.data.frame() calls format.data.frame() to prepare its argument
+for printing, which in turn calls as.data.frame.list() to reconstruct a
+data.frame from the formatted arguments, which in turn uses
+data.frame() to actually construct the object.
+
+data.frame() is able to return combined column names, but only if the
+inner data.frame has more than one column:
+
+names(data.frame(A = 1:3, B = data.frame(C = 4:6, D = 7:9)))
+# [1] "A"   "B.C" "B.D"
+names(data.frame(A = 1:3, B = data.frame(C = 4:6)))
+# [1] "A" "C"
+
+This matches the behaviour documented in ?data.frame:
+
+>> For a named or unnamed matrix/list/data frame argument that contains
+>> a single column, the column name in the result is the column name in
+>> the argument.
+
+Still, changing the presentational code like print.data.frame() or
+format.data.frame() could be safe. I've tried writing a patch for
+format.data.frame(), but it looks clumsy and breaks regression tests
+(that do actually check capture.output()):
+
+--- src/library/base/R/format.R (revision 85459)
++++ src/library/base/R/format.R (working copy)
+@@ -243,8 +243,16 @@
+     if(!nc) return(x) # 0 columns: evade problems, notably for nrow() > 0
+     nr <- .row_names_info(x, 2L)
+     rval <- vector("list", nc)
+-    for(i in seq_len(nc))
++    for(i in seq_len(nc)) {
+        rval[[i]] <- format(x[[i]], ..., justify = justify)
++       # avoid data.frame(foo = data.frame(bar = ...)) overwriting
++       # the single column name
++       if (
++           identical(ncol(rval[[i]]), 1L) &&
++           !is.null(colnames(rval[[i]])) &&
++           colnames(rval[[i]]) != ''
++       ) colnames(rval[[i]]) <- paste(names(x)[[i]], colnames(rval[[i]]), sep = '.')
++    }
+     lens <- vapply(rval, NROW, 1)
+     if(any(lens != nr)) { # corrupt data frame, must have at least one column
+        warning("corrupt data frame: columns will be truncated or
+        padded with NAs")
+
+Is it worth changing the behaviour of {print,format}.data.frame() (and
+fixing the regression tests to accept the new behaviour), or would that
+break too much?
+
+-- 
+Best regards,
+Ivan
+
+
+From ro@||n@ump @end|ng |rom gm@||@com  Fri Nov  3 00:23:49 2023
+From: ro@||n@ump @end|ng |rom gm@||@com (roslinazairimah zakaria)
+Date: Fri, 3 Nov 2023 07:23:49 +0800
+Subject: [R] Sum data according to date in sequence
+Message-ID: <CANTvJZL-jS=mWPWSJXqWVvxZfEVcvHPNhqQu4O9eEQj7ru8qRw@mail.gmail.com>
+
+Dear all,
+
+I have this set of data. I would like to sum the EnergykWh according date
+sequences.
+
+> head(dt1,20)                   StationName      date  time EnergykWh
+1  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 12:09  4.680496
+2  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 19:50  6.272414
+3  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 20:22  1.032782
+4  PALO ALTO CA / CAMBRIDGE #1 1/15/2016  8:25 11.004884
+5  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 14:23 10.096824
+6  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 18:17  6.658797
+7  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 21:46  4.808874
+8  PALO ALTO CA / CAMBRIDGE #1 1/16/2016 10:19  1.469384
+9  PALO ALTO CA / CAMBRIDGE #1 1/16/2016 12:12  2.996239
+10 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 14:12  0.303222
+11 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 16:22  4.988339
+12 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 19:16  8.131804
+13 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 19:19  0.117156
+14 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 20:24  3.285669
+15 PALO ALTO CA / CAMBRIDGE #1 1/17/2016  9:54  1.175608
+16 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 12:16  3.677487
+17 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 13:53  1.068393
+18 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 19:03  8.820755
+19 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 22:00  8.138583
+20 PALO ALTO CA / CAMBRIDGE #1 1/18/2016  8:58  9.057500
+
+I have tried this:
+library(dplyr)
+sums <- dt1 %>%
+  group_by(date) %>%
+  summarise(EnergykWh = sum(EnergykWh))
+
+head(sums,20)
+
+The date is not by daily sequence but by year sequence.
+
+> head(sums,20)# A tibble: 20 ? 2
+   date      EnergykWh
+   <chr>         <dbl> 1 1/1/2017     25.3   2 1/1/2018     61.0   3
+1/1/2019      0.627 4 1/1/2020     10.7   5 1/10/2017    69.4   6
+1/10/2018    54.5   7 1/10/2019    49.1   8 1/10/2020    45.9   9
+1/11/2017    73.9  10 1/11/2018    53.3  11 1/11/2019    93.5  12
+1/11/2020    66.7  13 1/12/2017    78.6  14 1/12/2018    42.2  15
+1/12/2019    22.7  16 1/12/2020    80.9  17 1/13/2017    85.6  18
+1/13/2018    46.4  19 1/13/2019    40.0  20 1/13/2020   121.
+
+
+
+Thank you very much for any help given.
+
+
+-- 
+*Roslinazairimah Zakaria*
+*Tel: +609-5492370; Fax. No.+609-5492766*
+
+*Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+roslinaump at gmail.com <roslinaump at gmail.com>*
+Faculty of Industrial Sciences & Technology
+University Malaysia Pahang
+Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+
+	[[alternative HTML version deleted]]
+
+
+From cry@n @end|ng |rom b|ngh@mton@edu  Fri Nov  3 01:08:40 2023
+From: cry@n @end|ng |rom b|ngh@mton@edu (Christopher W. Ryan)
+Date: Thu, 2 Nov 2023 20:08:40 -0400
+Subject: [R] Sum data according to date in sequence
+In-Reply-To: <CANTvJZL-jS=mWPWSJXqWVvxZfEVcvHPNhqQu4O9eEQj7ru8qRw@mail.gmail.com>
+References: <CANTvJZL-jS=mWPWSJXqWVvxZfEVcvHPNhqQu4O9eEQj7ru8qRw@mail.gmail.com>
+Message-ID: <38d92f12-49cb-752e-83c2-12db9fe41bc7@binghamton.edu>
+
+date appears to be a character variable, and R is treating it as such.
+
+str(dt1)
+
+might give you some insight.  Or the dplyr equivalent
+
+glimpse(dt1)
+
+I think R did what you asked, but if you want to be able to order
+records by date, in temporal order, you need to tell R that it is a date:
+
+library(dplyr)
+sums <- dt1 %>%
+    mutate(realDate = as.Date(date, format = "%m/%d/%Y") %>%
+    group_by(realDate) %>%
+    summarise(EnergykWh = sum(EnergykWh))
+
+
+--Chris Ryan
+
+
+roslinazairimah zakaria wrote:
+> Dear all,
+> 
+> I have this set of data. I would like to sum the EnergykWh according date
+> sequences.
+> 
+>> head(dt1,20)                   StationName      date  time EnergykWh
+> 1  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 12:09  4.680496
+> 2  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 19:50  6.272414
+> 3  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 20:22  1.032782
+> 4  PALO ALTO CA / CAMBRIDGE #1 1/15/2016  8:25 11.004884
+> 5  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 14:23 10.096824
+> 6  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 18:17  6.658797
+> 7  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 21:46  4.808874
+> 8  PALO ALTO CA / CAMBRIDGE #1 1/16/2016 10:19  1.469384
+> 9  PALO ALTO CA / CAMBRIDGE #1 1/16/2016 12:12  2.996239
+> 10 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 14:12  0.303222
+> 11 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 16:22  4.988339
+> 12 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 19:16  8.131804
+> 13 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 19:19  0.117156
+> 14 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 20:24  3.285669
+> 15 PALO ALTO CA / CAMBRIDGE #1 1/17/2016  9:54  1.175608
+> 16 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 12:16  3.677487
+> 17 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 13:53  1.068393
+> 18 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 19:03  8.820755
+> 19 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 22:00  8.138583
+> 20 PALO ALTO CA / CAMBRIDGE #1 1/18/2016  8:58  9.057500
+> 
+> I have tried this:
+> library(dplyr)
+> sums <- dt1 %>%
+>   group_by(date) %>%
+>   summarise(EnergykWh = sum(EnergykWh))
+> 
+> head(sums,20)
+> 
+> The date is not by daily sequence but by year sequence.
+> 
+>> head(sums,20)# A tibble: 20 ? 2
+>    date      EnergykWh
+>    <chr>         <dbl> 1 1/1/2017     25.3   2 1/1/2018     61.0   3
+> 1/1/2019      0.627 4 1/1/2020     10.7   5 1/10/2017    69.4   6
+> 1/10/2018    54.5   7 1/10/2019    49.1   8 1/10/2020    45.9   9
+> 1/11/2017    73.9  10 1/11/2018    53.3  11 1/11/2019    93.5  12
+> 1/11/2020    66.7  13 1/12/2017    78.6  14 1/12/2018    42.2  15
+> 1/12/2019    22.7  16 1/12/2020    80.9  17 1/13/2017    85.6  18
+> 1/13/2018    46.4  19 1/13/2019    40.0  20 1/13/2020   121.
+> 
+> 
+> 
+> Thank you very much for any help given.
+> 
+>
+
+
+From jho|tm@n @end|ng |rom gm@||@com  Fri Nov  3 01:10:08 2023
+From: jho|tm@n @end|ng |rom gm@||@com (jim holtman)
+Date: Thu, 2 Nov 2023 17:10:08 -0700
+Subject: [R] Sum data according to date in sequence
+In-Reply-To: <CANTvJZL-jS=mWPWSJXqWVvxZfEVcvHPNhqQu4O9eEQj7ru8qRw@mail.gmail.com>
+References: <CANTvJZL-jS=mWPWSJXqWVvxZfEVcvHPNhqQu4O9eEQj7ru8qRw@mail.gmail.com>
+Message-ID: <CAAxdm-74kKpsFMG1qUJmNxV8hA2LyDyjCjyVwiKz3KqvuUQgNQ@mail.gmail.com>
+
+How about send a 'dput' of some sample data.  My guess is that your date is
+'character' and not 'Date'.
+
+Thanks
+
+Jim Holtman
+*Data Munger Guru*
+
+
+*What is the problem that you are trying to solve?Tell me what you want to
+do, not how you want to do it.*
+
+
+On Thu, Nov 2, 2023 at 4:24?PM roslinazairimah zakaria <roslinaump at gmail.com>
+wrote:
+
+> Dear all,
+>
+> I have this set of data. I would like to sum the EnergykWh according date
+> sequences.
+>
+> > head(dt1,20)                   StationName      date  time EnergykWh
+> 1  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 12:09  4.680496
+> 2  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 19:50  6.272414
+> 3  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 20:22  1.032782
+> 4  PALO ALTO CA / CAMBRIDGE #1 1/15/2016  8:25 11.004884
+> 5  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 14:23 10.096824
+> 6  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 18:17  6.658797
+> 7  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 21:46  4.808874
+> 8  PALO ALTO CA / CAMBRIDGE #1 1/16/2016 10:19  1.469384
+> 9  PALO ALTO CA / CAMBRIDGE #1 1/16/2016 12:12  2.996239
+> 10 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 14:12  0.303222
+> 11 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 16:22  4.988339
+> 12 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 19:16  8.131804
+> 13 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 19:19  0.117156
+> 14 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 20:24  3.285669
+> 15 PALO ALTO CA / CAMBRIDGE #1 1/17/2016  9:54  1.175608
+> 16 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 12:16  3.677487
+> 17 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 13:53  1.068393
+> 18 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 19:03  8.820755
+> 19 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 22:00  8.138583
+> 20 PALO ALTO CA / CAMBRIDGE #1 1/18/2016  8:58  9.057500
+>
+> I have tried this:
+> library(dplyr)
+> sums <- dt1 %>%
+>   group_by(date) %>%
+>   summarise(EnergykWh = sum(EnergykWh))
+>
+> head(sums,20)
+>
+> The date is not by daily sequence but by year sequence.
+>
+> > head(sums,20)# A tibble: 20 ? 2
+>    date      EnergykWh
+>    <chr>         <dbl> 1 1/1/2017     25.3   2 1/1/2018     61.0   3
+> 1/1/2019      0.627 4 1/1/2020     10.7   5 1/10/2017    69.4   6
+> 1/10/2018    54.5   7 1/10/2019    49.1   8 1/10/2020    45.9   9
+> 1/11/2017    73.9  10 1/11/2018    53.3  11 1/11/2019    93.5  12
+> 1/11/2020    66.7  13 1/12/2017    78.6  14 1/12/2018    42.2  15
+> 1/12/2019    22.7  16 1/12/2020    80.9  17 1/13/2017    85.6  18
+> 1/13/2018    46.4  19 1/13/2019    40.0  20 1/13/2020   121.
+>
+>
+>
+> Thank you very much for any help given.
+>
+>
+> --
+> *Roslinazairimah Zakaria*
+> *Tel: +609-5492370; Fax. No.+609-5492766*
+>
+> *Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+> roslinaump at gmail.com <roslinaump at gmail.com>*
+> Faculty of Industrial Sciences & Technology
+> University Malaysia Pahang
+> Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ro@||n@ump @end|ng |rom gm@||@com  Fri Nov  3 02:49:57 2023
+From: ro@||n@ump @end|ng |rom gm@||@com (roslinazairimah zakaria)
+Date: Fri, 3 Nov 2023 09:49:57 +0800
+Subject: [R] Sum data according to date in sequence
+In-Reply-To: <CAAxdm-74kKpsFMG1qUJmNxV8hA2LyDyjCjyVwiKz3KqvuUQgNQ@mail.gmail.com>
+References: <CANTvJZL-jS=mWPWSJXqWVvxZfEVcvHPNhqQu4O9eEQj7ru8qRw@mail.gmail.com>
+ <CAAxdm-74kKpsFMG1qUJmNxV8hA2LyDyjCjyVwiKz3KqvuUQgNQ@mail.gmail.com>
+Message-ID: <CANTvJZLZDkdT68sU0a-E35v_vAUtDvWWUcMV0x840XSM1KQDvA@mail.gmail.com>
+
+Hi all,
+
+This is the data:
+
+> dput(head(dt1,20))structure(list(StationName = c("PALO ALTO CA / CAMBRIDGE #1",
+"PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+"PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+"PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+"PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+"PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+"PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+"PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+"PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+"PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+"PALO ALTO CA / CAMBRIDGE #1"), date = c("1/14/2016", "1/14/2016",
+"1/14/2016", "1/15/2016", "1/15/2016", "1/15/2016", "1/15/2016",
+"1/16/2016", "1/16/2016", "1/16/2016", "1/16/2016", "1/16/2016",
+"1/16/2016", "1/16/2016", "1/17/2016", "1/17/2016", "1/17/2016",
+"1/17/2016", "1/17/2016", "1/18/2016"), time = c("12:09", "19:50",
+"20:22", "8:25", "14:23", "18:17", "21:46", "10:19", "12:12",
+"14:12", "16:22", "19:16", "19:19", "20:24", "9:54", "12:16",
+"13:53", "19:03", "22:00", "8:58"), EnergykWh = c(4.680496, 6.272414,
+1.032782, 11.004884, 10.096824, 6.658797, 4.808874, 1.469384,
+2.996239, 0.303222, 4.988339, 8.131804, 0.117156, 3.285669, 1.175608,
+3.677487, 1.068393, 8.820755, 8.138583, 9.0575)), row.names = c(NA,
+20L), class = "data.frame")
+
+
+I would like to sum EnergykW data by the date. E.g. all values for
+EnergykWh on 1/14/2016
+
+
+On Fri, Nov 3, 2023 at 8:10?AM jim holtman <jholtman at gmail.com> wrote:
+
+> How about send a 'dput' of some sample data.  My guess is that your date
+> is 'character' and not 'Date'.
+>
+> Thanks
+>
+> Jim Holtman
+> *Data Munger Guru*
+>
+>
+> *What is the problem that you are trying to solve?Tell me what you want to
+> do, not how you want to do it.*
+>
+>
+> On Thu, Nov 2, 2023 at 4:24?PM roslinazairimah zakaria <
+> roslinaump at gmail.com> wrote:
+>
+>> Dear all,
+>>
+>> I have this set of data. I would like to sum the EnergykWh according date
+>> sequences.
+>>
+>> > head(dt1,20)                   StationName      date  time EnergykWh
+>> 1  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 12:09  4.680496
+>> 2  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 19:50  6.272414
+>> 3  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 20:22  1.032782
+>> 4  PALO ALTO CA / CAMBRIDGE #1 1/15/2016  8:25 11.004884
+>> 5  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 14:23 10.096824
+>> 6  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 18:17  6.658797
+>> 7  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 21:46  4.808874
+>> 8  PALO ALTO CA / CAMBRIDGE #1 1/16/2016 10:19  1.469384
+>> 9  PALO ALTO CA / CAMBRIDGE #1 1/16/2016 12:12  2.996239
+>> 10 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 14:12  0.303222
+>> 11 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 16:22  4.988339
+>> 12 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 19:16  8.131804
+>> 13 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 19:19  0.117156
+>> 14 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 20:24  3.285669
+>> 15 PALO ALTO CA / CAMBRIDGE #1 1/17/2016  9:54  1.175608
+>> 16 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 12:16  3.677487
+>> 17 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 13:53  1.068393
+>> 18 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 19:03  8.820755
+>> 19 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 22:00  8.138583
+>> 20 PALO ALTO CA / CAMBRIDGE #1 1/18/2016  8:58  9.057500
+>>
+>> I have tried this:
+>> library(dplyr)
+>> sums <- dt1 %>%
+>>   group_by(date) %>%
+>>   summarise(EnergykWh = sum(EnergykWh))
+>>
+>> head(sums,20)
+>>
+>> The date is not by daily sequence but by year sequence.
+>>
+>> > head(sums,20)# A tibble: 20 ? 2
+>>    date      EnergykWh
+>>    <chr>         <dbl> 1 1/1/2017     25.3   2 1/1/2018     61.0   3
+>> 1/1/2019      0.627 4 1/1/2020     10.7   5 1/10/2017    69.4   6
+>> 1/10/2018    54.5   7 1/10/2019    49.1   8 1/10/2020    45.9   9
+>> 1/11/2017    73.9  10 1/11/2018    53.3  11 1/11/2019    93.5  12
+>> 1/11/2020    66.7  13 1/12/2017    78.6  14 1/12/2018    42.2  15
+>> 1/12/2019    22.7  16 1/12/2020    80.9  17 1/13/2017    85.6  18
+>> 1/13/2018    46.4  19 1/13/2019    40.0  20 1/13/2020   121.
+>>
+>>
+>>
+>> Thank you very much for any help given.
+>>
+>>
+>> --
+>> *Roslinazairimah Zakaria*
+>> *Tel: +609-5492370; Fax. No.+609-5492766*
+>>
+>> *Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+>> roslinaump at gmail.com <roslinaump at gmail.com>*
+>> Faculty of Industrial Sciences & Technology
+>> University Malaysia Pahang
+>> Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+-- 
+*Roslinazairimah Zakaria*
+*Tel: +609-5492370; Fax. No.+609-5492766*
+
+*Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+roslinaump at gmail.com <roslinaump at gmail.com>*
+Faculty of Industrial Sciences & Technology
+University Malaysia Pahang
+Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+
+	[[alternative HTML version deleted]]
+
+
