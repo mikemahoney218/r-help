@@ -2189,3 +2189,1126 @@ and provide commented, minimal, self-contained, reproducible code.
 	[[alternative HTML version deleted]]
 
 
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat Nov  4 06:08:03 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 4 Nov 2023 01:08:03 -0400
+Subject: [R] [EXTERNAL] RE: I need to create new variables based on two
+ numeric variables and one dichotomize conditional category variables.
+In-Reply-To: <LV3PR01MB867383C6F83525C671FE74E0DCA5A@LV3PR01MB8673.prod.exchangelabs.com>
+References: <mailman.370481.1.1699009201.56788.r-help@r-project.org>
+ <LV3PR01MB86736581F1E69742E545FD59DCA5A@LV3PR01MB8673.prod.exchangelabs.com>
+ <002d01da0e9a$5f1d2930$1d577b90$@gmail.com>
+ <LV3PR01MB867383C6F83525C671FE74E0DCA5A@LV3PR01MB8673.prod.exchangelabs.com>
+Message-ID: <019a01da0edc$e41c39e0$ac54ada0$@gmail.com>
+
+To be fair, Jordan, I think R has some optimizations so that the arguments
+in some cases are NOT evaluated until needed. So only one or the other
+choice ever gets evaluated for each row. My suggestion merely has
+typographic implications and some aspects of clarity and minor amounts of
+less memory and parsing needed. 
+ 
+But ifelse() is currently implemented somewhat too complexly for my taste.
+Just type "ifelse" at the prompt and you will see many lines of code that
+handle various scenarios.
+ 
+If you KNOW you have a certain situation such as a data.frame with multiple
+rows and are sure a simpler solution works, there may well be faster ways to
+do this. Obviously you could write a function that can be called once per
+line and returns the answer, or a vectorized version that returns a vector
+of 65 and 58 entries. Or you could add a few lines of code creating a
+vector, perhaps as a temporary new column that looks like:
+ 
+logic_male <- df$G == "male"
+ 
+age[logic_male] <- 65
+age(!logic_male] <- 58
+ 
+Then use the age column in a formula directly as it contains the part of the
+ifelse needed. You can then delete "age" whether stand-alone or as a column.
+ 
+What is more efficient depends on your data.
+ 
+Do note though that an advantage of using ifelse() is when you have nested
+conditions which cannot trivially be written out along the lines above, but
+I find that sometimes such nested expressions may be easier to read using
+other techniques such as the dplyr function case_when().
+Here is an example of code where some entries are NA or not categorized:
+ 
+library(tidyverse)
+WC <- 100
+TG <- 2
+Gender <- c("male", "female", "no comment", NA, "female")
+ 
+result <- TG * (WC -
+                  case_when(
+                    is.na(Gender) ~NA,
+                    Gender == "male" ~ 65,
+                    Gender == "female" ~ 58,
+                    .default  = NA
+                  ))
+ 
+The result for the above example is a result:
+ 
+> result
+[1] 70 84 NA NA 84
+ 
+ 
+If you later want to add categories such as "transgender" with a value of 61
+or have other numbers for groups like "Hispanic male", you can amend the
+instructions as long as you put your conditions in an order so that they are
+tried until one of them matches, or it takes the default. Yes, in a sense
+the above is doable using a deeply nested ifelse() but easier for me to read
+and write and evaluate. It may not be more efficient or may be as some of
+dplyr is compiled code.
+ 
+Please note some here prefer discussions about base-R functionality and some
+have qualms about the tidyverse for various reasons. I don't and find much
+of their functionality more easy to use.
+ 
+ 
+ 
+From: Jorgen Harmse <JHarmse at roku.com> 
+Sent: Friday, November 3, 2023 6:27 PM
+To: avi.e.gross at gmail.com; r-help at r-project.org; mkzaman.m at gmail.com
+Subject: Re: [EXTERNAL] RE: [R] I need to create new variables based on two
+numeric variables and one dichotomize conditional category variables.
+ 
+Yes, that will halve the number of multiplications.
+ 
+If you're looking for such optimisations then you can also consider
+ifelse(G=='male', 65L, 58L). That will definitely use less time & memory if
+WC is integer, but the trade-offs are more complicated if WC is floating
+point.
+ 
+Regards,
+Jorgen Harmse.
+
+
+ 
+From: avi.e.gross at gmail.com <mailto:avi.e.gross at gmail.com>
+<avi.e.gross at gmail.com <mailto:avi.e.gross at gmail.com> >
+Date: Friday, November 3, 2023 at 16:12
+To: Jorgen Harmse <JHarmse at roku.com <mailto:JHarmse at roku.com> >,
+r-help at r-project.org <mailto:r-help at r-project.org>  <r-help at r-project.org
+<mailto:r-help at r-project.org> >, mkzaman.m at gmail.com
+<mailto:mkzaman.m at gmail.com>  <mkzaman.m at gmail.com
+<mailto:mkzaman.m at gmail.com> >
+Subject: [EXTERNAL] RE: [R] I need to create new variables based on two
+numeric variables and one dichotomize conditional category variables.
+Just a minor point in the suggested solution:
+
+df$LAP <- with(df, ifelse(G=='male', (WC-65)*TG, (WC-58)*TG))
+
+since WC and TG are not conditional, would this be a slight improvement?
+
+df$LAP <- with(df, TG*(WC - ifelse(G=='male', 65, 58)))
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org
+<mailto:r-help-bounces at r-project.org> > On Behalf Of Jorgen Harmse via
+R-help
+Sent: Friday, November 3, 2023 11:56 AM
+To: r-help at r-project.org <mailto:r-help at r-project.org> ; mkzaman.m at gmail.com
+<mailto:mkzaman.m at gmail.com> 
+Subject: Re: [R] I need to create new variables based on two numeric
+variables and one dichotomize conditional category variables.
+
+df$LAP <- with(df, ifelse(G=='male', (WC-65)*TG, (WC-58)*TG))
+
+That will do both calculations and merge the two vectors appropriately. It
+will use extra memory, but it should be much faster than a 'for' loop.
+
+Regards,
+Jorgen Harmse.
+
+------------------------------
+
+Message: 8
+Date: Fri, 3 Nov 2023 11:10:49 +1030
+From: "Md. Kamruzzaman" <mkzaman.m at gmail.com <mailto:mkzaman.m at gmail.com> >
+To: r-help at r-project.org <mailto:r-help at r-project.org> 
+Subject: [R] I need to create new variables based on two numeric
+        variables and one dichotomize conditional category variables.
+Message-ID:
+        <CAGbxoeGjsxZKQ6qijEMq-X-5doqnQQS1jjPDDrGT6hH5xWqOKQ at mail.gmail.com
+<mailto:CAGbxoeGjsxZKQ6qijEMq-X-5doqnQQS1jjPDDrGT6hH5xWqOKQ at mail.gmail.com>
+>
+Content-Type: text/plain; charset="utf-8"
+
+Hello Everyone,
+I have three variables: Waist circumference (WC), serum triglyceride (TG)
+level and gender. Waist circumference and serum triglyceride is numeric and
+gender (male and female) is categorical. From these three variables, I want
+to calculate the "Lipid Accumulation Product (LAP) Index". The equation to
+calculate LAP is different for male and females. I am giving both equations
+below.
+
+LAP for male = (WC-65)*TG
+LAP for female = (WC-58)*TG
+
+My question is 'how can I calculate the LAP and create a single new column?
+
+Your cooperation will be highly appreciated.
+
+Thanks in advance.
+
+With Regards
+
+*--------------------------------*
+
+*Md Kamruzzaman*
+
+*PhD **Research Fellow (**Medicine**)*
+Discipline of Medicine and Centre of Research Excellence in Translating
+Nutritional Science to Good Health
+Adelaide Medical School | Faculty of Health and Medical Sciences
+The University of Adelaide
+Adelaide SA 5005
+
+        [[alternative HTML version deleted]]
+
+
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org <mailto:R-help at r-project.org>  mailing list -- To
+UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From @|e@@@ndro@pug||@| @end|ng |rom gm@||@com  Fri Nov  3 17:20:43 2023
+From: @|e@@@ndro@pug||@| @end|ng |rom gm@||@com (Alessandro Puglisi)
+Date: Fri, 3 Nov 2023 17:20:43 +0100
+Subject: [R] Adding columns to a tibble based on a value in a different
+ tibble
+Message-ID: <CA+MLcG12KWOwGeR_fPNbazHCNAktmvcgvJ8TKVQdB1xbJ5jsQw@mail.gmail.com>
+
+Hi everyone,
+
+I have a tibble with various ids and associated information.
+
+I need to add a new column to this tibble that retrieves a specific 'y'
+value from a different tibble that has some of the mentioned ids in the
+first column and a 'y' value in the second one. If the id, and so the 'y'
+value is found, it will be included; otherwise, 'NA' will be used.
+
+Could you please help me?
+
+Thanks,
+Alessandro
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Nov  4 15:35:18 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 4 Nov 2023 07:35:18 -0700
+Subject: [R] Adding columns to a tibble based on a value in a different
+ tibble
+In-Reply-To: <CA+MLcG12KWOwGeR_fPNbazHCNAktmvcgvJ8TKVQdB1xbJ5jsQw@mail.gmail.com>
+References: <CA+MLcG12KWOwGeR_fPNbazHCNAktmvcgvJ8TKVQdB1xbJ5jsQw@mail.gmail.com>
+Message-ID: <CAGxFJbT+X6Gj-KUjZUYcGmiGn71-YmOkguH=rg=PTaSXq-=wtQ@mail.gmail.com>
+
+I think a simple reproducible example ("reprex") may be necessary for you
+to get a useful reply. Questions with vague specifications such as yours
+often result in going round and round with attempts to clarify what you
+mean without a satisfactory answer. Clarification at the outset with a
+reprex may save you and others a lot of frustration.
+
+Cheers,
+Bert
+
+On Sat, Nov 4, 2023 at 1:41?AM Alessandro Puglisi <
+alessandro.puglisi at gmail.com> wrote:
+
+> Hi everyone,
+>
+> I have a tibble with various ids and associated information.
+>
+> I need to add a new column to this tibble that retrieves a specific 'y'
+> value from a different tibble that has some of the mentioned ids in the
+> first column and a 'y' value in the second one. If the id, and so the 'y'
+> value is found, it will be included; otherwise, 'NA' will be used.
+>
+> Could you please help me?
+>
+> Thanks,
+> Alessandro
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat Nov  4 16:25:13 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 4 Nov 2023 11:25:13 -0400
+Subject: [R] Adding columns to a tibble based on a value in a different
+ tibble
+In-Reply-To: <CAGxFJbT+X6Gj-KUjZUYcGmiGn71-YmOkguH=rg=PTaSXq-=wtQ@mail.gmail.com>
+References: <CA+MLcG12KWOwGeR_fPNbazHCNAktmvcgvJ8TKVQdB1xbJ5jsQw@mail.gmail.com>
+ <CAGxFJbT+X6Gj-KUjZUYcGmiGn71-YmOkguH=rg=PTaSXq-=wtQ@mail.gmail.com>
+Message-ID: <003e01da0f33$1b45f810$51d1e830$@gmail.com>
+
+Yes, Bert. At first glance I thought it was one of the merge/joins and then wondered at the wording that made it sound like the ids may not be one per column.
+
+IFF the need is the simpler case, it is a straightforward enough and common need. An example might make it clear enough so actual code can be shared as compared to talking about a first and second tibble.
+
+Here is one reference to consider:
+
+https://r4ds.hadley.nz/joins.html#:~:text=dplyr%20provides%20six%20join%20functions,is%20primarily%20determined%20by%20x%20.
+
+
+A left_join may be what works, and of course more basic R includes the merge() function:
+
+https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/merge
+
+If the column were to contain multiple ID, that changes things and a more complex approach could be needed.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Bert Gunter
+Sent: Saturday, November 4, 2023 10:35 AM
+To: Alessandro Puglisi <alessandro.puglisi at gmail.com>
+Cc: r-help at r-project.org
+Subject: Re: [R] Adding columns to a tibble based on a value in a different tibble
+
+I think a simple reproducible example ("reprex") may be necessary for you
+to get a useful reply. Questions with vague specifications such as yours
+often result in going round and round with attempts to clarify what you
+mean without a satisfactory answer. Clarification at the outset with a
+reprex may save you and others a lot of frustration.
+
+Cheers,
+Bert
+
+On Sat, Nov 4, 2023 at 1:41?AM Alessandro Puglisi <
+alessandro.puglisi at gmail.com> wrote:
+
+> Hi everyone,
+>
+> I have a tibble with various ids and associated information.
+>
+> I need to add a new column to this tibble that retrieves a specific 'y'
+> value from a different tibble that has some of the mentioned ids in the
+> first column and a 'y' value in the second one. If the id, and so the 'y'
+> value is found, it will be included; otherwise, 'NA' will be used.
+>
+> Could you please help me?
+>
+> Thanks,
+> Alessandro
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sat Nov  4 17:56:20 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sat, 4 Nov 2023 16:56:20 +0000
+Subject: [R] Sum data according to date in sequence
+In-Reply-To: <CANTvJZLZDkdT68sU0a-E35v_vAUtDvWWUcMV0x840XSM1KQDvA@mail.gmail.com>
+References: <CANTvJZL-jS=mWPWSJXqWVvxZfEVcvHPNhqQu4O9eEQj7ru8qRw@mail.gmail.com>
+ <CAAxdm-74kKpsFMG1qUJmNxV8hA2LyDyjCjyVwiKz3KqvuUQgNQ@mail.gmail.com>
+ <CANTvJZLZDkdT68sU0a-E35v_vAUtDvWWUcMV0x840XSM1KQDvA@mail.gmail.com>
+Message-ID: <a9c4f560-d376-4f65-bdeb-33e7e2e80484@sapo.pt>
+
+?s 01:49 de 03/11/2023, roslinazairimah zakaria escreveu:
+> Hi all,
+> 
+> This is the data:
+> 
+>> dput(head(dt1,20))structure(list(StationName = c("PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1"), date = c("1/14/2016", "1/14/2016",
+> "1/14/2016", "1/15/2016", "1/15/2016", "1/15/2016", "1/15/2016",
+> "1/16/2016", "1/16/2016", "1/16/2016", "1/16/2016", "1/16/2016",
+> "1/16/2016", "1/16/2016", "1/17/2016", "1/17/2016", "1/17/2016",
+> "1/17/2016", "1/17/2016", "1/18/2016"), time = c("12:09", "19:50",
+> "20:22", "8:25", "14:23", "18:17", "21:46", "10:19", "12:12",
+> "14:12", "16:22", "19:16", "19:19", "20:24", "9:54", "12:16",
+> "13:53", "19:03", "22:00", "8:58"), EnergykWh = c(4.680496, 6.272414,
+> 1.032782, 11.004884, 10.096824, 6.658797, 4.808874, 1.469384,
+> 2.996239, 0.303222, 4.988339, 8.131804, 0.117156, 3.285669, 1.175608,
+> 3.677487, 1.068393, 8.820755, 8.138583, 9.0575)), row.names = c(NA,
+> 20L), class = "data.frame")
+> 
+> 
+> I would like to sum EnergykW data by the date. E.g. all values for
+> EnergykWh on 1/14/2016
+> 
+> 
+> On Fri, Nov 3, 2023 at 8:10?AM jim holtman <jholtman at gmail.com> wrote:
+> 
+>> How about send a 'dput' of some sample data.  My guess is that your date
+>> is 'character' and not 'Date'.
+>>
+>> Thanks
+>>
+>> Jim Holtman
+>> *Data Munger Guru*
+>>
+>>
+>> *What is the problem that you are trying to solve?Tell me what you want to
+>> do, not how you want to do it.*
+>>
+>>
+>> On Thu, Nov 2, 2023 at 4:24?PM roslinazairimah zakaria <
+>> roslinaump at gmail.com> wrote:
+>>
+>>> Dear all,
+>>>
+>>> I have this set of data. I would like to sum the EnergykWh according date
+>>> sequences.
+>>>
+>>>> head(dt1,20)                   StationName      date  time EnergykWh
+>>> 1  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 12:09  4.680496
+>>> 2  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 19:50  6.272414
+>>> 3  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 20:22  1.032782
+>>> 4  PALO ALTO CA / CAMBRIDGE #1 1/15/2016  8:25 11.004884
+>>> 5  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 14:23 10.096824
+>>> 6  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 18:17  6.658797
+>>> 7  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 21:46  4.808874
+>>> 8  PALO ALTO CA / CAMBRIDGE #1 1/16/2016 10:19  1.469384
+>>> 9  PALO ALTO CA / CAMBRIDGE #1 1/16/2016 12:12  2.996239
+>>> 10 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 14:12  0.303222
+>>> 11 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 16:22  4.988339
+>>> 12 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 19:16  8.131804
+>>> 13 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 19:19  0.117156
+>>> 14 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 20:24  3.285669
+>>> 15 PALO ALTO CA / CAMBRIDGE #1 1/17/2016  9:54  1.175608
+>>> 16 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 12:16  3.677487
+>>> 17 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 13:53  1.068393
+>>> 18 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 19:03  8.820755
+>>> 19 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 22:00  8.138583
+>>> 20 PALO ALTO CA / CAMBRIDGE #1 1/18/2016  8:58  9.057500
+>>>
+>>> I have tried this:
+>>> library(dplyr)
+>>> sums <- dt1 %>%
+>>>    group_by(date) %>%
+>>>    summarise(EnergykWh = sum(EnergykWh))
+>>>
+>>> head(sums,20)
+>>>
+>>> The date is not by daily sequence but by year sequence.
+>>>
+>>>> head(sums,20)# A tibble: 20 ? 2
+>>>     date      EnergykWh
+>>>     <chr>         <dbl> 1 1/1/2017     25.3   2 1/1/2018     61.0   3
+>>> 1/1/2019      0.627 4 1/1/2020     10.7   5 1/10/2017    69.4   6
+>>> 1/10/2018    54.5   7 1/10/2019    49.1   8 1/10/2020    45.9   9
+>>> 1/11/2017    73.9  10 1/11/2018    53.3  11 1/11/2019    93.5  12
+>>> 1/11/2020    66.7  13 1/12/2017    78.6  14 1/12/2018    42.2  15
+>>> 1/12/2019    22.7  16 1/12/2020    80.9  17 1/13/2017    85.6  18
+>>> 1/13/2018    46.4  19 1/13/2019    40.0  20 1/13/2020   121.
+>>>
+>>>
+>>>
+>>> Thank you very much for any help given.
+>>>
+>>>
+>>> --
+>>> *Roslinazairimah Zakaria*
+>>> *Tel: +609-5492370; Fax. No.+609-5492766*
+>>>
+>>> *Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+>>> roslinaump at gmail.com <roslinaump at gmail.com>*
+>>> Faculty of Industrial Sciences & Technology
+>>> University Malaysia Pahang
+>>> Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+>>>
+>>>          [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+> 
+Hello,
+
+Here are two solutions.
+
+1. Base R
+
+Though I don't coerce the date column to class "Date", it seems to work.
+
+
+aggregate(EnergykWh ~ date, dt1, sum)
+#>        date EnergykWh
+#> 1 1/14/2016  11.98569
+#> 2 1/15/2016  32.56938
+#> 3 1/16/2016  21.29181
+#> 4 1/17/2016  22.88083
+#> 5 1/18/2016   9.05750
+
+
+2. Package dplyr.
+First column date is coerced from class "character" to class "Date".
+Then the grouped sums are computed.
+
+
+suppressPackageStartupMessages(
+   library(dplyr)
+)
+
+dt1 %>%
+   mutate(date = as.Date(date, "%m/%d/%Y")) %>%
+   summarise(EnergykWh = sum(EnergykWh), .by = date)
+#>         date EnergykWh
+#> 1 2016-01-14  11.98569
+#> 2 2016-01-15  32.56938
+#> 3 2016-01-16  21.29181
+#> 4 2016-01-17  22.88083
+#> 5 2016-01-18   9.05750
+
+
+As you can see, the results are the same.
+
+Also, this exact problem is one of the most asked on StackOverflow. 
+Maybe you could try searching there for a solution. My code above is 
+also exactly the code in [1], though I had already this answer written. 
+I only checked after :(.
+
+
+[1] 
+https://stackoverflow.com/questions/61548758/r-how-sum-values-by-group-by-date
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From mkz@m@n@m @end|ng |rom gm@||@com  Sat Nov  4 10:54:49 2023
+From: mkz@m@n@m @end|ng |rom gm@||@com (Md. Kamruzzaman)
+Date: Sat, 4 Nov 2023 20:24:49 +1030
+Subject: [R] 
+ I need to create new variables based on two numeric variables
+ and one dichotomize conditional category variables.
+In-Reply-To: <CAGxFJbS41wwYMDxRDE6s=WNEVchyAQv4uppMge2dFRdMnraCWQ@mail.gmail.com>
+References: <CAGbxoeGjsxZKQ6qijEMq-X-5doqnQQS1jjPDDrGT6hH5xWqOKQ@mail.gmail.com>
+ <CAGxFJbS41wwYMDxRDE6s=WNEVchyAQv4uppMge2dFRdMnraCWQ@mail.gmail.com>
+Message-ID: <CAGbxoeEin+pM0Z1_9v0cBV38PeV31POpHejTW-0NycYSHu0J0g@mail.gmail.com>
+
+Thanks Everyone,
+My variables are in a dataframe with multiple other variables.
+
+Thanks
+
+-------------------------
+
+*Md Kamruzzaman*
+
+
+On Sat, Nov 4, 2023 at 1:13?AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> Well, something like:
+>
+> LAP <- ifelse(gender =='male', (WC-65)*TG, (WC-58)*TG)
+>
+> The exact code depends on whether your variables are in a data frame or
+> list or whatever, which you failed to specify. If so, ?with  may be useful.
+>
+> Cheers,
+> Bert
+>
+>
+>
+> On Fri, Nov 3, 2023 at 3:43?AM Md. Kamruzzaman <mkzaman.m at gmail.com>
+> wrote:
+>
+>> Hello Everyone,
+>> I have three variables: Waist circumference (WC), serum triglyceride (TG)
+>> level and gender. Waist circumference and serum triglyceride is numeric
+>> and
+>> gender (male and female) is categorical. From these three variables, I
+>> want
+>> to calculate the "Lipid Accumulation Product (LAP) Index". The equation to
+>> calculate LAP is different for male and females. I am giving both
+>> equations
+>> below.
+>>
+>> LAP for male = (WC-65)*TG
+>> LAP for female = (WC-58)*TG
+>>
+>> My question is 'how can I calculate the LAP and create a single new
+>> column?
+>>
+>> Your cooperation will be highly appreciated.
+>>
+>> Thanks in advance.
+>>
+>> With Regards
+>>
+>> *--------------------------------*
+>>
+>> *Md Kamruzzaman*
+>>
+>> *PhD **Research Fellow (**Medicine**)*
+>> Discipline of Medicine and Centre of Research Excellence in Translating
+>> Nutritional Science to Good Health
+>> Adelaide Medical School | Faculty of Health and Medical Sciences
+>> The University of Adelaide
+>> Adelaide SA 5005
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat Nov  4 18:47:53 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 4 Nov 2023 13:47:53 -0400
+Subject: [R] Sum data according to date in sequence
+In-Reply-To: <a9c4f560-d376-4f65-bdeb-33e7e2e80484@sapo.pt>
+References: <CANTvJZL-jS=mWPWSJXqWVvxZfEVcvHPNhqQu4O9eEQj7ru8qRw@mail.gmail.com>
+ <CAAxdm-74kKpsFMG1qUJmNxV8hA2LyDyjCjyVwiKz3KqvuUQgNQ@mail.gmail.com>
+ <CANTvJZLZDkdT68sU0a-E35v_vAUtDvWWUcMV0x840XSM1KQDvA@mail.gmail.com>
+ <a9c4f560-d376-4f65-bdeb-33e7e2e80484@sapo.pt>
+Message-ID: <008501da0f47$09624220$1c26c660$@gmail.com>
+
+There may be a point to consider about the field containing dates in the request below. Yes, much code will "work" just fine if the column  are is seen as text as you can group by that too. The results will perhaps not be in the order by row that you expected but you can do your re-sorting perhaps even more efficiently after your summarise() either by converting the fewer remaining rows to a form of date or by transforming the text dates into an order of year/month/date that then sorts properly in forward or reverse order as needed. 
+
+Converting lots of rows to date is not a cheap process and grouping by that more complex date data structure may be harder. Heck, it may even make sense to use the text form of dates organized as a factor as the grouping becomes sort of pre-done.
+
+The above comments are not saying any other solutions offered are wrong but simply discussing whether, especially for larger data sets, there are ways that could be more efficient.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Rui Barradas
+Sent: Saturday, November 4, 2023 12:56 PM
+To: roslinazairimah zakaria <roslinaump at gmail.com>; jim holtman <jholtman at gmail.com>
+Cc: r-help mailing list <r-help at r-project.org>
+Subject: Re: [R] Sum data according to date in sequence
+
+?s 01:49 de 03/11/2023, roslinazairimah zakaria escreveu:
+> Hi all,
+> 
+> This is the data:
+> 
+>> dput(head(dt1,20))structure(list(StationName = c("PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> "PALO ALTO CA / CAMBRIDGE #1"), date = c("1/14/2016", "1/14/2016",
+> "1/14/2016", "1/15/2016", "1/15/2016", "1/15/2016", "1/15/2016",
+> "1/16/2016", "1/16/2016", "1/16/2016", "1/16/2016", "1/16/2016",
+> "1/16/2016", "1/16/2016", "1/17/2016", "1/17/2016", "1/17/2016",
+> "1/17/2016", "1/17/2016", "1/18/2016"), time = c("12:09", "19:50",
+> "20:22", "8:25", "14:23", "18:17", "21:46", "10:19", "12:12",
+> "14:12", "16:22", "19:16", "19:19", "20:24", "9:54", "12:16",
+> "13:53", "19:03", "22:00", "8:58"), EnergykWh = c(4.680496, 6.272414,
+> 1.032782, 11.004884, 10.096824, 6.658797, 4.808874, 1.469384,
+> 2.996239, 0.303222, 4.988339, 8.131804, 0.117156, 3.285669, 1.175608,
+> 3.677487, 1.068393, 8.820755, 8.138583, 9.0575)), row.names = c(NA,
+> 20L), class = "data.frame")
+> 
+> 
+> I would like to sum EnergykW data by the date. E.g. all values for
+> EnergykWh on 1/14/2016
+> 
+> 
+> On Fri, Nov 3, 2023 at 8:10?AM jim holtman <jholtman at gmail.com> wrote:
+> 
+>> How about send a 'dput' of some sample data.  My guess is that your date
+>> is 'character' and not 'Date'.
+>>
+>> Thanks
+>>
+>> Jim Holtman
+>> *Data Munger Guru*
+>>
+>>
+>> *What is the problem that you are trying to solve?Tell me what you want to
+>> do, not how you want to do it.*
+>>
+>>
+>> On Thu, Nov 2, 2023 at 4:24?PM roslinazairimah zakaria <
+>> roslinaump at gmail.com> wrote:
+>>
+>>> Dear all,
+>>>
+>>> I have this set of data. I would like to sum the EnergykWh according date
+>>> sequences.
+>>>
+>>>> head(dt1,20)                   StationName      date  time EnergykWh
+>>> 1  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 12:09  4.680496
+>>> 2  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 19:50  6.272414
+>>> 3  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 20:22  1.032782
+>>> 4  PALO ALTO CA / CAMBRIDGE #1 1/15/2016  8:25 11.004884
+>>> 5  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 14:23 10.096824
+>>> 6  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 18:17  6.658797
+>>> 7  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 21:46  4.808874
+>>> 8  PALO ALTO CA / CAMBRIDGE #1 1/16/2016 10:19  1.469384
+>>> 9  PALO ALTO CA / CAMBRIDGE #1 1/16/2016 12:12  2.996239
+>>> 10 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 14:12  0.303222
+>>> 11 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 16:22  4.988339
+>>> 12 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 19:16  8.131804
+>>> 13 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 19:19  0.117156
+>>> 14 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 20:24  3.285669
+>>> 15 PALO ALTO CA / CAMBRIDGE #1 1/17/2016  9:54  1.175608
+>>> 16 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 12:16  3.677487
+>>> 17 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 13:53  1.068393
+>>> 18 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 19:03  8.820755
+>>> 19 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 22:00  8.138583
+>>> 20 PALO ALTO CA / CAMBRIDGE #1 1/18/2016  8:58  9.057500
+>>>
+>>> I have tried this:
+>>> library(dplyr)
+>>> sums <- dt1 %>%
+>>>    group_by(date) %>%
+>>>    summarise(EnergykWh = sum(EnergykWh))
+>>>
+>>> head(sums,20)
+>>>
+>>> The date is not by daily sequence but by year sequence.
+>>>
+>>>> head(sums,20)# A tibble: 20 ? 2
+>>>     date      EnergykWh
+>>>     <chr>         <dbl> 1 1/1/2017     25.3   2 1/1/2018     61.0   3
+>>> 1/1/2019      0.627 4 1/1/2020     10.7   5 1/10/2017    69.4   6
+>>> 1/10/2018    54.5   7 1/10/2019    49.1   8 1/10/2020    45.9   9
+>>> 1/11/2017    73.9  10 1/11/2018    53.3  11 1/11/2019    93.5  12
+>>> 1/11/2020    66.7  13 1/12/2017    78.6  14 1/12/2018    42.2  15
+>>> 1/12/2019    22.7  16 1/12/2020    80.9  17 1/13/2017    85.6  18
+>>> 1/13/2018    46.4  19 1/13/2019    40.0  20 1/13/2020   121.
+>>>
+>>>
+>>>
+>>> Thank you very much for any help given.
+>>>
+>>>
+>>> --
+>>> *Roslinazairimah Zakaria*
+>>> *Tel: +609-5492370; Fax. No.+609-5492766*
+>>>
+>>> *Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+>>> roslinaump at gmail.com <roslinaump at gmail.com>*
+>>> Faculty of Industrial Sciences & Technology
+>>> University Malaysia Pahang
+>>> Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+>>>
+>>>          [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+> 
+Hello,
+
+Here are two solutions.
+
+1. Base R
+
+Though I don't coerce the date column to class "Date", it seems to work.
+
+
+aggregate(EnergykWh ~ date, dt1, sum)
+#>        date EnergykWh
+#> 1 1/14/2016  11.98569
+#> 2 1/15/2016  32.56938
+#> 3 1/16/2016  21.29181
+#> 4 1/17/2016  22.88083
+#> 5 1/18/2016   9.05750
+
+
+2. Package dplyr.
+First column date is coerced from class "character" to class "Date".
+Then the grouped sums are computed.
+
+
+suppressPackageStartupMessages(
+   library(dplyr)
+)
+
+dt1 %>%
+   mutate(date = as.Date(date, "%m/%d/%Y")) %>%
+   summarise(EnergykWh = sum(EnergykWh), .by = date)
+#>         date EnergykWh
+#> 1 2016-01-14  11.98569
+#> 2 2016-01-15  32.56938
+#> 3 2016-01-16  21.29181
+#> 4 2016-01-17  22.88083
+#> 5 2016-01-18   9.05750
+
+
+As you can see, the results are the same.
+
+Also, this exact problem is one of the most asked on StackOverflow. 
+Maybe you could try searching there for a solution. My code above is 
+also exactly the code in [1], though I had already this answer written. 
+I only checked after :(.
+
+
+[1] 
+https://stackoverflow.com/questions/61548758/r-how-sum-values-by-group-by-date
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From ro@||n@ump @end|ng |rom gm@||@com  Sun Nov  5 00:05:40 2023
+From: ro@||n@ump @end|ng |rom gm@||@com (roslinazairimah zakaria)
+Date: Sun, 5 Nov 2023 07:05:40 +0800
+Subject: [R] Sum data according to date in sequence
+In-Reply-To: <a9c4f560-d376-4f65-bdeb-33e7e2e80484@sapo.pt>
+References: <CANTvJZL-jS=mWPWSJXqWVvxZfEVcvHPNhqQu4O9eEQj7ru8qRw@mail.gmail.com>
+ <CAAxdm-74kKpsFMG1qUJmNxV8hA2LyDyjCjyVwiKz3KqvuUQgNQ@mail.gmail.com>
+ <CANTvJZLZDkdT68sU0a-E35v_vAUtDvWWUcMV0x840XSM1KQDvA@mail.gmail.com>
+ <a9c4f560-d376-4f65-bdeb-33e7e2e80484@sapo.pt>
+Message-ID: <CANTvJZJFRKNwJbyT0q_F8uBt1+AmS68s8wnrJsKz93isXnARYA@mail.gmail.com>
+
+Hi all,
+Thank you very much.
+I learn a lot from your suggested solution.
+
+
+
+On Sun, Nov 5, 2023 at 12:56?AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+
+> ?s 01:49 de 03/11/2023, roslinazairimah zakaria escreveu:
+> > Hi all,
+> >
+> > This is the data:
+> >
+> >> dput(head(dt1,20))structure(list(StationName = c("PALO ALTO CA /
+> CAMBRIDGE #1",
+> > "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> > "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> > "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> > "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> > "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> > "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> > "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> > "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> > "PALO ALTO CA / CAMBRIDGE #1", "PALO ALTO CA / CAMBRIDGE #1",
+> > "PALO ALTO CA / CAMBRIDGE #1"), date = c("1/14/2016", "1/14/2016",
+> > "1/14/2016", "1/15/2016", "1/15/2016", "1/15/2016", "1/15/2016",
+> > "1/16/2016", "1/16/2016", "1/16/2016", "1/16/2016", "1/16/2016",
+> > "1/16/2016", "1/16/2016", "1/17/2016", "1/17/2016", "1/17/2016",
+> > "1/17/2016", "1/17/2016", "1/18/2016"), time = c("12:09", "19:50",
+> > "20:22", "8:25", "14:23", "18:17", "21:46", "10:19", "12:12",
+> > "14:12", "16:22", "19:16", "19:19", "20:24", "9:54", "12:16",
+> > "13:53", "19:03", "22:00", "8:58"), EnergykWh = c(4.680496, 6.272414,
+> > 1.032782, 11.004884, 10.096824, 6.658797, 4.808874, 1.469384,
+> > 2.996239, 0.303222, 4.988339, 8.131804, 0.117156, 3.285669, 1.175608,
+> > 3.677487, 1.068393, 8.820755, 8.138583, 9.0575)), row.names = c(NA,
+> > 20L), class = "data.frame")
+> >
+> >
+> > I would like to sum EnergykW data by the date. E.g. all values for
+> > EnergykWh on 1/14/2016
+> >
+> >
+> > On Fri, Nov 3, 2023 at 8:10?AM jim holtman <jholtman at gmail.com> wrote:
+> >
+> >> How about send a 'dput' of some sample data.  My guess is that your date
+> >> is 'character' and not 'Date'.
+> >>
+> >> Thanks
+> >>
+> >> Jim Holtman
+> >> *Data Munger Guru*
+> >>
+> >>
+> >> *What is the problem that you are trying to solve?Tell me what you want
+> to
+> >> do, not how you want to do it.*
+> >>
+> >>
+> >> On Thu, Nov 2, 2023 at 4:24?PM roslinazairimah zakaria <
+> >> roslinaump at gmail.com> wrote:
+> >>
+> >>> Dear all,
+> >>>
+> >>> I have this set of data. I would like to sum the EnergykWh according
+> date
+> >>> sequences.
+> >>>
+> >>>> head(dt1,20)                   StationName      date  time EnergykWh
+> >>> 1  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 12:09  4.680496
+> >>> 2  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 19:50  6.272414
+> >>> 3  PALO ALTO CA / CAMBRIDGE #1 1/14/2016 20:22  1.032782
+> >>> 4  PALO ALTO CA / CAMBRIDGE #1 1/15/2016  8:25 11.004884
+> >>> 5  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 14:23 10.096824
+> >>> 6  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 18:17  6.658797
+> >>> 7  PALO ALTO CA / CAMBRIDGE #1 1/15/2016 21:46  4.808874
+> >>> 8  PALO ALTO CA / CAMBRIDGE #1 1/16/2016 10:19  1.469384
+> >>> 9  PALO ALTO CA / CAMBRIDGE #1 1/16/2016 12:12  2.996239
+> >>> 10 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 14:12  0.303222
+> >>> 11 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 16:22  4.988339
+> >>> 12 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 19:16  8.131804
+> >>> 13 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 19:19  0.117156
+> >>> 14 PALO ALTO CA / CAMBRIDGE #1 1/16/2016 20:24  3.285669
+> >>> 15 PALO ALTO CA / CAMBRIDGE #1 1/17/2016  9:54  1.175608
+> >>> 16 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 12:16  3.677487
+> >>> 17 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 13:53  1.068393
+> >>> 18 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 19:03  8.820755
+> >>> 19 PALO ALTO CA / CAMBRIDGE #1 1/17/2016 22:00  8.138583
+> >>> 20 PALO ALTO CA / CAMBRIDGE #1 1/18/2016  8:58  9.057500
+> >>>
+> >>> I have tried this:
+> >>> library(dplyr)
+> >>> sums <- dt1 %>%
+> >>>    group_by(date) %>%
+> >>>    summarise(EnergykWh = sum(EnergykWh))
+> >>>
+> >>> head(sums,20)
+> >>>
+> >>> The date is not by daily sequence but by year sequence.
+> >>>
+> >>>> head(sums,20)# A tibble: 20 ? 2
+> >>>     date      EnergykWh
+> >>>     <chr>         <dbl> 1 1/1/2017     25.3   2 1/1/2018     61.0   3
+> >>> 1/1/2019      0.627 4 1/1/2020     10.7   5 1/10/2017    69.4   6
+> >>> 1/10/2018    54.5   7 1/10/2019    49.1   8 1/10/2020    45.9   9
+> >>> 1/11/2017    73.9  10 1/11/2018    53.3  11 1/11/2019    93.5  12
+> >>> 1/11/2020    66.7  13 1/12/2017    78.6  14 1/12/2018    42.2  15
+> >>> 1/12/2019    22.7  16 1/12/2020    80.9  17 1/13/2017    85.6  18
+> >>> 1/13/2018    46.4  19 1/13/2019    40.0  20 1/13/2020   121.
+> >>>
+> >>>
+> >>>
+> >>> Thank you very much for any help given.
+> >>>
+> >>>
+> >>> --
+> >>> *Roslinazairimah Zakaria*
+> >>> *Tel: +609-5492370; Fax. No.+609-5492766*
+> >>>
+> >>> *Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+> >>> roslinaump at gmail.com <roslinaump at gmail.com>*
+> >>> Faculty of Industrial Sciences & Technology
+> >>> University Malaysia Pahang
+> >>> Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+> >>>
+> >>>          [[alternative HTML version deleted]]
+> >>>
+> >>> ______________________________________________
+> >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>> PLEASE do read the posting guide
+> >>> http://www.R-project.org/posting-guide.html
+> >>> and provide commented, minimal, self-contained, reproducible code.
+> >>>
+> >>
+> >
+> Hello,
+>
+> Here are two solutions.
+>
+> 1. Base R
+>
+> Though I don't coerce the date column to class "Date", it seems to work.
+>
+>
+> aggregate(EnergykWh ~ date, dt1, sum)
+> #>        date EnergykWh
+> #> 1 1/14/2016  11.98569
+> #> 2 1/15/2016  32.56938
+> #> 3 1/16/2016  21.29181
+> #> 4 1/17/2016  22.88083
+> #> 5 1/18/2016   9.05750
+>
+>
+> 2. Package dplyr.
+> First column date is coerced from class "character" to class "Date".
+> Then the grouped sums are computed.
+>
+>
+> suppressPackageStartupMessages(
+>    library(dplyr)
+> )
+>
+> dt1 %>%
+>    mutate(date = as.Date(date, "%m/%d/%Y")) %>%
+>    summarise(EnergykWh = sum(EnergykWh), .by = date)
+> #>         date EnergykWh
+> #> 1 2016-01-14  11.98569
+> #> 2 2016-01-15  32.56938
+> #> 3 2016-01-16  21.29181
+> #> 4 2016-01-17  22.88083
+> #> 5 2016-01-18   9.05750
+>
+>
+> As you can see, the results are the same.
+>
+> Also, this exact problem is one of the most asked on StackOverflow.
+> Maybe you could try searching there for a solution. My code above is
+> also exactly the code in [1], though I had already this answer written.
+> I only checked after :(.
+>
+>
+> [1]
+>
+> https://stackoverflow.com/questions/61548758/r-how-sum-values-by-group-by-date
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+>
+> --
+> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a
+> presen?a de v?rus.
+> www.avg.com
+>
+
+
+-- 
+*Roslinazairimah Zakaria*
+*Tel: +609-5492370; Fax. No.+609-5492766*
+
+*Email: roslinazairimah at ump.edu.my <roslinazairimah at ump.edu.my>;
+roslinaump at gmail.com <roslinaump at gmail.com>*
+Faculty of Industrial Sciences & Technology
+University Malaysia Pahang
+Lebuhraya Tun Razak, 26300 Gambang, Pahang, Malaysia
+
+	[[alternative HTML version deleted]]
+
+
+From po|c1410 @end|ng |rom gm@||@com  Sun Nov  5 00:14:05 2023
+From: po|c1410 @end|ng |rom gm@||@com (CALUM POLWART)
+Date: Sat, 4 Nov 2023 23:14:05 +0000
+Subject: [R] 
+ I need to create new variables based on two numeric variables
+ and one dichotomize conditional category variables.
+In-Reply-To: <002d01da0e9a$5f1d2930$1d577b90$@gmail.com>
+References: <mailman.370481.1.1699009201.56788.r-help@r-project.org>
+ <LV3PR01MB86736581F1E69742E545FD59DCA5A@LV3PR01MB8673.prod.exchangelabs.com>
+ <002d01da0e9a$5f1d2930$1d577b90$@gmail.com>
+Message-ID: <CA+etgPmfSeWLs2t4Grjz98ypc4XeiSOGUPCBqeB=NR2JBxK0pg@mail.gmail.com>
+
+I might have factored the gender.
+
+I'm not sure it would in any way be quicker.  But might be to some extent
+easier to develop variations of. And is sort of what factors should be
+doing...
+
+# make dummy data
+gender <- c("Male", "Female", "Male", "Female")
+WC <- c(70,60,75,65)
+TG <- c(0.9, 1.1, 1.2, 1.0)
+myDf <- data.frame( gender, WC, TG )
+
+# label a factor
+myDf$GF <- factor(myDf$gender, labels= c("Male"=65, "Female"=58))
+
+# do the maths
+myDf$LAP <- (myDf$WC - as.numeric(myDf$GF))* myDf$TG
+
+#show results
+head(myDf)
+
+gender WC  TG GF  LAP
+1   Male 70 0.9 58 61.2
+2 Female 60 1.1 65 64.9
+3   Male 75 1.2 58 87.6
+4 Female 65 1.0 65 64.0
+
+
+(Reality: I'd have probably used case_when in tidy to create a new numeric
+column)
+
+
+
+
+
+The equation to
+> calculate LAP is different for male and females. I am giving both equations
+> below.
+>
+> LAP for male = (WC-65)*TG
+> LAP for female = (WC-58)*TG
+>
+> My question is 'how can I calculate the LAP and create a single new column?
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
