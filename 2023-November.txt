@@ -4826,3 +4826,476 @@ to read and what to use? Thank you.
 Steven Yen
 
 
+From berw|n@tur|@ch @end|ng |rom gm@||@com  Tue Nov  7 05:10:08 2023
+From: berw|n@tur|@ch @end|ng |rom gm@||@com (Berwin A Turlach)
+Date: Tue, 7 Nov 2023 12:10:08 +0800
+Subject: [R] non-linear regression and root finding
+In-Reply-To: <7990e957-6f37-4d2c-9ff0-d586f30798c6@gvdnet.dk>
+References: <eb487c2a-4b9d-4000-af86-f99de576d106@gvdnet.dk>
+ <20231106211902.375d3b0a@Tarkus>
+ <7990e957-6f37-4d2c-9ff0-d586f30798c6@gvdnet.dk>
+Message-ID: <20231107121008.3dcc71e6@dep59159.uniwa.uwa.edu.au>
+
+G'day Troels,
+
+On Mon, 6 Nov 2023 20:43:10 +0100
+Troels Ring <tring at gvdnet.dk> wrote:
+
+> Thanks a lot! This was amazing. I'm not sure I see how the conditiion
+> pK1 < pK2 < pK3 is enforced? 
+
+One way of enforcing such constraints (well, in finite computer
+arithemtic only "<=" can be enforced) is to rewrite the parameters as:
+
+pK1 = exp(theta1)       ## only if pK1 > 0
+pK2 = pK1 + exp(theta2)
+pK3 = pk2 + exp(theta3)
+
+And then use your optimiser to optimise over theta1, theta2 and theta3.
+
+There might be better approaches depending on the specific problem.
+
+Cheers,
+
+	Berwin
+
+
+From tr|ng @end|ng |rom gvdnet@dk  Tue Nov  7 07:14:02 2023
+From: tr|ng @end|ng |rom gvdnet@dk (Troels Ring)
+Date: Tue, 7 Nov 2023 07:14:02 +0100
+Subject: [R] non-linear regression and root finding
+In-Reply-To: <20231107121008.3dcc71e6@dep59159.uniwa.uwa.edu.au>
+References: <eb487c2a-4b9d-4000-af86-f99de576d106@gvdnet.dk>
+ <20231106211902.375d3b0a@Tarkus>
+ <7990e957-6f37-4d2c-9ff0-d586f30798c6@gvdnet.dk>
+ <20231107121008.3dcc71e6@dep59159.uniwa.uwa.edu.au>
+Message-ID: <d258f5c5-9ae3-4bf5-9f6c-cccb64de37a1@gvdnet.dk>
+
+Thanks a lot, Berwin. Unfortunately, pK1 may well be negative and as I 
+understand the literature it may be poorly defined as such, and also 
+seems to be at a boundary, since when lower is set to say rep(-4,3) pK1 
+is returned as -4 while pK2 and pK3 are undisturbed. Perhaps the point 
+is that pK1 is not carrying any information at the pH around 5. Fair 
+enough, I guess. Only, I believe I need stick to including all three pK 
+values to be in agreement with the molecular information about HEPES - 
+although even this is contentious. Be as it may, I wonder if not your 
+method might work if only we KNOW that pK1 is either positive OR 
+negative, in which case we have pK1 = -exp(theta1)?
+
+Best wishes
+Troels
+
+Den 07-11-2023 kl. 05:10 skrev Berwin A Turlach:
+> G'day Troels,
+>
+> On Mon, 6 Nov 2023 20:43:10 +0100
+> Troels Ring <tring at gvdnet.dk> wrote:
+>
+>> Thanks a lot! This was amazing. I'm not sure I see how the conditiion
+>> pK1 < pK2 < pK3 is enforced?
+> One way of enforcing such constraints (well, in finite computer
+> arithemtic only "<=" can be enforced) is to rewrite the parameters as:
+>
+> pK1 = exp(theta1)       ## only if pK1 > 0
+> pK2 = pK1 + exp(theta2)
+> pK3 = pk2 + exp(theta3)
+>
+> And then use your optimiser to optimise over theta1, theta2 and theta3.
+>
+> There might be better approaches depending on the specific problem.
+>
+> Cheers,
+>
+> 	Berwin
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Tue Nov  7 00:17:21 2023
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Mon, 6 Nov 2023 18:17:21 -0500
+Subject: [R] understanding predict.lm
+In-Reply-To: <40f8154c-a5d9-44e1-9221-f8dcd4d7f427@effectivedefense.org>
+References: <40f8154c-a5d9-44e1-9221-f8dcd4d7f427@effectivedefense.org>
+Message-ID: <093d2b57-076d-4a9f-9aa3-9ad83c101af6@mcmaster.ca>
+
+Dear Spencer,
+
+You need the t distribution with correct df, not the standard-normal 
+distribution:
+
+ > pt(-z.confInt/2, df=13)
+     1     2     3     4     5     6     7     8     9    10    11
+0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.025
+    12    13
+0.025 0.025
+
+ > pt(-z.predInt/2, df=13)
+     1     2     3     4     5     6     7     8     9    10    11
+0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.025 0.025
+    12    13
+0.025 0.025
+
+I hope this helps,
+  John
+-- 
+John Fox, Professor Emeritus
+McMaster University
+Hamilton, Ontario, Canada
+web: https://www.john-fox.ca/
+
+On 2023-11-06 4:16 p.m., Spencer Graves wrote:
+> Caution: External email.
+> 
+> 
+> Hello, All:
+> 
+> 
+>  ???????? I am unable to manually replicate predict.lm, specifically 
+> comparing
+> se.fit with (fit[,3]-fit[,2]): I think their ratio should be
+> 2*qnorm((1-level)/2), and that's not what I'm getting.
+> 
+> 
+>  ???????? Consider the following slight modification of the first 
+> example in
+> help('predict.lm'):
+> 
+> 
+> set.seed(1)
+> x <- rnorm(15)
+> y <- x + rnorm(15)
+> predict(lm(y ~ x))
+> new <- data.frame(x = seq(-3, 3, 0.5))
+> predict(lm(y ~ x), new, se.fit = TRUE)
+> pred.w.plim <- predict(lm(y ~ x), new, interval = "prediction",
+>  ?????????????????????? se.fit = TRUE)
+> pred.w.clim <- predict(lm(y ~ x), new, interval = "confidence",
+>  ?????????????????????? se.fit = TRUE)
+> 
+> (z.confInt <- with(pred.w.clim, (fit[,3]-fit[,2])/se.fit))
+> pnorm(-z.confInt/2)
+> 
+> s.pred <- sqrt(with(pred.w.plim,
+>  ??????????????????? se.fit^2+residual.scale^2))
+> (z.predInt <- with(pred.w.plim, (fit[,3]-fit[,2])/s.pred))
+> pnorm(-z.predInt/2)
+> 
+> 
+>  ???????? ** This gives me 0.01537207. I do not understand why it's not 
+> 0.025
+> with level = 0.95.
+> 
+> 
+>  ???????? Can someone help me understand this?
+>  ???????? Thanks,
+>  ???????? Spencer Graves
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From berw|n@tur|@ch @end|ng |rom gm@||@com  Tue Nov  7 08:53:03 2023
+From: berw|n@tur|@ch @end|ng |rom gm@||@com (Berwin A Turlach)
+Date: Tue, 7 Nov 2023 15:53:03 +0800
+Subject: [R] non-linear regression and root finding
+In-Reply-To: <d258f5c5-9ae3-4bf5-9f6c-cccb64de37a1@gvdnet.dk>
+References: <eb487c2a-4b9d-4000-af86-f99de576d106@gvdnet.dk>
+ <20231106211902.375d3b0a@Tarkus>
+ <7990e957-6f37-4d2c-9ff0-d586f30798c6@gvdnet.dk>
+ <20231107121008.3dcc71e6@dep59159.uniwa.uwa.edu.au>
+ <d258f5c5-9ae3-4bf5-9f6c-cccb64de37a1@gvdnet.dk>
+Message-ID: <20231107155303.0d27333e@dep59159.uniwa.uwa.edu.au>
+
+G'day Troels,
+
+On Tue, 7 Nov 2023 07:14:02 +0100
+Troels Ring <tring at gvdnet.dk> wrote:
+
+> Be as it may, I wonder if not your method might work if only we KNOW
+> that pK1 is either positive OR negative, in which case we have pK1 =
+> -exp(theta1)?
+
+If pK1 can be either negative or positive (or 0 :-) ), and it is just
+the ordering that you want to have enforced, then I would try the
+parameterisation:
+
+pK1 = pK1
+pK2 = pK1 + exp(theta2)
+pK3 = pk2 + exp(theta3)
+
+and optimise over pK1, theta2 and theta3.  
+
+As long as you want to know the estimates only.  
+
+Asking for standard errors of the original estimates would open another
+can of worms. :-)
+
+Cheers,
+
+	Berwin
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Tue Nov  7 10:03:58 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Tue, 7 Nov 2023 10:03:58 +0100
+Subject: [R] Concordance and Kendall's tau in copula
+In-Reply-To: <f33ad3c9-fc61-4b8f-b8fb-2ca33453a078@ntu.edu.tw>
+References: <f33ad3c9-fc61-4b8f-b8fb-2ca33453a078@ntu.edu.tw>
+Message-ID: <25929.64894.937088.581822@stat.math.ethz.ch>
+
+>>>>> Steven Yen 
+>>>>>     on Tue, 7 Nov 2023 09:09:33 +0800 writes:
+
+    > Dear
+    > I estimate a sample selection model using the Clayton copula and Burr 
+    > and Gaussian marginal. I need to derive ther Kendall'sw tau from the 
+    > concordance coefficient by integration. I came across a way to do that 
+    > in R long time ago but cannot find it again. Can somewone tell me what 
+    > to read and what to use? Thank you.
+
+    > Steven Yen
+
+
+I think you can estimate your model relatively easily using our
+package {copula}  and the function  fitMvdc()
+
+   https://search.r-project.org/CRAN/refmans/copula/html/fitMvdc.html
+
+MVDC := Multivariate Variate Distribution {built from} Copula
+
+To solve the question you asked --- but would not need to answer if
+using fitMvdc(),
+you can use  e.g.,
+
+    > iTau(claytonCopula(), tau = 1.4)
+    [1] -7
+
+or look up the formulas for tau() or its inverse 'iTau':
+
+  > copClayton at tau
+  function (theta) 
+  {
+      theta/(theta + 2)
+  }
+
+  > copClayton at iTau
+  function (tau) 
+  {
+      2 * tau/(1 - tau)
+  }
+
+  > 
+
+Best regards,
+Martin
+
+{and yes, consider getting our 'useR! Springer series book, as
+ it's the only "real" book, I've been a coauthor.. https://copula.r-forge.r-project.org/book/ }
+
+--
+Martin Maechler
+ETH Zurich  and  R Core team
+
+
+From cry@n @end|ng |rom b|ngh@mton@edu  Tue Nov  7 17:01:50 2023
+From: cry@n @end|ng |rom b|ngh@mton@edu (Christopher Ryan)
+Date: Tue, 7 Nov 2023 11:01:50 -0500
+Subject: [R] make a lattice dotplot with symbol size proportional to a
+ variable in the plotted dataframe
+Message-ID: <CAM+rpY=Mn9+osm2Ct4fNkDOKXP2zLDEa+tTkz0WB6rgzytKi5Q@mail.gmail.com>
+
+Hello. My question is in the subject line. Using R 4.1.3 on Windows 10.
+Commented MWE below. Thanks.
+
+--Chris Ryan
+
+
+
+library(dplyr)
+library(lattice)
+
+## fabricate a dataframe
+dd <- data.frame(agency = sample(LETTERS, size = 5),
+total = sample(100:200, size = 5),
+las = sample(20:40, size = 5))
+dd <- dd %>% mutate(proportion = las/total, bubble = total/100)
+
+
+## attempt to make a dotplot with symbol size proportional
+## to the variable named total
+
+dotplot(agency ~ proportion, pch = 16, cex = bubble, data = dd)
+##  object 'bubble' not found
+
+dotplot(agency ~ proportion, pch = 16, cex = dd$bubble, data = dd)
+## works
+
+
+
+## also works in two commands
+external.bubble <- dd$bubble
+dotplot(agency ~ proportion, pch = 16, cex = external.bubble, data = dd)
+
+
+
+## but how to chain it with pipes, dplyr-style,
+## modifying the dataframe and then
+## using the modified version in dotplot, all in one chain?
+
+dd %>% mutate(new.proportion = las/total, new.bubble = total/100) %>%
+    dotplot(agency ~ new.proportion, pch = 16, cex = new.bubble, data = .)
+## object 'new.bubble' not found
+
+
+dd %>% mutate(new.proportion = las/total, new.bubble = total/100) %>%
+     dotplot(agency ~ new.proportion, pch = 16, cex = .$new.bubble, data =
+.)
+## the .$new.bubble syntax seems to work, but I've never
+## used or seen that before, and it seems weird.
+## Is there a "proper" syntax?
+
+	[[alternative HTML version deleted]]
+
+
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Tue Nov  7 17:25:10 2023
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Tue, 7 Nov 2023 11:25:10 -0500
+Subject: [R] make a lattice dotplot with symbol size proportional to a
+ variable in the plotted dataframe
+In-Reply-To: <CAM+rpY=Mn9+osm2Ct4fNkDOKXP2zLDEa+tTkz0WB6rgzytKi5Q@mail.gmail.com>
+References: <CAM+rpY=Mn9+osm2Ct4fNkDOKXP2zLDEa+tTkz0WB6rgzytKi5Q@mail.gmail.com>
+Message-ID: <CADfFDC4bns4YY7SC4mFQOsY68WQj=VFSPJAjHOU223km0vDq7w@mail.gmail.com>
+
+Handling NSE in these kinds of examples is a pain in lattice. I would
+suggest using with() and dropping the data argument for simple examples,
+e.g.,
+
+dd |> mutate(new.proportion = las/total, new.bubble = total/100) |>
+    with(dotplot(agency ~ new.proportion, pch = 16, cex = new.bubble))
+
+But if you care about multi-panel plots, you also need to be careful about
+making sure that the 'cex' values get split properly. This is done
+generally using the 'subscripts' argument provided to panel functions, so
+something like this should be safer:
+
+panel.bubble <- function(x, y, cex, ..., subscripts) {
+    panel.dotplot(x, y, cex = cex[subscripts], ...)
+}
+
+dd |> mutate(new.proportion = las/total, new.bubble = total/100) |>
+    with(dotplot(agency ~ new.proportion, pch = 16,
+                 cex = new.bubble, panel = panel.bubble))
+
+Best,
+-Deepayan
+
+On Tue, 7 Nov 2023 at 11:03, Christopher Ryan via R-help <
+r-help at r-project.org> wrote:
+
+> Hello. My question is in the subject line. Using R 4.1.3 on Windows 10.
+> Commented MWE below. Thanks.
+>
+> --Chris Ryan
+>
+>
+>
+> library(dplyr)
+> library(lattice)
+>
+> ## fabricate a dataframe
+> dd <- data.frame(agency = sample(LETTERS, size = 5),
+> total = sample(100:200, size = 5),
+> las = sample(20:40, size = 5))
+> dd <- dd %>% mutate(proportion = las/total, bubble = total/100)
+>
+>
+> ## attempt to make a dotplot with symbol size proportional
+> ## to the variable named total
+>
+> dotplot(agency ~ proportion, pch = 16, cex = bubble, data = dd)
+> ##  object 'bubble' not found
+>
+> dotplot(agency ~ proportion, pch = 16, cex = dd$bubble, data = dd)
+> ## works
+>
+>
+>
+> ## also works in two commands
+> external.bubble <- dd$bubble
+> dotplot(agency ~ proportion, pch = 16, cex = external.bubble, data = dd)
+>
+>
+>
+> ## but how to chain it with pipes, dplyr-style,
+> ## modifying the dataframe and then
+> ## using the modified version in dotplot, all in one chain?
+>
+> dd %>% mutate(new.proportion = las/total, new.bubble = total/100) %>%
+>     dotplot(agency ~ new.proportion, pch = 16, cex = new.bubble, data = .)
+> ## object 'new.bubble' not found
+>
+>
+> dd %>% mutate(new.proportion = las/total, new.bubble = total/100) %>%
+>      dotplot(agency ~ new.proportion, pch = 16, cex = .$new.bubble, data =
+> .)
+> ## the .$new.bubble syntax seems to work, but I've never
+> ## used or seen that before, and it seems weird.
+> ## Is there a "proper" syntax?
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Tue Nov  7 22:51:23 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Wed, 8 Nov 2023 00:51:23 +0300
+Subject: [R] non-linear regression and root finding
+In-Reply-To: <67c5ad87-6653-4d3d-be42-ba2e7aef08f7@gmail.com>
+References: <eb487c2a-4b9d-4000-af86-f99de576d106@gvdnet.dk>
+ <20231106211902.375d3b0a@Tarkus>
+ <7990e957-6f37-4d2c-9ff0-d586f30798c6@gvdnet.dk>
+ <67c5ad87-6653-4d3d-be42-ba2e7aef08f7@gmail.com>
+Message-ID: <20231108005123.3dd0edb0@Tarkus>
+
+On Mon, 6 Nov 2023 14:55:39 -0500
+J C Nash <profjcnash at gmail.com> wrote:
+
+> However, I'm wondering if this approach is worth writing up, at least
+> as a vignette or blog post. It does need a shorter example and some
+> explanation of the "why" and some testing perhaps.
+
+Do you mean using this problem as a basis to illustrate ordering
+constraints on parameters? Weird constraints do come up every now and
+then in regression problems. I could definitely offer my help with at
+least some of the text.
+
+> If there's interest, I'll be happy to join in. And my own posting
+> suggests how the ordering is enforced by bounding the "delta"
+> parameters from below.
+
+I have just tried nlsr::nlxb for a slightly larger dataset shared by
+Troels off-list, and it worked great with the delta parameters as you
+suggested, thank you!
+
+It's interesting that nlxb and nlsLM give slightly different answers,
+differing in 0.5 pK units for pK1 and (pK2-pK1) but not (pK3-pK2). Then
+again, they both agree that the standard error for pK1 and (pK2-pK1) is
+very large, so perhaps the problem is just very ill-conditioned.
+
+-- 
+Best regards,
+Ivan
+
+
