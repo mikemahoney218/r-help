@@ -12094,3 +12094,495 @@ Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a 
 www.avg.com
 
 
+From r@due@|ng @end|ng |rom uo@@de  Mon Nov 27 13:42:25 2023
+From: r@due@|ng @end|ng |rom uo@@de (=?UTF-8?B?RHIuIFJhaW5lciBEw7xzaW5n?=)
+Date: Mon, 27 Nov 2023 13:42:25 +0100
+Subject: [R] t.test with Welch correction is ambiguous
+Message-ID: <CAKW_7ZRsTBk=BeUMXn0-C3ij0LX+=SyCeo2gKemmFHKAu2vY2g@mail.gmail.com>
+
+Dear R Team!
+
+
+
+There was an ongoing debate on Research Gate about the ?Welch? option in
+your base R t.test command. A user noticed that the correction of the
+degrees of freedom labeled as ?Welch Two Sample t-test?, if you choose
+var.equal
+= TRUE in the R t.test command, differs from the output of the Stata
+analysis, which is also labeled as ?Welch's degrees of freedom?.  Confusingly
+enough, the R output coincided with the Stata result labeled as
+?Satterthwaite's
+degrees of freedom?. Unfortunately, the R documentation wasn?t clear
+either, since it lacks any specific reference and the formulation is
+ambiguous: ?If TRUE then the pooled variance is used to estimate the
+variance otherwise the Welch (or Satterthwaite) approximation to the
+degrees of freedom is used." It rather sounds as if both options are
+available and not that both authors proposed the same correction separately.
+
+After doing some research and looking into the R code, we found a solution
+and would like to suggest an update to the R documentation, to make it more
+clear (you can find the similar proposal to the Stata list here:
+https://www.statalist.org/forums/forum/general-stata-discussion/general/1734987-unequal-vs-welch-options-for-ttest-why-no-mention-of-welch-1938-in-the-documentation
+)
+
+What is called ?Welch Two Sample t-test? in the t.test command refers to
+two publications (see links below) with the same correction, namely Welch
+(1938) and Satterthwaite (1946). Hence, you also find "Welch?Satterthwaite"
+correction as a description in the literature for this (which is the
+aforementioned ?Satterthwaite's degrees of freedom? correction in Stata).
+But there is also another correction proposed by Welch (1947), which has
+slightly different denominators (see code below), which is called ?Welch's
+degrees of freedom? in Stata. This option is not available in R so far.
+
+Therefore, we suggest a) to cite the appropriate references in the
+documentation (at least Welch (1938) and Satterthwaite (1946)), b) adapt
+the output to something like ?Welch-Satterthwaite adjusted Two Sample
+t-test? and maybe c) to incorporate the third option for the Welch (1947)
+adjustment, where the Welch-Satterthwaite correction should be the default
+option (Aspin & Welch, 1949). Code proposal below for the df correction.
+
+Best wishes,
+Rainer D?sing
+
+
+
+   1. ?  https://www.jstor.org/stable/2332010
+   <https://www.researchgate.net/deref/https%3A%2F%2Fwww.jstor.org%2Fstable%2F2332010?_tp=eyJjb250ZXh0Ijp7ImZpcnN0UGFnZSI6InF1ZXN0aW9uIiwicGFnZSI6InF1ZXN0aW9uIiwicG9zaXRpb24iOiJwYWdlQ29udGVudCJ9fQ>
+   (Welch, 1938)
+   2. ?  https://www.jstor.org/stable/3002019
+   <https://www.researchgate.net/deref/https%3A%2F%2Fwww.jstor.org%2Fstable%2F3002019?_tp=eyJjb250ZXh0Ijp7ImZpcnN0UGFnZSI6InF1ZXN0aW9uIiwicGFnZSI6InF1ZXN0aW9uIiwicG9zaXRpb24iOiJwYWdlQ29udGVudCJ9fQ>
+   (Satterthwaite, 1946)
+   3. ?  https://www.jstor.org/stable/2332510
+   <https://www.researchgate.net/deref/https%3A%2F%2Fwww.jstor.org%2Fstable%2F2332510?_tp=eyJjb250ZXh0Ijp7ImZpcnN0UGFnZSI6InF1ZXN0aW9uIiwicGFnZSI6InF1ZXN0aW9uIiwicG9zaXRpb24iOiJwYWdlQ29udGVudCJ9fQ>
+   (Welch, 1947)
+   4. ?  Aspin, Alice A., and B. L. Welch. ?Tables for Use in Comparisons
+   Whose Accuracy Involves Two Variances, Separately Estimated.?
+   *Biometrika* 36, no. 3/4 (1949): 290?96. https://doi.org/10.2307/2332668
+   <https://www.researchgate.net/deref/https%3A%2F%2Fdoi.org%2F10.2307%2F2332668?_tp=eyJjb250ZXh0Ijp7ImZpcnN0UGFnZSI6InF1ZXN0aW9uIiwicGFnZSI6InF1ZXN0aW9uIiwicG9zaXRpb24iOiJwYWdlQ29udGVudCJ9fQ>.
+   [see point 4 in the Appendix by Welch]
+
+
+
+var.equal = "yes"
+
+var.equal = "Welch"
+
+var.equal = "W-S"
+
+
+
+vx <- var(x)
+
+nx <- length(x)
+
+vy <- var(y)
+
+ny <- length(y)
+
+
+
+if (var.equal == "yes") {
+
+  df <- nx + ny - 2
+
+  v <- 0
+
+  if (nx > 1)
+
+    v <- v + (nx - 1) * vx
+
+  if (ny > 1)
+
+    v <- v + (ny - 1) * vy
+
+  v <- v/df
+
+  stderr <- sqrt(v * (1/nx + 1/ny))
+
+} else if (var.equal == "Welch") {
+
+  stderrx <- sqrt(vx/nx)
+
+  stderry <- sqrt(vy/ny)
+
+  stderr <- sqrt(stderrx^2 + stderry^2)
+
+  df <- -2+(stderr^4/(stderrx^4/(nx + 1) + stderry^4/(ny +1)))
+
+} else {
+
+  stderrx <- sqrt(vx/nx)
+
+  stderry <- sqrt(vy/ny)
+
+  stderr <- sqrt(stderrx^2 + stderry^2)
+
+  df <- stderr^4/(stderrx^4/(nx - 1) + stderry^4/(ny -1))
+
+}
+
+
+-- 
+*Dr. rer. nat. Rainer D?sing, Dipl.-Psych. *
+Universit?t Osnabr?ck
+Institut f?r Psychologie
+Fachgebiet Forschungsmethodik, Diagnostik und Evaluation
+Lise-Meitner-Str. 3
+49076 Osnabr?ck
+
+Raum 75/222
+Tel: +49-541 969 7734
+Email: raduesing at uos.de <rduesing at uos.de>
+
+	[[alternative HTML version deleted]]
+
+
+From tebert @end|ng |rom u||@edu  Mon Nov 27 16:22:03 2023
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Mon, 27 Nov 2023 15:22:03 +0000
+Subject: [R] t.test with Welch correction is ambiguous
+In-Reply-To: <CAKW_7ZRsTBk=BeUMXn0-C3ij0LX+=SyCeo2gKemmFHKAu2vY2g@mail.gmail.com>
+References: <CAKW_7ZRsTBk=BeUMXn0-C3ij0LX+=SyCeo2gKemmFHKAu2vY2g@mail.gmail.com>
+Message-ID: <CH3PR22MB451412C1D50355C6DC3C3A28CFBDA@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+Your solution was educational. Thank you. I have two comments.
+1) If you do not provide both options then you are forcing people to conform to your approach. In general I disapprove, but for specific cases I can see advantages.
+2) Without reading the relevant papers (and possibly understanding them) is there a simple metric that would enable the correct choice between Welch-Shatterthwaite and Welch (1947)?
+3) If there is a broad consensus that Welch (1947) is never the correct option then do not implement it.
+
+As written, it sounds like Welch (1938) proposed a correction. Welch published another correction in 1947, but then retracted his 1947 correction in a 1949 paper. At least that is how I interpret what was written in your option c.
+
+Tim
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Dr. Rainer D?sing
+Sent: Monday, November 27, 2023 7:42 AM
+To: r-help at r-project.org
+Subject: [R] t.test with Welch correction is ambiguous
+
+[External Email]
+
+Dear R Team!
+
+
+
+There was an ongoing debate on Research Gate about the "Welch" option in your base R t.test command. A user noticed that the correction of the degrees of freedom labeled as "Welch Two Sample t-test", if you choose var.equal = TRUE in the R t.test command, differs from the output of the Stata analysis, which is also labeled as "Welch's degrees of freedom".  Confusingly enough, the R output coincided with the Stata result labeled as "Satterthwaite's degrees of freedom". Unfortunately, the R documentation wasn't clear either, since it lacks any specific reference and the formulation is
+ambiguous: "If TRUE then the pooled variance is used to estimate the variance otherwise the Welch (or Satterthwaite) approximation to the degrees of freedom is used." It rather sounds as if both options are available and not that both authors proposed the same correction separately.
+
+After doing some research and looking into the R code, we found a solution and would like to suggest an update to the R documentation, to make it more clear (you can find the similar proposal to the Stata list here:
+https://www.statalist.org/forums/forum/general-stata-discussion/general/1734987-unequal-vs-welch-options-for-ttest-why-no-mention-of-welch-1938-in-the-documentation
+)
+
+What is called "Welch Two Sample t-test" in the t.test command refers to two publications (see links below) with the same correction, namely Welch
+(1938) and Satterthwaite (1946). Hence, you also find "Welch-Satterthwaite"
+correction as a description in the literature for this (which is the aforementioned "Satterthwaite's degrees of freedom" correction in Stata).
+But there is also another correction proposed by Welch (1947), which has slightly different denominators (see code below), which is called "Welch's degrees of freedom" in Stata. This option is not available in R so far.
+
+Therefore, we suggest a) to cite the appropriate references in the documentation (at least Welch (1938) and Satterthwaite (1946)), b) adapt the output to something like "Welch-Satterthwaite adjusted Two Sample t-test" and maybe c) to incorporate the third option for the Welch (1947) adjustment, where the Welch-Satterthwaite correction should be the default option (Aspin & Welch, 1949). Code proposal below for the df correction.
+
+Best wishes,
+Rainer D?sing
+
+
+
+   1. ?  https://www.jstor.org/stable/2332010
+   <https://www.researchgate.net/deref/https%3A%2F%2Fwww.jstor.org%2Fstable%2F2332010?_tp=eyJjb250ZXh0Ijp7ImZpcnN0UGFnZSI6InF1ZXN0aW9uIiwicGFnZSI6InF1ZXN0aW9uIiwicG9zaXRpb24iOiJwYWdlQ29udGVudCJ9fQ>
+   (Welch, 1938)
+   2. ?  https://www.jstor.org/stable/3002019
+   <https://www.researchgate.net/deref/https%3A%2F%2Fwww.jstor.org%2Fstable%2F3002019?_tp=eyJjb250ZXh0Ijp7ImZpcnN0UGFnZSI6InF1ZXN0aW9uIiwicGFnZSI6InF1ZXN0aW9uIiwicG9zaXRpb24iOiJwYWdlQ29udGVudCJ9fQ>
+   (Satterthwaite, 1946)
+   3. ?  https://www.jstor.org/stable/2332510
+   <https://www.researchgate.net/deref/https%3A%2F%2Fwww.jstor.org%2Fstable%2F2332510?_tp=eyJjb250ZXh0Ijp7ImZpcnN0UGFnZSI6InF1ZXN0aW9uIiwicGFnZSI6InF1ZXN0aW9uIiwicG9zaXRpb24iOiJwYWdlQ29udGVudCJ9fQ>
+   (Welch, 1947)
+   4. ?  Aspin, Alice A., and B. L. Welch. "Tables for Use in Comparisons
+   Whose Accuracy Involves Two Variances, Separately Estimated."
+   *Biometrika* 36, no. 3/4 (1949): 290-96. https://doi.org/10.2307/2332668
+   <https://www.researchgate.net/deref/https%3A%2F%2Fdoi.org%2F10.2307%2F2332668?_tp=eyJjb250ZXh0Ijp7ImZpcnN0UGFnZSI6InF1ZXN0aW9uIiwicGFnZSI6InF1ZXN0aW9uIiwicG9zaXRpb24iOiJwYWdlQ29udGVudCJ9fQ>.
+   [see point 4 in the Appendix by Welch]
+
+
+
+var.equal = "yes"
+
+var.equal = "Welch"
+
+var.equal = "W-S"
+
+
+
+vx <- var(x)
+
+nx <- length(x)
+
+vy <- var(y)
+
+ny <- length(y)
+
+
+
+if (var.equal == "yes") {
+
+  df <- nx + ny - 2
+
+  v <- 0
+
+  if (nx > 1)
+
+    v <- v + (nx - 1) * vx
+
+  if (ny > 1)
+
+    v <- v + (ny - 1) * vy
+
+  v <- v/df
+
+  stderr <- sqrt(v * (1/nx + 1/ny))
+
+} else if (var.equal == "Welch") {
+
+  stderrx <- sqrt(vx/nx)
+
+  stderry <- sqrt(vy/ny)
+
+  stderr <- sqrt(stderrx^2 + stderry^2)
+
+  df <- -2+(stderr^4/(stderrx^4/(nx + 1) + stderry^4/(ny +1)))
+
+} else {
+
+  stderrx <- sqrt(vx/nx)
+
+  stderry <- sqrt(vy/ny)
+
+  stderr <- sqrt(stderrx^2 + stderry^2)
+
+  df <- stderr^4/(stderrx^4/(nx - 1) + stderry^4/(ny -1))
+
+}
+
+
+--
+*Dr. rer. nat. Rainer D?sing, Dipl.-Psych. * Universit?t Osnabr?ck Institut f?r Psychologie Fachgebiet Forschungsmethodik, Diagnostik und Evaluation Lise-Meitner-Str. 3
+49076 Osnabr?ck
+
+Raum 75/222
+Tel: +49-541 969 7734
+Email: raduesing at uos.de <rduesing at uos.de>
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From p@u| @end|ng |rom @t@t@@uck|@nd@@c@nz  Tue Nov 28 02:55:30 2023
+From: p@u| @end|ng |rom @t@t@@uck|@nd@@c@nz (Paul Murrell)
+Date: Tue, 28 Nov 2023 14:55:30 +1300
+Subject: [R] Problems when trying to visualize clusters
+In-Reply-To: <CAMOcQfODCjiR9Ms35pUiqpieo8ru8roWCfBW4C+UUWbp83+wqQ@mail.gmail.com>
+References: <CAMOcQfODCjiR9Ms35pUiqpieo8ru8roWCfBW4C+UUWbp83+wqQ@mail.gmail.com>
+Message-ID: <09d8c69d-fa38-4de7-8f71-b145fd8e3b0b@stat.auckland.ac.nz>
+
+Hi
+
+Looks like you have misspelled the 'vars'.
+Does this work ... ?
+
+plot(kclustalgo, vars = c("Toll","Transits"))
+
+Paul
+
+On 17/11/23 06:10, Paul Bernal wrote:
+> install.packages("clustMixType")
+> install.packages("factoextra")
+> install.packages("NbClust")
+> 
+> This is my R code:
+> #Reading Required Datasets
+> df = as.data.frame(read_excel("dataforclustering.xlsx"))
+> df2 = df[,-1]
+> head(df2)
+> scaled_df = scale(df2)
+> 
+> #This part was to determine the optimal number of clusters
+> # Elbow method
+> fviz_nbclust(scaled_df, kmeans, method = "wss") +
+> geom_vline(xintercept = 4, linetype = 2)+
+> labs(subtitle = "Elbow method")
+> 
+> # Silhouette method
+> fviz_nbclust(scaled_df, kmeans, method = "silhouette")+
+> labs(subtitle = "Silhouette method")
+> 
+> # Gap statistic
+> # nboot = 50 to keep the function speedy.
+> # recommended value: nboot= 500 for your analysis.
+> # Use verbose = FALSE to hide computing progression.
+> set.seed(123)
+> fviz_nbclust(scaled_df, kmeans, nstart = 25, method = "gap_stat", nboot =
+> 50)+
+> labs(subtitle = "Gap statistic method")
+> 
+> Based on the elbow method, which suggested k = 4, I then used the following
+> code to produce the clusters and try to plot them:
+> 
+> df$MarketSegment <- as.factor(df$MarketSegment)
+> 
+> #kproto comes from the clustMixType package
+> kclustalgo = kproto(df,4)
+> summary(kclustalgo)
+> plot(kclustalgo, vars = c("tolls","transits"))
+> 
+> The problem is that, when using the plot function, it does not generate
+> anything, it does not plot anything.
+> 
+> Below my dataset:
+> structure(list(MarketSegment = structure(c(12L, 8L, 4L, 5L, 8L,
+> 8L, 9L, 2L, 8L, 11L, 11L, 12L, 5L, 4L, 10L, 10L, 9L, 11L, 5L,
+> 10L, 10L, 9L, 9L, 9L, 4L, 11L, 10L, 9L, 11L, 4L, 7L, 1L, 2L,
+> 7L, 4L, 6L, 4L, 5L, 4L, 6L, 5L, 11L, 10L, 9L, 8L, 11L, 2L, 4L,
+> 5L, 12L, 10L, 5L, 4L, 5L, 10L, 10L, 11L, 2L, 12L, 5L, 10L, 8L,
+> 8L, 2L, 8L, 13L, 6L, 7L, 4L, 10L, 8L, 3L, 5L, 2L, 7L, 13L, 5L,
+> 5L, 2L, 12L, 4L, 5L, 5L, 12L, 10L, 5L, 11L, 9L, 4L, 2L, 4L, 2L,
+> 9L, 5L, 11L, 10L, 4L, 11L, 12L, 9L, 11L, 10L, 4L, 13L, 4L, 2L,
+> 4L, 5L, 6L, 13L, 2L, 5L, 10L, 3L, 13L, 8L, 11L, 9L, 8L, 10L,
+> 4L, 2L, 11L, 2L, 9L, 4L, 12L, 10L, 8L, 12L, 8L, 10L, 11L, 2L,
+> 8L, 4L, 12L, 9L, 8L, 8L, 11L, 11L, 2L, 9L, 10L, 8L, 12L, 2L,
+> 11L, 8L, 11L, 4L, 2L, 3L, 3L, 8L, 13L, 5L, 5L, 6L, 6L, 2L, 9L,
+> 10L, 2L, 7L, 6L, 2L, 1L, 7L, 6L, 13L, 1L, 2L, 4L, 5L, 12L, 9L,
+> 11L, 9L, 8L, 2L, 9L, 9L, 5L, 11L, 2L, 12L, 2L, 8L, 12L, 4L, 5L,
+> 4L, 10L, 2L, 9L, 2L, 2L, 2L, 9L, 11L, 2L, 12L, 2L, 10L, 12L,
+> 9L, 4L, 12L, 10L, 5L, 12L, 1L, 6L, 5L, 8L, 10L, 9L, 10L, 4L,
+> 7L, 8L, 1L, 9L, 3L, 3L, 1L, 4L, 4L, 2L, 4L, 10L, 11L, 8L, 2L,
+> 9L, 2L, 5L, 4L, 12L, 4L, 5L, 4L, 9L, 4L, 4L, 12L, 9L, 2L, 8L,
+> 12L, 4L, 3L, 7L, 3L, 10L, 7L, 8L, 2L, 6L, 1L, 3L, 6L, 13L, 7L,
+> 13L, 9L, 13L, 8L, 3L, 10L, 10L, 5L, 12L, 9L, 8L, 8L, 11L, 10L,
+> 8L, 12L, 8L, 5L, 9L, 4L, 12L, 11L, 4L, 8L, 5L, 10L, 11L, 11L,
+> 2L, 12L, 5L, 10L, 9L, 13L, 1L, 7L, 9L, 9L, 10L, 3L, 2L, 1L, 8L,
+> 8L, 9L, 10L, 2L, 8L, 13L, 6L, 12L, 4L, 8L, 10L, 9L, 10L, 10L,
+> 5L, 11L, 8L, 8L, 4L, 12L, 8L, 12L, 10L, 9L, 12L, 5L, 11L, 2L,
+> 5L, 5L, 10L, 5L, 5L, 9L, 9L, 5L, 2L, 9L, 1L, 8L, 13L, 7L, 3L,
+> 5L, 1L, 1L, 9L, 10L, 7L, 5L, 3L, 1L, 4L), levels = c("Chemical Tankers",
+> "Container", "Crude/Product Tankers", "Dry Bulk", "General Cargo",
+> "LNG Carrier", "LPG Carrier", "Others", "Passengers", "Refrigerated",
+> "Tankers", "Vehicle Carriers", "Vehicle Carriers/RoRo"), class = "factor"),
+> Toll = c(45622373.27, 30399013.74, 176306593.66, 18971118.38,
+> 25835490.96, 23740969.7, 22570777.11, 144378273.06, 59115267.47,
+> 71971071.4, 94431934.17, 14252216.8, 25040195.72, 92607705.13,
+> 17595512.81, 22275409.83, 6291531.04, 51104161.27, 25181172.84,
+> 34816907.8, 32777647.65, 7099598.51, 27689930.37, 42046359.26,
+> 173706597.74, 143220682.62, 59053229.17, 39369534.57, 157970209.29,
+> 411908086.08, 30644932.62, 141530616.2, 1086950201, 222938133.49,
+> 347883155.9, 160051827.89, 376203394.59, 44232336.52, 410395911.78,
+> 218235220.1, 35274869.37, 73258945.88, 37821693.14, 81193.19,
+> 25461445.17, 61671172.38, 64984959.44, 166826321.18, 21076499.39,
+> 88337589.73, 46904254.95, 20029152.87, 143083949.3, 21959696.81,
+> 52382607.59, 3478831.59, 46284549.62, 48579258.24, 47417137.43,
+> 25768369.63, 52765742.89, 60329234.95, 52200921.5, 911170775.2,
+> 27854758.26, 188077540.25, 170069.18, 46979713.12, 324994117.34,
+> 42136353.11, 12495006.27, 93066248.53, 46588988.04, 1203041643,
+> 275586213.06, 224722357.56, 38114431.53, 24457874.42, 224106,
+> 52935575.5, 145149052.16, 24254689.17, 21355540.17, 77826892.53,
+> 37047616.49, 25895846.03, 81595647.93, 18824145.98, 157687486.69,
+> 252355857.97, 23554769.2, 42803289.58, 6970409.95, 25223571.18,
+> 44521560.29, 23846694.1, 123861794, 62133036.93, 49025354.84,
+> 27761074.11, 93221253.37, 67681581.53, 326040777.37, 0, 353324758.38,
+> 914308534.52, 375236325.91, 42896733.54, 18760255.6, 198508135.47,
+> 1367150804.75, 42296364.22, 32848434.94, 84984870.35, 209972507.43,
+> 131115.79, 636385.07, 15683638.27, 27432524.55, 34767287.97,
+> 174026078.65, 91872590.71, 77273064.3, 115418664.65, 24248775.39,
+> 184598288.14, 55702797.23, 35938942.48, 37876793.27, 67595978.53,
+> 37585563.97, 38058681.79, 70479369.62, 181080995.57, 43367438.62,
+> 152817300.67, 99222096.54, 29739623.79, 7027238.12, 25482814.45,
+> 52706796.25, 44227271.88, 49125255.46, 7273684.04, 31550474.77,
+> 45171138.63, 113147627.59, 736129089, 118847881.44, 48827559.85,
+> 175552816, 231472438.57, 972466186.8, 20939505.12, 74784961.28,
+> 22048526.85, 184182792.62, 50043224.13, 46567864.3, 64096942.63,
+> 133561525.43, 1184603445, 27481529.81, 35823758.59, 1241926985.25,
+> 336005108, 175196241.59, 1417836913.5, 219080343.22, 447793583.34,
+> 142244858.6, 211282556.89, 282402337.27, 73904457.86, 213236.53,
+> 23845925.9, 47069774.11, 17091622.26, 77288315.4, 20367261.33,
+> 58398395.39, 230933373.58, 26598884.35, 2406557.1, 6480102,
+> 13628284.31, 10263514.77, 66291278.83, 45203889.46, 24439458.61,
+> 62995994.42, 103545550.11, 23582006.69, 106841255.81, 30920698.81,
+> 57152783.67, 6788655.31, 58688264.46, 63623458.42, 381280927.57,
+> 26160209.37, 94398586.99, 548546815.6, 94377076.67, 660333530.6,
+> 58467965.42, 121250943.68, 39897634.25, 253784215.75, 123264396,
+> 58788870.55, 41450428.73, 116407322.67, 37073625.53, 80949.5,
+> 46479259.97, 17935104.29, 44743486.45, 50354870.76, 45978813.8,
+> 381104737.29, 144588856.56, 13453753.84, 215589051.87, 14640417.36,
+> 113367165.56, 100614565.26, 270041980.52, 436045596.44, 399693615.37,
+> 80310709.08, 178202292.6, 37426161.19, 84501310.47, 35095993.84,
+> 115887420.17, 25320445.08, 131720569.81, 20152178.46, 98738563.37,
+> 52761092.05, 126078172.3, 24618706.25, 136326542.07, 11518860.78,
+> 156025722.98, 170794953.78, 105383146.32, 33742975.52, 786732496.2,
+> 44558463.25, 138272099.98, 332758968.08, 73351527.91, 3711095.76,
+> 0, 49843621.55, 22795131.65, 23624194.51, 960690603.6, 0,
+> 174697284.22, 75560763.05, 231180, 196673683.99, 190737686.99,
+> 213184850.38, 43204339.22, 175208475.3, 14294438.32, 105373950.72,
+> 34354378.94, 36201953.3, 152644.76, 4271.52, 21467521.11,
+> 24714178.25, 23397907.04, 84318567.96, 41391735.09, 59207931.58,
+> 96631125.37, 26119366.87, 24050681.28, 6414468.87, 115073972.91,
+> 48806783.58, 53117026.48, 143925878.71, 54427083.34, 29621363.6,
+> 67914181.91, 208255468.52, 172563091.58, 783130968, 87885643.22,
+> 33623583.6, 49862226.49, 39581084.06, 47338366.37, 0, 0,
+> 42059174.7, 55196029.54, 45573526.31, 77542558.18, 948435917.2,
+> 184766344.51, 11715869.41, 11465772.13, 58348554.79, 34159529.23,
+> 1324615521.7, 14214065.75, 204448377.38, 133199367.48, 48301726.87,
+> 171342164.62, 27932981.26, 204453.32, 13799161.85, 36545009.39,
+> 40127237.59, 24856336.87, 81983152.36, 27475201.4, 40720204.5,
+> 143732024.58, 81736659.41, 54145665.75, 63195468.9, 17990069.83,
+> 7063003.98, 53943424.6, 27336061.94, 49141786, 56875952.23,
+> 25301093.8, 21993181.36, 52955818.55, 25793889.09, 28102485.94,
+> 39856771.5, 45181483.95, 42949296.26, 931539910.4, 34918600.8,
+> 134194366.11, 20115045.15, 203545729.19, 68836834.76, 85618322.31,
+> 41411914.83, 203629971.2, 200898608.18, 44469248.2, 35518487.49,
+> 326654852.92, 38518260.2, 99286360.37, 231011004.03, 368789029.42
+> ), Transits = c(557, 2932, 3312, 1015, 3037, 2958, 257, 1797,
+> 2812, 1615, 1912, 251, 1836, 2861, 1592, 1908, 149, 1656,
+> 1596, 2613, 2409, 159, 205, 235, 2472, 2079, 1631, 202, 1838,
+> 3356, 298, 1489, 2493, 1148, 2614, 421, 2758, 651, 2925,
+> 519, 453, 2187, 2568, 2799, 2705, 1928, 1187, 3042, 968,
+> 789, 2216, 817, 2380, 882, 2371, 324, 1667, 1120, 646, 819,
+> 2108, 2737, 2586, 3255, 2210, 796, 4, 440, 2610, 838, 1217,
+> 667, 675, 2615, 1349, 886, 556, 1514, 37622, 665, 3431, 1537,
+> 1075, 721, 1997, 1333, 2081, 217, 2579, 2534, 703, 992, 226,
+> 1771, 1591, 1963, 3306, 1943, 611, 224, 1707, 2151, 3288,
+> 2510, 3081, 2892, 3075, 678, 58, 798, 2642, 616, 566, 413,
+> 691, 22076, 9415, 300, 2881, 2309, 3613, 1428, 1940, 1691,
+> 310, 3549, 561, 2021, 3071, 645, 2641, 2085, 1704, 2126,
+> 2668, 2851, 792, 243, 682, 2881, 1810, 1615, 1043, 170, 2140,
+> 2615, 833, 3524, 2027, 2497, 2342, 2982, 3326, 181, 596,
+> 1986, 787, 878, 813, 181, 340, 2616, 127, 746, 2537, 1526,
+> 425, 2843, 1987, 1552, 343, 782, 1850, 1334, 8088, 1431,
+> 509, 283, 2216, 228, 2625, 2451, 225, 75, 485, 472, 237,
+> 1091, 1069, 2785, 973, 3092, 1597, 3134, 2279, 1093, 155,
+> 1131, 1174, 3020, 221, 1744, 3419, 728, 3604, 2199, 765,
+> 215, 3033, 632, 1453, 926, 504, 431, 2, 913, 2001, 992, 265,
+> 954, 2904, 929, 1696, 2114, 53, 783, 628, 2362, 3004, 2781,
+> 1391, 3939, 2031, 2207, 2653, 1597, 299, 1749, 1061, 3019,
+> 731, 3206, 1558, 3275, 233, 2598, 2752, 810, 248, 3235, 2455,
+> 618, 3220, 647, 51, 3611, 1069, 240, 2086, 3132, 2975, 1799,
+> 610, 3, 802, 1027, 844, 170, 650, 1314, 631, 601, 459, 8494,
+> 1803, 297, 2909, 2941, 2129, 2172, 2643, 807, 2893, 1767,
+> 214, 3109, 676, 1804, 2346, 2692, 856, 1912, 2404, 2264,
+> 3094, 448, 900, 1088, 214, 202, 4921, 3567, 229, 249, 968,
+> 621, 2824, 1886, 1989, 2034, 265, 590, 2425, 1521, 762, 272,
+> 600, 3928, 2811, 5552, 308, 2474, 2442, 1379, 2280, 2897,
+> 2794, 2611, 761, 2795, 1110, 1623, 209, 810, 1681, 1642,
+> 1092, 1677, 825, 2246, 779, 816, 226, 214, 908, 3010, 204,
+> 1503, 1944, 849, 538, 666, 636, 2019, 1994, 196, 665, 1552,
+> 559, 569, 2048, 2170)), row.names = c(NA, -362L), class = "data.frame")
+
+-- 
+Dr Paul Murrell
+Te Kura Tatauranga | Department of Statistics
+Waipapa Taumata Rau | The University of Auckland
+Private Bag 92019, Auckland 1142, New Zealand
+64 9 3737599 x85392
+paul at stat.auckland.ac.nz
+www.stat.auckland.ac.nz/~paul/
+
+
