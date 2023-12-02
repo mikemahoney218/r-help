@@ -1,0 +1,154 @@
+From rb@er @end|ng |rom @t@u@edu  Fri Dec  1 01:04:39 2023
+From: rb@er @end|ng |rom @t@u@edu (Robert Baer)
+Date: Thu, 30 Nov 2023 18:04:39 -0600
+Subject: [R] back tick names with predict function
+In-Reply-To: <ca3d2bde-4426-4a41-9d9f-93e60fc66a55@sapo.pt>
+References: <495ef0b7-b017-4aa2-afb0-5c2b6ab4e647@atsu.edu>
+ <b25f20f0-c196-4897-8ea3-2a3e5f1a48ff@sapo.pt>
+ <ca3d2bde-4426-4a41-9d9f-93e60fc66a55@sapo.pt>
+Message-ID: <84461035-4232-4112-82cf-bba5e65d03eb@atsu.edu>
+
+Thank you Rui.? I didn't know about the check.names = FALSE argument.? 
+Another good reminder to always read help, but I'm not sure I understood 
+what help to read in this case.? Since your clue, I've discovered that a 
+tibble-based strategy could also work.
+
+x = seq(min(cob_wt$`plant-density`), max(cob_wt$`plant-density`), length 
+= 999)
+xvals = tibble(`plant-density` = x)
+CI.c = predict(mod2, newdata = xvals, interval = 'c')
+CI.p = predict(mod2,? newdata = xvals,? interval = 'p')
+
+Again, appreciate the solution.
+
+On 11/30/2023 12:03 PM, Rui Barradas wrote:
+> ?s 17:57 de 30/11/2023, Rui Barradas escreveu:
+>> ?s 17:38 de 30/11/2023, Robert Baer escreveu:
+>>> I am having trouble using back ticks with the R extractor function 
+>>> 'predict' and an lm() model. I'm trying too construct some nice 
+>>> vectors that can be used for plotting the two types of regression 
+>>> intervals.? I think it works with normal column heading names but it 
+>>> fails when I have "special" back-tick names.? Can anyone help with 
+>>> how I would reference these?? Short of renaming my columns, is there 
+>>> a way to accomplish this?
+>>>
+>>> Repex
+>>>
+>>> *# dataframe with dashes in column headings
+>>> cob =
+>>> ?? structure(list(`cob-wt` = c(212, 241, 215, 225, 250, 241, 237,
+>>> ???????????????????????????? 282, 206, 246, 194, 241, 196, 193, 224, 
+>>> 257, 200, 190, 208, 224
+>>> ), `plant-density` = c(137, 107, 132, 135, 115, 103, 102, 65,
+>>> ??????????????????????? 149, 85, 173, 124, 157, 184, 112, 80, 165, 
+>>> 160, 157, 119)),
+>>> class = c("tbl_df", "tbl", "data.frame"), row.names = c(NA, -20L))
+>>>
+>>> # regression model works
+>>> mod2 = lm(`cob-wt` ~ `plant-density`, data = cob)
+>>>
+>>> # x sequence for plotting CI's
+>>> # Set up x points
+>>> x = seq(min(cob$`plant-density`), max(cob$`plant-density`), length = 
+>>> 1000)
+>>>
+>>> # Use predict to get CIs for a plot
+>>> # Add CI for regression line (y-hat uses 'c')
+>>> # usual trick is to assign x to actual x-var name in middle 
+>>> dataframe arguement
+>>> CI.c = predict(mod2, data.frame( `plant-density` = x), interval = 
+>>> 'c') # fail
+>>>
+>>> # Add CI for prediction value (y-tilde uses 'p')
+>>> # usual trick is to assign x to actual x-var name in middle 
+>>> dataframe arguement
+>>> CI.p = predict(mod2, data.frame(`plant-density`? = x), interval = 
+>>> 'p')??? # fail
+>>> *
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide 
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>> Hello,
+>>
+>> When creating the new data df, the default check.names = TRUE changes 
+>> the column name, it is repaired and the hyphen is replaced by a legal 
+>> dot.
+>>
+>>
+>> # check.names defaults to TRUE
+>> newd <- data.frame(`plant-density` = x)
+>> # `plant-density` is not a column name
+>> head(newd)
+>>
+>> # check.names set to FALSE
+>> newd <- data.frame(`plant-density` = x, check.names = FALSE)
+>> # `plant-density` is becomes a column name
+>> head(newd)
+>>
+>>
+>> # Use predict to get CIs for a plot
+>> # Add CI for regression line (y-hat uses 'c')
+>> # usual trick is to assign x to actual x-var name in middle dataframe 
+>> arguement
+>> CI.c = predict(mod2, newdata = newd, interval = 'confidence')? # fail
+>>
+>> # Add CI for prediction value (y-tilde uses 'p')
+>> # usual trick is to assign x to actual x-var name in middle dataframe 
+>> arguement
+>> CI.p = predict(mod2, newdata = newd, interval = 'prediction') # fail
+>>
+>>
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>>
+> Hello,
+>
+> Sorry for the comments '# fail' in the last two instructions, I should 
+> have changed them.
+>
+>
+> CI.c <- predict(mod2, newdata = newd, interval = 'confidence') # works
+> CI.p <- predict(mod2, newdata = newd, interval = 'prediction') # works
+>
+>
+> Hoep this helps,
+>
+> Rui Barradas
+>
+>
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Fri Dec  1 01:47:23 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 30 Nov 2023 16:47:23 -0800
+Subject: [R] back tick names with predict function
+In-Reply-To: <84461035-4232-4112-82cf-bba5e65d03eb@atsu.edu>
+References: <495ef0b7-b017-4aa2-afb0-5c2b6ab4e647@atsu.edu>
+ <b25f20f0-c196-4897-8ea3-2a3e5f1a48ff@sapo.pt>
+ <ca3d2bde-4426-4a41-9d9f-93e60fc66a55@sapo.pt>
+ <84461035-4232-4112-82cf-bba5e65d03eb@atsu.edu>
+Message-ID: <CAGxFJbTbwg21cz+v4ooaD7BhuH8vD-Jj1fHtE-dDw+ChxZnKcg@mail.gmail.com>
+
+"Thank you Rui.  I didn't know about the check.names = FALSE argument.
+> Another good reminder to always read help, but I'm not sure I understood
+> what help to read in this case"
+
+?data.frame , of course, which says:
+
+"check.names
+
+logical. If TRUE then the names of the variables in the data frame are
+checked to ensure that they are syntactically valid variable names and
+are not duplicated. If necessary they are adjusted (by make.names) so
+that they are. "
+
+-- Bert
+
+
