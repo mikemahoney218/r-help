@@ -1283,3 +1283,154 @@ Duncan Murdoch
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From wo||g@ng@v|echtb@uer @end|ng |rom m@@@tr|chtun|ver@|ty@n|  Sun Dec  3 13:26:49 2023
+From: wo||g@ng@v|echtb@uer @end|ng |rom m@@@tr|chtun|ver@|ty@n| (Viechtbauer, Wolfgang (NP))
+Date: Sun, 3 Dec 2023 12:26:49 +0000
+Subject: [R] Try reproduce glmm by hand
+In-Reply-To: <f0d28e51-b515-4880-aa55-70af47e8dbc9@yahoo.fr>
+References: <f0d28e51-b515-4880-aa55-70af47e8dbc9.ref@yahoo.fr>
+ <f0d28e51-b515-4880-aa55-70af47e8dbc9@yahoo.fr>
+Message-ID: <AS8PR08MB9193E36010607807831C8B408B87A@AS8PR08MB9193.eurprd08.prod.outlook.com>
+
+Dear Marc,
+
+Plugging the BLUPs into the likelihood isn't going to give you the ll of the model. You need to integrate over the random effect.
+
+intfun <- function(nu, xi, mi, pred, theta)
+   dbinom(xi, xi+mi, plogis(nu)) * dnorm(nu, pred, theta)
+
+lli <- rep(NA, nrow(df))
+
+for (i in 1:nrow(df)) {
+   lli[i] <- log(integrate(intfun, xi=df[i,1], mi=df[i,2], pred=fixep[1] + fixep[2]*x[i], theta=par$theta, lower=-Inf, upper=Inf)$value)
+}
+
+-sum(lli)
+
+Best,
+Wolfgang
+
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Marc Girondot via R-
+> help
+> Sent: Saturday, December 2, 2023 17:36
+> To: Marc Girondot via R-help <r-help at r-project.org>
+> Subject: [R] Try reproduce glmm by hand
+>
+> Dear all,
+>
+> In order to be sure I understand glmm correctly, I try to reproduce by
+> hand a simple result. Here is a reproducible code. The questions are in
+> _________________
+>
+> Of course I have tried to find the solution using internet but I was not
+> able to find a solution. I have also tried to follow glmer but it is
+> very complicated code!
+>
+> Thanks for any help.
+>
+> Marc
+>
+> # Generate set of df with nb successes and failures
+> # and ID being A, B or C (the random effect)
+> # and x being the fixed effect
+> set.seed(1)
+> df <- rbind(matrix(data = c(sample(x=5:30, size=40, replace = TRUE),
+> rep(10, 40)), ncol=2),
+>              matrix(data = c(sample(x=10:30, size=40, replace = TRUE),
+> rep(10, 40)), ncol=2),
+>              matrix(data = c(sample(x=20:30, size=40, replace = TRUE),
+> rep(10, 40)), ncol=2))
+> ID <- as.factor(c(rep("A", 40), rep("B", 40), rep("C", 40)))
+> x <- c(runif(40, min=10, max=30), runif(40, min=20, max=30), runif(40,
+> min=40, max=60))
+> x <- (x-min(x))/(max(x)-min(x))
+>
+> # In g0, I have the results of the glmm
+> library(lme4)
+> g0 <- glmer(formula = df ~ x + (1 | ID), family =
+> binomial(link="logit"), nAGQ=1)
+> -logLik(g0) # 'log Lik.' 268.0188 (df=3)
+> # I get the fitted parameters
+> fixep <- fixef(g0)
+> par <- getME(g0, c("theta","beta"))
+> # _______________________________________________________________________
+> # Question 1: how theta is converted into the specific effect on
+> (intercept) for the random effect ?
+> # Then how a theta parameter is converted into intercepts?
+> # _______________________________________________________________________
+> intercepts <- ranef(g0)$ID
+>
+> # This part is ok, the predict is correct
+> pfit <- 1-c(1/(1+exp(fixep["(Intercept)"]+intercepts["A",
+> 1]+x[ID=="A"]*fixep["x"])),
+>    1/(1+exp(fixep["(Intercept)"]+intercepts["B",
+> 1]+x[ID=="B"]*fixep["x"])),
+>    1/(1+exp(fixep["(Intercept)"]+intercepts["C", 1]+x[ID=="C"]*fixep["x"])))
+>
+> predict(g0, type = "response")
+>
+> # _______________________________________________________________________
+> # Why I obtain 266.4874 and not 268.0188 as in -logLik(g0)?
+> # _______________________________________________________________________
+> -sum(dbinom(x=df[, 1], size=df[, 1]+df[, 2], prob=pfit, log=TRUE)) #
+> 266.4874
+
+From rb@er @end|ng |rom @t@u@edu  Sun Dec  3 17:38:55 2023
+From: rb@er @end|ng |rom @t@u@edu (Robert Baer)
+Date: Sun, 3 Dec 2023 10:38:55 -0600
+Subject: [R] back tick names with predict function
+In-Reply-To: <240E71BB-E054-4F8A-99C1-8F905FAFBC49@gmail.com>
+References: <495ef0b7-b017-4aa2-afb0-5c2b6ab4e647@atsu.edu>
+ <b25f20f0-c196-4897-8ea3-2a3e5f1a48ff@sapo.pt>
+ <ca3d2bde-4426-4a41-9d9f-93e60fc66a55@sapo.pt>
+ <84461035-4232-4112-82cf-bba5e65d03eb@atsu.edu>
+ <CAGxFJbTbwg21cz+v4ooaD7BhuH8vD-Jj1fHtE-dDw+ChxZnKcg@mail.gmail.com>
+ <240E71BB-E054-4F8A-99C1-8F905FAFBC49@gmail.com>
+Message-ID: <fa5936f9-0df6-4ae4-a345-9dacc59cc343@atsu.edu>
+
+
+On 12/1/2023 11:47 AM, peter dalgaard wrote:
+> Also, and possibly more constructively, when you get an error like
+>   
+>> CI.c = predict(mod2, data.frame( `plant-density` = x), interval = 'c')  # fail
+> Error in eval(predvars, data, env) : object 'plant-density' not found
+>
+> you should check your assumptions. Does "newdata" actually contain a columnn called "plant-density":
+
+Great advice/strategy. Thanks!
+
+
+>> head(data.frame( `plant-density` = x))
+>    plant.density
+> 1      65.00000
+> 2      65.11912
+> 3      65.23824
+> 4      65.35736
+> 5      65.47648
+> 6      65.59560
+> I.e., it doesn't. So check help for data.frame and looking for something with names.
+>
+>> On 1 Dec 2023, at 01:47 , Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>>
+>> "Thank you Rui.  I didn't know about the check.names = FALSE argument.
+>>> Another good reminder to always read help, but I'm not sure I understood
+>>> what help to read in this case"
+>> ?data.frame , of course, which says:
+>>
+>> "check.names
+>>
+>> logical. If TRUE then the names of the variables in the data frame are
+>> checked to ensure that they are syntactically valid variable names and
+>> are not duplicated. If necessary they are adjusted (by make.names) so
+>> that they are. "
+>>
+>> -- Bert
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
