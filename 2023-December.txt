@@ -2498,3 +2498,546 @@ Dirk
 dirk.eddelbuettel.com | @eddelbuettel | edd at debian.org
 
 
+From konr@d_kr@emer @end|ng |rom y@hoo@de  Fri Dec  8 08:21:16 2023
+From: konr@d_kr@emer @end|ng |rom y@hoo@de (Konrad)
+Date: Fri, 8 Dec 2023 08:21:16 +0100
+Subject: [R] Fit NLE - was:  computer algebra in R
+In-Reply-To: <HE1P192MB0089CF9BF4C34E3C92BAEEC38486A@HE1P192MB0089.EURP192.PROD.OUTLOOK.COM>
+References: <HE1P192MB0089CF9BF4C34E3C92BAEEC38486A@HE1P192MB0089.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <850fb7b0-3e69-4615-a540-d86a94fad011@yahoo.de>
+
+Dear all,
+
+
+first I would like to thank Leo for his help and advice. My sincere 
+apologies for the delayed response; regrettably, I overlooked the email.
+
+
+In order to characterize the problem a bit better I want to give 
+additional information and clarify the point where I have problems.
+
+
+First of all the equation system is defined as:
+
+h0 = h + hd + hg,
+d0 = d + hd,
+ga0 = ga + hg,
+kga = hg/(h*ga),
+kd = hd/(h*d)
+
+
+The aim is to fit a non-linear equation in the form: signal ~ I0 + IHD * 
+hd + ID * d.
+
+
+The parameters which should be identified/optimized are: I0, ID, IHD and 
+kd. However, the only information known is kga (33600.0), h0 
+(0.0000208), d0 (0.000079) and the guest concentration (= ga0).
+
+In Mathematica the equation system is repeatedly solved for hd and d. 
+First the system 0 = h + hd + hga, 33600. = d + hd, ga0 = ga + hga, 
+0.000079 = hga/(ga*h), 0.0000208 = hd/(d*h) is passed to the Eliminate 
+function which eliminates four variables. In the case for hd the 
+variables h, d, hga and ga are eliminated. The resulting system is:? 
+3.71035392*^12 + 2.635566*^8*hd - 3783.*hd^2 == ga0*(-1.72536*^8 + 
+5135.*hd). Afterwards this system is used by a numerical solver to get 
+the result of hd.
+
+My problem is how to replicate the Eliminate function in R. Or is it 
+possible to solely solve the system numerically?
+
+
+Thanks a lot in advance.
+
+All the best,
+
+Konrad
+
+
+On 04.12.23 23:10, Leo Mada wrote:
+> Fit NLE - was: [R] computer algebra in R
+> Original post:
+> https://stat.ethz.ch/pipermail/r-help/2023-November/478619.html
+>
+> Dear Kornad,
+>
+> I think I have started to understand what you try to achieve. The 
+> problem is to fit a NLE and compute the parameters of the NL-Eq. I 
+> have included the R Help-list back in the loop, as I am not an expert 
+> in optimization.
+>
+> Goal:
+> y ~ I0 + ?IHD * hd + ID * d;
+> where:
+> y = given vector of measurements;
+> x = given vector of values;
+> I0, IHD, ID, kd = parameters to optimize;
+> hd = satisfies a polynomial of order 3;
+>
+> As d = d0 - hd, the previous formula can be written:
+> y ~ I0 + ID * d0 + ?(IHD - ID) * hd;
+>
+> f(x, hd, kd) = 0,
+> where f = a polynomial of order 3 in hd and order 2 in kd;
+> d0 (and other components of the polynomial) = given constants;
+>
+> 1) First Approach
+> I would back-substitute hd into the polynomial:
+> hd = (y - I0 - ID*d0) / (IHD - ID);
+>
+> f(x, hd, kd) becomes then f(x, y, kd, I0, ID, IHD) = 0;
+> - f is order 3 in y;
+>
+> You could fit:
+> (y^3) ~ f(x, y, kd, I0, ID, IHD) - y^3,
+> where you subtract the y^3 term from the function f, and add the (y^3) 
+> values as a new columng to the data.frame:
+> data.frame(y3 = y^3, y=y, x=x)
+>
+> If the values of y are versy small (abs(y) << 1), then it may be wiser 
+> to fit:
+> y ~ f(x, y^2, y^3, kd, I0, ID, IHD) - (y-term);
+>
+> But I am not an expert in these problems. Other R-users may be more 
+> helpful.
+>
+> 2.) Approach 2: Math
+> I feel that the problem can be solved quasy-exactly as well. It is 
+> much harder with 4 parameters to optimize:
+> - one needs to compute the 4 partial derivatives;
+> - solve the resulting system of 4 polynomial equations;
+>
+> The system is polynomial; although it looks ugly and I am not inclined 
+> to do such calculations myself.
+>
+> I hope that you can get more useful answers from the R help-list.
+>
+> Sincerely,
+>
+> Leonard
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Fri Dec  8 09:09:24 2023
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Fri, 8 Dec 2023 09:09:24 +0100
+Subject: [R] Convert character date time to R date-time variable.
+In-Reply-To: <CH3PR22MB45145C7A9CD905524B849FE3CF8BA@CH3PR22MB4514.namprd22.prod.outlook.com>
+References: <DM6PR03MB5049EA075B8AB0D040AB0FBEE28BA@DM6PR03MB5049.namprd03.prod.outlook.com>
+ <CH3PR22MB45145C7A9CD905524B849FE3CF8BA@CH3PR22MB4514.namprd22.prod.outlook.com>
+Message-ID: <25970.53044.912449.243759@stat.math.ethz.ch>
+
+>>>>> Ebert,Timothy Aaron 
+>>>>>     on Thu, 7 Dec 2023 16:29:09 +0000 writes:
+
+    > Look at the lubridate package in R.  Regards, Tim
+
+Absolutely *un*needed here !! - as others mention in this
+thread.
+
+Very simple with base R:
+
+  > strptime("2020-09-17_00:00:00", format = "%Y-%m-%d_%H:%M:%S")
+  [1] "2020-09-17 CEST"
+  > 
+
+(in my time zone).
+ 
+    > -----Original Message----- From: R-help
+    > <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+    > Sent: Thursday, December 7, 2023 11:22 AM To:
+    > r-help at r-project.org (r-help at r-project.org)
+    > <r-help at r-project.org> Subject: [R] Convert character date
+    > time to R date-time variable.
+
+    > [External Email]
+
+    > Colleagues,
+
+    > I have a matrix of character data that represents date and
+    > time. The format of each element of the matrix is
+    > "2020-09-17_00:00:00" How can I convert the elements into
+    > a valid R date-time constant?
+
+    > Thank you, John
+
+
+
+    > John David Sorkin M.D., Ph.D.  Professor of Medicine,
+    > University of Maryland School of Medicine;
+
+    > Associate Director for Biostatistics and Informatics,
+    > Baltimore VA Medical Center Geriatrics Research,
+    > Education, and Clinical Center;
+
+    > PI Biostatistics and Informatics Core, University of
+    > Maryland School of Medicine Claude D. Pepper Older
+    > Americans Independence Center;
+
+    > Senior Statistician University of Maryland Center for
+    > Vascular Research;
+
+    > Division of Gerontology and Paliative Care, 10 North
+    > Greene Street GRECC (BT/18/GR) Baltimore, MD 21201-1524
+    > Cell phone 443-418-5382
+
+
+
+    > ______________________________________________
+    > R-help at r-project.org mailing list -- To UNSUBSCRIBE and
+    > more, see https://stat.ethz.ch/mailman/listinfo/r-help
+    > PLEASE do read the posting guide
+    > http://www.r-project.org/posting-guide.html and provide
+    > commented, minimal, self-contained, reproducible code.
+
+    > ______________________________________________
+    > R-help at r-project.org mailing list -- To UNSUBSCRIBE and
+    > more, see https://stat.ethz.ch/mailman/listinfo/r-help
+    > PLEASE do read the posting guide
+    > http://www.R-project.org/posting-guide.html and provide
+    > commented, minimal, self-contained, reproducible code.
+
+
+From dw|n@em|u@ @end|ng |rom comc@@t@net  Fri Dec  8 22:30:07 2023
+From: dw|n@em|u@ @end|ng |rom comc@@t@net (David Winsemius)
+Date: Fri, 8 Dec 2023 13:30:07 -0800
+Subject: [R] Convert character date time to R date-time variable.
+In-Reply-To: <DM6PR03MB5049EA075B8AB0D040AB0FBEE28BA@DM6PR03MB5049.namprd03.prod.outlook.com>
+References: <DM6PR03MB5049EA075B8AB0D040AB0FBEE28BA@DM6PR03MB5049.namprd03.prod.outlook.com>
+Message-ID: <4d9c6da9-4b31-f8d0-c4cd-e9de8f4e464e@comcast.net>
+
+
+On 12/7/23 08:21, Sorkin, John wrote:
+> Colleagues,
+>
+> I have a matrix of character data that represents date and time. The format of each element of the matrix is
+> "2020-09-17_00:00:00"
+> How can I convert the elements into a valid R date-time constant?
+
+You will not be able to store these datetime values in an R matrix, at 
+least as class POSIXct. You could with class POSIXlt, but I've not seen 
+it used before but it does appear possible since matrices can contain 
+lists.
+
+R matrices do no provide the capability to assign attributes, so only 
+atomic types and lists can be elements. If you wanted to maintain the 
+same structure, your first step might be to coerce to a data.frame and 
+then proceed, or to first construct a vector and then use as the first 
+argument to `matrix`.
+
+
+Best;
+
+David
+
+>
+> Thank you,
+> John
+>
+>
+>
+> John David Sorkin M.D., Ph.D.
+> Professor of Medicine, University of Maryland School of Medicine;
+>
+> Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+>
+> PI?Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+>
+> Senior Statistician University of Maryland Center for Vascular Research;
+>
+> Division of Gerontology and Paliative Care,
+> 10 North Greene Street
+> GRECC (BT/18/GR)
+> Baltimore, MD 21201-1524
+> Cell phone 443-418-5382
+>
+>
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Dec  8 22:56:10 2023
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 8 Dec 2023 16:56:10 -0500
+Subject: [R] Convert character date time to R date-time variable.
+In-Reply-To: <4d9c6da9-4b31-f8d0-c4cd-e9de8f4e464e@comcast.net>
+References: <DM6PR03MB5049EA075B8AB0D040AB0FBEE28BA@DM6PR03MB5049.namprd03.prod.outlook.com>
+ <4d9c6da9-4b31-f8d0-c4cd-e9de8f4e464e@comcast.net>
+Message-ID: <ed18cc13-7836-416d-bd72-1a9bc03798ea@gmail.com>
+
+On 08/12/2023 4:30 p.m., David Winsemius wrote:
+> 
+> On 12/7/23 08:21, Sorkin, John wrote:
+>> Colleagues,
+>>
+>> I have a matrix of character data that represents date and time. The format of each element of the matrix is
+>> "2020-09-17_00:00:00"
+>> How can I convert the elements into a valid R date-time constant?
+> 
+> You will not be able to store these datetime values in an R matrix, at
+> least as class POSIXct. You could with class POSIXlt, but I've not seen
+> it used before but it does appear possible since matrices can contain
+> lists.
+> 
+> R matrices do no provide the capability to assign attributes, so only
+> atomic types and lists can be elements. If you wanted to maintain the
+> same structure, your first step might be to coerce to a data.frame and
+> then proceed, or to first construct a vector and then use as the first
+> argument to `matrix`.
+
+The general sentiment is correct (it's hard to put POSIXct elements in 
+matrices), but it's not impossible.  Almost all R objects can have 
+attributes.
+
+For example,
+
+   m <- matrix(Sys.time(), 2,2)
+
+converts the time to a numerical value, but you can view it as a POSIXlt 
+object using
+
+   class(m) <- c("POSIXct", class(m))
+
+Subsetting works, e.g. m[1,1] is a time, etc.
+
+Duncan Murdoch
+> 
+> 
+> Best;
+> 
+> David
+> 
+>>
+>> Thank you,
+>> John
+>>
+>>
+>>
+>> John David Sorkin M.D., Ph.D.
+>> Professor of Medicine, University of Maryland School of Medicine;
+>>
+>> Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+>>
+>> PI?Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+>>
+>> Senior Statistician University of Maryland Center for Vascular Research;
+>>
+>> Division of Gerontology and Paliative Care,
+>> 10 North Greene Street
+>> GRECC (BT/18/GR)
+>> Baltimore, MD 21201-1524
+>> Cell phone 443-418-5382
+>>
+>>
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Fri Dec  8 23:57:45 2023
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Fri, 8 Dec 2023 22:57:45 +0000
+Subject: [R] Convert two-dimensional array into a three-dimensional array.
+Message-ID: <DM6PR03MB504979641A471930217570CCE28AA@DM6PR03MB5049.namprd03.prod.outlook.com>
+
+Colleagues
+
+I want to convert a 10x2 array:
+# create a 10x2 matrix.
+datavals <- matrix(nrow=10,ncol=2)
+datavals[,] <- rep(c(1,2),10)+c(rnorm(10),rnorm(10))
+datavals
+
+into a 10x3 array, ThreeDArray, dim(10,2,10).
+
+The values storede in  ThreeDArray's first dimensions will be the data stored in datavalues.
+ThreeDArray[i,,] <- datavals[i,]
+
+The values storede in  ThreeDArray's second dimensions will be the data stored in datavalues.
+ThreeDArray[,j,] <- datavals[,j]
+
+The data stored in ThreeDArray[,,1] will be 1, 
+The data stored in ThreeDArray[,,2] will be 2.
+ . . . 
+The data stored in ThreeDArray[,,10] will be 10.
+
+I have no idea how to code the coversion of the 10x2 matrix into a 10,2,10 array.
+I may be able to acomplish my mission by coding each line of the plan described above,
+but there has to be a more efficient and elegant way to accompish my goal.
+
+Many thanks for your help!
+John
+
+
+
+
+John David Sorkin M.D., Ph.D.
+Professor of Medicine, University of Maryland School of Medicine;
+
+Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;?
+
+PI?Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+
+Senior Statistician University of Maryland Center for Vascular Research;
+
+Division of Gerontology and Paliative Care,
+10 North Greene Street
+GRECC (BT/18/GR)
+Baltimore, MD 21201-1524
+Cell phone 443-418-5382
+
+
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Dec  9 00:51:04 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Fri, 8 Dec 2023 15:51:04 -0800
+Subject: [R] 
+ Convert two-dimensional array into a three-dimensional array.
+In-Reply-To: <DM6PR03MB504979641A471930217570CCE28AA@DM6PR03MB5049.namprd03.prod.outlook.com>
+References: <DM6PR03MB504979641A471930217570CCE28AA@DM6PR03MB5049.namprd03.prod.outlook.com>
+Message-ID: <CAGxFJbQCTczZjuh+CAupi2gtZ_yYLkkzRQq6OJesu7Kp51JYww@mail.gmail.com>
+
+OK. I'm not getting what you want, so feel free to ignore this if you think
+I've missed the point completely and don't want to waste your time. Won't
+be my first time clueless.
+
+A 3-D array can be  thought of as as a "pile" of 2-D flats, so a 10 x 2 x
+10 array consists of 10 2-d flats, each 10 x 2. So tell me what you want
+the first 10x2 flat to contain, then the second, etc.  Here is a print
+representation of a 2 x 4 x 3 array that might help:
+
+> array(1:24, dim = c(2,4,3))
+, , 1
+
+     [,1] [,2] [,3] [,4]
+[1,]    1    3    5    7
+[2,]    2    4    6    8
+
+, , 2
+
+     [,1] [,2] [,3] [,4]
+[1,]    9   11   13   15
+[2,]   10   12   14   16
+
+, , 3
+
+     [,1] [,2] [,3] [,4]
+[1,]   17   19   21   23
+[2,]   18   20   22   24
+
+FWIW, it sounds to me like you just do something like:
+
+> dval <- matrix(1:8, nrow = 2)
+> dval
+     [,1] [,2] [,3] [,4]
+[1,]    1    3    5    7
+[2,]    2    4    6    8
+> ar <- array(dval, dim = c(2,4,3))
+> ar
+, , 1
+
+     [,1] [,2] [,3] [,4]
+[1,]    1    3    5    7
+[2,]    2    4    6    8
+
+, , 2
+
+     [,1] [,2] [,3] [,4]
+[1,]    1    3    5    7
+[2,]    2    4    6    8
+
+, , 3
+
+     [,1] [,2] [,3] [,4]
+[1,]    1    3    5    7
+[2,]    2    4    6    8
+
+since the 3rd array index itself provides the values you refer to. But this
+doesn't make sense to me, so I've probably misinterpreted.
+
+Cheers,
+Bert
+
+
+On Fri, Dec 8, 2023 at 2:58?PM Sorkin, John <jsorkin at som.umaryland.edu>
+wrote:
+
+> Colleagues
+>
+> I want to convert a 10x2 array:
+> # create a 10x2 matrix.
+> datavals <- matrix(nrow=10,ncol=2)
+> datavals[,] <- rep(c(1,2),10)+c(rnorm(10),rnorm(10))
+> datavals
+>
+> into a 10x3 array, ThreeDArray, dim(10,2,10).
+>
+> The values storede in  ThreeDArray's first dimensions will be the data
+> stored in datavalues.
+> ThreeDArray[i,,] <- datavals[i,]
+>
+> The values storede in  ThreeDArray's second dimensions will be the data
+> stored in datavalues.
+> ThreeDArray[,j,] <- datavals[,j]
+>
+> The data stored in ThreeDArray[,,1] will be 1,
+> The data stored in ThreeDArray[,,2] will be 2.
+>  . . .
+> The data stored in ThreeDArray[,,10] will be 10.
+>
+> I have no idea how to code the coversion of the 10x2 matrix into a 10,2,10
+> array.
+> I may be able to acomplish my mission by coding each line of the plan
+> described above,
+> but there has to be a more efficient and elegant way to accompish my goal.
+>
+> Many thanks for your help!
+> John
+>
+>
+>
+>
+> John David Sorkin M.D., Ph.D.
+> Professor of Medicine, University of Maryland School of Medicine;
+>
+> Associate Director for Biostatistics and Informatics, Baltimore VA Medical
+> Center Geriatrics Research, Education, and Clinical Center;
+>
+> PI Biostatistics and Informatics Core, University of Maryland School of
+> Medicine Claude D. Pepper Older Americans Independence Center;
+>
+> Senior Statistician University of Maryland Center for Vascular Research;
+>
+> Division of Gerontology and Paliative Care,
+> 10 North Greene Street
+> GRECC (BT/18/GR)
+> Baltimore, MD 21201-1524
+> Cell phone 443-418-5382
+>
+>
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
