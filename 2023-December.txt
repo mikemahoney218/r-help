@@ -3392,3 +3392,550 @@ On Sat, Dec 9, 2023 at 10:50?AM javad bayat <j.bayat194 at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From kry|ov@r00t @end|ng |rom gm@||@com  Sun Dec 10 09:59:48 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Sun, 10 Dec 2023 11:59:48 +0300
+Subject: [R] Fit NLE - was:  computer algebra in R
+In-Reply-To: <850fb7b0-3e69-4615-a540-d86a94fad011@yahoo.de>
+References: <HE1P192MB0089CF9BF4C34E3C92BAEEC38486A@HE1P192MB0089.EURP192.PROD.OUTLOOK.COM>
+ <850fb7b0-3e69-4615-a540-d86a94fad011@yahoo.de>
+Message-ID: <20231210115948.7cb70600@Tarkus>
+
+? Fri, 8 Dec 2023 08:21:16 +0100
+Konrad via R-help <r-help at r-project.org> ?????:
+
+> My problem is how to replicate the Eliminate function in R.
+
+While R does invite the user to "compute on the language", i.e. take R
+expressions and function calls and work with them as with ordinary
+variables [*], so far nobody wrote a complete computer algebra system in
+R. Interfaces for other CASes do exist, but I haven't tried them.
+
+> Or is it possible to solely solve the system numerically?
+
+While it's less efficient to do so, it must be possible. For example,
+the https://CRAN.R-project.org/package=nleqslv package does exactly
+that.
+
+> h0 = h + hd + hg,
+> d0 = d + hd,
+> ga0 = ga + hg,
+> kga = hg/(h*ga),
+> kd = hd/(h*d)
+ 
+> The aim is to fit a non-linear equation in the form: signal ~ I0 +
+> IHD * hd + ID * d.
+
+> The parameters which should be identified/optimized are: I0, ID, IHD
+> and kd. However, the only information known is kga (33600.0), h0 
+> (0.0000208), d0 (0.000079) and the guest concentration (= ga0).
+
+This doesn't quite agree with
+
+> 0 = h + hd + hga,
+> 33600. = d + hd,
+> 0.000079 = hga/(ga*h),
+
+...that you gave to Mathematica. Is it d0 = d + hd or kga = 33600. = d +
+hd? kga = hg/(h*ga) or d0 = 0.000079 = hga/(ga*h)? What other equations
+are missing?
+
+The general approach is to take all the equations and write them down
+as a vector of expressions that should be evaluate to 0 at solution,
+then substitute() in the values of the constants and x[i] for
+sequential values of `i` for variables:
+
+fn <- function(x) NULL
+body(fn) <- substitute(
+ c( # equations go here
+  h0  - h + hd + hg,
+  d0  - d + hd,
+  ga0 - ga + hg,
+  kga - hg/(h*ga),
+  kd  - hd/(h*d),
+  # ...more equations...
+  signal - I0 + IHD * hd + ID * d
+ ),
+ list(
+  # knowns
+  kga = 33600.0,
+  h0 = 0.0000208,
+  d0 = 0.000079,
+  # assuming two more knowns live in same-named variables
+  ga0 = ga0,
+  signal = signal,
+  # variables named so far
+  I0 = quote(x[1]), ID = quote(x[2]),
+  IHD = quote(x[3]), kd = quote(x[4])
+  # ...more variables...
+ )
+)
+
+The resulting function fn() takes a vector of variables and should
+return a vector of zeroes at the solution. Try to solve it using
+nleqslv::nleqslv(starting_guess, fn) or some of the functions from the
+BB package.
+
+-- 
+Best regards,
+Ivan
+
+[*] For example, see this R package automatically differentiate
+expressions when solving nonlinear least squares problems:
+https://cran.r-project.org/package=nlsr/vignettes/nlsr-derivs.pdf
+
+
+From rn|@boh @end|ng |rom gm@||@com  Sun Dec 10 11:38:02 2023
+From: rn|@boh @end|ng |rom gm@||@com (Bob O'Hara)
+Date: Sun, 10 Dec 2023 11:38:02 +0100
+Subject: [R] reshape() not dropping varaibles
+Message-ID: <CAN-Z0xX0ouaS3Njh12K6GVdxZ2j7vOnA8+Wb_yrAVtv=UYnrUA@mail.gmail.com>
+
+Hi all!
+
+I1m trying to re-format some data from long to wide format with reshape().
+Specifically, the data has SURVEYDATE, which I want to be in the rows, and
+COMMON_NAME which should be the columns. The entries should be TOTAL_CATCH.
+The data has a bunch of other variables, which can be ignored.
+
+When I run reshape(), it includes all of the variables, not just
+TOTAL_CATCH:
+
+Data <- read.csv("
+https://conservancy.umn.edu/bitstream/handle/11299/227105/fish_data_raw.csv?sequence=6&isAllowed=y
+")
+Data.wide <- reshape(Data, direction = "wide",
+                idvar = "SURVEYDATE", timevar = "COMMON_NAME",
+                v.names = "TOTAL_CATCH")
+names(Data.wide)
+
+I tried with the example on the help page, which works fine:
+
+# this works
+Indometh$thing <- 1:nrow(Indometh)
+wide <- reshape(Indometh, direction = "wide", idvar = "Subject",
+                timevar = "time", v.names = "conc", sep= "_")
+names(wide)
+
+There are some obvious work-arounds and alternatives, but it would be nice
+to have this sorted. Can anyone help?
+
+Bob
+
+Bob
+
+-- 
+Bob O'Hara
+Institutt for matematiske fag
+NTNU
+7491 Trondheim
+Norway
+
+Mobile: +47 915 54 416
+Journal of Negative Results - EEB: www.jnr-eeb.org
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Dec 10 16:35:17 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 10 Dec 2023 07:35:17 -0800
+Subject: [R] reshape() not dropping varaibles
+In-Reply-To: <CAN-Z0xX0ouaS3Njh12K6GVdxZ2j7vOnA8+Wb_yrAVtv=UYnrUA@mail.gmail.com>
+References: <CAN-Z0xX0ouaS3Njh12K6GVdxZ2j7vOnA8+Wb_yrAVtv=UYnrUA@mail.gmail.com>
+Message-ID: <CAGxFJbQj+-=qfT0-_mWV_FoFxxkzeA8B=oADFq9XnTeBvLfV5w@mail.gmail.com>
+
+Posting a few rows, say 5, of your data using dput() along with the result
+that you would like to get for those rows would help get you a quicker and
+more accurate response, I believe. This is as suggested by the posting
+guide, linked below, which you should read if you have not already.
+
+-- Bert
+
+
+
+On Sun, Dec 10, 2023 at 2:38?AM Bob O'Hara <rni.boh at gmail.com> wrote:
+
+> Hi all!
+>
+> I1m trying to re-format some data from long to wide format with reshape().
+> Specifically, the data has SURVEYDATE, which I want to be in the rows, and
+> COMMON_NAME which should be the columns. The entries should be TOTAL_CATCH.
+> The data has a bunch of other variables, which can be ignored.
+>
+> When I run reshape(), it includes all of the variables, not just
+> TOTAL_CATCH:
+>
+> Data <- read.csv("
+>
+> https://conservancy.umn.edu/bitstream/handle/11299/227105/fish_data_raw.csv?sequence=6&isAllowed=y
+> ")
+> Data.wide <- reshape(Data, direction = "wide",
+>                 idvar = "SURVEYDATE", timevar = "COMMON_NAME",
+>                 v.names = "TOTAL_CATCH")
+> names(Data.wide)
+>
+> I tried with the example on the help page, which works fine:
+>
+> # this works
+> Indometh$thing <- 1:nrow(Indometh)
+> wide <- reshape(Indometh, direction = "wide", idvar = "Subject",
+>                 timevar = "time", v.names = "conc", sep= "_")
+> names(wide)
+>
+> There are some obvious work-arounds and alternatives, but it would be nice
+> to have this sorted. Can anyone help?
+>
+> Bob
+>
+> Bob
+>
+> --
+> Bob O'Hara
+> Institutt for matematiske fag
+> NTNU
+> 7491 Trondheim
+> Norway
+>
+> Mobile: +47 915 54 416
+> Journal of Negative Results - EEB: www.jnr-eeb.org
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sun Dec 10 18:21:24 2023
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sun, 10 Dec 2023 09:21:24 -0800
+Subject: [R] reshape() not dropping varaibles
+In-Reply-To: <CAGxFJbQj+-=qfT0-_mWV_FoFxxkzeA8B=oADFq9XnTeBvLfV5w@mail.gmail.com>
+References: <CAN-Z0xX0ouaS3Njh12K6GVdxZ2j7vOnA8+Wb_yrAVtv=UYnrUA@mail.gmail.com>
+ <CAGxFJbQj+-=qfT0-_mWV_FoFxxkzeA8B=oADFq9XnTeBvLfV5w@mail.gmail.com>
+Message-ID: <E42E7629-1FF8-444B-8837-379B5A7C86E5@dcn.davis.ca.us>
+
+It would be nice to see what OP wanted to end up with, but the link contained input data to experiment with.
+
+The first problem is that if you are not interested in working with the whole set of columns then you need to only give a data frame with the columns you want to work with:
+
+dta.wide <- reshape(
+  Data[, c( "SURVEYDATE", "COMMON_NAME", "TOTAL_CATCH" ) ]
+  , direction = "wide"
+  , idvar = "SURVEYDATE"
+  , timevar = "COMMON_NAME"
+  , v.names = "TOTAL_CATCH"
+)
+
+Second, there are multiple rows of TOTAL_CATCH for each combination of SURVEYDATE and COMMON_NAME. reshape does not do math on the data... you have to resolve that yourself first by choosing how you want to turn a bunch of numbers into one... in this case I chose to sum them up:
+
+Data.agg <- aggregate(
+  TOTAL_CATCH ~ SURVEYDATE + COMMON_NAME
+  , data = Data
+  , FUN = sum
+)
+# the aggregate calculation implicitly leaves out columns you don't specify
+
+dta.wide <- reshape(
+  Data.agg
+  , direction = "wide"
+  , idvar = "SURVEYDATE"
+  , timevar = "COMMON_NAME"
+  , v.names = "TOTAL_CATCH"
+)
+Data.wide
+
+On December 10, 2023 7:35:17 AM PST, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>Posting a few rows, say 5, of your data using dput() along with the result
+>that you would like to get for those rows would help get you a quicker and
+>more accurate response, I believe. This is as suggested by the posting
+>guide, linked below, which you should read if you have not already.
+>
+>-- Bert
+>
+>
+>
+>On Sun, Dec 10, 2023 at 2:38?AM Bob O'Hara <rni.boh at gmail.com> wrote:
+>
+>> Hi all!
+>>
+>> I1m trying to re-format some data from long to wide format with reshape().
+>> Specifically, the data has SURVEYDATE, which I want to be in the rows, and
+>> COMMON_NAME which should be the columns. The entries should be TOTAL_CATCH.
+>> The data has a bunch of other variables, which can be ignored.
+>>
+>> When I run reshape(), it includes all of the variables, not just
+>> TOTAL_CATCH:
+>>
+>> Data <- read.csv("
+>>
+>> https://conservancy.umn.edu/bitstream/handle/11299/227105/fish_data_raw.csv?sequence=6&isAllowed=y
+>> ")
+>> Data.wide <- reshape(Data, direction = "wide",
+>>                 idvar = "SURVEYDATE", timevar = "COMMON_NAME",
+>>                 v.names = "TOTAL_CATCH")
+>> names(Data.wide)
+>>
+>> I tried with the example on the help page, which works fine:
+>>
+>> # this works
+>> Indometh$thing <- 1:nrow(Indometh)
+>> wide <- reshape(Indometh, direction = "wide", idvar = "Subject",
+>>                 timevar = "time", v.names = "conc", sep= "_")
+>> names(wide)
+>>
+>> There are some obvious work-arounds and alternatives, but it would be nice
+>> to have this sorted. Can anyone help?
+>>
+>> Bob
+>>
+>> Bob
+>>
+>> --
+>> Bob O'Hara
+>> Institutt for matematiske fag
+>> NTNU
+>> 7491 Trondheim
+>> Norway
+>>
+>> Mobile: +47 915 54 416
+>> Journal of Negative Results - EEB: www.jnr-eeb.org
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From v@r|n@@ch@ @end|ng |rom y@hoo@|r  Sun Dec 10 23:35:31 2023
+From: v@r|n@@ch@ @end|ng |rom y@hoo@|r (varin sacha)
+Date: Sun, 10 Dec 2023 22:35:31 +0000 (UTC)
+Subject: [R] ggplot2: Get the regression line with 95% confidence bands
+References: <1684699562.3682096.1702247731199.ref@mail.yahoo.com>
+Message-ID: <1684699562.3682096.1702247731199@mail.yahoo.com>
+
+
+Dear R-experts,
+
+Here below my R code, as my X-axis is "year", I must be missing one or more steps! I am trying to get the regression line with the 95% confidence bands around the regression line. Any help would be appreciated.
+
+Best,
+S.
+
+
+#############################################
+library(ggplot2)
+?
+df=data.frame(year=factor(c("2012","2015","2018","2022")), score=c(495,493, 495, 474))
+?
+ggplot(df, aes(x=year, y=score)) + geom_point( ) + geom_smooth(method="lm", formula = score ~ factor(year), data = df) + labs(title="Standard linear regression for France", y="PISA score in mathematics") + ylim(470, 500)
+#############################################
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sun Dec 10 23:50:56 2023
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sun, 10 Dec 2023 22:50:56 +0000
+Subject: [R] ggplot2: Get the regression line with 95% confidence bands
+In-Reply-To: <1684699562.3682096.1702247731199@mail.yahoo.com>
+References: <1684699562.3682096.1702247731199.ref@mail.yahoo.com>
+ <1684699562.3682096.1702247731199@mail.yahoo.com>
+Message-ID: <8cca3bae-a729-448d-9e43-dbfc92ccefed@sapo.pt>
+
+?s 22:35 de 10/12/2023, varin sacha via R-help escreveu:
+> 
+> Dear R-experts,
+> 
+> Here below my R code, as my X-axis is "year", I must be missing one or more steps! I am trying to get the regression line with the 95% confidence bands around the regression line. Any help would be appreciated.
+> 
+> Best,
+> S.
+> 
+> 
+> #############################################
+> library(ggplot2)
+>   
+> df=data.frame(year=factor(c("2012","2015","2018","2022")), score=c(495,493, 495, 474))
+>   
+> ggplot(df, aes(x=year, y=score)) + geom_point( ) + geom_smooth(method="lm", formula = score ~ factor(year), data = df) + labs(title="Standard linear regression for France", y="PISA score in mathematics") + ylim(470, 500)
+> #############################################
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+I don't see a reason why year should be a factor and the formula in 
+geom_smooth is wrong, it should be y ~ x, the aesthetics envolved.
+It still doesn't plot the CI's though. There's a warning and I am not 
+understanding where it comes from. But the regression line is plotted.
+
+
+
+ggplot(df, aes(x = as.numeric(year), y = score)) +
+   geom_point() +
+   geom_smooth(method = "lm", formula = y ~ x) +
+   labs(
+     title = "Standard linear regression for France",
+     x = "Year",
+     y = "PISA score in mathematics"
+   ) +
+   ylim(470, 500)
+#> Warning message:
+#> In max(ids, na.rm = TRUE) : no non-missing arguments to max; 
+returning -Inf
+
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Mon Dec 11 00:52:42 2023
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 10 Dec 2023 15:52:42 -0800
+Subject: [R] ggplot2: Get the regression line with 95% confidence bands
+In-Reply-To: <8cca3bae-a729-448d-9e43-dbfc92ccefed@sapo.pt>
+References: <1684699562.3682096.1702247731199.ref@mail.yahoo.com>
+ <1684699562.3682096.1702247731199@mail.yahoo.com>
+ <8cca3bae-a729-448d-9e43-dbfc92ccefed@sapo.pt>
+Message-ID: <CAGxFJbQOaPgv9AcjE=+GDEF8+JuxKw6j3JtNNgSx1gn3KZCcPQ@mail.gmail.com>
+
+This can easily be done using predict.lm to get the intervals (confidence
+or prediction).
+?predict.lm contains a plotting example using ?matplot from the graphics
+package. Here's a somewhat verbose version for your example (first
+converting Year to numeric, of course):
+
+df=data.frame(year= c(2012,2015,2018,2022), score=c(495,493, 495, 474))
+
+fitted <- lm(score ~ year, data = df)
+with(df,
+   matplot(x = year, y = cbind(score,predict(fitted,interval = 'conf',
+level = .95))
+            ,type = c('p', rep('l',3))
+            ,pch = 16
+            ,lty = c('blank','solid', 'dashed','dashed') ## or use numeric
+values of 0,1,2,2
+            ,lwd = c(0,2,1,1)
+            ,col = c('black','darkblue', 'red','red')
+            ,xlab = 'Year'
+            ,ylab = 'Data with Fitted Line and Conf Intervals'
+
+   )
+)
+
+Cheers,
+Bert
+
+
+
+On Sun, Dec 10, 2023 at 2:51?PM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+
+> ?s 22:35 de 10/12/2023, varin sacha via R-help escreveu:
+> >
+> > Dear R-experts,
+> >
+> > Here below my R code, as my X-axis is "year", I must be missing one or
+> more steps! I am trying to get the regression line with the 95% confidence
+> bands around the regression line. Any help would be appreciated.
+> >
+> > Best,
+> > S.
+> >
+> >
+> > #############################################
+> > library(ggplot2)
+> >
+> > df=data.frame(year=factor(c("2012","2015","2018","2022")),
+> score=c(495,493, 495, 474))
+> >
+> > ggplot(df, aes(x=year, y=score)) + geom_point( ) +
+> geom_smooth(method="lm", formula = score ~ factor(year), data = df) +
+> labs(title="Standard linear regression for France", y="PISA score in
+> mathematics") + ylim(470, 500)
+> > #############################################
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+>
+> I don't see a reason why year should be a factor and the formula in
+> geom_smooth is wrong, it should be y ~ x, the aesthetics envolved.
+> It still doesn't plot the CI's though. There's a warning and I am not
+> understanding where it comes from. But the regression line is plotted.
+>
+>
+>
+> ggplot(df, aes(x = as.numeric(year), y = score)) +
+>    geom_point() +
+>    geom_smooth(method = "lm", formula = y ~ x) +
+>    labs(
+>      title = "Standard linear regression for France",
+>      x = "Year",
+>      y = "PISA score in mathematics"
+>    ) +
+>    ylim(470, 500)
+> #> Warning message:
+> #> In max(ids, na.rm = TRUE) : no non-missing arguments to max;
+> returning -Inf
+>
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+>
+> --
+> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a
+> presen?a de v?rus.
+> www.avg.com
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
