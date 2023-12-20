@@ -8474,3 +8474,590 @@ PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From @zhr|e|1 @end|ng |rom gm@||@com  Sun Dec 17 18:16:37 2023
+From: @zhr|e|1 @end|ng |rom gm@||@com (Alipio Galiana)
+Date: Sun, 17 Dec 2023 18:16:37 +0100
+Subject: [R] 
+ call: file.exists("~/.Rtk2theme") error: file name conversion
+ problem -- name too long?
+In-Reply-To: <20231217192707.5ac0203a@Tarkus>
+References: <CA+QV77Gxt33YYpALPii897Vop=iDy05EVA2=XPaddS5s_X+F3w@mail.gmail.com>
+ <20231217103836.0e776e5c@Tarkus> <005c01da30f2$e60c5e00$b2251a00$@gmail.com>
+ <20231217172538.01349830@Tarkus> <20231217192707.5ac0203a@Tarkus>
+Message-ID: <CA+QV77Huv7gxgb3tpvd7Foii-yr9A0+OVyqfz8Nr8v-ymUUg4w@mail.gmail.com>
+
+Thank you, I finally downloaded a portable version that I found and it
+works correctly, so I can, at least, do the exercises for the subject.
+Greetings and thank you very much for your time.
+
+
+El dom, 17 dic 2023 a las 17:27, Ivan Krylov (<krylov.r00t at gmail.com>)
+escribi?:
+
+> Sorry for the double e-mail.
+>
+> On Sun, 17 Dec 2023 17:25:38 +0300
+> Ivan Krylov <krylov.r00t at gmail.com> wrote:
+>
+> > Can you at least temporarily disable OneDrive so that your Documents
+> > directory would be "C:\\Users\\Alipio\\Documentos"? This should keep R
+> > happy.
+>
+> It should also work if you set the environment variable R_USER to
+> some ASCII-representable path:
+>
+> (in cmd.exe):
+> > set R_USER=C:\Users\Alipio\R_USER
+> > "C:\Program Files\R\R-4.3.2\bin\R.exe" CMD Rgui
+>
+> Please let me know if setting the environment variable helps.
+>
+> I suspect that getenv() may be returning ANSI-encoded bytes even when
+> the UCRT locale encoding is set to UTF-8.
+>
+> --
+> Best regards,
+> Ivan
+>
+
+	[[alternative HTML version deleted]]
+
+
+From em||yb@kker @end|ng |rom out|ook@com  Mon Dec 18 10:56:16 2023
+From: em||yb@kker @end|ng |rom out|ook@com (Emily Bakker)
+Date: Mon, 18 Dec 2023 09:56:16 +0000
+Subject: [R] Function with large nested list
+Message-ID: <AM9P195MB096574A3342894802CF270B5BC8DA@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+
+Hello list,
+
+I want to make a large rulebased algorithm, to provide decision support for drug prescriptions. I have defined the algorithm in a function, with a for loop and many if statements. The structure should be as follows:
+1. Iterate over a list of drug names. For each drug:
+2. Get some drug related data (external dataset). Row of a dataframe.
+3.  Check if adaptions should be made to standard dosage and safety information in case of contraindications. If patient has an indication, update current dosage and safety information with the value from the dataframe row. 
+4. Save dosage and safety information in some lists and continue to the next drug. 
+5. When the iteration over all drugs is done, return the lists.
+
+ISSUE:
+So it is a very large function with many nested if statements. I have checked the code structure multiple times, but i run into some issues. When i try to run the function definiton, the command never "completes" in de console. Instead of ">", the console shows "+". No errors are raised.
+
+As I said, i have checked the structure multiple times, but cant find an error. I have tried rebuilding it and testing each time i add a part. Each part functions isolated, but not together in the same function. I can't find any infinite loops either. 
+I suspect the function may be too large, and i have to define functions for each part separately. That isn't an issue necessarily, but i would still like to know why my code won't run. And whether there are any downsides or considerations for using many small functions.
+
+Below is my code. I have left part of it out. There are six more parts like the diabetes part that are similar.
+I also use a lot of data/variabeles not included here, to try and keep things compact. But I can provide additional information if helpful.
+Thanks it advance for thinking along!!
+Kind regards,
+Emily
+
+The code:
+
+decision_algorithm <- function(AB_list, dataset_ab = data.frame(), diagnose = 'cystitis', diabetes_status = "nee", katheter_status = "nee", 
+                               lang_QT_status = "nee", obesitas_status = "nee", zwangerschap_status = "nee", 
+                               medicatie_actief = data.frame(dict[["med_AB"]]), geslacht = "man", gfr=90){
+  
+  
+  
+  # vars
+  list_AB_status <- setNames(as.list(rep("green", length(AB_list))), names(AB_list)) #make a dict of all AB's and assign status green as deafault for status
+  list_AB_remarks <- setNames(as.list(rep("Geen opmerkingen", length(AB_list))), names(AB_list)) #make a dict of all AB's and assign "Geen" as default for remarks #Try empty list
+  list_AB_dosering <- setNames(as.list(rep("Geen informatie", length(AB_list))), names(AB_list)) # make named list of all AB's and assign "Geen informatie", will be replaced with actual information in algorithm
+  list_AB_duur <- setNames(as.list(rep("Geen informatie", length(AB_list))), names(AB_list)) # make named list of all AB's and assign "Geen informatie", will be replaced with actual information in algorithm
+  
+  ##### CULTURES #####
+  for (i in names(AB_list)) {
+    
+    ab_data <- dataset_ab[dataset_ab$middel == i,] #get info for this AB from dataset_ab
+    
+    # Extract and split the diagnoses, dosering, and duur info for the current antibiotic
+    ab_diagnoses <- str_split(ab_data$diagnoses, pattern = " \\| ")[[1]]
+    ab_diagnose_dosering <- str_split(ab_data$`diagnose dosering`, pattern = " \\| ")[[1]]
+    ab_diagnose_duur <- str_split(ab_data$`diagnose duur`, pattern = " \\| ")[[1]]
+    
+    # Find the index of the current diagnose in the ab_diagnoses list
+    diagnose_index <- match(diagnose, ab_diagnoses)
+    
+    # Determine dosering and duur based on the diagnose_index
+    if (!is.na(diagnose_index)) {
+      dosering <- ifelse(ab_diagnose_dosering[diagnose_index] == "standaard", ab_data$dosering, ab_diagnose_dosering[diagnose_index])
+      duur <- ifelse(ab_diagnose_duur[diagnose_index] == "standaard", ab_data$duur, ab_diagnose_duur[diagnose_index])
+    } else {
+      # Use general dosering and duur as fallback if diagnose is not found
+      dosering <- ab_data$dosering
+      duur <- ab_data$duur
+    }
+    
+    list_AB_dosering[[i]] <- dosering
+    list_AB_duur[[i]] <- duur
+    
+    if ((!is.null(AB_list[[i]]) && AB_list[[i]] == "I")) {
+      list_AB_status[[i]] <- "yellow"
+        list_AB_remarks[[i]] <- "Kweek verminderd gevoelig"
+    } else if ((!is.null(AB_list[[i]]) && AB_list[[i]] == "R")) {
+      list_AB_status[[i]] <- "red"
+        list_AB_remarks[[i]] <- "Kweek resistent"
+    }else if ((!is.null(AB_list[[i]]) && AB_list[[i]] == "S")) {
+      next
+    } else {
+      list_AB_status[[i]] <- "yellow"
+        list_AB_remarks[[i]] <- "Geen kweekgegevens"
+    }
+  
+    
+    # counters, for check if dosering / duur are updated more than once
+    dosering_update_count <- 0
+    duur_update_count <- 0
+    
+    ##### DIABETES #####
+    if (diabetes_status == "ja") {
+      if (ab_data$'diabetes veiligheid' == "ja") {
+        list_AB_status[[i]] <- "red"
+          list_AB_remarks[[i]] <- paste(list_AB_remarks[[i]], "Niet veilig met diabetes")
+      }
+
+      if (ab_data$'diabetes effectiviteit' == "aanpassing") {
+        dosering <- ifelse(ab_data$'diabetes dosering' != "standaard", ab_data$'diabetes dosering', dosering) # if dosering does not equal standaard, apply dosering in column, otherwise keep initial dosering
+        duur <- ifelse(ab_data$'diabetes duur' != "standaard", ab_data$'diabetes duur', duur) # if dosering does not equal standaard, apply dosering in column, otherwise keep initial dosering
+        dosering_update_count <- dosering_update_count + 1
+        duur_update_count <- duur_update_count + 1
+        list_AB_remarks[[i]] <- paste(list_AB_remarks[[i]], ab_data$'diabetes opmerkingen')
+      }
+
+    } else if (diabetes_status == "?") {
+      if (ab_data$'diabetes veiligheid' == "ja") {
+        list_AB_remarks[[i]] <- paste(list_AB_remarks[[i]], "Waarschuwing: Dit middel kan veiligheidsimplicaties hebben bij diabetes.")
+      }
+      if (ab_data$'diabetes effectiviteit' == "aanpassing") {
+        list_AB_remarks[[i]] <- paste(list_AB_remarks[[i]], "Waarschuwing: Dit middel kan dosisaanpassingen vereisen bij diabetes.")
+      }
+    }
+
+    list_AB_dosering[[i]] <- dosering
+    list_AB_duur[[i]] <- duur
+    
+    # within for loop
+    
+  }
+  # within function
+  return(list(status = list_AB_status, remarks = list_AB_remarks, duur = list_AB_duur, dosering = list_AB_dosering))
+}
+    
+
+
+
+
+
+From kry|ov@r00t @end|ng |rom gm@||@com  Mon Dec 18 11:17:39 2023
+From: kry|ov@r00t @end|ng |rom gm@||@com (Ivan Krylov)
+Date: Mon, 18 Dec 2023 13:17:39 +0300
+Subject: [R] Function with large nested list
+In-Reply-To: <AM9P195MB096574A3342894802CF270B5BC8DA@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+References: <AM9P195MB096574A3342894802CF270B5BC8DA@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+Message-ID: <20231218131739.08e92d98@Tarkus>
+
+? Mon, 18 Dec 2023 09:56:16 +0000
+Emily Bakker <emilybakker at outlook.com> ?????:
+
+> When i try to run the function definiton, the command never
+> "completes" in de console.
+
+How do you run the function definition? I copied and pasted your
+example into a character variable and gave it to parse(text = ...). It
+parsed successfully.
+
+Splitting the function into multiple smaller functions is the usual
+advice. It should help here too. When you decompose a large function
+into a set of smaller functions, it becomes easier to reason about them
+and test them individually. (It is also possible to have too many small
+functions; it is important to find a balanced solution.)
+
+If you find yourself making a decision based on a fixed set of strings,
+consider switch() and match.arg(). If a set of possible values for a
+factor is limited to true / false / don't know, it may help to switch
+to R's native TRUE / FALSE / NA_logical_ values instead of strings
+(which may contain typos).
+
+-- 
+Best regards,
+Ivan
+
+
+From z|v@n@k@r@m@n @end|ng |rom gm@||@com  Sat Dec 16 19:04:25 2023
+From: z|v@n@k@r@m@n @end|ng |rom gm@||@com (Zivan Karaman)
+Date: Sat, 16 Dec 2023 19:04:25 +0100
+Subject: [R] [R-pkgs] Copernicus Data Space Ecosystem API Wrapper
+Message-ID: <CAKtE6yMQVy4xQYjMWBaj7NkDk5Py8k2QNSt8zwDqH2=fnWYx1g@mail.gmail.com>
+
+Dear all,
+
+I am pleased to announce the release of a new package named 'CDSE' on CRAN.
+
+It provides direct access to the 'Copernicus Data Space Ecosystem' for
+R users. With this package, you can efficiently access the imagery
+from Sentinel-1, Sentinel-2, Sentinel-3, and Sentinel-5 missions and
+process and download data from the R environment.
+
+One of the significant benefits of this package is that you can
+download the satellite data that is limited to your area of interest
+instead of the entire image tiles (100 x 100 km) that are usually
+distributed by Copernicus.
+
+Although the software is compatible with any satellite images
+available in CDSE, it has been primarily tested with Sentinel-2
+images.
+
+This is the first version of the package, and your feedback and
+suggestions are welcome
+
+Please find more details and download the package from the following
+link: https://cran.r-project.org/package=CDSE
+
+Best regards,
+Zivan
+
+_______________________________________________
+R-packages mailing list
+R-packages at r-project.org
+https://stat.ethz.ch/mailman/listinfo/r-packages
+
+
+From ||@t@ @end|ng |rom dewey@myzen@co@uk  Mon Dec 18 17:30:38 2023
+From: ||@t@ @end|ng |rom dewey@myzen@co@uk (Michael Dewey)
+Date: Mon, 18 Dec 2023 16:30:38 +0000
+Subject: [R] Function with large nested list
+In-Reply-To: <AM9P195MB096574A3342894802CF270B5BC8DA@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+References: <AM9P195MB096574A3342894802CF270B5BC8DA@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+Message-ID: <d9418bee-72a7-f537-9245-152028ef20e7@dewey.myzen.co.uk>
+
+Dear Emily
+
+Comment in-line
+
+On 18/12/2023 09:56, Emily Bakker wrote:
+> Hello list,
+> 
+> I want to make a large rulebased algorithm, to provide decision support for drug prescriptions. I have defined the algorithm in a function, with a for loop and many if statements. The structure should be as follows:
+> 1. Iterate over a list of drug names. For each drug:
+> 2. Get some drug related data (external dataset). Row of a dataframe.
+> 3.  Check if adaptions should be made to standard dosage and safety information in case of contraindications. If patient has an indication, update current dosage and safety information with the value from the dataframe row.
+> 4. Save dosage and safety information in some lists and continue to the next drug.
+> 5. When the iteration over all drugs is done, return the lists.
+> 
+> ISSUE:
+> So it is a very large function with many nested if statements. I have checked the code structure multiple times, but i run into some issues. When i try to run the function definiton, the command never "completes" in de console. Instead of ">", the console shows "+". No errors are raised.
+
+When my console returns a + is usually means I have left off the final 
+parenthesis or given it an incomplete line.
+
+Michael
+> 
+> As I said, i have checked the structure multiple times, but cant find an error. I have tried rebuilding it and testing each time i add a part. Each part functions isolated, but not together in the same function. I can't find any infinite loops either.
+> I suspect the function may be too large, and i have to define functions for each part separately. That isn't an issue necessarily, but i would still like to know why my code won't run. And whether there are any downsides or considerations for using many small functions.
+> 
+> Below is my code. I have left part of it out. There are six more parts like the diabetes part that are similar.
+> I also use a lot of data/variabeles not included here, to try and keep things compact. But I can provide additional information if helpful.
+> Thanks it advance for thinking along!!
+> Kind regards,
+> Emily
+> 
+> The code:
+> 
+> decision_algorithm <- function(AB_list, dataset_ab = data.frame(), diagnose = 'cystitis', diabetes_status = "nee", katheter_status = "nee",
+>                                 lang_QT_status = "nee", obesitas_status = "nee", zwangerschap_status = "nee",
+>                                 medicatie_actief = data.frame(dict[["med_AB"]]), geslacht = "man", gfr=90){
+>    
+>    
+>    
+>    # vars
+>    list_AB_status <- setNames(as.list(rep("green", length(AB_list))), names(AB_list)) #make a dict of all AB's and assign status green as deafault for status
+>    list_AB_remarks <- setNames(as.list(rep("Geen opmerkingen", length(AB_list))), names(AB_list)) #make a dict of all AB's and assign "Geen" as default for remarks #Try empty list
+>    list_AB_dosering <- setNames(as.list(rep("Geen informatie", length(AB_list))), names(AB_list)) # make named list of all AB's and assign "Geen informatie", will be replaced with actual information in algorithm
+>    list_AB_duur <- setNames(as.list(rep("Geen informatie", length(AB_list))), names(AB_list)) # make named list of all AB's and assign "Geen informatie", will be replaced with actual information in algorithm
+>    
+>    ##### CULTURES #####
+>    for (i in names(AB_list)) {
+>      
+>      ab_data <- dataset_ab[dataset_ab$middel == i,] #get info for this AB from dataset_ab
+>      
+>      # Extract and split the diagnoses, dosering, and duur info for the current antibiotic
+>      ab_diagnoses <- str_split(ab_data$diagnoses, pattern = " \\| ")[[1]]
+>      ab_diagnose_dosering <- str_split(ab_data$`diagnose dosering`, pattern = " \\| ")[[1]]
+>      ab_diagnose_duur <- str_split(ab_data$`diagnose duur`, pattern = " \\| ")[[1]]
+>      
+>      # Find the index of the current diagnose in the ab_diagnoses list
+>      diagnose_index <- match(diagnose, ab_diagnoses)
+>      
+>      # Determine dosering and duur based on the diagnose_index
+>      if (!is.na(diagnose_index)) {
+>        dosering <- ifelse(ab_diagnose_dosering[diagnose_index] == "standaard", ab_data$dosering, ab_diagnose_dosering[diagnose_index])
+>        duur <- ifelse(ab_diagnose_duur[diagnose_index] == "standaard", ab_data$duur, ab_diagnose_duur[diagnose_index])
+>      } else {
+>        # Use general dosering and duur as fallback if diagnose is not found
+>        dosering <- ab_data$dosering
+>        duur <- ab_data$duur
+>      }
+>      
+>      list_AB_dosering[[i]] <- dosering
+>      list_AB_duur[[i]] <- duur
+>      
+>      if ((!is.null(AB_list[[i]]) && AB_list[[i]] == "I")) {
+>        list_AB_status[[i]] <- "yellow"
+>          list_AB_remarks[[i]] <- "Kweek verminderd gevoelig"
+>      } else if ((!is.null(AB_list[[i]]) && AB_list[[i]] == "R")) {
+>        list_AB_status[[i]] <- "red"
+>          list_AB_remarks[[i]] <- "Kweek resistent"
+>      }else if ((!is.null(AB_list[[i]]) && AB_list[[i]] == "S")) {
+>        next
+>      } else {
+>        list_AB_status[[i]] <- "yellow"
+>          list_AB_remarks[[i]] <- "Geen kweekgegevens"
+>      }
+>    
+>      
+>      # counters, for check if dosering / duur are updated more than once
+>      dosering_update_count <- 0
+>      duur_update_count <- 0
+>      
+>      ##### DIABETES #####
+>      if (diabetes_status == "ja") {
+>        if (ab_data$'diabetes veiligheid' == "ja") {
+>          list_AB_status[[i]] <- "red"
+>            list_AB_remarks[[i]] <- paste(list_AB_remarks[[i]], "Niet veilig met diabetes")
+>        }
+> 
+>        if (ab_data$'diabetes effectiviteit' == "aanpassing") {
+>          dosering <- ifelse(ab_data$'diabetes dosering' != "standaard", ab_data$'diabetes dosering', dosering) # if dosering does not equal standaard, apply dosering in column, otherwise keep initial dosering
+>          duur <- ifelse(ab_data$'diabetes duur' != "standaard", ab_data$'diabetes duur', duur) # if dosering does not equal standaard, apply dosering in column, otherwise keep initial dosering
+>          dosering_update_count <- dosering_update_count + 1
+>          duur_update_count <- duur_update_count + 1
+>          list_AB_remarks[[i]] <- paste(list_AB_remarks[[i]], ab_data$'diabetes opmerkingen')
+>        }
+> 
+>      } else if (diabetes_status == "?") {
+>        if (ab_data$'diabetes veiligheid' == "ja") {
+>          list_AB_remarks[[i]] <- paste(list_AB_remarks[[i]], "Waarschuwing: Dit middel kan veiligheidsimplicaties hebben bij diabetes.")
+>        }
+>        if (ab_data$'diabetes effectiviteit' == "aanpassing") {
+>          list_AB_remarks[[i]] <- paste(list_AB_remarks[[i]], "Waarschuwing: Dit middel kan dosisaanpassingen vereisen bij diabetes.")
+>        }
+>      }
+> 
+>      list_AB_dosering[[i]] <- dosering
+>      list_AB_duur[[i]] <- duur
+>      
+>      # within for loop
+>      
+>    }
+>    # within function
+>    return(list(status = list_AB_status, remarks = list_AB_remarks, duur = list_AB_duur, dosering = list_AB_dosering))
+> }
+>      
+> 
+> 
+> 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+> 
+
+-- 
+Michael
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Mon Dec 18 22:57:02 2023
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Mon, 18 Dec 2023 16:57:02 -0500
+Subject: [R] Function with large nested list
+In-Reply-To: <AM9P195MB096574A3342894802CF270B5BC8DA@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+References: <AM9P195MB096574A3342894802CF270B5BC8DA@AM9P195MB0965.EURP195.PROD.OUTLOOK.COM>
+Message-ID: <00d301da31fd$2225a3f0$6670ebd0$@gmail.com>
+
+Emily,
+
+I too copied/pasted your code in and it worked fine. I then asked for the
+function definition and got it.
+
+Did you put the entire text in? I mean nothing extra above or below except
+maybe whitespace or comments?
+
+What sometimes happens to make the code incomplete is to leave out a
+matching parentheses of brace or bracket or sometimes quotes or using the
+wrong kind of quote as in copying from a program like Microsoft Word.
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Emily Bakker
+Sent: Monday, December 18, 2023 4:56 AM
+To: r-help at r-project.org
+Subject: [R] Function with large nested list
+
+Hello list,
+
+I want to make a large rulebased algorithm, to provide decision support for
+drug prescriptions. I have defined the algorithm in a function, with a for
+loop and many if statements. The structure should be as follows:
+1. Iterate over a list of drug names. For each drug:
+2. Get some drug related data (external dataset). Row of a dataframe.
+3.  Check if adaptions should be made to standard dosage and safety
+information in case of contraindications. If patient has an indication,
+update current dosage and safety information with the value from the
+dataframe row. 
+4. Save dosage and safety information in some lists and continue to the next
+drug. 
+5. When the iteration over all drugs is done, return the lists.
+
+ISSUE:
+So it is a very large function with many nested if statements. I have
+checked the code structure multiple times, but i run into some issues. When
+i try to run the function definiton, the command never "completes" in de
+console. Instead of ">", the console shows "+". No errors are raised.
+
+As I said, i have checked the structure multiple times, but cant find an
+error. I have tried rebuilding it and testing each time i add a part. Each
+part functions isolated, but not together in the same function. I can't find
+any infinite loops either. 
+I suspect the function may be too large, and i have to define functions for
+each part separately. That isn't an issue necessarily, but i would still
+like to know why my code won't run. And whether there are any downsides or
+considerations for using many small functions.
+
+Below is my code. I have left part of it out. There are six more parts like
+the diabetes part that are similar.
+I also use a lot of data/variabeles not included here, to try and keep
+things compact. But I can provide additional information if helpful.
+Thanks it advance for thinking along!!
+Kind regards,
+Emily
+
+The code:
+
+decision_algorithm <- function(AB_list, dataset_ab = data.frame(), diagnose
+= 'cystitis', diabetes_status = "nee", katheter_status = "nee", 
+                               lang_QT_status = "nee", obesitas_status =
+"nee", zwangerschap_status = "nee", 
+                               medicatie_actief =
+data.frame(dict[["med_AB"]]), geslacht = "man", gfr=90){
+  
+  
+  
+  # vars
+  list_AB_status <- setNames(as.list(rep("green", length(AB_list))),
+names(AB_list)) #make a dict of all AB's and assign status green as deafault
+for status
+  list_AB_remarks <- setNames(as.list(rep("Geen opmerkingen",
+length(AB_list))), names(AB_list)) #make a dict of all AB's and assign
+"Geen" as default for remarks #Try empty list
+  list_AB_dosering <- setNames(as.list(rep("Geen informatie",
+length(AB_list))), names(AB_list)) # make named list of all AB's and assign
+"Geen informatie", will be replaced with actual information in algorithm
+  list_AB_duur <- setNames(as.list(rep("Geen informatie", length(AB_list))),
+names(AB_list)) # make named list of all AB's and assign "Geen informatie",
+will be replaced with actual information in algorithm
+  
+  ##### CULTURES #####
+  for (i in names(AB_list)) {
+    
+    ab_data <- dataset_ab[dataset_ab$middel == i,] #get info for this AB
+from dataset_ab
+    
+    # Extract and split the diagnoses, dosering, and duur info for the
+current antibiotic
+    ab_diagnoses <- str_split(ab_data$diagnoses, pattern = " \\| ")[[1]]
+    ab_diagnose_dosering <- str_split(ab_data$`diagnose dosering`, pattern =
+" \\| ")[[1]]
+    ab_diagnose_duur <- str_split(ab_data$`diagnose duur`, pattern = " \\|
+")[[1]]
+    
+    # Find the index of the current diagnose in the ab_diagnoses list
+    diagnose_index <- match(diagnose, ab_diagnoses)
+    
+    # Determine dosering and duur based on the diagnose_index
+    if (!is.na(diagnose_index)) {
+      dosering <- ifelse(ab_diagnose_dosering[diagnose_index] ==
+"standaard", ab_data$dosering, ab_diagnose_dosering[diagnose_index])
+      duur <- ifelse(ab_diagnose_duur[diagnose_index] == "standaard",
+ab_data$duur, ab_diagnose_duur[diagnose_index])
+    } else {
+      # Use general dosering and duur as fallback if diagnose is not found
+      dosering <- ab_data$dosering
+      duur <- ab_data$duur
+    }
+    
+    list_AB_dosering[[i]] <- dosering
+    list_AB_duur[[i]] <- duur
+    
+    if ((!is.null(AB_list[[i]]) && AB_list[[i]] == "I")) {
+      list_AB_status[[i]] <- "yellow"
+        list_AB_remarks[[i]] <- "Kweek verminderd gevoelig"
+    } else if ((!is.null(AB_list[[i]]) && AB_list[[i]] == "R")) {
+      list_AB_status[[i]] <- "red"
+        list_AB_remarks[[i]] <- "Kweek resistent"
+    }else if ((!is.null(AB_list[[i]]) && AB_list[[i]] == "S")) {
+      next
+    } else {
+      list_AB_status[[i]] <- "yellow"
+        list_AB_remarks[[i]] <- "Geen kweekgegevens"
+    }
+  
+    
+    # counters, for check if dosering / duur are updated more than once
+    dosering_update_count <- 0
+    duur_update_count <- 0
+    
+    ##### DIABETES #####
+    if (diabetes_status == "ja") {
+      if (ab_data$'diabetes veiligheid' == "ja") {
+        list_AB_status[[i]] <- "red"
+          list_AB_remarks[[i]] <- paste(list_AB_remarks[[i]], "Niet veilig
+met diabetes")
+      }
+
+      if (ab_data$'diabetes effectiviteit' == "aanpassing") {
+        dosering <- ifelse(ab_data$'diabetes dosering' != "standaard",
+ab_data$'diabetes dosering', dosering) # if dosering does not equal
+standaard, apply dosering in column, otherwise keep initial dosering
+        duur <- ifelse(ab_data$'diabetes duur' != "standaard",
+ab_data$'diabetes duur', duur) # if dosering does not equal standaard, apply
+dosering in column, otherwise keep initial dosering
+        dosering_update_count <- dosering_update_count + 1
+        duur_update_count <- duur_update_count + 1
+        list_AB_remarks[[i]] <- paste(list_AB_remarks[[i]],
+ab_data$'diabetes opmerkingen')
+      }
+
+    } else if (diabetes_status == "?") {
+      if (ab_data$'diabetes veiligheid' == "ja") {
+        list_AB_remarks[[i]] <- paste(list_AB_remarks[[i]], "Waarschuwing:
+Dit middel kan veiligheidsimplicaties hebben bij diabetes.")
+      }
+      if (ab_data$'diabetes effectiviteit' == "aanpassing") {
+        list_AB_remarks[[i]] <- paste(list_AB_remarks[[i]], "Waarschuwing:
+Dit middel kan dosisaanpassingen vereisen bij diabetes.")
+      }
+    }
+
+    list_AB_dosering[[i]] <- dosering
+    list_AB_duur[[i]] <- duur
+    
+    # within for loop
+    
+  }
+  # within function
+  return(list(status = list_AB_status, remarks = list_AB_remarks, duur =
+list_AB_duur, dosering = list_AB_dosering))
+}
+    
+
+
+
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
