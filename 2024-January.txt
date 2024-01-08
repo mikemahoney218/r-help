@@ -268,3 +268,350 @@ Sorkin, John wrote:
 >
 
 
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Sat Jan  6 04:17:58 2024
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Sat, 6 Jan 2024 03:17:58 +0000
+Subject: [R] Amelia. Imputation of time-series data
+Message-ID: <DM6PR03MB50495751D572168AACAECC72E2652@DM6PR03MB5049.namprd03.prod.outlook.com>
+
+Colleagues,
+
+I have started working with Amelia, with the aim of imputing missing data for time-series data. 
+
+Although I have succeeded in getting Amelia to perform the imputation, I have not found any documentation describing how Amelia imputes time-series data. I have read the basic Amelia documentation, but it does not address how time-series data are imputed. The documentation describes general imputation where there is no serial auto correlation of repeated observations from the same subject. Does Amelia incorporate the serial autocorrelation in the imputation procedure? Can someone direct me to documentation that explains the imputation method? 
+
+Thank you,
+John
+
+
+John David Sorkin M.D., Ph.D.
+Professor of Medicine, University of Maryland School of Medicine;
+
+Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;?
+
+PI?Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+
+Senior Statistician University of Maryland Center for Vascular Research;
+
+Division of Gerontology and Paliative Care,
+10 North Greene Street
+GRECC (BT/18/GR)
+Baltimore, MD 21201-1524
+Cell phone 443-418-5382
+
+
+
+
+From ph@edru@v @end|ng |rom gm@||@com  Sat Jan  6 10:47:03 2024
+From: ph@edru@v @end|ng |rom gm@||@com (Andy)
+Date: Sat, 6 Jan 2024 09:47:03 +0000
+Subject: [R] 
+ Help request: Parsing docx files for key words and appending to
+ a spreadsheet
+In-Reply-To: <SA1PR09MB7792A37BA7D15B486708C69FA8662@SA1PR09MB7792.namprd09.prod.outlook.com>
+References: <mailman.370760.1.1704452402.37863.r-help@r-project.org>
+ <SA1PR09MB7792A37BA7D15B486708C69FA8662@SA1PR09MB7792.namprd09.prod.outlook.com>
+Message-ID: <672e10cd-12ee-d53e-1aad-6efdec8b3e0c@gmail.com>
+
+Hi Tim
+
+This is brilliant - thank you!!
+
+I've had to tweak the basePath line a bit (I am on a Linux machine), but 
+having done that, the code works as intended. This is a truly helpful 
+contribution that gives me ideas about how to work it through for the 
+missing fields, which is one of the major sticking points I kept bumping 
+up against.
+
+Thank you so much for this.
+
+All the best
+Andy
+
+On 05/01/2024 13:59, Howard, Tim G (DEC) wrote:
+> Here's a simplified version of how I would do it, using `textreadr` but otherwise base functions. I haven't done it
+> all, but have a few examples of finding the correct row then extracting the right data.
+> I made a duplicate of the file you provided, so this loops through the two identical files, extracts a few parts,
+> then sticks those parts in a data frame.
+>
+> #####
+> library(textreadr)
+>
+> # recommend not using setwd(), but instead just include the
+> # path as follows
+> basePath <- file.path("C:","temp")
+> files <- list.files(path=basePath, pattern = "docx$")
+>
+> length(files)
+> # 2
+>
+> # initialize a list to put the data in
+> myList <- vector(mode = "list", length = length(files))
+>
+> for(i in 1:length(files)){
+>    fileDat <- read_docx(file.path(basePath, files[[i]]))
+>    # get the data you want, here one line per item to make it clearer
+>    # assume consistency among articles
+>    ttl <- fileDat[[1]]
+>    src <- fileDat[[2]]
+>    dt <- fileDat[[3]]
+>    aut <- fileDat[grepl("Byline:",fileDat)]
+>    aut <- trimws(sub("Byline:","",aut), whitespace = "[\\h\\v]")
+>    pg <- fileDat[grepl("Pg.",fileDat)]
+>    pg <- as.integer(sub(".*Pg. ([[:digit:]]+)","\\1",pg))
+>    len <- fileDat[grepl("Length:", fileDat)]
+>    len <- as.integer(sub("Length:.{1}([[:digit:]]+) .*","\\1",len))
+>    myList[[i]] <- data.frame("title"=ttl,
+>                     "source"=src,
+>                     "date"=dt,
+>                     "author"=aut,
+>                     "page"=pg,
+>                     "length"=len)
+> }
+>
+> # roll up the list to a data frame. Many ways to do this.
+> myDF <- do.call("rbind",myList)
+>
+> #####
+>
+> Hope that helps.
+> Tim
+>
+>
+>
+>> ------------------------------
+>>
+>> Date: Thu, 4 Jan 2024 12:59:59 +0000
+>> From: Andy <phaedrusv at gmail.com>
+>> To: r-help at r-project.org
+>> Subject: Re: [R]  Help request: Parsing docx files for key words and
+>>          appending to a spreadsheet
+>> Message-ID: <b233190f-cc1e-d334-784c-5d403ab6e212 at gmail.com>
+>> Content-Type: text/plain; charset="utf-8"; Format="flowed"
+>>
+>> Hi folks
+>>
+>> Thanks for your help and suggestions - very much appreciated.
+>>
+>> I now have some working code, using this file I uploaded for public
+>> access:
+>> https://docs/.
+>> google.com%2Fdocument%2Fd%2F1QwuaWZk6tYlWQXJ3WLczxC8Cda6zVER
+>> k%2Fedit%3Fusp%3Dsharing%26ouid%3D103065135255080058813%26rtpof%
+>> 3Dtrue%26sd%3Dtrue&data=05%7C02%7Ctim.howard%40dec.ny.gov%7C8f2
+>> 952a3ae474d4da14908dc0ddd95fd%7Cf46cb8ea79004d108ceb80e8c1c81ee7
+>> %7C0%7C0%7C638400492578674983%7CUnknown%7CTWFpbGZsb3d8eyJWIj
+>> oiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3
+>> 000%7C%7C%7C&sdata=%2BpYrk6cJA%2BDUn9szLbd2Y7R%2F30UNY2TFSJN
+>> HcwkHa9Y%3D&reserved=0
+>>
+>>
+>> The small code segment that now works is as follows:
+>>
+>> ###########
+>>
+>> # Load libraries
+>> library(textreadr)
+>> library(tcltk)
+>> library(tidyverse)
+>> #library(officer)
+>> #library(stringr) #for splitting and trimming raw data
+>> #library(tidyr) #for converting to wide format
+>>
+>> # I'd like to keep this as it enables more control over the selected directories
+>> filepath <- setwd(tk_choose.dir())
+>>
+>> # The following correctly lists the names of all 9 files in my test directory files
+>> <- list.files(filepath, ".docx") files
+>> length(files)
+>>
+>> # Ideally, I'd like to skip this step by being able to automatically read in the
+>> name of each file, but one step at a time:
+>> filename <- "Now they want us to charge our electric cars from litter
+>> bins.docx"
+>>
+>> # This produces the file content as output when run, and identifies the fields
+>> that I want to extract.
+>> read_docx(filename) %>%
+>>     str_split(",") %>%
+>>     unlist() %>%
+>>     str_trim()
+>>
+>> ###########
+>>
+>> What I'd like to try and accomplish next is to extract the data from selected
+>> fields and append to a spreadsheet (Calc or Excel) under specific columns, or
+>> if it is easier to write a CSV which I can then use later.
+>>
+>> The fields I want to extract are illustrated with reference to the above file,
+>> viz.:
+>>
+>> The title: "Now they want us to charge our electric cars from litter bins"
+>> The name of the newspaper: "Mail on Sunday (London)"
+>> The publication date: "September 24, 2023" (in date format, preferably
+>> separated into month and year (day is not important)) The section: "NEWS"
+>> The page number(s): "16" (as numeric)
+>> The length: "515" (as numeric)
+>> The author: "Anna Mikhailova"
+>> The subject: from the Subject section, but this is to match a value e.g.
+>> GREENWASHING >= 50% (here this value is 51% so would be included). A
+>> match moves onto select the highest value under the section "Industry"
+>> (here it is ELECTRIC MOBILITY (91%)) and appends this text and % value.
+>> If no match with 'Greenwashing', then appends 'Null' and moves onto the
+>> next file in the directory.
+>>
+>> ###########
+>>
+>> The theory I am working with is if I can figure out how to extract these fields
+>> and append correctly, then the rest should just be wrapping this up in a for
+>> loop.
+>>
+>> However, I am struggling to get my head around the extraction and append
+>> part. If I can get it to work for one of these fields, I suspect that I can repeat
+>> the basic syntax to extract and append the remaining fields.
+>>
+>> Therefore, if someone can either suggest a syntax or point me to a useful
+>> tutorial, that would be splendid.
+>>
+>> Thank you in anticipation.
+>>
+>> Best wishes
+>> Andy
+>>
+>> <snip>
+>>
+>>
+>>
+>>
+>> ------------------------------
+>>
+>> Message: 3
+>> Date: Thu, 4 Jan 2024 09:38:06 -0500
+>> From: "Christopher W. Ryan" <cryan at binghamton.edu>
+>> To: "Sorkin, John" <jsorkin at som.umaryland.edu>, "r-help at r-project.org
+>>          (r-help at r-project.org)" <r-help at r-project.org>
+>> Subject: Re: [R]  Obtaining a value of pie in a zero inflated model
+>>          (fm-zinb2)
+>> Message-ID: <02c6fe89-ccae-6c7c-c61e-f79cffad4358 at binghamton.edu>
+>> Content-Type: text/plain; charset="utf-8"
+>>
+>> Are you referring to the zeroinfl() function in the countreg package? If so, I
+>> think
+>>
+>> predict(fm_zinb2, type = "zero", newdata = some.new.data)
+>>
+>> will give you pi for each combination of covariate values that you provide in
+>> some.new.data
+>>
+>> where pi is the probability to observe a zero from the point mass
+>> component.
+>>
+>> As to your second question, I'm not sure that's possible, for any *particular,
+>> individual* subject. Others will undoubtedly know better than I.
+>>
+>> --Chris Ryan
+>>
+>> Sorkin, John wrote:
+>>> I am running a zero inflated regression using the zeroinfl function similar to
+>> the model below:
+>>>   fm_zinb2 <- zeroinfl(art ~ . | ., data = bioChemists, dist =
+>>> "poisson")
+>>> summary(fm_zinb2)
+>>>
+>>> I have three questions:
+>>>
+>>> 1) How can I obtain a value for the parameter pie, which is the fraction of
+>> the population that is in the zero inflated model vs the fraction in the count
+>> model?
+>>> 2) For any particular subject, how can I determine if the subject is in the
+>> portion of the population that contributes a zero count because the subject
+>> is in the group of subjects who have structural zero responses vs. the subject
+>> being in the portion of the population who can contribute a zero or a non-
+>> zero response?
+>>> 3) zero inflated models can be solved using closed form solutions, or using
+>> iterative methods. Which method is used by fm_zinb2?
+>>> Thank you,
+>>> John
+>>>
+>>> John David Sorkin M.D., Ph.D.
+>>> Professor of Medicine, University of Maryland School of Medicine;
+>>>
+>>> Associate Director for Biostatistics and Informatics, Baltimore VA
+>>> Medical Center Geriatrics Research, Education, and Clinical Center;
+>>>
+>>> PI Biostatistics and Informatics Core, University of Maryland School
+>>> of Medicine Claude D. Pepper Older Americans Independence Center;
+>>>
+>>> Senior Statistician University of Maryland Center for Vascular
+>>> Research;
+>>>
+>>> Division of Gerontology and Paliative Care,
+>>> 10 North Greene Street
+>>> GRECC (BT/18/GR)
+>>> Baltimore, MD 21201-1524
+>>> Cell phone 443-418-5382
+>>>
+>>>
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat/
+>>> .ethz.ch%2Fmailman%2Flistinfo%2Fr-
+>> help&data=05%7C02%7Ctim.howard%40dec
+>> .ny.gov%7C8f2952a3ae474d4da14908dc0ddd95fd%7Cf46cb8ea79004d108ceb
+>> 80e8c
+>> 1c81ee7%7C0%7C0%7C638400492578674983%7CUnknown%7CTWFpbGZsb3d
+>> 8eyJWIjoiM
+>> C4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000
+>> %7C%7C
+>> %7C&sdata=Z17L8H5Lv6Q6e9FHxDJauhNSwsL53Qsvh5YQiH8ztmY%3D&reser
+>> ved=0
+>>> PLEASE do read the posting guide
+>>>
+>> http://www.r/
+>>> -project.org%2Fposting-
+>> guide.html&data=05%7C02%7Ctim.howard%40dec.ny.g
+>> ov%7C8f2952a3ae474d4da14908dc0ddd95fd%7Cf46cb8ea79004d108ceb80e8c
+>> 1c81e
+>> e7%7C0%7C0%7C638400492578674983%7CUnknown%7CTWFpbGZsb3d8eyJ
+>> WIjoiMC4wLj
+>> AwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%
+>> 7C%7C&s
+>> data=4PSWzIOvJoU%2FvrXXwwquhha8yyEUzC8z7PgdIpXrlGs%3D&reserved
+>> =0
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+>>
+>>
+>> ------------------------------
+>>
+>> Subject: Digest Footer
+>>
+>> _______________________________________________
+>> R-help at r-project.org mailing list
+>> https://stat.e/
+>> thz.ch%2Fmailman%2Flistinfo%2Fr-
+>> help&data=05%7C02%7Ctim.howard%40dec.ny.gov%7C8f2952a3ae474d4da1
+>> 4908dc0ddd95fd%7Cf46cb8ea79004d108ceb80e8c1c81ee7%7C0%7C0%7C638
+>> 400492578674983%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAi
+>> LCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%7C&s
+>> data=Z17L8H5Lv6Q6e9FHxDJauhNSwsL53Qsvh5YQiH8ztmY%3D&reserved=0
+>> PLEASE do read the posting guide
+>> http://www.r/
+>> -project.org%2Fposting-
+>> guide.html&data=05%7C02%7Ctim.howard%40dec.ny.gov%7C8f2952a3ae474
+>> d4da14908dc0ddd95fd%7Cf46cb8ea79004d108ceb80e8c1c81ee7%7C0%7C0%
+>> 7C638400492578674983%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAw
+>> MDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C3000%7C%7C%
+>> 7C&sdata=4PSWzIOvJoU%2FvrXXwwquhha8yyEUzC8z7PgdIpXrlGs%3D&rese
+>> rved=0
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>>
+>> ------------------------------
+>>
+>> End of R-help Digest, Vol 251, Issue 2
+>> **************************************
+
+
