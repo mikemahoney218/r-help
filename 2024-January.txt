@@ -615,3 +615,125 @@ On 05/01/2024 13:59, Howard, Tim G (DEC) wrote:
 >> **************************************
 
 
+From bbo|ker @end|ng |rom gm@||@com  Mon Jan  8 03:04:15 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sun, 7 Jan 2024 21:04:15 -0500
+Subject: [R] 
+ Obtaining a value of pie in a zero inflated model (fm-zinb2)
+In-Reply-To: <02c6fe89-ccae-6c7c-c61e-f79cffad4358@binghamton.edu>
+References: <DM6PR03MB5049A6587CD8AB9A83A0FE02E2672@DM6PR03MB5049.namprd03.prod.outlook.com>
+ <02c6fe89-ccae-6c7c-c61e-f79cffad4358@binghamton.edu>
+Message-ID: <e50e05bb-b340-416f-b6bf-ad2cd2d51099@gmail.com>
+
+    A little more.
+
+   As Christopher Ryan points out, as long as the zero-inflation model 
+is non-trivial (i.e. more complex than a single intercept for the whole 
+population), there's a pi(i) for every observation i (you could 
+certainly average the pi(i) values if you wanted, or compute pi for an 
+averaged set of covariates).
+
+library(pscl)
+fm_zinb2 <- zeroinfl(art ~ . | ., data = bioChemists, dist = "poisson")
+
+pi_i <- predict(fm_zinb2, type = "zero")
+head(pi_i)
+##          1          2          3          4          5          6
+## 0.13392803 0.21936320 0.21973454 0.24697313 0.01890023 0.34281196
+
+
+To get the conditional probability that a zero observation is a 
+structural or a sampling zero, compute the probability of a sampling 
+zero (exp(-mu[i]) for a Poisson model) and use Bayes' rule, assuming 
+equal prior probs
+
+## probability of _sampling_ zero
+
+psampz <- exp(-predict(fm_zinb2, type = "count"))
+head(psampz)
+##          1          2          3          4          5          6
+## 0.09507376 0.18361241 0.18688646 0.14774602 0.08992667 0.27235498
+
+pz <- 1 - (1-pi_i)*(1-psampz)  ## prob of zero of either type
+##         1         2         3         4         5         6
+## 0.2162687 0.3626978 0.3655556 0.3582299 0.1071273 0.5218004
+
+psampz/pz
+head(psampz)/head(pz)
+##         1         2         3         4         5         6
+## 0.4396093 0.5062408 0.5112395 0.4124336 0.8394378 0.5219524
+
+    3. I'm not aware of a closed-form solution for zero-inflation models 
+as long as the count and/or structural-zero components depend on 
+covariates?  In any case, looking inside zeroinfl() you can see that it 
+calls optim() [using BFGS by default, see ?pscl::zeroinfl.control]
+
+   cheers
+    Ben Bolker
+
+
+On 2024-01-04 9:38 a.m., Christopher W. Ryan via R-help wrote:
+> Are you referring to the zeroinfl() function in the countreg package? If
+> so, I think
+> 
+> predict(fm_zinb2, type = "zero", newdata = some.new.data)
+> 
+> will give you pi for each combination of covariate values that you
+> provide in some.new.data
+> 
+> where pi is the probability to observe a zero from the point mass component.
+> 
+> As to your second question, I'm not sure that's possible, for any
+> *particular, individual* subject. Others will undoubtedly know better
+> than I.
+> 
+> --Chris Ryan
+> 
+> Sorkin, John wrote:
+>> I am running a zero inflated regression using the zeroinfl function similar to the model below:
+>>    
+>>   fm_zinb2 <- zeroinfl(art ~ . | ., data = bioChemists, dist = "poisson")
+>> summary(fm_zinb2)
+>>
+>> I have three questions:
+>>
+>> 1) How can I obtain a value for the parameter pie, which is the fraction of the population that is in the zero inflated model vs the fraction in the count model?
+>>
+>> 2) For any particular subject, how can I determine if the subject is in the portion of the population that contributes a zero count because the subject is in the group of subjects who have structural zero responses vs. the subject being in the portion of the population who can contribute a zero or a non-zero response?
+>>
+>> 3) zero inflated models can be solved using closed form solutions, or using iterative methods. Which method is used by fm_zinb2?
+>>
+>> Thank you,
+>> John
+>>
+>> John David Sorkin M.D., Ph.D.
+>> Professor of Medicine, University of Maryland School of Medicine;
+>>
+>> Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+>>
+>> PI?Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+>>
+>> Senior Statistician University of Maryland Center for Vascular Research;
+>>
+>> Division of Gerontology and Paliative Care,
+>> 10 North Greene Street
+>> GRECC (BT/18/GR)
+>> Baltimore, MD 21201-1524
+>> Cell phone 443-418-5382
+>>
+>>
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
