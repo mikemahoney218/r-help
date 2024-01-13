@@ -1092,3 +1092,199 @@ ggplot(data = d1, aes(x=X1,y=X2,z=Z))+
 	[[alternative HTML version deleted]]
 
 
+From ro||turner @end|ng |rom po@teo@net  Thu Jan 11 09:18:24 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Thu, 11 Jan 2024 08:18:24 +0000
+Subject: [R] arrow on contour line
+In-Reply-To: <CA+Rxh84ii9JGitkPEp+2=rr-WTiKpg7kq4YSM=LELRpq08Tg7w@mail.gmail.com>
+References: <CA+Rxh84ii9JGitkPEp+2=rr-WTiKpg7kq4YSM=LELRpq08Tg7w@mail.gmail.com>
+Message-ID: <20240111211824.6781793d@rolf-Latitude-E7470>
+
+
+On Wed, 10 Jan 2024 19:13:19 -0500
+Deepankar Basu <basu.15 at gmail.com> wrote:
+
+> Hello,
+> 
+> I am drawing contour lines for a function of 2 variables at one level
+> of the value of the function and want to include a small arrow in any
+> direction of increase of the function. Is there some way to do that?
+> 
+> Below is an example that creates the contour lines. How do I add one
+> small arrow on each line in the direction of increase of the function
+> (at some central point of the contour line)? Any direction will do,
+> but perhaps the direction of the gradient will be the best.
+> 
+> Thanks in advance.
+> DB
+> 
+> --------------------------------------------
+> 
+> library(tidyverse)
+> 
+> x <- seq(1,2,length.out=100)
+> y <- seq(1,2,length.out=100)
+> 
+> myf <- function(x,y) {x*y}
+> myg <- function(x,y) {x^2 + y^2}
+> 
+> d1 <- expand.grid(X1 = x, X2 = y) %>%
+>   mutate(Z = myf(X1,X2)) %>%
+>   as.data.frame()
+> 
+> d2 <- expand.grid(X1 = x, X2 = y) %>%
+>   mutate(Z = myg(X1,X2)) %>%
+>   as.data.frame()
+> 
+> ggplot(data = d1, aes(x=X1,y=X2,z=Z))+
+>   stat_contour(breaks = c(2)) +
+>   stat_contour(data=d2, aes(x=X1,y=X2,z=Z), breaks=c(6))
+
+My solution would be to use base graphics and avoid the obfuscation
+induced by ggplot().  The graphics produced by ggplot() are devilish
+pretty, but ggplot() is devilish difficult to work with.  IMHO you need
+an IQ of at least 200 (which leaves me about 150 points short!) to be
+able to cope with its intricate and unintuitive syntax.
+
+I believe that what you want to do is triv in base graphics, but I must
+confess that I have not gone through the details.
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Jan 11 09:56:03 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 11 Jan 2024 11:56:03 +0300
+Subject: [R] arrow on contour line
+In-Reply-To: <CA+Rxh84ii9JGitkPEp+2=rr-WTiKpg7kq4YSM=LELRpq08Tg7w@mail.gmail.com>
+References: <CA+Rxh84ii9JGitkPEp+2=rr-WTiKpg7kq4YSM=LELRpq08Tg7w@mail.gmail.com>
+Message-ID: <20240111115603.35657a7f@Tarkus>
+
+? Wed, 10 Jan 2024 19:13:19 -0500
+Deepankar Basu <basu.15 at gmail.com> ?????:
+
+> I am drawing contour lines for a function of 2 variables at one level
+> of the value of the function and want to include a small arrow in any
+> direction of increase of the function. Is there some way to do that?
+
+Can you use the information about the function (i.e. the myg object),
+or are you restricted to the d2 data.frame?
+
+Both ggplot and the core graphics use the algorithm from the
+contourLines() function in order to draw the contour lines. (Lattice
+does the same, but ports the function from C to R.) This function
+returns a list of levels combined with vectors of `x` and `y`
+coordinates for drawing the contour.
+
+If you can use the myg function, you can differentiate it numerically
+or symbolically, process the contourLines() output, evaluate the
+gradient at one point per contour and draw additional arrows there.
+
+If you are limited to the tabulated function values from the d2
+data.frame, you have a more complicated problem on your hands. You can
+either locate grid points closest to the contour segments at both sides
+of the segment, determine the direction of growth, and draw an arrow
+perpendicular to the contour segment (not equal to the gradient), or
+find a way to estimate the gradient at arbitrary points between the
+grid (e.g. by using a Taylor series stencil) and then go to the
+previous paragraph.
+
+-- 
+Best regards,
+Ivan
+
+
+From |enn@rt@k@@@err@ @end|ng |rom gm@||@com  Thu Jan 11 09:54:04 2024
+From: |enn@rt@k@@@err@ @end|ng |rom gm@||@com (Lennart Kasserra)
+Date: Thu, 11 Jan 2024 09:54:04 +0100
+Subject: [R] arrow on contour line
+In-Reply-To: <CA+Rxh84ii9JGitkPEp+2=rr-WTiKpg7kq4YSM=LELRpq08Tg7w@mail.gmail.com>
+References: <CA+Rxh84ii9JGitkPEp+2=rr-WTiKpg7kq4YSM=LELRpq08Tg7w@mail.gmail.com>
+Message-ID: <a979392e-2a10-4120-bda7-5649ff135b4a@gmail.com>
+
+Hi,
+
+If I understand your intentions correctly, the simplest way would be to 
+manually insert arrows using `geom_segment()` with the `arrow` argument:
+
+```
+
+ggplot(data = d1, aes(x=X1,y=X2,z=Z))+
+ ? stat_contour(breaks = c(2)) +
+ ? stat_contour(data=d2, aes(x=X1,y=X2,z=Z), breaks=c(6)) +
+ ? geom_segment(
+ ??? aes(x = 1.25, y = 1.50, xend = 1.4, yend = 1.325),
+ ??? arrow = arrow(length = unit(0.5, "cm"))
+ ? ) +
+ ? geom_segment(
+ ??? aes(x = 1.6, y = 1.95, xend = 1.8, yend = 1.75),
+ ??? arrow = arrow(length = unit(0.5, "cm"))
+ ? )
+
+```
+
+If your actual data is organized differently, you may also be able to do 
+this in a more elegant programmatic way. Here is a StackOverflow 
+conversation about this exact topic, one Google search away: 
+https://stackoverflow.com/questions/38008863/how-to-draw-a-nice-arrow-in-ggplot2
+
+Have a nice day,
+
+Lennart Kasserra
+
+Am 11.01.24 um 01:13 schrieb Deepankar Basu:
+> Hello,
+>
+> I am drawing contour lines for a function of 2 variables at one level of
+> the value of the function and want to include a small arrow in any
+> direction of increase of the function. Is there some way to do that?
+>
+> Below is an example that creates the contour lines. How do I add one small
+> arrow on each line in the direction of increase of the function (at some
+> central point of the contour line)? Any direction will do, but perhaps the
+> direction of the gradient will be the best.
+>
+> Thanks in advance.
+> DB
+>
+> --------------------------------------------
+>
+> library(tidyverse)
+>
+> x <- seq(1,2,length.out=100)
+> y <- seq(1,2,length.out=100)
+>
+> myf <- function(x,y) {x*y}
+> myg <- function(x,y) {x^2 + y^2}
+>
+> d1 <- expand.grid(X1 = x, X2 = y) %>%
+>    mutate(Z = myf(X1,X2)) %>%
+>    as.data.frame()
+>
+> d2 <- expand.grid(X1 = x, X2 = y) %>%
+>    mutate(Z = myg(X1,X2)) %>%
+>    as.data.frame()
+>
+> ggplot(data = d1, aes(x=X1,y=X2,z=Z))+
+>    stat_contour(breaks = c(2)) +
+>    stat_contour(data=d2, aes(x=X1,y=X2,z=Z), breaks=c(6))
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
