@@ -1356,3 +1356,680 @@ Kingston ON Canada
 	[[alternative HTML version deleted]]
 
 
+From v@r|n@@ch@ @end|ng |rom y@hoo@|r  Sat Jan 13 21:33:47 2024
+From: v@r|n@@ch@ @end|ng |rom y@hoo@|r (varin sacha)
+Date: Sat, 13 Jan 2024 20:33:47 +0000 (UTC)
+Subject: [R] Strange results : bootrstrp CIs
+References: <1711614088.1808243.1705178027739.ref@mail.yahoo.com>
+Message-ID: <1711614088.1808243.1705178027739@mail.yahoo.com>
+
+Dear R-experts,
+
+Here below, my R code working BUT I get a strange result I was not expecting! Indeed, the?95% percentile bootstrap CIs is (-54.81, -54.81 ). Is anything going wrong?
+
+Best,
+
+##########################################
+Score=c(345,564,467,675,432,346,476,512,567,543,234,435,654,411,356,658,432,345,432,345, 345,456,543,501)
+?
+Country=c("Italy", "Italy", "Italy", "Turkey", "Turkey", "Turkey", "USA", "USA", "USA", "Korea", "Korea", "Korea", "Portugal", "Portugal", "Portugal", "UK", "UK", "UK", "Poland", "Poland", "Poland", "Austria", "Austria", "Austria")
+?
+Time=c(1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3)
+?
+e=data.frame(Score, Country, Time)
+?
+?
+library(boot)
+func= function(data, idx) {
+coef(lm(Score~ Time + factor(Country)),data=data[idx,])
+}
+B= boot(e, func, R=1000)
+?
+boot.ci(B, index=2, type="perc")
+#############################################################
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Jan 13 21:50:27 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 13 Jan 2024 15:50:27 -0500
+Subject: [R] Strange results : bootrstrp CIs
+In-Reply-To: <1711614088.1808243.1705178027739@mail.yahoo.com>
+References: <1711614088.1808243.1705178027739.ref@mail.yahoo.com>
+ <1711614088.1808243.1705178027739@mail.yahoo.com>
+Message-ID: <c1853d90-2ad0-42b5-a72b-c4f4b813422d@gmail.com>
+
+On 13/01/2024 3:33 p.m., varin sacha via R-help wrote:
+> Score=c(345,564,467,675,432,346,476,512,567,543,234,435,654,411,356,658,432,345,432,345,
+>   345,456,543,501)
+>   
+> Country=c("Italy", "Italy", "Italy", "Turkey", "Turkey", "Turkey",
+> "USA", "USA", "USA", "Korea", "Korea", "Korea", "Portugal", "Portugal",
+> "Portugal", "UK", "UK", "UK", "Poland", "Poland", "Poland", "Austria",
+> "Austria", "Austria")
+>   
+> Time=c(1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3)
+>   
+> e=data.frame(Score, Country, Time)
+>   
+>   
+> library(boot)
+> func= function(data, idx) {
+> coef(lm(Score~ Time + factor(Country)),data=data[idx,])
+> }
+> B= boot(e, func, R=1000)
+>   
+> boot.ci(B, index=2, type="perc")
+
+Your function ignores the data, because it passes data[idx,] to coef(), 
+not to lm().  coef() ignores it.  So the function is using the global 
+variables you created earlier, not the ones in e.
+
+Duncan Murdoch
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sat Jan 13 21:56:56 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sat, 13 Jan 2024 23:56:56 +0300
+Subject: [R] Strange results : bootrstrp CIs
+In-Reply-To: <1711614088.1808243.1705178027739@mail.yahoo.com>
+References: <1711614088.1808243.1705178027739.ref@mail.yahoo.com>
+ <1711614088.1808243.1705178027739@mail.yahoo.com>
+Message-ID: <20240113235656.57bec978@Tarkus>
+
+? Sat, 13 Jan 2024 20:33:47 +0000 (UTC)
+varin sacha via R-help <r-help at r-project.org> ?????:
+
+> coef(lm(Score~ Time + factor(Country)),data=data[idx,])
+
+Wrong place for the data=... argument. You meant to give it to lm(...),
+but in the end it went to coef(...). Without the data=... argument, the
+formula passed to lm() picks up the global variables inherited by the
+func() closure.
+
+Unfortunately, S3 methods really do have to ignore extra arguments they
+don't understand if the class is to be extended, so coef.lm isn't
+allowed to complain to you about it.
+
+-- 
+Best regards,
+Ivan
+
+
+From v@r|n@@ch@ @end|ng |rom y@hoo@|r  Sat Jan 13 23:22:59 2024
+From: v@r|n@@ch@ @end|ng |rom y@hoo@|r (varin sacha)
+Date: Sat, 13 Jan 2024 22:22:59 +0000 (UTC)
+Subject: [R] Strange results : bootrstrp CIs
+In-Reply-To: <20240113235656.57bec978@Tarkus>
+References: <1711614088.1808243.1705178027739.ref@mail.yahoo.com>
+ <1711614088.1808243.1705178027739@mail.yahoo.com>
+ <20240113235656.57bec978@Tarkus>
+Message-ID: <1336818939.1840583.1705184579275@mail.yahoo.com>
+
+Dear Duncan,
+Dear Ivan,
+
+I really thank you a lot for your response.
+So, if I correctly understand your answers the problem is coming from this line:
+
+coef(lm(Score~ Time + factor(Country)),data=data[idx,])
+
+This line should be:
+coef(lm(Score~ Time + factor(Country),data=data[idx,]))
+
+If yes, now I get an error message (code here below)! So, it still does not work.
+
+Error in t.star[r, ] <- res[[r]] :
+? number of items to replace is not a multiple of replacement length
+
+
+##########################################
+Score=c(345,564,467,675,432,346,476,512,567,543,234,435,654,411,356,658,432,345,432,345, 345,456,543,501)
+?
+Country=c("Italy", "Italy", "Italy", "Turkey", "Turkey", "Turkey", "USA", "USA", "USA", "Korea", "Korea", "Korea", "Portugal", "Portugal", "Portugal", "UK", "UK", "UK", "Poland", "Poland", "Poland", "Austria", "Austria", "Austria")
+?
+Time=c(1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3)
+?
+e=data.frame(Score, Country, Time)
+?
+?
+library(boot)
+func= function(data, idx) {
+coef(lm(Score~ Time + factor(Country),data=data[idx,]))
+}
+B= boot(e, func, R=1000)
+?
+boot.ci(B, index=2, type="perc")
+#############################################################
+
+
+
+
+
+
+
+
+Le samedi 13 janvier 2024 ? 21:56:58 UTC+1, Ivan Krylov <ikrylov at disroot.org> a ?crit : 
+
+
+
+
+
+? Sat, 13 Jan 2024 20:33:47 +0000 (UTC)
+
+varin sacha via R-help <r-help at r-project.org> ?????:
+
+> coef(lm(Score~ Time + factor(Country)),data=data[idx,])
+
+
+Wrong place for the data=... argument. You meant to give it to lm(...),
+but in the end it went to coef(...). Without the data=... argument, the
+formula passed to lm() picks up the global variables inherited by the
+func() closure.
+
+Unfortunately, S3 methods really do have to ignore extra arguments they
+don't understand if the class is to be extended, so coef.lm isn't
+allowed to complain to you about it.
+
+-- 
+Best regards,
+Ivan
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sat Jan 13 23:51:24 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sat, 13 Jan 2024 17:51:24 -0500
+Subject: [R] Strange results : bootrstrp CIs
+In-Reply-To: <1336818939.1840583.1705184579275@mail.yahoo.com>
+References: <1711614088.1808243.1705178027739.ref@mail.yahoo.com>
+ <1711614088.1808243.1705178027739@mail.yahoo.com>
+ <20240113235656.57bec978@Tarkus>
+ <1336818939.1840583.1705184579275@mail.yahoo.com>
+Message-ID: <78c206d2-61df-48ea-a134-d2e89de7a210@gmail.com>
+
+   It took me a little while to figure this out, but: the problem is 
+that if your resampling leaves out any countries (which is very likely), 
+your model applied to the bootstrapped data will have fewer coefficients 
+than your original model.
+
+I tried this:
+
+cc <- unique(e$Country)
+func <- function(data, idx) {
+    coef(lm(Score~ Time + factor(Country, levels =cc),data=data[idx,]))
+}
+
+but lm() automatically drops coefficients for missing countries (I 
+didn't think about it too hard, but I thought they might get returned as 
+NA and that boot() might be able to handle that ...)
+
+   If you want to do this I think you'll have to find a way to do a 
+*stratified* bootstrap, restricting the bootstrap samples so that they 
+always contain at least one sample from each country ... (I would have 
+expected "strata = as.numeric(e$Country)" to do this, but it doesn't 
+work the way I thought ... it tries to compute the statistics for *each* 
+stratum ...)
+
+
+
+====
+
+  Debugging attempts:
+
+set.seed(101)
+options(error=recover)
+B= boot(e, func, R=1000)
+
+
+Error in t.star[r, ] <- res[[r]] :
+   number of items to replace is not a multiple of replacement length
+
+Enter a frame number, or 0 to exit
+
+1: boot(e, func, R = 1000)
+
+<enter 1>
+
+Selection: 1
+Called from: top level
+Browse[1]> print(r)
+[1] 2
+Browse[1]> t.star[r,]
+[1] NA NA NA NA NA NA NA NA NA
+
+i[2,]
+  [1] 14 15 22 22 21 14  8  2 12 22 10 15  9  7  9 13 12 23  1 20 15  7 
+5 10
+
+
+
+
+On 2024-01-13 5:22 p.m., varin sacha via R-help wrote:
+> Dear Duncan,
+> Dear Ivan,
+> 
+> I really thank you a lot for your response.
+> So, if I correctly understand your answers the problem is coming from this line:
+> 
+> coef(lm(Score~ Time + factor(Country)),data=data[idx,])
+> 
+> This line should be:
+> coef(lm(Score~ Time + factor(Country),data=data[idx,]))
+> 
+> If yes, now I get an error message (code here below)! So, it still does not work.
+> 
+> Error in t.star[r, ] <- res[[r]] :
+>  ? number of items to replace is not a multiple of replacement length
+> 
+> 
+> ##########################################
+> Score=c(345,564,467,675,432,346,476,512,567,543,234,435,654,411,356,658,432,345,432,345, 345,456,543,501)
+>   
+> Country=c("Italy", "Italy", "Italy", "Turkey", "Turkey", "Turkey", "USA", "USA", "USA", "Korea", "Korea", "Korea", "Portugal", "Portugal", "Portugal", "UK", "UK", "UK", "Poland", "Poland", "Poland", "Austria", "Austria", "Austria")
+>   
+> Time=c(1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3)
+>   
+> e=data.frame(Score, Country, Time)
+>   
+>   
+> library(boot)
+> func= function(data, idx) {
+> coef(lm(Score~ Time + factor(Country),data=data[idx,]))
+> }
+> B= boot(e, func, R=1000)
+>   
+> boot.ci(B, index=2, type="perc")
+> #############################################################
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> Le samedi 13 janvier 2024 ? 21:56:58 UTC+1, Ivan Krylov <ikrylov at disroot.org> a ?crit :
+> 
+> 
+> 
+> 
+> 
+> ? Sat, 13 Jan 2024 20:33:47 +0000 (UTC)
+> 
+> varin sacha via R-help <r-help at r-project.org> ?????:
+> 
+>> coef(lm(Score~ Time + factor(Country)),data=data[idx,])
+> 
+> 
+> Wrong place for the data=... argument. You meant to give it to lm(...),
+> but in the end it went to coef(...). Without the data=... argument, the
+> formula passed to lm() picks up the global variables inherited by the
+> func() closure.
+> 
+> Unfortunately, S3 methods really do have to ignore extra arguments they
+> don't understand if the class is to be extended, so coef.lm isn't
+> allowed to complain to you about it.
+>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Jan 13 23:59:16 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 13 Jan 2024 17:59:16 -0500
+Subject: [R] Fwd:  Strange results : bootrstrp CIs
+In-Reply-To: <3293ab1c-4b8c-4121-b345-ac229bf53da3@gmail.com>
+References: <3293ab1c-4b8c-4121-b345-ac229bf53da3@gmail.com>
+Message-ID: <7884da76-8b6a-418c-9d92-64b564dbfefe@gmail.com>
+
+Sorry, didn't cc this to the list.
+
+
+-------- Forwarded Message --------
+Subject: Re: [R] Strange results : bootrstrp CIs
+Date: Sat, 13 Jan 2024 17:37:19 -0500
+From: Duncan Murdoch <murdoch.duncan at gmail.com>
+To: varin sacha <varinsacha at yahoo.fr>
+
+You can debug things like this by setting options(error = recover). That 
+will drop into the debugger when the error occurs.  Examine t.star, r, 
+and res[[r]] and you will likely see what the problem was.
+
+My guess is that one of the bootstrap samples had a different selection 
+of countries, so factor(Country) had different levels, and that would 
+really mess things up.
+
+You'll need to decide how to handle that:  If you are trying to estimate 
+the coefficient for Italy in a sample that contains no data from Italy, 
+what should the coefficient be?  (This is easier for Bayesians to 
+handle:  we don't need data!)
+
+Duncan
+
+On 13/01/2024 5:22 p.m., varin sacha via R-help wrote:
+> Dear Duncan,
+> Dear Ivan,
+> 
+> I really thank you a lot for your response.
+> So, if I correctly understand your answers the problem is coming from this line:
+> 
+> coef(lm(Score~ Time + factor(Country)),data=data[idx,])
+> 
+> This line should be:
+> coef(lm(Score~ Time + factor(Country),data=data[idx,]))
+> 
+> If yes, now I get an error message (code here below)! So, it still does not work.
+> 
+> Error in t.star[r, ] <- res[[r]] :
+>  ? number of items to replace is not a multiple of replacement length
+> 
+> 
+> ##########################################
+> Score=c(345,564,467,675,432,346,476,512,567,543,234,435,654,411,356,658,432,345,432,345, 345,456,543,501)
+>   
+> Country=c("Italy", "Italy", "Italy", "Turkey", "Turkey", "Turkey", "USA", "USA", "USA", "Korea", "Korea", "Korea", "Portugal", "Portugal", "Portugal", "UK", "UK", "UK", "Poland", "Poland", "Poland", "Austria", "Austria", "Austria")
+>   
+> Time=c(1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3)
+>   
+> e=data.frame(Score, Country, Time)
+>   
+>   
+> library(boot)
+> func= function(data, idx) {
+> coef(lm(Score~ Time + factor(Country),data=data[idx,]))
+> }
+> B= boot(e, func, R=1000)
+>   
+> boot.ci(B, index=2, type="perc")
+> #############################################################
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> Le samedi 13 janvier 2024 ? 21:56:58 UTC+1, Ivan Krylov <ikrylov at disroot.org> a ?crit :
+> 
+> 
+> 
+> 
+> 
+> ? Sat, 13 Jan 2024 20:33:47 +0000 (UTC)
+> 
+> varin sacha via R-help <r-help at r-project.org> ?????:
+> 
+>> coef(lm(Score~ Time + factor(Country)),data=data[idx,])
+> 
+> 
+> Wrong place for the data=... argument. You meant to give it to lm(...),
+> but in the end it went to coef(...). Without the data=... argument, the
+> formula passed to lm() picks up the global variables inherited by the
+> func() closure.
+> 
+> Unfortunately, S3 methods really do have to ignore extra arguments they
+> don't understand if the class is to be extended, so coef.lm isn't
+> allowed to complain to you about it.
+>
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Jan 14 01:54:01 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 13 Jan 2024 16:54:01 -0800
+Subject: [R] Strange results : bootrstrp CIs
+In-Reply-To: <78c206d2-61df-48ea-a134-d2e89de7a210@gmail.com>
+References: <1711614088.1808243.1705178027739.ref@mail.yahoo.com>
+ <1711614088.1808243.1705178027739@mail.yahoo.com>
+ <20240113235656.57bec978@Tarkus>
+ <1336818939.1840583.1705184579275@mail.yahoo.com>
+ <78c206d2-61df-48ea-a134-d2e89de7a210@gmail.com>
+Message-ID: <CAGxFJbR06n2FtN9bCcSzLRiVX7HpFyzFAGQQ5Zu4kKshMU3kjQ@mail.gmail.com>
+
+Well, this would seem to work:
+
+e <- data.frame(Score = Score
+             , Country = factor(Country)
+             , Time = Time)
+
+ncountry <- nlevels(e$Country)
+func= function(dat,idx) {
+   if(length(unique(dat[idx,'Country'])) < ncountry) NA
+   else coef(lm(Score~ Time + Country,data = dat[idx,]))
+}
+B <-  boot(e, func, R=1000)
+
+boot.ci(B, index=2, type="perc")
+
+Caveats:
+1) boot.ci handles the NA's by omitting them, which of course gives a
+smaller resample and longer CI's than the value of R specified in the call
+to boot().
+
+2) I do not know if the *nice* statistical properties of the nonparametric
+bootstrap, e.g. asymptotic correctness, hold when bootstrap samples are
+produced in this way.  I leave that to wiser heads than me.
+
+Cheers,
+Bert
+
+On Sat, Jan 13, 2024 at 2:51?PM Ben Bolker <bbolker at gmail.com> wrote:
+
+>    It took me a little while to figure this out, but: the problem is
+> that if your resampling leaves out any countries (which is very likely),
+> your model applied to the bootstrapped data will have fewer coefficients
+> than your original model.
+>
+> I tried this:
+>
+> cc <- unique(e$Country)
+> func <- function(data, idx) {
+>     coef(lm(Score~ Time + factor(Country, levels =cc),data=data[idx,]))
+> }
+>
+> but lm() automatically drops coefficients for missing countries (I
+> didn't think about it too hard, but I thought they might get returned as
+> NA and that boot() might be able to handle that ...)
+>
+>    If you want to do this I think you'll have to find a way to do a
+> *stratified* bootstrap, restricting the bootstrap samples so that they
+> always contain at least one sample from each country ... (I would have
+> expected "strata = as.numeric(e$Country)" to do this, but it doesn't
+> work the way I thought ... it tries to compute the statistics for *each*
+> stratum ...)
+>
+>
+>
+> ====
+>
+>   Debugging attempts:
+>
+> set.seed(101)
+> options(error=recover)
+> B= boot(e, func, R=1000)
+>
+>
+> Error in t.star[r, ] <- res[[r]] :
+>    number of items to replace is not a multiple of replacement length
+>
+> Enter a frame number, or 0 to exit
+>
+> 1: boot(e, func, R = 1000)
+>
+> <enter 1>
+>
+> Selection: 1
+> Called from: top level
+> Browse[1]> print(r)
+> [1] 2
+> Browse[1]> t.star[r,]
+> [1] NA NA NA NA NA NA NA NA NA
+>
+> i[2,]
+>   [1] 14 15 22 22 21 14  8  2 12 22 10 15  9  7  9 13 12 23  1 20 15  7
+> 5 10
+>
+>
+>
+>
+> On 2024-01-13 5:22 p.m., varin sacha via R-help wrote:
+> > Dear Duncan,
+> > Dear Ivan,
+> >
+> > I really thank you a lot for your response.
+> > So, if I correctly understand your answers the problem is coming from
+> this line:
+> >
+> > coef(lm(Score~ Time + factor(Country)),data=data[idx,])
+> >
+> > This line should be:
+> > coef(lm(Score~ Time + factor(Country),data=data[idx,]))
+> >
+> > If yes, now I get an error message (code here below)! So, it still does
+> not work.
+> >
+> > Error in t.star[r, ] <- res[[r]] :
+> >    number of items to replace is not a multiple of replacement length
+> >
+> >
+> > ##########################################
+> >
+> Score=c(345,564,467,675,432,346,476,512,567,543,234,435,654,411,356,658,432,345,432,345,
+> 345,456,543,501)
+> >
+> > Country=c("Italy", "Italy", "Italy", "Turkey", "Turkey", "Turkey",
+> "USA", "USA", "USA", "Korea", "Korea", "Korea", "Portugal", "Portugal",
+> "Portugal", "UK", "UK", "UK", "Poland", "Poland", "Poland", "Austria",
+> "Austria", "Austria")
+> >
+> > Time=c(1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3,1,2,3)
+> >
+> > e=data.frame(Score, Country, Time)
+> >
+> >
+> > library(boot)
+> > func= function(data, idx) {
+> > coef(lm(Score~ Time + factor(Country),data=data[idx,]))
+> > }
+> > B= boot(e, func, R=1000)
+> >
+> > boot.ci(B, index=2, type="perc")
+> > #############################################################
+> >
+> >
+> >
+> >
+> >
+> >
+> >
+> >
+> > Le samedi 13 janvier 2024 ? 21:56:58 UTC+1, Ivan Krylov <
+> ikrylov at disroot.org> a ?crit :
+> >
+> >
+> >
+> >
+> >
+> > ? Sat, 13 Jan 2024 20:33:47 +0000 (UTC)
+> >
+> > varin sacha via R-help <r-help at r-project.org> ?????:
+> >
+> >> coef(lm(Score~ Time + factor(Country)),data=data[idx,])
+> >
+> >
+> > Wrong place for the data=... argument. You meant to give it to lm(...),
+> > but in the end it went to coef(...). Without the data=... argument, the
+> > formula passed to lm() picks up the global variables inherited by the
+> > func() closure.
+> >
+> > Unfortunately, S3 methods really do have to ignore extra arguments they
+> > don't understand if the class is to be extended, so coef.lm isn't
+> > allowed to complain to you about it.
+> >
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ro||turner @end|ng |rom po@teo@net  Sun Jan 14 02:58:49 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Sun, 14 Jan 2024 01:58:49 +0000
+Subject: [R] Fwd:  Strange results : bootrstrp CIs
+In-Reply-To: <7884da76-8b6a-418c-9d92-64b564dbfefe@gmail.com>
+References: <3293ab1c-4b8c-4121-b345-ac229bf53da3@gmail.com>
+ <7884da76-8b6a-418c-9d92-64b564dbfefe@gmail.com>
+Message-ID: <20240114145849.12608d85@rolf-Latitude-E7470>
+
+On Sat, 13 Jan 2024 17:59:16 -0500
+Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+
+<SNIP>
+
+> My guess is that one of the bootstrap samples had a different
+> selection of countries, so factor(Country) had different levels, and
+> that would really mess things up.
+> 
+> You'll need to decide how to handle that:  If you are trying to
+> estimate the coefficient for Italy in a sample that contains no data
+> from Italy, what should the coefficient be?
+
+Perhaps NA?  Ben Bolker conjectured that boot() might be able to handle
+this.  Getting the NAs into the coefficients is a bit of a fag, but.  I
+tried:
+
+func <- function(data, idx) {
+clyde <- coef(lm(Score~ Time + factor(Country),data=data))
+ccc <- coef(lm(Score~ Time + factor(Country),data=data[idx,]))
+urk <- rep(NA,length(clyde))
+names(urk) <-names(clyde)
+urk[names(ccc)] <- ccc
+urk
+}
+
+It produced a result:
+
+> > set.seed(42)
+> > B= boot(e, func, R=1000)
+> B
+> 
+> ORDINARY NONPARAMETRIC BOOTSTRAP
+> 
+> 
+> Call:
+> boot(data = e, statistic = func, R = 1000)
+> 
+> 
+> Bootstrap Statistics :
+>       original     bias    std. error
+> t1*  609.62500  3.6204052    95.39452
+> t2*  -54.81250 -1.6624704    36.32911
+> t3*  -41.33333 -2.7337992   100.72113
+> t4*  -96.00000 -1.0995718    99.78864
+> t5* -126.00000 -0.6548886    63.47076
+> t6*  -26.33333 -1.6516683    87.80483
+> t7*  -15.66667 -0.8391170    91.72467
+> t8*  -21.66667 -5.4544013    83.69211
+> t9*   18.33333 -0.7711001    85.57278
+
+However I have no idea if the result is correct, or even meaningful. I
+have no idea what I'm doing.  Just hammering and hoping. ??
+
+<SNIP>
+
+cheers,
+
+Rolf
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
