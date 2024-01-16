@@ -2033,3 +2033,292 @@ Stats. Dep't. (secretaries) phone:
 Home phone: +64-9-480-4619
 
 
+From ro||turner @end|ng |rom po@teo@net  Sun Jan 14 03:33:49 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Sun, 14 Jan 2024 02:33:49 +0000
+Subject: [R] Strange results : bootrstrp CIs
+In-Reply-To: <CAGxFJbR06n2FtN9bCcSzLRiVX7HpFyzFAGQQ5Zu4kKshMU3kjQ@mail.gmail.com>
+References: <1711614088.1808243.1705178027739.ref@mail.yahoo.com>
+ <1711614088.1808243.1705178027739@mail.yahoo.com>
+ <20240113235656.57bec978@Tarkus>
+ <1336818939.1840583.1705184579275@mail.yahoo.com>
+ <78c206d2-61df-48ea-a134-d2e89de7a210@gmail.com>
+ <CAGxFJbR06n2FtN9bCcSzLRiVX7HpFyzFAGQQ5Zu4kKshMU3kjQ@mail.gmail.com>
+Message-ID: <20240114153349.6295ac5a@rolf-Latitude-E7470>
+
+
+On Sat, 13 Jan 2024 16:54:01 -0800
+Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> Well, this would seem to work:
+> 
+> e <- data.frame(Score = Score
+>              , Country = factor(Country)
+>              , Time = Time)
+> 
+> ncountry <- nlevels(e$Country)
+> func= function(dat,idx) {
+>    if(length(unique(dat[idx,'Country'])) < ncountry) NA
+>    else coef(lm(Score~ Time + Country,data = dat[idx,]))
+> }
+> B <-  boot(e, func, R=1000)
+> 
+> boot.ci(B, index=2, type="perc")
+> 
+> Caveats:
+> 1) boot.ci handles the NA's by omitting them, which of course gives a
+> smaller resample and longer CI's than the value of R specified in the
+> call to boot().
+> 
+> 2) I do not know if the *nice* statistical properties of the
+> nonparametric bootstrap, e.g. asymptotic correctness, hold when
+> bootstrap samples are produced in this way.  I leave that to wiser
+> heads than me.
+
+<SNIP>
+
+It seems to me that my shaganappi idea causes func() to return a vector
+of coefficients with NAs corresponding to any missing levels of the
+"Country" factor, whereas your idea causes it to return a scalar NA
+whenever one or more of the levels of the "Country" factor is missing.
+
+I have no idea what the implications of this are.  As I said before, I
+have no idea what I am doing!
+
+cheers,
+
+Rolf
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sun Jan 14 10:21:36 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sun, 14 Jan 2024 04:21:36 -0500
+Subject: [R] Fwd: Strange results : bootrstrp CIs
+In-Reply-To: <20240114145849.12608d85@rolf-Latitude-E7470>
+References: <3293ab1c-4b8c-4121-b345-ac229bf53da3@gmail.com>
+ <7884da76-8b6a-418c-9d92-64b564dbfefe@gmail.com>
+ <20240114145849.12608d85@rolf-Latitude-E7470>
+Message-ID: <4e11dfe3-e797-4a72-9e44-e43c29b59bfd@gmail.com>
+
+On 13/01/2024 8:58 p.m., Rolf Turner wrote:
+> On Sat, 13 Jan 2024 17:59:16 -0500
+> Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> 
+> <SNIP>
+> 
+>> My guess is that one of the bootstrap samples had a different
+>> selection of countries, so factor(Country) had different levels, and
+>> that would really mess things up.
+>>
+>> You'll need to decide how to handle that:  If you are trying to
+>> estimate the coefficient for Italy in a sample that contains no data
+>> from Italy, what should the coefficient be?
+> 
+> Perhaps NA?  Ben Bolker conjectured that boot() might be able to handle
+> this.  Getting the NAs into the coefficients is a bit of a fag, but.  I
+> tried:
+
+My question was really intended as a statistical question.  From a 
+statistical perspective, if I have a sampling scheme that sometimes 
+generates sample size 0, should my CI be (-Inf, Inf) for high enough 
+confidence level?
+
+A Bayesian might say that inference should be entirely based on the 
+prior in the case of no relevant data.  You could get similar numerical 
+results by adding some fake data to every bootstrap sample, e.g. a 
+single weighted observation for each country at your prior mean for that 
+country, with weight chosen to match the strength of the prior.  But 
+Bayesian methods don't give confidence intervals, they give credible 
+intervals, and those aren't the same thing even if they are sometimes 
+numerically similar.
+
+Duncan Murdoch
+
+
+> func <- function(data, idx) {
+> clyde <- coef(lm(Score~ Time + factor(Country),data=data))
+> ccc <- coef(lm(Score~ Time + factor(Country),data=data[idx,]))
+> urk <- rep(NA,length(clyde))
+> names(urk) <-names(clyde)
+> urk[names(ccc)] <- ccc
+> urk
+> }
+> 
+> It produced a result:
+> 
+>>> set.seed(42)
+>>> B= boot(e, func, R=1000)
+>> B
+>>
+>> ORDINARY NONPARAMETRIC BOOTSTRAP
+>>
+>>
+>> Call:
+>> boot(data = e, statistic = func, R = 1000)
+>>
+>>
+>> Bootstrap Statistics :
+>>        original     bias    std. error
+>> t1*  609.62500  3.6204052    95.39452
+>> t2*  -54.81250 -1.6624704    36.32911
+>> t3*  -41.33333 -2.7337992   100.72113
+>> t4*  -96.00000 -1.0995718    99.78864
+>> t5* -126.00000 -0.6548886    63.47076
+>> t6*  -26.33333 -1.6516683    87.80483
+>> t7*  -15.66667 -0.8391170    91.72467
+>> t8*  -21.66667 -5.4544013    83.69211
+>> t9*   18.33333 -0.7711001    85.57278
+> 
+> However I have no idea if the result is correct, or even meaningful. I
+> have no idea what I'm doing.  Just hammering and hoping. ??
+> 
+> <SNIP>
+> 
+> cheers,
+> 
+> Rolf
+>
+
+
+From v@r|n@@ch@ @end|ng |rom y@hoo@|r  Sun Jan 14 20:38:47 2024
+From: v@r|n@@ch@ @end|ng |rom y@hoo@|r (varin sacha)
+Date: Sun, 14 Jan 2024 19:38:47 +0000 (UTC)
+Subject: [R] Fwd: Strange results : bootrstrp CIs
+In-Reply-To: <4e11dfe3-e797-4a72-9e44-e43c29b59bfd@gmail.com>
+References: <3293ab1c-4b8c-4121-b345-ac229bf53da3@gmail.com>
+ <7884da76-8b6a-418c-9d92-64b564dbfefe@gmail.com>
+ <20240114145849.12608d85@rolf-Latitude-E7470>
+ <4e11dfe3-e797-4a72-9e44-e43c29b59bfd@gmail.com>
+Message-ID: <1473931666.2169292.1705261127244@mail.yahoo.com>
+
+Dear R-experts,
+
+I really thank you all for your responses.
+
+Best,
+
+
+
+Le dimanche 14 janvier 2024 ? 10:22:12 UTC+1, Duncan Murdoch <murdoch.duncan at gmail.com> a ?crit : 
+
+
+
+
+
+On 13/01/2024 8:58 p.m., Rolf Turner wrote:
+> On Sat, 13 Jan 2024 17:59:16 -0500
+> Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> 
+> <SNIP>
+> 
+>> My guess is that one of the bootstrap samples had a different
+>> selection of countries, so factor(Country) had different levels, and
+>> that would really mess things up.
+>>
+>> You'll need to decide how to handle that:? If you are trying to
+>> estimate the coefficient for Italy in a sample that contains no data
+>> from Italy, what should the coefficient be?
+> 
+> Perhaps NA?? Ben Bolker conjectured that boot() might be able to handle
+> this.? Getting the NAs into the coefficients is a bit of a fag, but.? I
+> tried:
+
+My question was really intended as a statistical question.? From a 
+statistical perspective, if I have a sampling scheme that sometimes 
+generates sample size 0, should my CI be (-Inf, Inf) for high enough 
+confidence level?
+
+A Bayesian might say that inference should be entirely based on the 
+prior in the case of no relevant data.? You could get similar numerical 
+results by adding some fake data to every bootstrap sample, e.g. a 
+single weighted observation for each country at your prior mean for that 
+country, with weight chosen to match the strength of the prior.? But 
+Bayesian methods don't give confidence intervals, they give credible 
+intervals, and those aren't the same thing even if they are sometimes 
+numerically similar.
+
+
+Duncan Murdoch
+
+
+> func <- function(data, idx) {
+> clyde <- coef(lm(Score~ Time + factor(Country),data=data))
+> ccc <- coef(lm(Score~ Time + factor(Country),data=data[idx,]))
+> urk <- rep(NA,length(clyde))
+> names(urk) <-names(clyde)
+> urk[names(ccc)] <- ccc
+> urk
+> }
+> 
+> It produced a result:
+> 
+>>> set.seed(42)
+>>> B= boot(e, func, R=1000)
+>> B
+>>
+>> ORDINARY NONPARAMETRIC BOOTSTRAP
+>>
+>>
+>> Call:
+>> boot(data = e, statistic = func, R = 1000)
+>>
+>>
+>> Bootstrap Statistics :
+>>? ? ? ? original? ? bias? ? std. error
+>> t1*? 609.62500? 3.6204052? ? 95.39452
+>> t2*? -54.81250 -1.6624704? ? 36.32911
+>> t3*? -41.33333 -2.7337992? 100.72113
+>> t4*? -96.00000 -1.0995718? ? 99.78864
+>> t5* -126.00000 -0.6548886? ? 63.47076
+>> t6*? -26.33333 -1.6516683? ? 87.80483
+>> t7*? -15.66667 -0.8391170? ? 91.72467
+>> t8*? -21.66667 -5.4544013? ? 83.69211
+>> t9*? 18.33333 -0.7711001? ? 85.57278
+> 
+> However I have no idea if the result is correct, or even meaningful. I
+> have no idea what I'm doing.? Just hammering and hoping. ??
+> 
+> <SNIP>
+> 
+> cheers,
+> 
+> Rolf
+>
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From v@r|n@@ch@ @end|ng |rom y@hoo@|r  Sun Jan 14 20:59:28 2024
+From: v@r|n@@ch@ @end|ng |rom y@hoo@|r (varin sacha)
+Date: Sun, 14 Jan 2024 19:59:28 +0000 (UTC)
+Subject: [R] Plotting extrapolation with R like AUTOBOX does
+References: <1020257293.2174036.1705262368538.ref@mail.yahoo.com>
+Message-ID: <1020257293.2174036.1705262368538@mail.yahoo.com>
+
+Dear R-experts,
+
+I write to you to know if somebody is aware of a R package (or function) able to plot graphs for extrapolation.
+
+I need to be clear on what extrapolation really is to me. It is when we use the model for X variables outside the range of X variables that were used to construct the model and estimates.?
+
+What I am really looking for is that beyond confidence intervals for predictions for the one estimated model, I want intervals that reflect the uncertainty over the models that could have fit the data as well. I know that Clive Granger worried about this a lot, and wrote a few papers (he called them 'thick' confidence intervals, taking into account model uncertainty).
+
+I found AUTOBOX software (https://autobox.com/cms/) allowing multiple time series to be modeled as possible inputs without requiring time as a possible predictor thus it can reproduce ordinary regression.
+
+More precisely, I am looking for an R package (or function) able to produce the same 4 graphs (done with AUTOBOX) in the answer here :?https://stats.stackexchange.com/questions/327454/right-way-to-extrapolate-data
+
+Best,
+
+
