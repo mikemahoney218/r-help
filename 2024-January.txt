@@ -2322,3 +2322,104 @@ More precisely, I am looking for an R package (or function) able to produce the 
 Best,
 
 
+From p@tr|ck@g|r@udoux @end|ng |rom un|v-|comte@|r  Tue Jan 16 09:19:40 2024
+From: p@tr|ck@g|r@udoux @end|ng |rom un|v-|comte@|r (Patrick Giraudoux)
+Date: Tue, 16 Jan 2024 09:19:40 +0100
+Subject: [R] different results between cor and ccf
+Message-ID: <6fdaed51-00da-4ac9-8c0e-e320c4fdc218@univ-fcomte.fr>
+
+Dear listers,
+
+I am working on a time series but find that for a given non-zero time 
+lag correlations obtained by ccf and cor are different.
+
+x <- c(0.85472102802704641, 1.6008990694641689, 2.5019632258894835, 
+2.514654801253164, 3.3359198688206368, 3.5401357138398208, 
+2.6304117871193538, 3.6694074965420009, 3.9125153101706776, 
+4.4006592535478566, 3.0208991912866829, 2.959090589344433, 
+3.8434635568566056, 2.1683644330520457, 2.3060571563512973, 
+1.4680350663043942, 2.0346918622459054, 2.3674524446877538)
+
+y <- c(2.3085729270534765, 2.0809088217491416, 1.6249456563631131, 
+1.5133386666933177, 0.66754156827555422, 0.3080839731181978, 
+0.52653042555599394, 0.89070463020837132, 0.71600791432232669, 
+0.82152341002975027, 0.22200290782700527, 0.6608410635137173, 
+0.90715232876618945, 0.45624062770725898, 0.35074487486980244, 
+1.1681750562971052, 1.6976462236079737, 0.88950230250556417)
+
+cc<-ccf(x,y)
+
+> cc Autocorrelations of series ?X?, by lag -9 -8 -7 -6 -5 -4 -3 -2 -1 0 1 
+2 0.098 0.139 0.127 -0.043 -0.049 0.069 -0.237 -0.471 -0.668 -0.595 
+-0.269 -0.076 3 4 5 6 7 8 9 -0.004 0.123 0.272 0.283 0.401 0.435 0.454
+
+cor(x,y) [1] -0.5948694
+
+So far so good, but when I lag one of the series, I cannot find the same 
+correlation as with ccf
+
+> cor(x[1:(length(x)-1)],y[2:length(y)]) [1] -0.7903428
+
+... where I expect -0.668 based on ccf
+
+Can anyone explain why ?
+
+Best,
+
+Patrick
+
+	[[alternative HTML version deleted]]
+
+
+From berw|n@tur|@ch @end|ng |rom gm@||@com  Tue Jan 16 11:32:51 2024
+From: berw|n@tur|@ch @end|ng |rom gm@||@com (Berwin A Turlach)
+Date: Tue, 16 Jan 2024 18:32:51 +0800
+Subject: [R] different results between cor and ccf
+In-Reply-To: <6fdaed51-00da-4ac9-8c0e-e320c4fdc218@univ-fcomte.fr>
+References: <6fdaed51-00da-4ac9-8c0e-e320c4fdc218@univ-fcomte.fr>
+Message-ID: <20240116183251.4f54eaff@dep59159.uniwa.uwa.edu.au>
+
+G'day Patrick,
+
+On Tue, 16 Jan 2024 09:19:40 +0100
+Patrick Giraudoux <patrick.giraudoux at univ-fcomte.fr> wrote:
+
+[...]
+> So far so good, but when I lag one of the series, I cannot find the
+> same correlation as with ccf
+> 
+> > cor(x[1:(length(x)-1)],y[2:length(y)]) [1] -0.7903428  
+> 
+> ... where I expect -0.668 based on ccf
+> 
+> Can anyone explain why ?
+
+The difference is explained by cff() seeing the complete data on x and
+y and calculating the sample means only once, which are then used in
+the calculations for each lag.  cor() sees only the data you pass down,
+so calculates different estimates for the means of the two sequences.
+
+To illustrate:
+
+[...first execute your code...]
+R> xx <- x-mean(x)
+R> yy <- y-mean(y)
+R> n <- length(x)
+R> vx <- sum(xx^2)/n
+R> vy <- sum(yy^2)/n
+R> (c0 <- sum(xx*yy)/n/sqrt(vx*vy))
+[1] -0.5948694
+R> xx <- x[1:(length(x)-1)] - mean(x)
+R> yy <- y[2:length(y)] - mean(y)
+R> (c1 <- sum(xx*yy)/n/sqrt(vx*vy))
+[1] -0.6676418
+
+
+The help page of cff() points to MASS, 4ed, the more specific reference
+is p 389ff. :)
+
+Cheers,
+
+	Berwin
+
+
