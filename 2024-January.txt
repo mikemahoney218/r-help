@@ -2680,3 +2680,216 @@ On Wed, Jan 17, 2024, 9:15 AM John Fox <jfox at mcmaster.ca> wrote:
 	[[alternative HTML version deleted]]
 
 
+From j|ox @end|ng |rom mcm@@ter@c@  Thu Jan 18 15:44:11 2024
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Thu, 18 Jan 2024 09:44:11 -0500
+Subject: [R] Is there any design based two proportions z test?
+In-Reply-To: <CAGbxoeGXYbf5hUNOC2DiEJ2TiyDN2otcbfhfckTSk1Ommwhdeg@mail.gmail.com>
+References: <CAGbxoeHn5B=4=JkXUZiXayZLzdhvGPqrdhDfErTEwK2PEuFhQw@mail.gmail.com>
+ <77544b52-ebfb-409c-8b45-507b4ecf201a@mcmaster.ca>
+ <CAGbxoeGXYbf5hUNOC2DiEJ2TiyDN2otcbfhfckTSk1Ommwhdeg@mail.gmail.com>
+Message-ID: <09731002-b29d-467e-aa7b-4f9f507b4354@mcmaster.ca>
+
+Dear Md Kamruzzaman,
+
+I've copied this response to the r-help list, where you originally asked 
+your question. That way, other people can follow the conversation, if 
+they're interested and there will be a record of the solution. Please 
+keep r-help in the loop
+
+See below:
+
+On 2024-01-17 9:47 p.m., Md. Kamruzzaman wrote:
+> 	
+> Caution: External email.
+> 
+> 
+> Dear John
+> Thank you so much for your reply.
+> 
+> I have calculated the 95%CI of the separate?two proportions by using the 
+> survey package. The code is given below.
+> 
+> svyby(~Diabetes_Cate, ~Year, nhc, svymean, na=TRUE)
+> 
+> Here: nhc is the weighted survey data.
+> 
+> 
+> I understand your point that it is possible?to calculate the 95%CI of 
+> the proportional?difference manually.? It is time consuming, that's why 
+> I was looking for a function with a design effect to calculate this 
+> easily.? I couldn't find this kind of function.
+> 
+> 
+> However, it will be okay for me to calculate this manually, if there are 
+> no functions like this.
+
+If you intend to do this computation once, it's not terribly time 
+consuming. If you intend to do it repeatedly, you can write a simple 
+function to do the calculation, probably in less time than it takes to 
+search for one.
+
+> 
+> 
+> For manual calculation, could you please share the formula? to calculate 
+> the 95%CI of proportional difference.
+
+Here's a simple function to compute the confidence interval, assuming 
+that the normal distribution is used. The formula is based on the 
+elementary result that the variance of the difference of two independent 
+random variables is the sum of their variances, plus the observation 
+that the width of the confidence interval is 2*z*SE, where z is the 
+normal quantile corresponding to the confidence level (e.g., 1.96 for a 
+95% CI).
+
+ciDiff <- function(ci1, ci2, level=0.95){
+   p1 <- mean(ci1)
+   p2 <- mean(ci2)
+   z <- qnorm((1 - level)/2, lower.tail=FALSE)
+   se1 <- (ci1[2] - ci1[1])/(2*z)
+   se2 <- (ci2[2] - ci2[1])/(2*z)
+   seDiff <- sqrt(se1^2 + se2^2)
+   (p1 - p2) + c(-z, z)*seDiff
+}
+
+
+> 
+> Example: Prevalence of Diabetes:
+>  ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?2011:?11.0 (95%CI 
+> 10.1-11.9)
+>  ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?2017:?10.1 (95%CI 
+> 9.4-10.9)
+>  ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?Diff: 0.9% (95%CI: ??)
+
+These are percentages, not proportions, but you can use either:
+
+ > ciDiff(c(10.1, 11.9), c(9.4, 10.9))
+[1] -0.3215375  2.0215375
+
+ > ciDiff(c(.101, .119), c(.094, .109))
+[1] -0.003215375  0.020215375
+
+You'll want more significant digits in the inputs to get sufficiently 
+precise results.
+
+Since I did this quickly, if I were you I'd check the results manually.
+
+Best,
+  John
+
+> With Kind Regards
+> 
+> -------------------------
+> 
+> */Md Kamruzzaman/*
+> 
+> 
+> 
+> On Thu, Jan 18, 2024 at 12:44?AM John Fox <jfox at mcmaster.ca 
+> <mailto:jfox at mcmaster.ca>> wrote:
+> 
+>     Dear Md Kamruzzaman,
+> 
+>     To answer your second question first, you could just use the svychisq()
+>     function. The difference-of-proportion test is equivalent to a
+>     chisquare
+>     test for the 2-by-2 table.
+> 
+>     You don't say how you computed the confidence intervals for the two
+>     separate proportions, but if you have their standard errors (and if
+>     not,
+>     you should be able to infer them from the confidence intervals) you can
+>     compute the variance of the difference as the sum of the variances
+>     (squared standard errors), because the two proportions are independent,
+>     and from that the confidence interval for their difference.
+> 
+>     I hope this helps,
+>     John
+>     -- 
+>     John Fox, Professor Emeritus
+>     McMaster University
+>     Hamilton, Ontario, Canada
+>     web: https://www.john-fox.ca/ <https://www.john-fox.ca/>
+> 
+>     On 2024-01-16 10:21 p.m., Md. Kamruzzaman wrote:
+>      > [You don't often get email from mkzaman.m at gmail.com
+>     <mailto:mkzaman.m at gmail.com>. Learn why this is important at
+>     https://aka.ms/LearnAboutSenderIdentification
+>     <https://aka.ms/LearnAboutSenderIdentification> ]
+>      >
+>      > Caution: External email.
+>      >
+>      >
+>      > Hello Everyone,
+>      > I was analysing big survey data using survey packages on RStudio.
+>     Survey
+>      > package allows survey data analysis with the design effect.The survey
+>      > package included functions for all other statistical analysis except
+>      > two-proportion z tests.
+>      >
+>      > I was trying to calculate the difference in prevalence of
+>     Diabetes and
+>      > Prediabetes between the year 2011 and 2017 (with 95%CI). I was
+>     able to
+>      > calculate the weighted prevalence of diabetes and prediabetes in
+>     the Year
+>      > 2011 and 2017 and just subtracted the prevalence of 2011 from the
+>      > prevalence of 2017 to get the difference in prevalence. But I
+>     could not
+>      > calculate the 95%CI of the difference in prevalence considering
+>     the weight
+>      > of the survey data.
+>      >
+>      > I was also trying to see if this difference in prevalence is
+>     statistically
+>      > significant. I could do it using the simple two-proportion z test
+>     without
+>      > considering the weight of the sample. But I want to do it
+>     considering the
+>      > weight of the sample.
+>      >
+>      >
+>      > Example: Prevalence of Diabetes:
+>      >? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?2011: 11.0
+>     (95%CI
+>      > 10.1-11.9)
+>      >? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?2017: 10.1
+>     (95%CI
+>      > 9.4-10.9)
+>      >? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?Diff: 0.9%
+>     (95%CI: ??)
+>      >? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?Proportion
+>     Z test P
+>      > Value: ??
+>      > Your cooperation will be highly appreciated.
+>      >
+>      > Thanks in advance.
+>      >
+>      > With Regards
+>      >
+>      > *--------------------------------*
+>      >
+>      > *Md Kamruzzaman*
+>      >
+>      > *PhD **Research Fellow (**Medicine**)*
+>      > Discipline of Medicine and Centre of Research Excellence in
+>     Translating
+>      > Nutritional Science to Good Health
+>      > Adelaide Medical School | Faculty of Health and Medical Sciences
+>      > The University of Adelaide
+>      > Adelaide SA 5005
+>      >
+>      >? ? ? ? ? [[alternative HTML version deleted]]
+>      >
+>      > ______________________________________________
+>      > R-help at r-project.org <mailto:R-help at r-project.org> mailing list
+>     -- To UNSUBSCRIBE and more, see
+>      > https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>
+>      > PLEASE do read the posting guide
+>     http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>      > and provide commented, minimal, self-contained, reproducible code.
+>
+
+
