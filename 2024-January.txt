@@ -4164,3 +4164,57 @@ Is this function working or am I not using it correctly?
 Michael Meyer
 
 
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Jan 27 18:47:59 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 27 Jan 2024 12:47:59 -0500
+Subject: [R] DescTools::Quantile
+In-Reply-To: <930947001.831290.1706283521871@mail.yahoo.com>
+References: <930947001.831290.1706283521871.ref@mail.yahoo.com>
+ <930947001.831290.1706283521871@mail.yahoo.com>
+Message-ID: <92b0a7b2-0e91-41bc-8b94-435daed38153@gmail.com>
+
+On 26/01/2024 10:38 a.m., Michael Meyer via R-help wrote:
+> Greetings,
+> 
+> I am having a problem with DescTools::Quantile
+> (a function computing quantiles from weighted samples):
+> 
+> # these sum to one
+> probWeights = c(
+>       0.0043, 0.0062, 0.0087, 0.0119, 0.0157, 0.0204, 0.0257, 0.0315, 0.0378,
+>       0.0441, 0.0501, 0.0556, 0.06, 0.0632, 0.0648, 0.0648, 0.0632, 0.06,
+>       0.0556, 0.0501, 0.0441, 0.0378, 0.0315, 0.0257, 0.0204, 0.0157, 0.0119,
+>       0.0087, 0.0062, 0.0043
+>    )
+>    x = seq(-100,100,length.out=length(probWeights))
+> 
+>    qtls <- DescTools::Quantile(x, weights=probWeights, probs=c(0.1,0.9))
+>    
+> cat("\nQuantiles:\n")
+>    print(qtls)
+> 
+> 
+> Both quantiles are equal to 100!
+> Is this function working or am I not using it correctly?
+
+There's an obvious bug in that function:
+
+     n <- sum(weights)          # this sets n to 1 in your data
+     ord <- 1 + (n - 1) * probs # This sets ord to c(1,1)
+
+     low <- pmax(floor(ord), 1)
+     high <- pmin(low + 1, n)
+     ord <- ord%%1
+     allq <- approx(cumsum(weights), x, xout = c(low, high), method = 
+"constant",
+         f = 1, rule = 2)$y
+     k <- length(probs)
+     qs <- (1 - ord) * allq[1:k] + ord * allq[-(1:k)]
+
+This bug was reported on the package website 6 months ago 
+(https://github.com/AndriSignorell/DescTools/issues/123), and hasn't 
+been addressed.  I'd suggest the best action is to find a different package.
+
+Duncan Murdoch
+
+
