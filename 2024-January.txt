@@ -4389,3 +4389,233 @@ On Sun, 28 Jan 2024, Kelis Wong wrote:
 > 
 >
 
+From |zm|r||g @end|ng |rom m@||@n|h@gov  Mon Jan 29 10:53:18 2024
+From: |zm|r||g @end|ng |rom m@||@n|h@gov (Izmirlian, Grant (NIH/NCI) [E])
+Date: Mon, 29 Jan 2024 09:53:18 +0000
+Subject: [R] DescTools::Quantile
+In-Reply-To: <nik2hx53780pep991wulsjns.1706518436647@email.android.com>
+References: <nik2hx53780pep991wulsjns.1706518436647@email.android.com>
+Message-ID: <0jl90u3pcenrwrr0ne8he1vq.1706518675652@email.android.com>
+
+It looks like a homework assignment. It also looks like you didn't read the documentation carefully enough. The 'len.out' argument in seq is solely for specifying the length of a sequence. The 'quantile' function omputes the  empirical quantile of raw data in the vector 'x' at cumulative probabilit(y)(ies) given in the weights' argument, with interpolation I'm between. For example
+
+quantile(x=c(2.3, 1, 7, -4, 1), weights=c(0.60,0.45))
+60%  45%
+1.52 1.00
+
+So to do what you want, there may be a canned function in R but you can always write your own.
+
+First we write one that takes values in 'x' and weights in 'w', vectors of the same length, and returns the quantile at cumulative probability 'p' for a 'p' of length 1.
+
+"%,%" <-paste0
+
+qtl.one <-
+function(p, x, w)
+{
+    ## argument checking
+    bad <- length(x)!=length(w)
+    bad <- bad || (length(p)!=1)
+    bad <- bad || any(diff(x)<=0)
+    if(bad)
+      stop("Arguments 'x' and 'w' must be " %,%
+      "vectors of the same legnth. Argument " %,%
+      "'x' must be a vector of nondecreasing " %,%        "values.")
+
+    if(any(w<=0)||(sum(w)!=1))
+      stop("elements of 'w' must be positive " %,%        "and sum to 1")
+
+    ## the actual body of the function
+    x[max(which(cumsum(w)<=p))]
+}
+
+Now we write a vectorization of the above that will work given a vector of 'p' cumulative probabilities:
+
+
+qtl <-
+function(p, x, w)
+{
+    if(length(p)==1) ans <- qtl.one(p, x, w)
+    if(length(p) >1)
+       ans <- sapply(p, FUN=qtl.one, x=x,w=w)
+    ans
+}
+
+________________________________
+From: "Izmirlian, Grant (NIH/NCI) [E]" <izmirlig at mail.nih.gov>
+Date: Mon, Jan 29, 2024, 3:55 AM
+To: "Izmirlian, Grant (NIH/NCI) [E]" <izmirlig at mail.nih.gov>
+Subject: Re: [R] DescTools::Quantile
+
+Greetings,
+
+I am having a problem with DescTools::Quantile
+(a function computing quantiles from weighted samples):
+
+# these sum to one
+probWeights = c(
+     0.0043, 0.0062, 0.0087, 0.0119, 0.0157, 0.0204, 0.0257, 0.0315, 0.0378,
+     0.0441, 0.0501, 0.0556, 0.06, 0.0632, 0.0648, 0.0648, 0.0632, 0.06,
+     0.0556, 0.0501, 0.0441, 0.0378, 0.0315, 0.0257, 0.0204, 0.0157, 0.0119,
+     0.0087, 0.0062, 0.0043
+  )
+  x = seq(-100,100,length.out=length(probWeights))
+
+  qtls <- DescTools::Quantile(x, weights=probWeights, probs=c(0.1,0.9))
+
+cat("\nQuantiles:\n")
+  print(qtls)
+
+
+Both quantiles are equal to 100!
+Is this function working or am I not using it correctly?
+
+Michael Meyer
+
+	[[alternative HTML version deleted]]
+
+
+From ke||@@whk @end|ng |rom gm@||@com  Sun Jan 28 18:18:40 2024
+From: ke||@@whk @end|ng |rom gm@||@com (Kelis Wong)
+Date: Sun, 28 Jan 2024 12:18:40 -0500
+Subject: [R] 2SLS with Fixed Effects and Control Variables
+Message-ID: <CAOJ6AG3y-QeXk70Sw+npwSxZmgqbS9vA3GvUwVVm5ex4iQY3oQ@mail.gmail.com>
+
+Dear John Fox, Christian Kleiber, and Achim Zeileis,
+
+I am attempting to run various independent variable parameters to assess
+their suitability. Unfortunately, I hit a snag and couldn't get the tests
+to run properly. When I used ivreg, I got an error message saying: "Error
+in eval(predvars, data, env) : object 'WageInequality' not found."
+
+Can you please help?
+
+Model: numeric(WageInequality) = numeric(EffectiveMinimum) +
+numeric(EffectiveMinimum2)
+(whereas EffectiveMinimum2 is the quadratic form of EffectiveMinimum)
+
+Instruments: numeric(`Log Real Minimum Wage`) + numeric(`Log Real Minimum
+Wage2`) + numeric(IVinteration)
+(whereas Real Minimum Wage2 is the quadratic form of Real Minimum Wage)
+
+Time and Region Fixed Effects: factor(Region) + numeric(Year) + Region:Year
+(whereas Region:Year is and interaction term of Region and Year)
+
+Control Variables: factor(Region), numeric(`Woman Percentage`),
+numeric(`Noneducated Percentage`)
+
+Parameter 1:
+ivreg(WageInequality ~ EffectiveMinimum + EffectiveMinimum2 + Region | `Log
+Real Minimum Wage` + `Log Real Minimum Wage2` + IVinteration + Region,
+dataset))
+
+Parameter 2:
+ivreg(WageInequality ~ EffectiveMinimum + EffectiveMinimum2 + Region + Year
++ Region:Year | `Log Real Minimum Wage` + `Log Real Minimum Wage2` +
+IVinteration + Region + Year + Region:Year, dataset))
+
+Parameter 3:
+ivreg(WageInequality ~ EffectiveMinimum + EffectiveMinimum2 + Region + Year
++ Region:Year + `Woman Percentage` + `Noneducated Percentage` | `Log Real
+Minimum Wage` + `Log Real Minimum Wage2` + IVinteration + Region + Year +
+Region:Year + `Woman Percentage` + `Noneducated Percentage`, dataset))
+
+--
+Peace,
+
+Kelis Wong
+
+	[[alternative HTML version deleted]]
+
+
+From t@v|b@r @end|ng |rom gm@||@com  Mon Jan 29 13:19:21 2024
+From: t@v|b@r @end|ng |rom gm@||@com (Micha Silver)
+Date: Mon, 29 Jan 2024 14:19:21 +0200
+Subject: [R] print data.frame with a list column
+Message-ID: <1e82496c-82e3-4a18-9aa8-83c65b75bd33@gmail.com>
+
+I have a data.frame with one column as a list. When printing (or using 
+knitr::kable) the list gets truncated. Is there some option to force 
+printing the full list?
+
+
+MWE:
+
+
+df <- data.frame("name" = "A", "bands" = I(list(1:20))) > print(df) name 
+bands 1 A 1, 2, 3,.... I'd like to avoid the ellipsis in "bands" column, 
+rather print all list elements. Thanks
+
+-- 
+Micha Silver
+Ben Gurion Univ.
+Sde Boker, Remote Sensing Lab
+cell: +972-523-665918
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Jan 29 15:56:12 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 29 Jan 2024 17:56:12 +0300
+Subject: [R] print data.frame with a list column
+In-Reply-To: <1e82496c-82e3-4a18-9aa8-83c65b75bd33@gmail.com>
+References: <1e82496c-82e3-4a18-9aa8-83c65b75bd33@gmail.com>
+Message-ID: <20240129175612.605206c7@arachnoid>
+
+On Mon, 29 Jan 2024 14:19:21 +0200
+Micha Silver <tsvibar at gmail.com> wrote:
+
+> Is there some option to force printing the full list?
+
+> df <- data.frame("name" = "A", "bands" = I(list(1:20)))
+
+format.AsIs is responsible for printing columns produced using I(). It
+accepts a "width" argument:
+
+format(x, width = 9999)
+#   name                                                                 bands
+# 1    A 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+
+It's more complicated with knitr::kable. Its format.args argument is
+only used with numeric arguments, but you can pre-format the table with
+knitr::kable(format(x, width = 9999)).
+
+-- 
+Best regards,
+Ivan
+
+
+From t@v|b@r @end|ng |rom gm@||@com  Mon Jan 29 17:43:47 2024
+From: t@v|b@r @end|ng |rom gm@||@com (Micha Silver)
+Date: Mon, 29 Jan 2024 18:43:47 +0200
+Subject: [R] print data.frame with a list column
+In-Reply-To: <20240129175612.605206c7@arachnoid>
+References: <1e82496c-82e3-4a18-9aa8-83c65b75bd33@gmail.com>
+ <20240129175612.605206c7@arachnoid>
+Message-ID: <363f8a57-8a33-447b-9d8c-8ee112804f2b@gmail.com>
+
+Excellent, many thanks.
+
+
+On 29/01/2024 16:56, Ivan Krylov wrote:
+> On Mon, 29 Jan 2024 14:19:21 +0200
+> Micha Silver <tsvibar at gmail.com> wrote:
+>
+>> Is there some option to force printing the full list?
+>> df <- data.frame("name" = "A", "bands" = I(list(1:20)))
+> format.AsIs is responsible for printing columns produced using I(). It
+> accepts a "width" argument:
+>
+> format(x, width = 9999)
+> #   name                                                                 bands
+> # 1    A 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+>
+> It's more complicated with knitr::kable. Its format.args argument is
+> only used with numeric arguments, but you can pre-format the table with
+> knitr::kable(format(x, width = 9999)).
+>
+-- 
+Micha Silver
+Ben Gurion Univ.
+Sde Boker, Remote Sensing Lab
+cell: +972-523-665918
+
+
