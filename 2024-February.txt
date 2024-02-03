@@ -36,3 +36,449 @@ Thanks to anyone willing to help.  One of my issues is I have been unable to rep
 	[[alternative HTML version deleted]]
 
 
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Thu Feb  1 11:16:33 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Thu, 1 Feb 2024 10:16:33 +0000
+Subject: [R] Need help testing a problem
+In-Reply-To: <15EE349C-1593-481E-9A22-2014393B8DB9@noaa.gov>
+References: <15EE349C-1593-481E-9A22-2014393B8DB9@noaa.gov>
+Message-ID: <06f41ffa-4505-49db-b7a4-6ec78919b761@sapo.pt>
+
+?s 23:47 de 31/01/2024, Roy Mendelssohn - NOAA Federal via R-help escreveu:
+> HI All:
+> 
+> We are trying to figure out a problem that is occurring with a package,  and we need a non-NOAA person with a Windows computer with the latest R to test for us what is failing (but works on Macs and Linux from different sites).  Part of the problem is there is an Akamai service in between that we feel may be messing up things. To do this you would need to be willing to:
+> 
+> 1.  install the ?rerddap? package from CRAN,  with all dependencies - or if installed make certain it is the latest
+> 
+> 2. make certain that the packages ?curl?, ?crul? and ?http? are up to date.
+> 
+> 3.  Run the following:
+> 
+> # load rerddap
+> library("rerddap?)
+> # delete rerddap cache just in case
+> cache_delete_all()
+> # get the data extract
+> dat <- tabledap('FED_JSATS_detects', url = "https://oceanview.pfeg.noaa.gov/erddap/", 'study_id="RBDD_2018"', callopts = list(verbose = TRUE), store = memory())
+> 
+> 4. If it works also do:
+> 
+>   head(dat)
+> 
+> Either way if all the output could be sent to me it would be very helpful.  The download may take a couple of minutes,
+> the file size is about 3.5MB.
+> 
+> If anyone has concerns about what is being downloaded you can check the ?rerddap? docs to see these are all legitimate ?rerddap' commands,  the datasets being accessed is https://oceanview.pfeg.noaa.gov/erddap/tabledap/FED_JSATS_detects.html.  The downloaded file goes to R temp space, and its location,  if successful is given in the output.
+> 
+> Thanks to anyone willing to help.  One of my issues is I have been unable to reproduce the error,  but I also do not have ready access to a Windows machine.
+> 
+> -ROy
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Tested with R 4.3.2 running on Windows 11.
+
+1. You mention package http but there is no package http on CRAN, did 
+you mean package httr?
+
+2. I wrote a script rhelp.R, ran it on a command window and here is what 
+I got on the command window output.
+
+
+
+C:\Users\ruipb\Documents>R -q -f rhelp.R > rhelp_out.txt
+* WARNING: failed to open cookie file ""
+* Found bundle for host: 0x21cb7410670 [serially]
+* Can not multiplex, even if we wanted to
+* Re-using existing connection with host oceanview.pfeg.noaa.gov
+ > GET 
+/erddap/tabledap/FED_JSATS_detects.csv?&study_id%3D%22RBDD_2018%22 HTTP/1.1
+Host: oceanview.pfeg.noaa.gov
+User-Agent: libcurl/8.3.0 r-curl/5.2.0 crul/1.4.0
+Accept-Encoding: gzip, deflate
+Accept: application/json, text/xml, application/xml, */*
+
+< HTTP/1.1 504 Gateway Time-out
+< Server: AkamaiGHost
+< Mime-Version: 1.0
+< Content-Type: text/html
+< Content-Length: 176
+< Expires: Thu, 01 Feb 2024 09:56:40 GMT
+< Date: Thu, 01 Feb 2024 09:56:40 GMT
+< Connection: keep-alive
+< Strict-Transport-Security: max-age=31536000
+<
+* Connection #0 to host oceanview.pfeg.noaa.gov left intact
+
+
+3. The file rhelp_out.txt was created and its contents are the 
+following. (I installed package "hoardr" separately because for some 
+reason it was not being recognized as a dependency)
+
+
+
+ > # pkgs <- c("hoardr", "rerddap", "curl", "crul", "httr")
+ > # utils::install.packages(
+ > 	# pkgs = pkgs,
+ > 	# lib = .libPaths()[1],
+ > 	# repos = "https://cloud.r-project.org",
+ > 	# dependencies = TRUE
+ > # )
+ >
+ > # load rerddap
+ > library("rerddap")
+ > # delete rerddap cache just in case
+ > cache_delete_all()
+ > # get the data extract
+ > dat <- tryCatch(
++   tabledap(
++     'FED_JSATS_detects',
++     url = "https://oceanview.pfeg.noaa.gov/erddap/",
++ 	'study_id="RBDD_2018"',
++ 	callopts = list(verbose = TRUE),
++ 	store = memory()
++   ),
++   warning = function(w) w,
++   error = function(e) e,
++   finally = print("download end")
++ )
+[1] "download end"
+ >
+ > # 4. If it works also do:
+ > head(dat)
+$message
+[1] ""
+
+$call
+NULL
+
+ >
+ > str(dat)
+List of 2
+  $ message: chr ""
+  $ call   : NULL
+  - attr(*, "class")= chr [1:3] "simpleError" "error" "condition"
+ >
+ > sessionInfo()
+R version 4.3.2 (2023-10-31 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 11 x64 (build 22621)
+
+Matrix products: default
+
+
+locale:
+[1] LC_COLLATE=Portuguese_Portugal.utf8 
+LC_CTYPE=Portuguese_Portugal.utf8
+[3] LC_MONETARY=Portuguese_Portugal.utf8 LC_NUMERIC=C 
+
+[5] LC_TIME=Portuguese_Portugal.utf8
+
+time zone: Europe/Lisbon
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+other attached packages:
+[1] rerddap_1.1.0
+
+loaded via a namespace (and not attached):
+  [1] vctrs_0.6.3       cli_3.6.1         rlang_1.1.1       ncdf4_1.22 
+
+  [5] crul_1.4.0        generics_0.1.3    jsonlite_1.8.7 
+data.table_1.14.8
+  [9] glue_1.6.2        httpcode_0.3.0    triebeard_0.4.1   fansi_1.0.5 
+
+[13] rappdirs_0.3.3    tibble_3.2.1      hoardr_0.5.4      lifecycle_1.0.4
+[17] compiler_4.3.2    dplyr_1.1.3       Rcpp_1.0.12       pkgconfig_2.0.3
+[21] digest_0.6.33     R6_2.5.1          tidyselect_1.2.0  utf8_1.2.4
+[25] pillar_1.9.0      curl_5.2.0        magrittr_2.0.3    urltools_1.7.3
+[29] xml2_1.3.5
+ >
+
+
+
+So there was an unspecified error, an error without a condition message 
+and no call expression. I find this stranger, a call like the following 
+is expected.
+
+
+tryCatch(stop("error"), error = function(e) e) |> str()
+List of 2
+  $ message: chr "error"
+  $ call   : language doTryCatch(return(expr), name, parentenv, handler)
+  - attr(*, "class")= chr [1:3] "simpleError" "error" "condition"
+
+
+Function tabledap doesn't seem to be handling errors properly.
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From roy@mende|@@ohn @end|ng |rom no@@@gov  Thu Feb  1 16:09:01 2024
+From: roy@mende|@@ohn @end|ng |rom no@@@gov (Roy Mendelssohn - NOAA Federal)
+Date: Thu, 1 Feb 2024 07:09:01 -0800
+Subject: [R] Need help testing a problem
+In-Reply-To: <06f41ffa-4505-49db-b7a4-6ec78919b761@sapo.pt>
+References: <15EE349C-1593-481E-9A22-2014393B8DB9@noaa.gov>
+ <06f41ffa-4505-49db-b7a4-6ec78919b761@sapo.pt>
+Message-ID: <8191B147-3A93-4346-92F6-E29C4A4F7067@noaa.gov>
+
+HI Rui:
+
+First and foremost thanks  for taking the time to do this.  That was a typo,  it was httr and is not needed,  I was careless.  That request works fine on a Mac and a Linux box.  We needed to check if there was something about  iour internal network settings, our Windows setup or something else that was causing the problem.  Bill Dunlop got the same results so it is something else,  We do not know how much Akamai is interfering with this,  we have had issues with folks running Windows behind Cloudfare that caused problems.
+
+Again,  thanks for taking the time,  it eliminates on possible cause.
+
+-Roy
+
+
+
+> On Feb 1, 2024, at 2:16 AM, Rui Barradas <ruipbarradas at sapo.pt> wrote:
+> 
+> ?s 23:47 de 31/01/2024, Roy Mendelssohn - NOAA Federal via R-help escreveu:
+>> HI All:
+>> We are trying to figure out a problem that is occurring with a package,  and we need a non-NOAA person with a Windows computer with the latest R to test for us what is failing (but works on Macs and Linux from different sites).  Part of the problem is there is an Akamai service in between that we feel may be messing up things. To do this you would need to be willing to:
+>> 1.  install the ?rerddap? package from CRAN,  with all dependencies - or if installed make certain it is the latest
+>> 2. make certain that the packages ?curl?, ?crul? and ?http? are up to date.
+>> 3.  Run the following:
+>> # load rerddap
+>> library("rerddap?)
+>> # delete rerddap cache just in case
+>> cache_delete_all()
+>> # get the data extract
+>> dat <- tabledap('FED_JSATS_detects', url = "https://oceanview.pfeg.noaa.gov/erddap/", 'study_id="RBDD_2018"', callopts = list(verbose = TRUE), store = memory())
+>> 4. If it works also do:
+>>  head(dat)
+>> Either way if all the output could be sent to me it would be very helpful.  The download may take a couple of minutes,
+>> the file size is about 3.5MB.
+>> If anyone has concerns about what is being downloaded you can check the ?rerddap? docs to see these are all legitimate ?rerddap' commands,  the datasets being accessed is https://oceanview.pfeg.noaa.gov/erddap/tabledap/FED_JSATS_detects.html.  The downloaded file goes to R temp space, and its location,  if successful is given in the output.
+>> Thanks to anyone willing to help.  One of my issues is I have been unable to reproduce the error,  but I also do not have ready access to a Windows machine.
+>> -ROy
+>> 	[[alternative HTML version deleted]]
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+> 
+> Tested with R 4.3.2 running on Windows 11.
+> 
+> 1. You mention package http but there is no package http on CRAN, did you mean package httr?
+> 
+> 2. I wrote a script rhelp.R, ran it on a command window and here is what I got on the command window output.
+> 
+> 
+> 
+> C:\Users\ruipb\Documents>R -q -f rhelp.R > rhelp_out.txt
+> * WARNING: failed to open cookie file ""
+> * Found bundle for host: 0x21cb7410670 [serially]
+> * Can not multiplex, even if we wanted to
+> * Re-using existing connection with host oceanview.pfeg.noaa.gov
+> > GET /erddap/tabledap/FED_JSATS_detects.csv?&study_id%3D%22RBDD_2018%22 HTTP/1.1
+> Host: oceanview.pfeg.noaa.gov
+> User-Agent: libcurl/8.3.0 r-curl/5.2.0 crul/1.4.0
+> Accept-Encoding: gzip, deflate
+> Accept: application/json, text/xml, application/xml, */*
+> 
+> < HTTP/1.1 504 Gateway Time-out
+> < Server: AkamaiGHost
+> < Mime-Version: 1.0
+> < Content-Type: text/html
+> < Content-Length: 176
+> < Expires: Thu, 01 Feb 2024 09:56:40 GMT
+> < Date: Thu, 01 Feb 2024 09:56:40 GMT
+> < Connection: keep-alive
+> < Strict-Transport-Security: max-age=31536000
+> <
+> * Connection #0 to host oceanview.pfeg.noaa.gov left intact
+> 
+> 
+> 3. The file rhelp_out.txt was created and its contents are the following. (I installed package "hoardr" separately because for some reason it was not being recognized as a dependency)
+> 
+> 
+> 
+> > # pkgs <- c("hoardr", "rerddap", "curl", "crul", "httr")
+> > # utils::install.packages(
+> > 	# pkgs = pkgs,
+> > 	# lib = .libPaths()[1],
+> > 	# repos = "https://cloud.r-project.org",
+> > 	# dependencies = TRUE
+> > # )
+> >
+> > # load rerddap
+> > library("rerddap")
+> > # delete rerddap cache just in case
+> > cache_delete_all()
+> > # get the data extract
+> > dat <- tryCatch(
+> +   tabledap(
+> +     'FED_JSATS_detects',
+> +     url = "https://oceanview.pfeg.noaa.gov/erddap/",
+> + 	'study_id="RBDD_2018"',
+> + 	callopts = list(verbose = TRUE),
+> + 	store = memory()
+> +   ),
+> +   warning = function(w) w,
+> +   error = function(e) e,
+> +   finally = print("download end")
+> + )
+> [1] "download end"
+> >
+> > # 4. If it works also do:
+> > head(dat)
+> $message
+> [1] ""
+> 
+> $call
+> NULL
+> 
+> >
+> > str(dat)
+> List of 2
+> $ message: chr ""
+> $ call   : NULL
+> - attr(*, "class")= chr [1:3] "simpleError" "error" "condition"
+> >
+> > sessionInfo()
+> R version 4.3.2 (2023-10-31 ucrt)
+> Platform: x86_64-w64-mingw32/x64 (64-bit)
+> Running under: Windows 11 x64 (build 22621)
+> 
+> Matrix products: default
+> 
+> 
+> locale:
+> [1] LC_COLLATE=Portuguese_Portugal.utf8 LC_CTYPE=Portuguese_Portugal.utf8
+> [3] LC_MONETARY=Portuguese_Portugal.utf8 LC_NUMERIC=C 
+> [5] LC_TIME=Portuguese_Portugal.utf8
+> 
+> time zone: Europe/Lisbon
+> tzcode source: internal
+> 
+> attached base packages:
+> [1] stats     graphics  grDevices utils     datasets  methods   base
+> 
+> other attached packages:
+> [1] rerddap_1.1.0
+> 
+> loaded via a namespace (and not attached):
+> [1] vctrs_0.6.3       cli_3.6.1         rlang_1.1.1       ncdf4_1.22 
+> [5] crul_1.4.0        generics_0.1.3    jsonlite_1.8.7 data.table_1.14.8
+> [9] glue_1.6.2        httpcode_0.3.0    triebeard_0.4.1   fansi_1.0.5 
+> [13] rappdirs_0.3.3    tibble_3.2.1      hoardr_0.5.4      lifecycle_1.0.4
+> [17] compiler_4.3.2    dplyr_1.1.3       Rcpp_1.0.12       pkgconfig_2.0.3
+> [21] digest_0.6.33     R6_2.5.1          tidyselect_1.2.0  utf8_1.2.4
+> [25] pillar_1.9.0      curl_5.2.0        magrittr_2.0.3    urltools_1.7.3
+> [29] xml2_1.3.5
+> >
+> 
+> 
+> 
+> So there was an unspecified error, an error without a condition message and no call expression. I find this stranger, a call like the following is expected.
+> 
+> 
+> tryCatch(stop("error"), error = function(e) e) |> str()
+> List of 2
+> $ message: chr "error"
+> $ call   : language doTryCatch(return(expr), name, parentenv, handler)
+> - attr(*, "class")= chr [1:3] "simpleError" "error" "condition"
+> 
+> 
+> Function tabledap doesn't seem to be handling errors properly.
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> 
+> -- 
+> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+> www.avg.com
+
+**********************
+"The contents of this message do not reflect any position of the U.S. Government or NOAA."
+**********************
+Roy Mendelssohn
+Supervisory Operations Research Analyst
+NOAA/NMFS
+Environmental Research Division
+Southwest Fisheries Science Center
+***Note new street address***
+110 McAllister Way
+Santa Cruz, CA 95060
+Phone: (831)-420-3666
+Fax: (831) 420-3980
+e-mail: Roy.Mendelssohn at noaa.gov www: https://www.pfeg.noaa.gov/
+
+"Old age and treachery will overcome youth and skill."
+"From those who have been given much, much will be expected" 
+"the arc of the moral universe is long, but it bends toward justice" -MLK Jr.
+
+
+From teotjunk @end|ng |rom hotm@||@com  Fri Feb  2 01:37:21 2024
+From: teotjunk @end|ng |rom hotm@||@com (TJUN KIAT TEO)
+Date: Fri, 2 Feb 2024 00:37:21 +0000
+Subject: [R] List of Words in BioWordVec
+Message-ID: <TYSPR04MB8035F2072634C71C8E6A2733DF422@TYSPR04MB8035.apcprd04.prod.outlook.com>
+
+Is there a way to extract list of words in  BioWordVec  in R
+
+Thank you
+
+Tjun Kiat
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Fri Feb  2 03:09:04 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 1 Feb 2024 18:09:04 -0800
+Subject: [R] List of Words in BioWordVec
+In-Reply-To: <TYSPR04MB8035F2072634C71C8E6A2733DF422@TYSPR04MB8035.apcprd04.prod.outlook.com>
+References: <TYSPR04MB8035F2072634C71C8E6A2733DF422@TYSPR04MB8035.apcprd04.prod.outlook.com>
+Message-ID: <CAGxFJbRrO7GtsYCQB83sjFm7pVX00X6bMww2JEM4W6jVTXqbNg@mail.gmail.com>
+
+I *think* this might be better posted here:
+https://bioconductor.org/help/support/
+
+Cheers,
+Bert
+
+On Thu, Feb 1, 2024 at 4:37?PM TJUN KIAT TEO <teotjunk at hotmail.com> wrote:
+
+> Is there a way to extract list of words in  BioWordVec  in R
+>
+> Thank you
+>
+> Tjun Kiat
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
