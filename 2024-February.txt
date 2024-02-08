@@ -2149,3 +2149,249 @@ Kingston ON Canada
 	[[alternative HTML version deleted]]
 
 
+From p@u| @end|ng |rom @t@t@@uck|@nd@@c@nz  Tue Feb  6 21:28:38 2024
+From: p@u| @end|ng |rom @t@t@@uck|@nd@@c@nz (Paul Murrell)
+Date: Wed, 7 Feb 2024 09:28:38 +1300
+Subject: [R] ggarrange & legend
+In-Reply-To: <CAKZQJMDU7VDRQ+Z6xdDa7RNbKbi6CE=rEuwVJZG7YmrNfmoQOQ@mail.gmail.com>
+References: <009201da581a$1ef2e600$5cd8b200$@gmx.ch>
+ <CAKZQJMDNXW9TGaEBDY4BQ4Lv-nGSjFbk4r+vr9-=i45cCs7wyQ@mail.gmail.com>
+ <00ee01da5839$2fa9faa0$8efdefe0$@gmx.ch>
+ <CAKZQJMB8S5wXDgXPFF8GO1DNAivwjTFio3Z_S82-BUE_Lq9PAg@mail.gmail.com>
+ <CAKZQJMDU7VDRQ+Z6xdDa7RNbKbi6CE=rEuwVJZG7YmrNfmoQOQ@mail.gmail.com>
+Message-ID: <61b6e988-dc04-4742-99bf-dd284b94068a@stat.auckland.ac.nz>
+
+Hi
+
+Using John's example ...
+
+
+data("ToothGrowth")
+df <-ToothGrowth
+df$dose <- as.factor(df$dose)
+## Box plot
+bxp <- ggboxplot(df, x = "dose", y = "len",
+	         color = "dose", palette = "jco")
+## Density plot
+dens <- ggdensity(df, x = "len", fill = "dose", palette = "jco")
+mylist<-list(bxp, dens)
+dev.new(width=28, height=18)
+fig1<- ggarrange(plotlist=mylist, common.legend = TRUE,
+                  legend="top",
+                  labels = c("(A)", "(B)"),
+                  font.label = list(size = 18, color = "black"), ncol=2)
+fig1
+
+
+... the problem is that even though 'ggplot2' allows a numeric 'legend'
+(although this result is probably not what you want anyway) ...
+
+
+bxp + theme(legend.position=c(1, 1))
+
+
+... ggpubr::ggarrange() passes the 'legend' on to ggpubr:::.plot_grid(),
+which does an explicit switch(legend), which fails ...
+
+
+try(ggarrange(plotlist=mylist, common.legend = TRUE,
+               legend=c(1, 1),
+               labels = c("(A)", "(B)"),
+               font.label = list(size = 18, color = "black"), ncol=2))
+
+
+One option is to extract the legend
+('position' will affect orientation of legend?) ...
+
+
+legend <- ggpubr::get_legend(bxp, position="top")
+
+
+... and then draw the legend yourself (in the top-right corner)
+and tell ggarange() NOT to draw the legend ...
+
+
+library(grid)
+h <- sum(legend$height)
+w <- sum(legend$width)
+combined <- ggarrange(plotlist=mylist, common.legend = TRUE,
+                       legend="none",
+                       labels = c("(A)", "(B)"),
+                       font.label = list(size = 18, color = "black"),
+                       ncol=2)
+grid.newpage()
+pushViewport(viewport(y=1, height=h,
+                       x=1, width=w,
+                       just=c("right", "top")))
+grid.draw(legend)
+popViewport()
+pushViewport(viewport(y=0, height=unit(1, "npc") - h, just="bottom"))
+print(combined, newpage=FALSE)
+popViewport()
+
+
+Is that what you were looking for?
+
+Paul
+
+
+On 6/02/24 03:22, John Kane wrote:
+> Blast it hit send by accident. Anyway the code above is a WWE.
+> 
+> I don't see any obvious way no move the legend
+> 
+> 
+> On Mon, 5 Feb 2024 at 09:13, John Kane <jrkrideau at gmail.com> wrote:
+> 
+>  > I'm sorry but that is not a working example.
+>  >
+>  > A working example needs to create the plots being used.
+>  >
+>  > For example, stealing some code from
+>  > https://rpkgs.datanovia.com/ggpubr/reference/ggarrange.html 
+> <https://rpkgs.datanovia.com/ggpubr/reference/ggarrange.html>
+>  > #=================================================================
+>  >
+>  > data <https://rdrr.io/r/utils/data.html 
+> <https://rdrr.io/r/utils/data.html>>("ToothGrowth")df <- ToothGrowthdf$dose <- as.factor <https://rdrr.io/r/base/factor.html <https://rdrr.io/r/base/factor.html>>(df$dose)# Box plotbxp <- ggboxplot <https://rpkgs.datanovia.com/ggpubr/reference/ggboxplot.html <https://rpkgs.datanovia.com/ggpubr/reference/ggboxplot.html>>(df, x = "dose", y = "len", color = "dose", palette = "jco")# Density plotdens <- ggdensity <https://rpkgs.datanovia.com/ggpubr/reference/ggdensity.html <https://rpkgs.datanovia.com/ggpubr/reference/ggdensity.html>>(df, x = "len", fill = "dose", palette = "jco")
+>  >
+>  > mylist<-list(bxp, dens)
+>  >
+>  > dev.new(width=28, height=18)
+>  >
+>  > fig1<- ggarrange(plotlist=mylist, common.legend = TRUE, legend="top", 
+> labels = c("(A)", "(B)"), font.label = list(size = 18, color = "black"), 
+> ncol=2)
+>  >
+>  > fig1
+>  > 
+> #=====================================================================================
+>  >
+>  >
+>  > On Mon, 5 Feb 2024 at 08:44, <sibylle.stoeckli at gmx.ch> wrote:
+>  >
+>  >> Dear John Kane
+>  >>
+>  >> Dear R community
+>  >>
+>  >>
+>  >>
+>  >> Here my working example
+>  >>
+>  >> 1. Example that is working with legend=?top?. However, as mentioned,
+>  >> the legend is in the middle of the top axis.
+>  >>
+>  >> mylist<-list(p1, p2)
+>  >>
+>  >> dev.new(width=28, height=18)
+>  >>
+>  >> fig1<- ggarrange(plotlist=mylist, common.legend = TRUE, legend="top",
+>  >> labels = c("(A)", "(B)"), font.label = list(size = 18, color = "black"),
+>  >> ncol=2)
+>  >>
+>  >> fig1
+>  >>
+>  >>
+>  >>
+>  >> 1. My question is how I can position the legend on the topright of
+>  >> the top axis. However, ?topright? is not a common label for legend in
+>  >> ggarrange (but in other plot functions), so legend =?topright? is not
+>  >> working.
+>  >>
+>  >> mylist<-list(p1, p2)
+>  >>
+>  >> dev.new(width=28, height=18)
+>  >>
+>  >> fig1<- ggarrange(plotlist=mylist, common.legend = TRUE,
+>  >> legend="topright", labels = c("(A)", "(B)"), font.label = list(size 
+> = 18,
+>  >> color = "black"), ncol=2)
+>  >>
+>  >> fig1
+>  >>
+>  >>
+>  >>
+>  >> Kind regards
+>  >>
+>  >> Sibylle
+>  >>
+>  >>
+>  >>
+>  >> *From:* John Kane <jrkrideau at gmail.com>
+>  >> *Sent:* Monday, February 5, 2024 1:59 PM
+>  >> *To:* sibylle.stoeckli at gmx.ch
+>  >> *Cc:* r-help at r-project.org
+>  >> *Subject:* Re: [R] ggarrange & legend
+>  >>
+>  >>
+>  >>
+>  >> Could you supply us with a MWE (minimal working example)of what you have
+>  >> so far?
+>  >>
+>  >> Thanks.
+>  >>
+>  >>
+>  >>
+>  >> On Mon, 5 Feb 2024 at 05:00, SIBYLLE ST?CKLI via R-help <
+>  >> r-help at r-project.org> wrote:
+>  >>
+>  >> Dear R community
+>  >>
+>  >> It is possible to adjust the legend in combined ggplots using ggarrange
+>  >> with
+>  >> be positions top, bottom, left and right.
+>  >> My question: Is there a function to change the position of the legend to
+>  >> topright or bottomleft? Right and top etc are in the middle of the axis.
+>  >>
+>  >> Kind regards
+>  >> Sibylle
+>  >>
+>  >> ______________________________________________
+>  >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>  >> https://stat.ethz.ch/mailman/listinfo/r-help 
+> <https://stat.ethz.ch/mailman/listinfo/r-help>
+>  >> PLEASE do read the posting guide
+>  >> http://www.R-project.org/posting-guide.html 
+> <http://www.R-project.org/posting-guide.html>
+>  >> and provide commented, minimal, self-contained, reproducible code.
+>  >>
+>  >>
+>  >>
+>  >> --
+>  >>
+>  >> John Kane
+>  >> Kingston ON Canada
+>  >>
+>  >
+>  >
+>  > --
+>  > John Kane
+>  > Kingston ON Canada
+>  >
+> 
+> 
+> -- 
+> John Kane
+> Kingston ON Canada
+> 
+> [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help 
+> <https://stat.ethz.ch/mailman/listinfo/r-help>
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html 
+> <http://www.R-project.org/posting-guide.html>
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Dr Paul Murrell
+Te Kura Tatauranga | Department of Statistics
+Waipapa Taumata Rau | The University of Auckland
+Private Bag 92019, Auckland 1142, New Zealand
+64 9 3737599 x85392
+paul at stat.auckland.ac.nz
+www.stat.auckland.ac.nz/~paul/
+
+
