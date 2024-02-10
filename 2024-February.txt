@@ -2395,3 +2395,156 @@ paul at stat.auckland.ac.nz
 www.stat.auckland.ac.nz/~paul/
 
 
+From @rb@utjc @end|ng |rom gm@||@com  Thu Feb  8 02:18:11 2024
+From: @rb@utjc @end|ng |rom gm@||@com (Jean-Claude Arbaut)
+Date: Thu, 8 Feb 2024 02:18:11 +0100
+Subject: [R] Is simplify2array working for dimension > 2?
+Message-ID: <CANufCk64bQiuD+rSf+_1kxeOHjfhfdcayseGsacf7MVSt8QLkg@mail.gmail.com>
+
+Reading the doc for ?simplify2array, I got the impression that with the
+'higher = T' argument the function returns an array of dimension greater
+than 2 when it makes sense (the doc says "when appropriate", which is
+rather vague). I would expect
+
+a <- list(
+  list(list(1, 2), list(3, 4)),
+  list(list(5, 6), list(7, 8))
+)
+simplify2array(a, higher = T)
+
+to return the same (possibly up to a dimension permutation) as
+array(1:8, dim = c(2, 2, 2))
+
+However, in this case simplify2array returns a matrix (i.e. 2 dimensional
+array), whose elements are lists.
+It's the same as
+structure(list(list(1, 2), list(3, 4), list(5, 6), list(7, 8)), dim = c(2,
+2))
+
+I get the same behavior with
+a <- list(
+  list(c(1, 2), c(3, 4)),
+  list(c(5, 6), c(7, 8))
+)
+but then the matrix elements are numeric vectors instead of lists.
+
+Did I miss something to get the result I expected with this function? Or is
+it a bug? Or maybe the function is not supposed to return a higher
+dimensional array, and I didn't understand the documentation correctly?
+
+There is a workaround, one can do for instance
+array(unlist(a), dim = c(2, 2, 2))
+and there may be better options (checking dimensions?).
+
+In case it's important: running R 4.3.2 on Debian 12.4.
+
+Best regards,
+
+Jean-Claude Arbaut
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Thu Feb  8 10:32:35 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 8 Feb 2024 01:32:35 -0800
+Subject: [R] Is simplify2array working for dimension > 2?
+In-Reply-To: <CANufCk64bQiuD+rSf+_1kxeOHjfhfdcayseGsacf7MVSt8QLkg@mail.gmail.com>
+References: <CANufCk64bQiuD+rSf+_1kxeOHjfhfdcayseGsacf7MVSt8QLkg@mail.gmail.com>
+Message-ID: <CAGxFJbRvMX=CTLedrS1aLoJms4iVF1Ei6WxX143xZJgpU3kLLQ@mail.gmail.com>
+
+Jean-Claude:
+
+Well, here's my "explanation". Caveat emptor!
+
+Note that:
+"simplify2array() is the utility called from sapply() when simplify is
+not false"
+
+and
+
+> sapply(a, I, simplify = "array")
+     [,1]   [,2]
+[1,] list,2 list,2
+[2,] list,2 list,2
+
+So it seems that simplify2array() is not intended to operate in the
+way that you expected, i.e. that recursive simplification is done.
+And, indeed, if you check the code for the function, you will see that
+that is the case. Perhaps the key phrase in the docs is in the
+sapply() part that says:
+
+"sapply is a user-friendly version and wrapper of lapply by default
+returning a vector, matrix or, if simplify = "array", an array ***if
+appropriate***, by applying simplify2array(). "   In other words,
+recursive simplification is considered not "appropriate".
+
+FWIW I also find this somewhat confusing and think that explicitly
+saying that recursive simplification is not done might make it less
+so. But writing docs that  address all our possible misconceptions is
+pretty difficult (or impossible!), and maybe adding that explicit
+caveat would confuse others even more... :-(
+
+Cheers,
+Bert
+
+
+
+
+
+
+
+
+
+On Thu, Feb 8, 2024 at 12:12?AM Jean-Claude Arbaut <arbautjc at gmail.com> wrote:
+>
+> Reading the doc for ?simplify2array, I got the impression that with the
+> 'higher = T' argument the function returns an array of dimension greater
+> than 2 when it makes sense (the doc says "when appropriate", which is
+> rather vague). I would expect
+>
+> a <- list(
+>   list(list(1, 2), list(3, 4)),
+>   list(list(5, 6), list(7, 8))
+> )
+> simplify2array(a, higher = T)
+>
+> to return the same (possibly up to a dimension permutation) as
+> array(1:8, dim = c(2, 2, 2))
+>
+> However, in this case simplify2array returns a matrix (i.e. 2 dimensional
+> array), whose elements are lists.
+> It's the same as
+> structure(list(list(1, 2), list(3, 4), list(5, 6), list(7, 8)), dim = c(2,
+> 2))
+>
+> I get the same behavior with
+> a <- list(
+>   list(c(1, 2), c(3, 4)),
+>   list(c(5, 6), c(7, 8))
+> )
+> but then the matrix elements are numeric vectors instead of lists.
+>
+> Did I miss something to get the result I expected with this function? Or is
+> it a bug? Or maybe the function is not supposed to return a higher
+> dimensional array, and I didn't understand the documentation correctly?
+>
+> There is a workaround, one can do for instance
+> array(unlist(a), dim = c(2, 2, 2))
+> and there may be better options (checking dimensions?).
+>
+> In case it's important: running R 4.3.2 on Debian 12.4.
+>
+> Best regards,
+>
+> Jean-Claude Arbaut
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
