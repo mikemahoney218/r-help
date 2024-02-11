@@ -2548,3 +2548,394 @@ On Thu, Feb 8, 2024 at 12:12?AM Jean-Claude Arbaut <arbautjc at gmail.com> wrote
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From |@go@g|ne @end|ng |rom @jd@e@  Fri Feb  9 12:25:56 2024
+From: |@go@g|ne @end|ng |rom @jd@e@ (=?utf-8?B?SWFnbyBHaW7DqSBWw6F6cXVleg==?=)
+Date: Fri, 9 Feb 2024 11:25:56 +0000
+Subject: [R] Avoiding Delete key function as 'Quit R' in Rterm when there
+ are no characters in cursor line
+Message-ID: <AM6PR02MB44232D0185AEEA5CAFB6CAE4944B2@AM6PR02MB4423.eurprd02.prod.outlook.com>
+
+Hi all,
+
+I cite from README.Rterm
+
+^D, DEL?????: Delete the character under the cursor.
+
+That is the general behaviour, but when there is no character (neither under the cursor nor at its left), pressing the Delete key suggests closing the R terminal. Is there any (configurable) way to avoid this behaviour?
+
+Thanks!
+
+Best regards,
+Iago
+
+	[[alternative HTML version deleted]]
+
+
+From @rb@utjc @end|ng |rom gm@||@com  Thu Feb  8 23:14:58 2024
+From: @rb@utjc @end|ng |rom gm@||@com (Jean-Claude Arbaut)
+Date: Thu, 8 Feb 2024 23:14:58 +0100
+Subject: [R] Is simplify2array working for dimension > 2?
+In-Reply-To: <CAGxFJbRvMX=CTLedrS1aLoJms4iVF1Ei6WxX143xZJgpU3kLLQ@mail.gmail.com>
+References: <CANufCk64bQiuD+rSf+_1kxeOHjfhfdcayseGsacf7MVSt8QLkg@mail.gmail.com>
+ <CAGxFJbRvMX=CTLedrS1aLoJms4iVF1Ei6WxX143xZJgpU3kLLQ@mail.gmail.com>
+Message-ID: <CANufCk6afaSDTcdKFfjAgj1p-Kj4+DLPZYaDD8TXJurW2mERkQ@mail.gmail.com>
+
+Re your mention in your other mail (which didn't go to r-help) of this part
+of the doc:
+
+"The default value, TRUE, returns a vector or matrix if appropriate,
+whereas if simplify = "array" the result may be an array of ?rank?
+(==length(dim(.))) **one higher than the result of FUN(X[[i]]).**"
+
+It's not I understood this, but it makes some sense:
+
+sapply(1:2, function(i) diag(3)) is a matrix, but
+sapply(1:2, function(i) diag(3), simplify = "array") is a rank-3 array.
+
+So this is the "appropriate case", and recursively simplifying nested list
+to high rank arrays is not something that's supposed to be done.
+
+And indeed, simplify2array(list(diag(2), diag(2))) does yield a rank-3
+array as well. And it works for a list of rank-3 arrays, converted to
+rank-4, etc.
+
+So list of array is ok, list of list is not, except for rank 2. The
+behavior for rank 2 led me to think it applied as well for higher rank, and
+the doc for the 'higher' argument seemed to confirm this, but I was a bit
+optimistic.
+
+Thanks for your answer. I believe the doc may be improved a little bit, but
+the intent looks clearer now.
+
+
+
+Le jeu. 8 f?vr. 2024 ? 10:32, Bert Gunter <bgunter.4567 at gmail.com> a ?crit :
+
+> Jean-Claude:
+>
+> Well, here's my "explanation". Caveat emptor!
+>
+> Note that:
+> "simplify2array() is the utility called from sapply() when simplify is
+> not false"
+>
+> and
+>
+> > sapply(a, I, simplify = "array")
+>      [,1]   [,2]
+> [1,] list,2 list,2
+> [2,] list,2 list,2
+>
+> So it seems that simplify2array() is not intended to operate in the
+> way that you expected, i.e. that recursive simplification is done.
+> And, indeed, if you check the code for the function, you will see that
+> that is the case. Perhaps the key phrase in the docs is in the
+> sapply() part that says:
+>
+> "sapply is a user-friendly version and wrapper of lapply by default
+> returning a vector, matrix or, if simplify = "array", an array ***if
+> appropriate***, by applying simplify2array(). "   In other words,
+> recursive simplification is considered not "appropriate".
+>
+> FWIW I also find this somewhat confusing and think that explicitly
+> saying that recursive simplification is not done might make it less
+> so. But writing docs that  address all our possible misconceptions is
+> pretty difficult (or impossible!), and maybe adding that explicit
+> caveat would confuse others even more... :-(
+>
+> Cheers,
+> Bert
+>
+>
+>
+>
+>
+>
+>
+>
+>
+> On Thu, Feb 8, 2024 at 12:12?AM Jean-Claude Arbaut <arbautjc at gmail.com>
+> wrote:
+> >
+> > Reading the doc for ?simplify2array, I got the impression that with the
+> > 'higher = T' argument the function returns an array of dimension greater
+> > than 2 when it makes sense (the doc says "when appropriate", which is
+> > rather vague). I would expect
+> >
+> > a <- list(
+> >   list(list(1, 2), list(3, 4)),
+> >   list(list(5, 6), list(7, 8))
+> > )
+> > simplify2array(a, higher = T)
+> >
+> > to return the same (possibly up to a dimension permutation) as
+> > array(1:8, dim = c(2, 2, 2))
+> >
+> > However, in this case simplify2array returns a matrix (i.e. 2 dimensional
+> > array), whose elements are lists.
+> > It's the same as
+> > structure(list(list(1, 2), list(3, 4), list(5, 6), list(7, 8)), dim =
+> c(2,
+> > 2))
+> >
+> > I get the same behavior with
+> > a <- list(
+> >   list(c(1, 2), c(3, 4)),
+> >   list(c(5, 6), c(7, 8))
+> > )
+> > but then the matrix elements are numeric vectors instead of lists.
+> >
+> > Did I miss something to get the result I expected with this function? Or
+> is
+> > it a bug? Or maybe the function is not supposed to return a higher
+> > dimensional array, and I didn't understand the documentation correctly?
+> >
+> > There is a workaround, one can do for instance
+> > array(unlist(a), dim = c(2, 2, 2))
+> > and there may be better options (checking dimensions?).
+> >
+> > In case it's important: running R 4.3.2 on Debian 12.4.
+> >
+> > Best regards,
+> >
+> > Jean-Claude Arbaut
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |@go@g|ne @end|ng |rom @jd@e@  Fri Feb  9 16:03:52 2024
+From: |@go@g|ne @end|ng |rom @jd@e@ (=?utf-8?B?SWFnbyBHaW7DqSBWw6F6cXVleg==?=)
+Date: Fri, 9 Feb 2024 15:03:52 +0000
+Subject: [R] 
+ Avoiding Delete key function as 'Quit R' in Rterm when there
+ are no characters in cursor line
+In-Reply-To: <fdd21940-a5d2-4d43-85c4-66ed3bce8310@gmail.com>
+References: <AM6PR02MB44232D0185AEEA5CAFB6CAE4944B2@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <fdd21940-a5d2-4d43-85c4-66ed3bce8310@gmail.com>
+Message-ID: <AM6PR02MB4423C21E3B6538A1FD962316944B2@AM6PR02MB4423.eurprd02.prod.outlook.com>
+
+Yes, indeed, I am talking about Rterm in Windows.
+
+Iago
+________________________________
+De: Duncan Murdoch <murdoch.duncan at gmail.com>
+Enviat el: divendres, 9 de febrer de 2024 13:50
+Per a: Iago Gin? V?zquez <iago.gine at sjd.es>
+Tema: Re: [R] Avoiding Delete key function as 'Quit R' in Rterm when there are no characters in cursor line
+
+On 09/02/2024 6:25 a.m., Iago Gin? V?zquez wrote:
+> Hi all,
+>
+> I cite from README.Rterm
+>
+> ^D, DEL?????: Delete the character under the cursor.
+>
+> That is the general behaviour, but when there is no character (neither under the cursor nor at its left), pressing the Delete key suggests closing the R terminal. Is there any (configurable) way to avoid this behaviour?
+
+Are you talking about rterm in Windows, or which front end?
+
+Duncan Murdoch
+
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Feb  9 18:20:44 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 9 Feb 2024 12:20:44 -0500
+Subject: [R] 
+ Avoiding Delete key function as 'Quit R' in Rterm when there
+ are no characters in cursor line
+In-Reply-To: <AM6PR02MB4423C21E3B6538A1FD962316944B2@AM6PR02MB4423.eurprd02.prod.outlook.com>
+References: <AM6PR02MB44232D0185AEEA5CAFB6CAE4944B2@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <fdd21940-a5d2-4d43-85c4-66ed3bce8310@gmail.com>
+ <AM6PR02MB4423C21E3B6538A1FD962316944B2@AM6PR02MB4423.eurprd02.prod.outlook.com>
+Message-ID: <cc818ba3-8fd6-48f5-8e8b-7b6347d5ce39@gmail.com>
+
+That looks to me like a bug, but I don't use Windows any more, so I 
+won't offer to try to fix it for you.  In fact I don't think Rterm has 
+many users at all:  most Windows users probably use RStudio or one of 
+the other graphical front ends (Visual Studio, Emacs, Rgui, etc.)
+
+So maybe you can track down the issue, or someone else will try.  Or 
+maybe you'll just have to avoid triggering the bug (if it really is one).
+
+Duncan Murdoch
+
+On 09/02/2024 10:03 a.m., Iago Gin? V?zquez wrote:
+> Yes, indeed, I am talking about Rterm in Windows.
+> 
+> Iago
+> ------------------------------------------------------------------------
+> *De:* Duncan Murdoch <murdoch.duncan at gmail.com>
+> *Enviat el:* divendres, 9 de febrer de 2024 13:50
+> *Per a:* Iago Gin? V?zquez <iago.gine at sjd.es>
+> *Tema:* Re: [R] Avoiding Delete key function as 'Quit R' in Rterm when 
+> there are no characters in cursor line
+> On 09/02/2024 6:25 a.m., Iago Gin? V?zquez wrote:
+>> Hi all,
+>> 
+>> I cite from README.Rterm
+>> 
+>> ^D, DEL?????: Delete the character under the cursor.
+>> 
+>> That is the general behaviour, but when there is no character (neither under the cursor nor at its left), pressing the Delete key suggests closing the R terminal. Is there any (configurable) way to avoid this behaviour?
+> 
+> Are you talking about rterm in Windows, or which front end?
+> 
+> Duncan Murdoch
+>
+
+
+From po|c1410 @end|ng |rom gm@||@com  Fri Feb  9 18:28:50 2024
+From: po|c1410 @end|ng |rom gm@||@com (CALUM POLWART)
+Date: Fri, 9 Feb 2024 17:28:50 +0000
+Subject: [R] 
+ Avoiding Delete key function as 'Quit R' in Rterm when there
+ are no characters in cursor line
+In-Reply-To: <cc818ba3-8fd6-48f5-8e8b-7b6347d5ce39@gmail.com>
+References: <AM6PR02MB44232D0185AEEA5CAFB6CAE4944B2@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <fdd21940-a5d2-4d43-85c4-66ed3bce8310@gmail.com>
+ <AM6PR02MB4423C21E3B6538A1FD962316944B2@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <cc818ba3-8fd6-48f5-8e8b-7b6347d5ce39@gmail.com>
+Message-ID: <CA+etgPnD=8r_5Jgyk672S-50mYfWDzdcSOr7HBEo9eO-e84WOQ@mail.gmail.com>
+
+I don't use term, but I've just tested it and this is reproducable.
+
+Is it a bug? Not sure. If you hit c after getting the message it will
+cancel the q() request.
+
+
+On Fri, 9 Feb 2024, 17:21 Duncan Murdoch, <murdoch.duncan at gmail.com> wrote:
+
+> That looks to me like a bug, but I don't use Windows any more, so I
+> won't offer to try to fix it for you.  In fact I don't think Rterm has
+> many users at all:  most Windows users probably use RStudio or one of
+> the other graphical front ends (Visual Studio, Emacs, Rgui, etc.)
+>
+> So maybe you can track down the issue, or someone else will try.  Or
+> maybe you'll just have to avoid triggering the bug (if it really is one).
+>
+> Duncan Murdoch
+>
+> On 09/02/2024 10:03 a.m., Iago Gin? V?zquez wrote:
+> > Yes, indeed, I am talking about Rterm in Windows.
+> >
+> > Iago
+> > ------------------------------------------------------------------------
+> > *De:* Duncan Murdoch <murdoch.duncan at gmail.com>
+> > *Enviat el:* divendres, 9 de febrer de 2024 13:50
+> > *Per a:* Iago Gin? V?zquez <iago.gine at sjd.es>
+> > *Tema:* Re: [R] Avoiding Delete key function as 'Quit R' in Rterm when
+> > there are no characters in cursor line
+> > On 09/02/2024 6:25 a.m., Iago Gin? V?zquez wrote:
+> >> Hi all,
+> >>
+> >> I cite from README.Rterm
+> >>
+> >> ^D, DEL : Delete the character under the cursor.
+> >>
+> >> That is the general behaviour, but when there is no character (neither
+> under the cursor nor at its left), pressing the Delete key suggests closing
+> the R terminal. Is there any (configurable) way to avoid this behaviour?
+> >
+> > Are you talking about rterm in Windows, or which front end?
+> >
+> > Duncan Murdoch
+> >
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |@go@g|ne @end|ng |rom @jd@e@  Fri Feb  9 21:39:48 2024
+From: |@go@g|ne @end|ng |rom @jd@e@ (=?utf-8?B?SWFnbyBHaW7DqSBWw6F6cXVleg==?=)
+Date: Fri, 9 Feb 2024 20:39:48 +0000
+Subject: [R] 
+ Avoiding Delete key function as 'Quit R' in Rterm when there
+ are no characters in cursor line
+In-Reply-To: <CA+etgPnD=8r_5Jgyk672S-50mYfWDzdcSOr7HBEo9eO-e84WOQ@mail.gmail.com>
+References: <AM6PR02MB44232D0185AEEA5CAFB6CAE4944B2@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <fdd21940-a5d2-4d43-85c4-66ed3bce8310@gmail.com>
+ <AM6PR02MB4423C21E3B6538A1FD962316944B2@AM6PR02MB4423.eurprd02.prod.outlook.com>
+ <cc818ba3-8fd6-48f5-8e8b-7b6347d5ce39@gmail.com>
+ <CA+etgPnD=8r_5Jgyk672S-50mYfWDzdcSOr7HBEo9eO-e84WOQ@mail.gmail.com>
+Message-ID: <AM6PR02MB4423799DFE3EF7EE0DD4DC4C944B2@AM6PR02MB4423.eurprd02.prod.outlook.com>
+
+Duncan, do you think it's worth to comment this in R-devel list?
+
+Iago
+
+________________________________
+De: CALUM POLWART <polc1410 at gmail.com>
+Enviat el: divendres, 9 de febrer de 2024 18:28
+Per a: Duncan Murdoch <murdoch.duncan at gmail.com>
+A/c: Iago Gin? V?zquez <iago.gine at sjd.es>; r-help at r-project.org <r-help at r-project.org>
+Tema: Re: [R] Avoiding Delete key function as 'Quit R' in Rterm when there are no characters in cursor line
+
+I don't use term, but I've just tested it and this is reproducable.
+
+Is it a bug? Not sure. If you hit c after getting the message it will cancel the q() request.
+
+
+On Fri, 9 Feb 2024, 17:21 Duncan Murdoch, <murdoch.duncan at gmail.com<mailto:murdoch.duncan at gmail.com>> wrote:
+That looks to me like a bug, but I don't use Windows any more, so I
+won't offer to try to fix it for you.  In fact I don't think Rterm has
+many users at all:  most Windows users probably use RStudio or one of
+the other graphical front ends (Visual Studio, Emacs, Rgui, etc.)
+
+So maybe you can track down the issue, or someone else will try.  Or
+maybe you'll just have to avoid triggering the bug (if it really is one).
+
+Duncan Murdoch
+
+On 09/02/2024 10:03 a.m., Iago Gin? V?zquez wrote:
+> Yes, indeed, I am talking about Rterm in Windows.
+>
+> Iago
+> ------------------------------------------------------------------------
+> *De:* Duncan Murdoch <murdoch.duncan at gmail.com<mailto:murdoch.duncan at gmail.com>>
+> *Enviat el:* divendres, 9 de febrer de 2024 13:50
+> *Per a:* Iago Gin? V?zquez <iago.gine at sjd.es<mailto:iago.gine at sjd.es>>
+> *Tema:* Re: [R] Avoiding Delete key function as 'Quit R' in Rterm when
+> there are no characters in cursor line
+> On 09/02/2024 6:25 a.m., Iago Gin? V?zquez wrote:
+>> Hi all,
+>>
+>> I cite from README.Rterm
+>>
+>> ^D, DEL?????: Delete the character under the cursor.
+>>
+>> That is the general behaviour, but when there is no character (neither under the cursor nor at its left), pressing the Delete key suggests closing the R terminal. Is there any (configurable) way to avoid this behaviour?
+>
+> Are you talking about rterm in Windows, or which front end?
+>
+> Duncan Murdoch
+>
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
