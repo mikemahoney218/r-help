@@ -5049,3 +5049,340 @@ PLEASE do read the posting guide http://www.R-project.org/posting-guide.html[htt
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From berw|n@tur|@ch @end|ng |rom gm@||@com  Sun Feb 18 05:31:33 2024
+From: berw|n@tur|@ch @end|ng |rom gm@||@com (Berwin A Turlach)
+Date: Sun, 18 Feb 2024 12:31:33 +0800
+Subject: [R] Packages sometimes don't update,
+ but no error or warning is thrown
+In-Reply-To: <trinity-cf8df504-ced1-4ee4-9e11-07b32d3b2d58-1708101193179@3c-app-gmx-bs23>
+References: <trinity-0a48d5f6-d21d-472d-8b19-ff5b2ef80e6c-1707814757726@3c-app-gmx-bs39>
+ <20240214114741.6c4ccc3a@dep59159.uniwa.uwa.edu.au>
+ <26060.39693.24783.516514@stat.math.ethz.ch>
+ <72f2883d-209e-4d62-b395-28b0c8accc32@gmail.com>
+ <trinity-cf8df504-ced1-4ee4-9e11-07b32d3b2d58-1708101193179@3c-app-gmx-bs23>
+Message-ID: <20240218123133.2c0f885c@absentia>
+
+G'day Philipp,
+
+On Fri, 16 Feb 2024 17:33:13 +0100
+Philipp Schneider <philipp-schneider at gmx.net> wrote:
+
+> Thanks for all the input. It's happening again. This time for the
+> packages "DBI", "parallelly", "segmented", "survival", "V8". So,
+> RStudio shows updates for those and updating them via RStudio leads
+> to this output:
+
+Perhaps, as Duncan suggested, you should use update.packages() instead
+of install.packages(). 
+
+Also, what happens if you try to do the update in R and not from
+RStudio?  I.e. start R and say update.packages() in R?
+
+What does the command 'getOption(pkgType)' output on your machine?  It
+should be "both" for either binary or source package.  If it is
+"mac.binary" you should investigate where that is set and why your
+system is configured to install binary packages early.
+
+Finally, you can always recall the command: 
+
+> install.packages(c("DBI", "parallelly", "segmented", "survival", "V8"))
+
+and modify it to:
+
+> install.packages(c("DBI", "parallelly", "segmented", "survival", "V8"), type = "source")
+
+This, of course, assumes that you have the tools installed to compile
+source packages.
+
+Best wishes,
+	
+	Berwin
+
+
+From r@c@rtwr|ght @end|ng |rom gm@||@com  Sat Feb 17 19:15:43 2024
+From: r@c@rtwr|ght @end|ng |rom gm@||@com (Reed A. Cartwright)
+Date: Sat, 17 Feb 2024 11:15:43 -0700
+Subject: [R] Capturing Function Arguments
+Message-ID: <CALOkxuyq6-Ka70A5obg-OY-choUEC4s69aLKgEXEbFiodEL2qw@mail.gmail.com>
+
+I'm wrapping a function in R and I want to record all the arguments
+passed to it, including default values and missing values. I want to
+be able to snoop on function calls in sourced scripts as part of a
+unit testing framework.
+
+I can capture the values fine, but I'm having trouble evaluating them
+as if `force()` had been applied to each of them.
+
+Here is a minimal example:
+
+f0 <- function(x, y = 2 * z, z, a = NULL, b) NULL
+
+f <- function(...) {
+  call <- rlang::call_match(fn = f0, defaults = TRUE)
+  args <- rlang::call_args(call)
+  # do something here to evaluate args as if force() had been called
+  # I've tried many things but haven't found a solution that handled everything
+  args
+}
+
+# In the below example args1 and args2 should be the same
+a <- 1
+args1 <- f(a, z = 1 + 100)
+
+args2 <- list( a = 1, y = 202, z = 101, a = NULL, b = rlang::missing_arg() )
+
+If anyone knows how to get this to work, I would appreciate the help.
+
+Thanks,
+Reed
+
+--
+Reed A. Cartwright, PhD
+Associate Professor of Genomics, Evolution, and Bioinformatics
+School of Life Sciences and The Biodesign Institute
+Arizona State University
+==================
+Address: The Biodesign Institute, PO Box 876401, Tempe, AZ 85287-6401 USA
+Packages: The Biodesign Institute, 1001 S. McAllister Ave, Tempe, AZ
+85287-6401 USA
+Office: Biodesign B-220C, 1-480-965-9949
+Website: http://cartwrig.ht/
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Sun Feb 18 11:59:03 2024
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Sun, 18 Feb 2024 05:59:03 -0500
+Subject: [R] Capturing Function Arguments
+In-Reply-To: <CALOkxuyq6-Ka70A5obg-OY-choUEC4s69aLKgEXEbFiodEL2qw@mail.gmail.com>
+References: <CALOkxuyq6-Ka70A5obg-OY-choUEC4s69aLKgEXEbFiodEL2qw@mail.gmail.com>
+Message-ID: <CADNULg_33+vuNjoSuGE51Xxrk3K_HW6d1Zw42qBGs0PG5yKdcA@mail.gmail.com>
+
+Hi Reed,
+
+
+I need to stress before giving my answer that no solution can handle
+everything. These scenarios will always lead to problems:
+
+* if any of the formal arguments rely on the current state of the call stack
+
+* if any of the formal arguments rely on a variable that is only
+defined later in the body of the function
+
+That being said, this function does well to handle other scenarios:
+
+```R
+f <- function (...)
+{
+    ## replace f0 as needed
+    wrapped_function <- f0
+    call <- match.call(wrapped_function, expand.dots = FALSE)
+    args <- as.list(call)[-1L]
+    e <- new.env(parent = environment(wrapped_function))
+    parent_frame <- parent.frame()
+    formal_args <- formals(wrapped_function)
+    for (sym in names(formal_args)) {
+        ## if the formal argument is one of the provided arguments
+        if (i <- match(sym, names(args), 0L)) {
+            ## if the argument is missing, assign as is
+            if (identical(args[[i]], quote(expr = )))
+                e[[sym]] <- quote(expr = )
+            ## if the argument is not ..., assign as a promise
+            else if (sym != "...")
+                eval(call("delayedAssign", quote(sym), args[[i]],
+eval.env = quote(parent_frame), assign.env = quote(e)))
+            else {
+                ## handle ... separately
+                ## create a variable corresponding to each dot argument,
+                ## then capture them with get("...")
+                dots <- args[[i]]
+                for (i in seq_along(dots)) {
+                    sym <- paste0("dd", i)
+                    eval(call("delayedAssign", quote(sym), dots[[i]],
+eval.env = quote(parent_frame)))
+                    dots[[i]] <- as.symbol(sym)
+                }
+                e[["..."]] <- eval(as.call(c(function(...) get("..."), dots)))
+            }
+        }
+        else {
+            ## similar to above, but this time evaluate in e not parent_frame
+            i <- match(sym, names(formal_args), 0L)
+            if (identical(formal_args[[i]], quote(expr = )))
+                e[[sym]] <- quote(expr = )
+            else eval(call("delayedAssign", quote(sym),
+formal_args[[i]], eval.env = quote(e), assign.env = quote(e)))
+        }
+    }
+    ## you don't need to turn into a list, but you can
+    args2 <- as.list(e, all.names = TRUE)
+    list(call = call, args = args, args2 = args2, e = e)
+    ## do whatever else you want to here
+}
+```
+
+in the test scenario you described, it works:
+
+```R
+f0 <- function(x, y = 2 * z, z, a = NULL, b) NULL
+a <- 1
+x <- f(a, z = 1 + 100)
+x$args2
+```
+
+produces:
+
+```
+> f0 <- function(x, y = 2 * z, z, a = NULL, b) NULL
+> a <- 1
+> x <- f(a, z = 1 + 100)
+> x$args2
+$x
+[1] 1
+
+$y
+[1] 202
+
+$z
+[1] 101
+
+$a
+NULL
+
+$b
+
+
+>
+```
+
+Regards,
+    Iris
+
+On Sun, Feb 18, 2024 at 3:51?AM Reed A. Cartwright
+<racartwright at gmail.com> wrote:
+>
+> I'm wrapping a function in R and I want to record all the arguments
+> passed to it, including default values and missing values. I want to
+> be able to snoop on function calls in sourced scripts as part of a
+> unit testing framework.
+>
+> I can capture the values fine, but I'm having trouble evaluating them
+> as if `force()` had been applied to each of them.
+>
+> Here is a minimal example:
+>
+> f0 <- function(x, y = 2 * z, z, a = NULL, b) NULL
+>
+> f <- function(...) {
+>   call <- rlang::call_match(fn = f0, defaults = TRUE)
+>   args <- rlang::call_args(call)
+>   # do something here to evaluate args as if force() had been called
+>   # I've tried many things but haven't found a solution that handled everything
+>   args
+> }
+>
+> # In the below example args1 and args2 should be the same
+> a <- 1
+> args1 <- f(a, z = 1 + 100)
+>
+> args2 <- list( a = 1, y = 202, z = 101, a = NULL, b = rlang::missing_arg() )
+>
+> If anyone knows how to get this to work, I would appreciate the help.
+>
+> Thanks,
+> Reed
+>
+> --
+> Reed A. Cartwright, PhD
+> Associate Professor of Genomics, Evolution, and Bioinformatics
+> School of Life Sciences and The Biodesign Institute
+> Arizona State University
+> ==================
+> Address: The Biodesign Institute, PO Box 876401, Tempe, AZ 85287-6401 USA
+> Packages: The Biodesign Institute, 1001 S. McAllister Ave, Tempe, AZ
+> 85287-6401 USA
+> Office: Biodesign B-220C, 1-480-965-9949
+> Website: http://cartwrig.ht/
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sun Feb 18 12:16:57 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sun, 18 Feb 2024 14:16:57 +0300
+Subject: [R] Capturing Function Arguments
+In-Reply-To: <CALOkxuyq6-Ka70A5obg-OY-choUEC4s69aLKgEXEbFiodEL2qw@mail.gmail.com>
+References: <CALOkxuyq6-Ka70A5obg-OY-choUEC4s69aLKgEXEbFiodEL2qw@mail.gmail.com>
+Message-ID: <20240218141657.36c7733e@Tarkus>
+
+? Sat, 17 Feb 2024 11:15:43 -0700
+"Reed A. Cartwright" <racartwright at gmail.com> ?????:
+
+> I'm wrapping a function in R and I want to record all the arguments
+> passed to it, including default values and missing values.
+
+This is hard if not impossible to implement for the general case
+because the default arguments are evaluated in the environment of the
+function as it is running:
+
+f0 <- function(arg = frobnicate()) {
+ frobnicate <- switch(
+  sample.int(3, 1),
+  function() environment(),
+  function(n=1) runif(n),
+  function() alist(a=)$a
+ )
+ arg
+}
+
+(And some arguments aren't meant to be evaluated at all.)
+
+Even starting with rlang::call_match(call = NULL, defaults = TRUE) is
+doomed to a certain extent because it gives you f(x = a, a = NULL) for
+both function(x, a = NULL), f(a) (where `a` passed as an argument `x`
+and `a` should be taken from the parent frame) and function(x = a, a =
+NULL), f() (in which case `x` defaults to `a`, which in turn defaults
+to NULL).
+
+I think the key here is evaluating the arguments first, then matching.
+This makes a lot of assumptions about the function being inspected: no
+NSE, no ellipsis, formals don't depend on the body, nothing weird about
+the environment of the function...
+
+f <- function(...) {
+ .makemissing <- function() alist(a=)$a
+ .ismissing <- function(x) identical(x, .makemissing())
+
+ # prepare to evaluate formals
+ params <- formals(f0)
+ e <- new.env(parent = environment(f0))
+ # assign non-missing formals
+ for (n in names(params)) if (!.ismissing(params[[n]])) eval(
+  # work around delayedAssign quoting its second argument
+  call('delayedAssign', n, params[[n]], e, e)
+ )
+
+ # match the evaluated arguments against the names of the formals
+ args <- as.list(match.call(f0, as.call(c('f0', list(...)))))[-1]
+ for (n in names(args)) assign(n, args[[n]], envir = e)
+
+ # evaluate everything, default argument or not
+ mget(names(params), e, ifnotfound = list(.makemissing()))
+}
+
+f0 <- function(x, y = 2 * z, z, a = NULL, b) NULL
+a <- 1
+identical(
+ f(a, z = 1 + 100),
+ list(x = 1, y = 202, z = 101, a = NULL, b = rlang::missing_arg())
+)
+# [1] TRUE
+
+-- 
+Best regards,
+Ivan
+
+
