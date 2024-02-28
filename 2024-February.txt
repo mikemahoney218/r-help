@@ -10556,3 +10556,821 @@ su, 2024-02-25 kello 09:59 +0100, sibylle.stoeckli at gmx.ch kirjoitti:
 > 
 
 
+From k|mmo@e|o @end|ng |rom utu@||  Mon Feb 26 08:10:12 2024
+From: k|mmo@e|o @end|ng |rom utu@|| (Kimmo Elo)
+Date: Mon, 26 Feb 2024 07:10:12 +0000
+Subject: [R] igraph_vertex
+In-Reply-To: <550f80f04e9a98e5a46407e7a50d35dd98296de3.camel@utu.fi>
+References: <009201da6711$f0d903b0$d28b0b10$@gmx.ch>
+ <ba1b595aeacfe312ba8e11357a7f3eae11403971.camel@utu.fi>
+ <f3883e1f-4d33-e67a-93dc-9f56c0b9a568@comcast.net>
+ <005f01da67c8$eedbbff0$cc933fd0$@gmx.ch>
+ <550f80f04e9a98e5a46407e7a50d35dd98296de3.camel@utu.fi>
+Message-ID: <3f4d8a0d5d4b9020c21f15d0101b23202e0bcd57.camel@utu.fi>
+
+
+Hi,
+
+a quick additional note: try
+
+"edge.width= E(.)$weight"
+
+instead of the current "edge.width= network". Seems to work and makes a
+visible difference...
+
+HTH,
+Kimmo
+
+su, 2024-02-25 kello 19:11 +0000, Kimmo Elo kirjoitti:
+> 
+> Hi again,
+> 
+> your code is still not reproducible without modifications, but I
+> succeed in getting the data straight. All read.csv-command are
+> missing
+> 'sep="\t"', it is need to read you tsv-data.
+> 
+> And it could be more reproducible if you used e.g.
+> 
+> --- snip ---
+> aes<-read.csv(text="??? A.A?????B.B?????C.C?????D.D?????E.E?????F.F
+> A.A?????0???????0???????5???????5???????5???????5
+> B.B?????4???????0???????1???????1???????1???????1
+> C.C?????5???????5???????0???????5???????4???????2
+> D.D?????5???????0???????5???????0???????5???????3
+> E.E?????5???????1???????5???????5???????0???????4
+> F.F?????1???????2???????3???????4???????5???????5",?
+> sep="\t", row.names = 1)
+> --- snip ---
+> 
+> This would save us from unnecessary copy-pasting :-)
+> 
+> However, the error is still the same I mentioned in my first reply,
+> i.e.:
+> 
+> network %>% plot(
+> ??? vertex.color=clrs[V(.)$community], 
+> ??? vertex.size=V(.)$hub_score*5, 
+> ??? vertex.frame.color=V(.)$color, 
+> ??? vertex.label.color="white", 
+> ??? vertex.label.cex=0.5, 
+> ??? vertex.label.family="Helvetica",
+> ??? vertex.label.font=1,
+> ??? edge.curved=0.5,
+> HERE -->??? edge.width= network,? <-- HERE
+> ??? layout=layout_with_mds(.))
+> 
+> Try to comment out his line and see what happens. What network data
+> variable should be mapped to edge width?
+> 
+> Best,
+> Kimmo
+> 
+> su, 2024-02-25 kello 09:59 +0100, sibylle.stoeckli at gmx.ch?kirjoitti:
+> > Dear coummunity
+> > 
+> > Thanks a lot to David and Kimmo. Yes I see now that I need to
+> > provide
+> > the two raw tables. Find here the reproducible example.
+> > 
+> > Kind regards
+> > Sibylle
+> > 
+> > # R-labraries
+> > library(circlize)
+> > library(ggplot2)
+> > library(igraph)
+> > library(tidyverse)
+> > library(RColorBrewer)
+> > library(stringi)
+> > library(scico)
+> > library(plotly)
+> > library(ggraph)
+> > 
+> > 
+> > # Tables
+> > aes<-read.csv("Test_adjac.csv", row.names = 1)
+> > details<-read.csv("Test_cat.csv")
+> > 
+> > # Edge table, reorganisation
+> > aes_collapsed<-aes %>%
+> > ? rownames_to_column(var='Names') %>%
+> > ? tidyr::gather(target, weight, 1:ncol(aes)+1) %>%
+> > ? dplyr::filter(weight != 0) %>%
+> > ? mutate(weight = ifelse(weight == "-1", 0, weight)) # here 0 =
+> > negative values
+> > 
+> > write.csv(aes_collapsed, "edges_table_Test.csv", row.names = F)
+> > edge_list<-read.csv("edges_table_Test.csv")
+> > 
+> > # Network attributes
+> > network <- graph_from_data_frame(aes_collapsed, directed= FALSE, 
+> > ???????????????????????????????? vertices = details)
+> > 
+> > 
+> > temp<-cluster_optimal(network)
+> > temp<-cbind(membership=temp$membership, Names=temp$name)
+> > aes_collapsed <- aes_collapsed %>%
+> > ? merge(temp, by="Names")
+> > 
+> > 
+> > network <- network %>%
+> > ? set_edge_attr(name = "type", value = factor(aes_collapsed$Names, 
+> > ???????????????????????????????????????????????? ordered =
+> > is.ordered(V(network)$name))) %>%
+> > ? set_edge_attr(name = "membership", value =
+> > aes_collapsed$membership) %>%
+> > ? set_edge_attr(name = "color", 
+> > ????????????? value = c(viridis::viridis(5))
+> > ????????????? [match(E(.)$type, c(factor(V(.)$name)))]) %>%
+> > ? set_vertex_attr(name = "trans_v_net", value = c(transitivity(.,
+> > type = "local"))) %>%
+> > ? set_vertex_attr(name = "hub_score", value =
+> > c(hub_score(.)$vector))
+> > %>%
+> > ? set_vertex_attr(name = "color", 
+> > ????????????? value = c(viridis::viridis((5)))
+> > ????????????? [match(V(.)$name, c(factor(V(.)$name)))]) %>%
+> > ? set_vertex_attr(name= "community",
+> > value=cluster_optimal(.)$membership)
+> > 
+> > clrs<-scico(3, palette = "batlow")
+> > 
+> > par(bg="black")
+> > network %>% plot(
+> > ???? vertex.color=clrs[V(.)$community], 
+> > ???? vertex.size=V(.)$hub_score*5, 
+> > ???? vertex.frame.color=V(.)$color, 
+> > ???? vertex.label.color="white", 
+> > ???? vertex.label.cex=0.5, 
+> > ???? vertex.label.family="Helvetica",
+> > ???? vertex.label.font=1,
+> > ???? edge.curved=0.5,
+> > ???? edge.width= network,
+> > ???? layout=layout_with_mds(.))
+> > 
+> > #error
+> > Error in intI(i, n = x at Dim[1], dn[[1]], give.dn = FALSE) : 
+> > ? Index gr??er als maximales 6
+> > 
+> > # Test_adjac.csv
+> > ????????A.A?????B.B?????C.C?????D.D?????E.E?????F.F
+> > A.A?????0???????0???????5???????5???????5???????5
+> > B.B?????4???????0???????1???????1???????1???????1
+> > C.C?????5???????5???????0???????5???????4???????2
+> > D.D?????5???????0???????5???????0???????5???????3
+> > E.E?????5???????1???????5???????5???????0???????4
+> > F.F?????1???????2???????3???????4???????5???????5
+> > 
+> > # Test_cat.csv
+> > Names???corresponding-
+> > NCP???????Category????????Subcategory_type????????sources.cyto????s
+> > ou
+> > rce??Factor
+> > A.A?????7???????hydrologic attribute????????????"A"?????A???????1
+> > B.B?????6, 11???hydrologic attribute????????????"B"?????B???????1
+> > C.C?????1, 14, 15, 16, 17,
+> > 18???AES?????intrinsic???????"C"?????C???????0
+> > D.D?????1, 14, 15, 16, 17,
+> > 18???AES?????intrinsic???????"D"?????D???????0
+> > E.E?????1, 14, 15, 16, 17,
+> > 18???AES?????intrinsic???????"E"?????E???????0
+> > F.F?????7???????AES?????material????????"F"?????F???????0
+> > 
+> > 
+> > # edges_tables_Test.csv
+> > Names???target??weight
+> > B.B?????A.A?????4
+> > C.C?????A.A?????5
+> > D.D?????A.A?????5
+> > E.E?????A.A?????5
+> > F.F?????A.A?????1
+> > C.C?????B.B?????5
+> > E.E?????B.B?????1
+> > F.F?????B.B?????2
+> > A.A?????C.C?????5
+> > B.B?????C.C?????1
+> > D.D?????C.C?????5
+> > E.E?????C.C?????5
+> > F.F?????C.C?????3
+> > A.A?????D.D?????5
+> > B.B?????D.D?????1
+> > C.C?????D.D?????5
+> > E.E?????D.D?????5
+> > F.F?????D.D?????4
+> > A.A?????E.E?????5
+> > B.B?????E.E?????1
+> > C.C?????E.E?????4
+> > D.D?????E.E?????5
+> > F.F?????E.E?????5
+> > A.A?????F.F?????5
+> > B.B?????F.F?????1
+> > C.C?????F.F?????2
+> > D.D?????F.F?????3
+> > E.E?????F.F?????4
+> > F.F?????F.F?????5
+> > 
+> 
+> ______________________________________________
+> R-help at r-project.org?mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From sibyiie@stoeckii m@iii@g oii gmx@ch  Mon Feb 26 09:02:56 2024
+From: sibyiie@stoeckii m@iii@g oii gmx@ch (sibyiie@stoeckii m@iii@g oii gmx@ch)
+Date: Mon, 26 Feb 2024 09:02:56 +0100
+Subject: [R] igraph_vertex
+In-Reply-To: <3f4d8a0d5d4b9020c21f15d0101b23202e0bcd57.camel@utu.fi>
+References: <009201da6711$f0d903b0$d28b0b10$@gmx.ch>
+ <ba1b595aeacfe312ba8e11357a7f3eae11403971.camel@utu.fi>
+ <f3883e1f-4d33-e67a-93dc-9f56c0b9a568@comcast.net>
+ <005f01da67c8$eedbbff0$cc933fd0$@gmx.ch>
+ <550f80f04e9a98e5a46407e7a50d35dd98296de3.camel@utu.fi>
+ <3f4d8a0d5d4b9020c21f15d0101b23202e0bcd57.camel@utu.fi>
+Message-ID: <001a01da688a$3576e1d0$a064a570$@gmx.ch>
+
+Dear Kimmo
+
+First of all many thanks for the valuable advice to publish code and csv. Noted. 
+Yes, "edge.width= E(.)$weight" makes definitively sense.
+
+In the following code, which loads the tiff file, I get the following error
+tiff("figures/AES_network_bymembership.tiff", width=1000, height=700, res=120)
+Warning message:
+In doTryCatch(return(expr), name, parentenv, handler) : Character set family not found in the Windows character set database
+
+--> I am unsure if mySQL is the right solution. I have no experience how to change mySQL.
+
+Kind regards
+Sibylle
+
+
+tiff("figures/AES_network_bymembership.tiff", width=1000, height=700, res=120)
+network %>%
+  ggraph(., layout = "auto")+
+  geom_edge_arc(curvature=0.3, aes(width=(E(network)$weight/10), color=from, alpha=0.5)) +
+  geom_node_point(aes(size = V(network)$hub_score*200, color= as.factor(V(network)$community))) +
+  geom_node_text(aes(label =  V(network)$name), size=5, color="white", repel=T)+
+  scale_color_scico_d(palette = "batlow")+
+  scale_edge_width(range = c(0.2,4))+
+  scale_size(range = c(0.5,20)) +
+  #scale_edge_color_manual(values = c(scico(21, palette="batlow")))+
+  theme(plot.background = element_rect(fill = "black"),
+        legend.position = "right",
+        panel.background = element_rect(fill = "black"))
+dev.off()
+
+
+
+
+
+-----Original Message-----
+
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Kimmo Elo
+Sent: Monday, February 26, 2024 8:10 AM
+To: r-help at r-project.org
+Subject: Re: [R] igraph_vertex
+
+
+Hi,
+
+a quick additional note: try
+
+"edge.width= E(.)$weight"
+
+instead of the current "edge.width= network". Seems to work and makes a visible difference...
+
+HTH,
+Kimmo
+
+su, 2024-02-25 kello 19:11 +0000, Kimmo Elo kirjoitti:
+> 
+> Hi again,
+> 
+> your code is still not reproducible without modifications, but I 
+> succeed in getting the data straight. All read.csv-command are missing 
+> 'sep="\t"', it is need to read you tsv-data.
+> 
+> And it could be more reproducible if you used e.g.
+> 
+> --- snip ---
+> aes<-read.csv(text="    A.A     B.B     C.C     D.D     E.E     F.F 
+> A.A     0       0       5       5       5       5 B.B     4       0       
+> 1       1       1       1 C.C     5       5       0       5       4       
+> 2 D.D     5       0       5       0       5       3 E.E     5       1       
+> 5       5       0       4 F.F     1       2       3       4       5       
+> 5", sep="\t", row.names = 1)
+> --- snip ---
+> 
+> This would save us from unnecessary copy-pasting :-)
+> 
+> However, the error is still the same I mentioned in my first reply,
+> i.e.:
+> 
+> network %>% plot(
+>     vertex.color=clrs[V(.)$community],
+>     vertex.size=V(.)$hub_score*5,
+>     vertex.frame.color=V(.)$color,
+>     vertex.label.color="white",
+>     vertex.label.cex=0.5,
+>     vertex.label.family="Helvetica",
+>     vertex.label.font=1,
+>     edge.curved=0.5,
+> HERE -->    edge.width= network,  <-- HERE
+>     layout=layout_with_mds(.))
+> 
+> Try to comment out his line and see what happens. What network data 
+> variable should be mapped to edge width?
+> 
+> Best,
+> Kimmo
+> 
+> su, 2024-02-25 kello 09:59 +0100, sibylle.stoeckli at gmx.ch kirjoitti:
+> > Dear coummunity
+> > 
+> > Thanks a lot to David and Kimmo. Yes I see now that I need to 
+> > provide the two raw tables. Find here the reproducible example.
+> > 
+> > Kind regards
+> > Sibylle
+> > 
+> > # R-labraries
+> > library(circlize)
+> > library(ggplot2)
+> > library(igraph)
+> > library(tidyverse)
+> > library(RColorBrewer)
+> > library(stringi)
+> > library(scico)
+> > library(plotly)
+> > library(ggraph)
+> > 
+> > 
+> > # Tables
+> > aes<-read.csv("Test_adjac.csv", row.names = 1)
+> > details<-read.csv("Test_cat.csv")
+> > 
+> > # Edge table, reorganisation
+> > aes_collapsed<-aes %>%
+> >   rownames_to_column(var='Names') %>%
+> >   tidyr::gather(target, weight, 1:ncol(aes)+1) %>%
+> >   dplyr::filter(weight != 0) %>%
+> >   mutate(weight = ifelse(weight == "-1", 0, weight)) # here 0 = 
+> > negative values
+> > 
+> > write.csv(aes_collapsed, "edges_table_Test.csv", row.names = F)
+> > edge_list<-read.csv("edges_table_Test.csv")
+> > 
+> > # Network attributes
+> > network <- graph_from_data_frame(aes_collapsed, directed= FALSE,
+> >                                  vertices = details)
+> > 
+> > 
+> > temp<-cluster_optimal(network)
+> > temp<-cbind(membership=temp$membership, Names=temp$name) 
+> > aes_collapsed <- aes_collapsed %>%
+> >   merge(temp, by="Names")
+> > 
+> > 
+> > network <- network %>%
+> >   set_edge_attr(name = "type", value = factor(aes_collapsed$Names,
+> >                                                  ordered =
+> > is.ordered(V(network)$name))) %>%
+> >   set_edge_attr(name = "membership", value =
+> > aes_collapsed$membership) %>%
+> >   set_edge_attr(name = "color",
+> >               value = c(viridis::viridis(5))
+> >               [match(E(.)$type, c(factor(V(.)$name)))]) %>%
+> >   set_vertex_attr(name = "trans_v_net", value = c(transitivity(., 
+> > type = "local"))) %>%
+> >   set_vertex_attr(name = "hub_score", value =
+> > c(hub_score(.)$vector))
+> > %>%
+> >   set_vertex_attr(name = "color",
+> >               value = c(viridis::viridis((5)))
+> >               [match(V(.)$name, c(factor(V(.)$name)))]) %>%
+> >   set_vertex_attr(name= "community",
+> > value=cluster_optimal(.)$membership)
+> > 
+> > clrs<-scico(3, palette = "batlow")
+> > 
+> > par(bg="black")
+> > network %>% plot(
+> >      vertex.color=clrs[V(.)$community],
+> >      vertex.size=V(.)$hub_score*5,
+> >      vertex.frame.color=V(.)$color,
+> >      vertex.label.color="white",
+> >      vertex.label.cex=0.5,
+> >      vertex.label.family="Helvetica",
+> >      vertex.label.font=1,
+> >      edge.curved=0.5,
+> >      edge.width= network,
+> >      layout=layout_with_mds(.))
+> > 
+> > #error
+> > Error in intI(i, n = x at Dim[1], dn[[1]], give.dn = FALSE) : 
+> >   Index gr??er als maximales 6
+> > 
+> > # Test_adjac.csv
+> >         A.A     B.B     C.C     D.D     E.E     F.F A.A     0       
+> > 0       5       5       5       5 B.B     4       0       1       1       
+> > 1       1 C.C     5       5       0       5       4       2 D.D     
+> > 5       0       5       0       5       3 E.E     5       1       5       
+> > 5       0       4 F.F     1       2       3       4       5       5
+> > 
+> > # Test_cat.csv
+> > Names   corresponding-
+> > NCP       Category        Subcategory_type        sources.cyto    s 
+> > ou rce  Factor A.A     7       hydrologic attribute            "A"     
+> > A       1 B.B     6, 11   hydrologic attribute            "B"     B       
+> > 1 C.C     1, 14, 15, 16, 17,
+> > 18   AES     intrinsic       "C"     C       0 D.D     1, 14, 15, 
+> > 16, 17,
+> > 18   AES     intrinsic       "D"     D       0 E.E     1, 14, 15, 
+> > 16, 17,
+> > 18   AES     intrinsic       "E"     E       0 F.F     7       AES     
+> > material        "F"     F       0
+> > 
+> > 
+> > # edges_tables_Test.csv
+> > Names   target  weight
+> > B.B     A.A     4
+> > C.C     A.A     5
+> > D.D     A.A     5
+> > E.E     A.A     5
+> > F.F     A.A     1
+> > C.C     B.B     5
+> > E.E     B.B     1
+> > F.F     B.B     2
+> > A.A     C.C     5
+> > B.B     C.C     1
+> > D.D     C.C     5
+> > E.E     C.C     5
+> > F.F     C.C     3
+> > A.A     D.D     5
+> > B.B     D.D     1
+> > C.C     D.D     5
+> > E.E     D.D     5
+> > F.F     D.D     4
+> > A.A     E.E     5
+> > B.B     E.E     1
+> > C.C     E.E     4
+> > D.D     E.E     5
+> > F.F     E.E     5
+> > A.A     F.F     5
+> > B.B     F.F     1
+> > C.C     F.F     2
+> > D.D     F.F     3
+> > E.E     F.F     4
+> > F.F     F.F     5
+> > 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From @@m@ungx1298 @end|ng |rom gm@||@com  Sun Feb 25 17:39:32 2024
+From: @@m@ungx1298 @end|ng |rom gm@||@com (Jacek Kownacki)
+Date: Sun, 25 Feb 2024 17:39:32 +0100
+Subject: [R] Interactions in regression
+In-Reply-To: <CAGxFJbTQ+c0dmErws_M1kC2u8TTSiP-J4F6YuR6jMwZ1byOLfQ@mail.gmail.com>
+References: <CAGyzeZpWKbYmCsLCCi+=Bksz8EX6O1X9r372fxDBfzsd1GwkJw@mail.gmail.com>
+ <CAGxFJbTQ+c0dmErws_M1kC2u8TTSiP-J4F6YuR6jMwZ1byOLfQ@mail.gmail.com>
+Message-ID: <CAGyzeZoDD5OkGX5+2Z3kgQrft1CHtH4hN1yUSmc1zFcpa-OJZA@mail.gmail.com>
+
+Hi,
+I do not want to make a plot, I try to make an output table in R, (in GUI
+like Stata this is trivially easy task)
+with regard to SO OP question. As I mentioned, in paper I would not do
+this, but out of curiosity I use R this time trying to create it.
+If in R this is trivial task as well, could you please show how to do it ?
+After googling a lot I did not find solution.
+regards,
+Jacek
+
+niedz., 25 lut 2024 o 17:00 Bert Gunter <bgunter.4567 at gmail.com> napisa?(a):
+
+> It is trivial in R to add whatever decorations to a plot that you would
+> like, but that requires that you go beyond point and click production of
+> graphics and write actual code. If you are unwilling or unable to do this,
+> you are stuck with whatever various packaged graphics functionality
+> provides.So you might want to search on "interaction plots for linear
+> models in R" or similar at rseek.org or in your favorite web search
+> engine if you haven't already done so. My minimal efforts brought up lots
+> of hits, though none may be useful for your concerns, especially, as has
+> already been pointed out, as your query doesn't seem to make much sense
+> statistically.
+>
+> Cheers,
+> Bert
+>
+>
+> On Sun, Feb 25, 2024 at 7:46?AM Jacek Kownacki <samsungx1298 at gmail.com>
+> wrote:
+>
+>> Hi All,
+>> I stumbled upon some topics regarding interactions in anova and regression
+>> and packages for tabulating and visualizations the results of them.
+>> Here we are:
+>>
+>> https://stackoverflow.com/questions/77933272/how-to-add-a-reference-level-for-interaction-in-gtsummary-and-sjplot/77935742#77935742
+>> ,
+>>
+>> https://stackoverflow.com/questions/78016795/how-to-add-reference-levels-for-interaction-in-r?noredirect=1&lq=1
+>> .
+>> I was wondering because I usually use GUI software and these questions did
+>> not get answers, if from a technical point of view
+>> how to do it, using these (sjPlot, gtsummary) or other ways to make such
+>> tables, inserting the reference levels of these mentioned interactions.
+>> This is not likely to be used in publications (including three base
+>> levels), but from the point of view of solving the topics this questions
+>> have interested me.
+>> I tried myself to make it happen, but so far without success.
+>> I recall this reprex based on SO:
+>>
+>> set.seed(1000)
+>> my_data <- rbind(
+>>   data.frame(time = "Pre", treatment = "Control", response =
+>> rnorm(100, mean=1)),
+>>   data.frame(time = "Pre", treatment = "Treatment", response =
+>> rnorm(100, mean=2)),
+>>   data.frame(time = "Post", treatment = "Control", response =
+>> rnorm(100, mean=1)),
+>>   data.frame(time = "Post", treatment = "Treatment", response =
+>> rnorm(100, mean=2))
+>> ) %>% mutate(time = factor(time, levels = c("Pre", "Post")))
+>> %>%mutate(treatment = factor(treatment, levels = c("Control",
+>> "Treatment")))
+>> model3 <- lm(response ~ time * treatment, data = my_data)
+>>
+>> Thanks,
+>> Jacek
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Feb 26 10:15:03 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 26 Feb 2024 12:15:03 +0300
+Subject: [R] igraph_vertex
+In-Reply-To: <001a01da688a$3576e1d0$a064a570$@gmx.ch>
+References: <009201da6711$f0d903b0$d28b0b10$@gmx.ch>
+ <ba1b595aeacfe312ba8e11357a7f3eae11403971.camel@utu.fi>
+ <f3883e1f-4d33-e67a-93dc-9f56c0b9a568@comcast.net>
+ <005f01da67c8$eedbbff0$cc933fd0$@gmx.ch>
+ <550f80f04e9a98e5a46407e7a50d35dd98296de3.camel@utu.fi>
+ <3f4d8a0d5d4b9020c21f15d0101b23202e0bcd57.camel@utu.fi>
+ <001a01da688a$3576e1d0$a064a570$@gmx.ch>
+Message-ID: <20240226121503.41b7fd5b@Tarkus>
+
+? Mon, 26 Feb 2024 09:02:56 +0100
+SIBYLLE ST?CKLI via R-help <r-help at r-project.org> ?????:
+
+> In the following code, which loads the tiff file, I get the following
+> error
+
+This warning is definitely worth investigating, but it shouldn't
+interrupt your code. Does the figure come out wrong after you see this
+warning?
+
+> In doTryCatch(return(expr), name, parentenv, handler) : Character set
+> family not found in the Windows character set database
+> 
+> --> I am unsure if mySQL is the right solution. I have no experience
+> how to change mySQL. 
+
+I see you've tried to do the right thing and searched for the warning
+message. Unfortunately, the search engines are wrong; this doesn't seem
+related to MySQL.
+
+A similarly-worded warning message exists in the Windows-related font
+functions inside R:
+
+>> warning(_("font family not found in Windows font database"))
+
+If running a sufficiently new version of R, try Sys.setLanguage('en')
+before reproducing the problem and searching for the exact warning
+message in double quotes. (Reset it back using
+Sys.setLanguage(your_language_code) or restart R afterwards.)
+Translated error and warning messages are good for understanding, but
+they fragment the search engine results.
+
+I see that a few messages back you set a font family:
+
+>      vertex.label.family="Helvetica",
+
+R probably doesn't know where to get it in order to render the plot as
+TIFF. If you have a copy of Helvetica installed in your system, try
+registering it using windowsFonts(Helvetica = windowsFont("how the
+font is named in the system")). (See help(windowsFonts) for more
+information.) Otherwise you may be limited to R's predefined font
+families.
+
+It's annoying that "Helvetica" exists for PDF plots and such seemingly
+without a problem, but if you change the output format to TIFF, the set
+of fonts available to you changes too. Unfortunately, there are
+multiple different font rendering engines in play, and their predefined
+lists of fonts also differ.
+
+-- 
+Best regards,
+Ivan
+
+
+From sibyiie@stoeckii m@iii@g oii gmx@ch  Mon Feb 26 11:52:13 2024
+From: sibyiie@stoeckii m@iii@g oii gmx@ch (sibyiie@stoeckii m@iii@g oii gmx@ch)
+Date: Mon, 26 Feb 2024 11:52:13 +0100
+Subject: [R] igraph_vertex
+In-Reply-To: <20240226121503.41b7fd5b@Tarkus>
+References: <009201da6711$f0d903b0$d28b0b10$@gmx.ch>	<ba1b595aeacfe312ba8e11357a7f3eae11403971.camel@utu.fi>	<f3883e1f-4d33-e67a-93dc-9f56c0b9a568@comcast.net>	<005f01da67c8$eedbbff0$cc933fd0$@gmx.ch>	<550f80f04e9a98e5a46407e7a50d35dd98296de3.camel@utu.fi>	<3f4d8a0d5d4b9020c21f15d0101b23202e0bcd57.camel@utu.fi>	<001a01da688a$3576e1d0$a064a570$@gmx.ch>
+ <20240226121503.41b7fd5b@Tarkus>
+Message-ID: <007601da68a1$db8c9da0$92a5d8e0$@gmx.ch>
+
+Dear Ivan
+
+Thanks a lot.
+
+I used:
+windowsFonts(Helvetica = windowsFont("Helvetica"))
+No warning now with Helvetica
+Additionally I used "sans", similarly no warning  in the first part.
+
+But still not able to open tiff with both versions:
+
+Using "stress" as default layout
+> dev.off()
+TIFFOpen: figures/AES_network_bymembership.tiff: Cannot open.
+RStudioGD 
+        2 
+Warning message:
+In dev.off() :
+  unable to open TIFF file 'figures/AES_network_bymembership.tiff'
+
+Kind regards
+Sibylle
+
+-----Original Message-----
+From: Ivan Krylov <ikrylov at disroot.org> 
+Sent: Monday, February 26, 2024 10:15 AM
+To: SIBYLLE ST?CKLI via R-help <r-help at r-project.org>
+Cc: sibylle.stoeckli at gmx.ch
+Subject: Re: [R] igraph_vertex
+
+? Mon, 26 Feb 2024 09:02:56 +0100
+SIBYLLE ST?CKLI via R-help <r-help at r-project.org> ?????:
+
+> In the following code, which loads the tiff file, I get the following 
+> error
+
+This warning is definitely worth investigating, but it shouldn't interrupt your code. Does the figure come out wrong after you see this warning?
+
+> In doTryCatch(return(expr), name, parentenv, handler) : Character set 
+> family not found in the Windows character set database
+> 
+> --> I am unsure if mySQL is the right solution. I have no experience
+> how to change mySQL. 
+
+I see you've tried to do the right thing and searched for the warning message. Unfortunately, the search engines are wrong; this doesn't seem related to MySQL.
+
+A similarly-worded warning message exists in the Windows-related font functions inside R:
+
+>> warning(_("font family not found in Windows font database"))
+
+If running a sufficiently new version of R, try Sys.setLanguage('en') before reproducing the problem and searching for the exact warning message in double quotes. (Reset it back using
+Sys.setLanguage(your_language_code) or restart R afterwards.) Translated error and warning messages are good for understanding, but they fragment the search engine results.
+
+I see that a few messages back you set a font family:
+
+>      vertex.label.family="Helvetica",
+
+R probably doesn't know where to get it in order to render the plot as TIFF. If you have a copy of Helvetica installed in your system, try registering it using windowsFonts(Helvetica = windowsFont("how the font is named in the system")). (See help(windowsFonts) for more
+information.) Otherwise you may be limited to R's predefined font families.
+
+It's annoying that "Helvetica" exists for PDF plots and such seemingly without a problem, but if you change the output format to TIFF, the set of fonts available to you changes too. Unfortunately, there are multiple different font rendering engines in play, and their predefined lists of fonts also differ.
+
+--
+Best regards,
+Ivan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Feb 26 12:11:12 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 26 Feb 2024 14:11:12 +0300
+Subject: [R] igraph_vertex
+In-Reply-To: <007601da68a1$db8c9da0$92a5d8e0$@gmx.ch>
+References: <009201da6711$f0d903b0$d28b0b10$@gmx.ch>
+ <ba1b595aeacfe312ba8e11357a7f3eae11403971.camel@utu.fi>
+ <f3883e1f-4d33-e67a-93dc-9f56c0b9a568@comcast.net>
+ <005f01da67c8$eedbbff0$cc933fd0$@gmx.ch>
+ <550f80f04e9a98e5a46407e7a50d35dd98296de3.camel@utu.fi>
+ <3f4d8a0d5d4b9020c21f15d0101b23202e0bcd57.camel@utu.fi>
+ <001a01da688a$3576e1d0$a064a570$@gmx.ch>
+ <20240226121503.41b7fd5b@Tarkus>
+ <007601da68a1$db8c9da0$92a5d8e0$@gmx.ch>
+Message-ID: <20240226141112.5029b3c1@arachnoid>
+
+? Mon, 26 Feb 2024 11:52:13 +0100
+<sibylle.stoeckli at gmx.ch> ?????:
+
+> TIFFOpen: figures/AES_network_bymembership.tiff: Cannot open.
+
+> Warning message:
+> In dev.off() :
+>   unable to open TIFF file 'figures/AES_network_bymembership.tiff'
+
+In the current directory (see getwd()), is there a subdirectory named
+"figures"? Do you have write access to this subdirectory? Is there a
+file named "AES_network_bymembership.tiff" in the subdirectory named
+"figures"? Could it be open by a different program and therefore
+locked?
+
+Unfortunately, libtiff doesn't seem to provide any more information
+regarding why it couldn't open the file at this point.
+
+-- 
+Best regards,
+Ivan
+
+
+From ro||turner @end|ng |rom po@teo@net  Tue Feb 27 02:29:19 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Tue, 27 Feb 2024 01:29:19 +0000
+Subject: [R] Interactions in regression
+In-Reply-To: <CAGyzeZoDD5OkGX5+2Z3kgQrft1CHtH4hN1yUSmc1zFcpa-OJZA@mail.gmail.com>
+References: <CAGyzeZpWKbYmCsLCCi+=Bksz8EX6O1X9r372fxDBfzsd1GwkJw@mail.gmail.com>
+ <CAGxFJbTQ+c0dmErws_M1kC2u8TTSiP-J4F6YuR6jMwZ1byOLfQ@mail.gmail.com>
+ <CAGyzeZoDD5OkGX5+2Z3kgQrft1CHtH4hN1yUSmc1zFcpa-OJZA@mail.gmail.com>
+Message-ID: <20240227142919.238f88e5@rolf-Latitude-E7470>
+
+
+I have no real idea what you are trying to do, but if a table is
+what you want, you can probably get it using the table() function.
+Or, more likely, the xtabs() function.
+
+Using your example from an earlier post (adjusted to make it
+comprehensible to the human mind):
+
+set.seed(1000)
+time      <- factor(rep(c("Pre","Post"),each=200))
+treatment <- factor(rep(rep(c("Control","Treatment"),each=100),2))
+mu        <- rep(rep(1:2,each=100),2)
+response  <- rnorm(400,mean=mu)
+xmpldata  <- data.frame(time=time,treatment=treatment,response)
+mod       <- lm(response~time*treatment,data=xmpldata)
+yhat      <- fitted(mod)
+xtb       <- with(xmpldata,xtabs(yhat ~ time+treatment))
+
+print(xtb)
+
+>       treatment
+> time     Control Treatment
+>   Post  94.10501 201.99112
+>   Pre  101.63792 210.04248
+
+Is that (something like) what you want?
+
+cheers,
+
+Rolf Turner
+
+P.S. You said:  "I usually use GUI software".  Now *there* lies your
+problem.  A GUI is a black box that removes all control over what is
+going on, from your hands.
+
+R. T.
+
+
+
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
