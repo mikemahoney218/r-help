@@ -11374,3 +11374,324 @@ Stats. Dep't. (secretaries) phone:
 Home phone: +64-9-480-4619
 
 
+From ev@n@cooch @end|ng |rom gm@||@com  Tue Feb 27 20:54:26 2024
+From: ev@n@cooch @end|ng |rom gm@||@com (Evan Cooch)
+Date: Tue, 27 Feb 2024 14:54:26 -0500
+Subject: [R] converting MATLAB -> R | element-wise operation
+Message-ID: <8ec0980a-1988-484d-bd30-6837f5467e1a@gmail.com>
+
+So, trying to convert a very long, somewhat technical bit of lin alg 
+MATLAB code to R. Most of it working, but raninto a stumbling block that 
+is probaably simple enough for someone to explain.
+
+Basically, trying to 'line up' MATLAB results from an element-wise 
+division of a matrix by a vector with R output.
+
+Here is a simplified version of the MATLAB code I'm translating:
+
+NN = [1, 2, 3; 4, 5, 6];? % Example matrix
+lambda = [2, 3, 4];? % Example vector
+result_matlab = NN ./ lambda;
+
+which yields
+
+ ?0.50000?? 0.66667?? 0.75000
+ ?2.00000?? 1.66667?? 1.50000
+
+
+So, the only way I have stumbled onto in R to generate the same results 
+is to use 'sweep'. The following 'works', but I'm hoping someone can 
+explain why I need something as convoluted as this seems (to me, at least).
+
+NN <- matrix(c(1, 2, 3, 4, 5, 6), nrow = 2, byrow = TRUE)? # Example matrix
+lambda <- c(2, 3, 4)? # Example vector
+sweep(NN, 2, lambda, "/")
+
+
+ ???? [,1]????? [,2] [,3]
+[1,]? 0.5 0.6666667 0.75
+[2,]? 2.0 1.6666667 1.50
+
+First tried the more 'obvious' NN/lambda, but that yields 'the wrong 
+answer' (based solely on what I'm trying to accomplish):
+
+
+ ?????? [,1] [,2] [,3]
+[1,] 0.500000? 0.5? 1.0
+[2,] 1.333333? 2.5? 1.5
+
+So, why 'sweep'?
+
+	[[alternative HTML version deleted]]
+
+
+From rmh @end|ng |rom temp|e@edu  Tue Feb 27 22:37:52 2024
+From: rmh @end|ng |rom temp|e@edu (Richard M. Heiberger)
+Date: Tue, 27 Feb 2024 21:37:52 +0000
+Subject: [R] [External]  converting MATLAB -> R | element-wise operation
+In-Reply-To: <8ec0980a-1988-484d-bd30-6837f5467e1a@gmail.com>
+References: <8ec0980a-1988-484d-bd30-6837f5467e1a@gmail.com>
+Message-ID: <3D3F937A-0516-4C2B-9392-961C4286C95D@temple.edu>
+
+> t(t(NN)/lambda)
+     [,1]      [,2] [,3]
+[1,]  0.5 0.6666667 0.75
+[2,]  2.0 1.6666667 1.50
+>
+
+R  matrices are column-based. MATLAB matrices are row-based.
+
+> On Feb 27, 2024, at 14:54, Evan Cooch <evan.cooch at gmail.com> wrote:
+>
+> So, trying to convert a very long, somewhat technical bit of lin alg
+> MATLAB code to R. Most of it working, but raninto a stumbling block that
+> is probaably simple enough for someone to explain.
+>
+> Basically, trying to 'line up' MATLAB results from an element-wise
+> division of a matrix by a vector with R output.
+>
+> Here is a simplified version of the MATLAB code I'm translating:
+>
+> NN = [1, 2, 3; 4, 5, 6];  % Example matrix
+> lambda = [2, 3, 4];  % Example vector
+> result_matlab = NN ./ lambda;
+>
+> which yields
+>
+>  0.50000   0.66667   0.75000
+>  2.00000   1.66667   1.50000
+>
+>
+> So, the only way I have stumbled onto in R to generate the same results
+> is to use 'sweep'. The following 'works', but I'm hoping someone can
+> explain why I need something as convoluted as this seems (to me, at least).
+>
+> NN <- matrix(c(1, 2, 3, 4, 5, 6), nrow = 2, byrow = TRUE)  # Example matrix
+> lambda <- c(2, 3, 4)  # Example vector
+> sweep(NN, 2, lambda, "/")
+>
+>
+>      [,1]      [,2] [,3]
+> [1,]  0.5 0.6666667 0.75
+> [2,]  2.0 1.6666667 1.50
+>
+> First tried the more 'obvious' NN/lambda, but that yields 'the wrong
+> answer' (based solely on what I'm trying to accomplish):
+>
+>
+>        [,1] [,2] [,3]
+> [1,] 0.500000  0.5  1.0
+> [2,] 1.333333  2.5  1.5
+>
+> So, why 'sweep'?
+>
+> [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Tue Feb 27 22:51:25 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 27 Feb 2024 13:51:25 -0800
+Subject: [R] converting MATLAB -> R | element-wise operation
+In-Reply-To: <8ec0980a-1988-484d-bd30-6837f5467e1a@gmail.com>
+References: <8ec0980a-1988-484d-bd30-6837f5467e1a@gmail.com>
+Message-ID: <393E5DD9-BFA1-44E2-A0B3-F3FD1BB29729@dcn.davis.ca.us>
+
+Why anything but sweep?
+
+The fundamental data type in Matlab is a matrix... they don't have vectors, they have Nx1 matrices and 1xM matrices.
+
+Vectors don't have any concept of "row" vs. "column". Straight division is always elementwise with recycling as needed, and matrices are really vectors in row-major order:
+
+1 2 3
+4 5 6
+
+is really
+
+1 4 2 5 3 6
+
+and when you do straight division NN / lambda then lambda is repeated:
+
+1 4 2 5 3 6
+2 3 4 2 3 4
+
+to get
+
+0.5 1.3 0.5 2.5 1.0 1.5
+
+but if you transpose first
+
+1 4
+2 5
+3 6
+
+then that corresponds to an underlying vector:
+
+1 2 3 4 5 6
+
+which lines up with lambda in t(NN)/lambda as:
+
+1 2 3 4 5 6
+2 3 4 2 3 4
+
+to obtain:
+
+0.50 0.67 0.75 2.0 1.67 1.50
+
+and inherits the dimensions of t(NN):
+
+0.50 2.00
+0.67 1.67
+0.75 1.50
+
+which can be transposed back as in t( t( NN ) / lambda ):
+
+0.50 0.67 0.75
+2.00 1.67 1.50
+
+but that requires a lot of moving elements around while sweep does not.
+
+Operators are not necessarily "better" than named functions... they just look different.
+
+
+On February 27, 2024 11:54:26 AM PST, Evan Cooch <evan.cooch at gmail.com> wrote:
+>So, trying to convert a very long, somewhat technical bit of lin alg 
+>MATLAB code to R. Most of it working, but raninto a stumbling block that 
+>is probaably simple enough for someone to explain.
+>
+>Basically, trying to 'line up' MATLAB results from an element-wise 
+>division of a matrix by a vector with R output.
+>
+>Here is a simplified version of the MATLAB code I'm translating:
+>
+>NN = [1, 2, 3; 4, 5, 6];? % Example matrix
+>lambda = [2, 3, 4];? % Example vector
+>result_matlab = NN ./ lambda;
+>
+>which yields
+>
+> ?0.50000?? 0.66667?? 0.75000
+> ?2.00000?? 1.66667?? 1.50000
+>
+>
+>So, the only way I have stumbled onto in R to generate the same results 
+>is to use 'sweep'. The following 'works', but I'm hoping someone can 
+>explain why I need something as convoluted as this seems (to me, at least).
+>
+>NN <- matrix(c(1, 2, 3, 4, 5, 6), nrow = 2, byrow = TRUE)? # Example matrix
+>lambda <- c(2, 3, 4)? # Example vector
+>sweep(NN, 2, lambda, "/")
+>
+>
+> ???? [,1]????? [,2] [,3]
+>[1,]? 0.5 0.6666667 0.75
+>[2,]? 2.0 1.6666667 1.50
+>
+>First tried the more 'obvious' NN/lambda, but that yields 'the wrong 
+>answer' (based solely on what I'm trying to accomplish):
+>
+>
+> ?????? [,1] [,2] [,3]
+>[1,] 0.500000? 0.5? 1.0
+>[2,] 1.333333? 2.5? 1.5
+>
+>So, why 'sweep'?
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue Feb 27 23:36:27 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 27 Feb 2024 14:36:27 -0800
+Subject: [R] converting MATLAB -> R | element-wise operation
+In-Reply-To: <8ec0980a-1988-484d-bd30-6837f5467e1a@gmail.com>
+References: <8ec0980a-1988-484d-bd30-6837f5467e1a@gmail.com>
+Message-ID: <CAGxFJbSKfTVqJ9NutSkpjZVH9BurSaF=z53fWcLaDsixfs+agg@mail.gmail.com>
+
+... and here is a more or less direct translation of the Matlab code that
+should now be obvious given your previous responses:
+
+> m <- matrix(1:6, nr=2, byrow = TRUE) ## Matlab order
+> m
+     [,1] [,2] [,3]
+[1,]    1    2    3
+[2,]    4    5    6
+> sweep(m, 2, 2:4, "/")
+     [,1]      [,2] [,3]
+[1,]  0.5 0.6666667 0.75
+[2,]  2.0 1.6666667 1.50
+
+Cheers,
+Bert
+
+On Tue, Feb 27, 2024 at 1:03?PM Evan Cooch <evan.cooch at gmail.com> wrote:
+
+> So, trying to convert a very long, somewhat technical bit of lin alg
+> MATLAB code to R. Most of it working, but raninto a stumbling block that
+> is probaably simple enough for someone to explain.
+>
+> Basically, trying to 'line up' MATLAB results from an element-wise
+> division of a matrix by a vector with R output.
+>
+> Here is a simplified version of the MATLAB code I'm translating:
+>
+> NN = [1, 2, 3; 4, 5, 6];  % Example matrix
+> lambda = [2, 3, 4];  % Example vector
+> result_matlab = NN ./ lambda;
+>
+> which yields
+>
+>   0.50000   0.66667   0.75000
+>   2.00000   1.66667   1.50000
+>
+>
+> So, the only way I have stumbled onto in R to generate the same results
+> is to use 'sweep'. The following 'works', but I'm hoping someone can
+> explain why I need something as convoluted as this seems (to me, at least).
+>
+> NN <- matrix(c(1, 2, 3, 4, 5, 6), nrow = 2, byrow = TRUE)  # Example matrix
+> lambda <- c(2, 3, 4)  # Example vector
+> sweep(NN, 2, lambda, "/")
+>
+>
+>       [,1]      [,2] [,3]
+> [1,]  0.5 0.6666667 0.75
+> [2,]  2.0 1.6666667 1.50
+>
+> First tried the more 'obvious' NN/lambda, but that yields 'the wrong
+> answer' (based solely on what I'm trying to accomplish):
+>
+>
+>         [,1] [,2] [,3]
+> [1,] 0.500000  0.5  1.0
+> [2,] 1.333333  2.5  1.5
+>
+> So, why 'sweep'?
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
