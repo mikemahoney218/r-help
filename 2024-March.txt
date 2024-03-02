@@ -1,0 +1,112 @@
+From rmh @end|ng |rom temp|e@edu  Fri Mar  1 00:12:14 2024
+From: rmh @end|ng |rom temp|e@edu (Richard M. Heiberger)
+Date: Thu, 29 Feb 2024 23:12:14 +0000
+Subject: [R] [External]  converting MATLAB -> R | element-wise operation
+In-Reply-To: <297DC7D4-CD0A-4EE9-A733-BDF59B86A8E4@gmail.com>
+References: <8ec0980a-1988-484d-bd30-6837f5467e1a@gmail.com>
+ <393E5DD9-BFA1-44E2-A0B3-F3FD1BB29729@dcn.davis.ca.us>
+ <297DC7D4-CD0A-4EE9-A733-BDF59B86A8E4@gmail.com>
+Message-ID: <B07BE572-BFAA-4EC3-8D69-28AE94330FB5@temple.edu>
+
+I decided to do a direct comparison of transpose and sweep.
+
+
+library(microbenchmark)
+
+NN <- matrix(c(1, 2, 3, 4, 5, 6), nrow = 2, byrow = TRUE)  # Example matrix
+lambda <- c(2, 3, 4)  # Example vector
+colNN <- t(NN)
+
+microbenchmark(
+  sweep     = sweep(NN, 2, lambda, "/"),
+  transpose = t(t(NN)/lambda),
+  colNN     = colNN/lambda
+)
+
+
+Unit: nanoseconds
+      expr   min    lq     mean median      uq   max neval cld
+     sweep 13817 14145 15115.06  14350 14657.5 75932   100 a  
+ transpose  1845  1927  2151.68   2132  2214.0  7093   100  b 
+     colNN    82   123   141.86    123   164.0   492   100   c
+
+Note that transpose is much faster than sweep because it is doing less work,
+I believe essentially just changing the order of indexing.
+
+Using the natural sequencing for column-ordered matrices is much much faster.
+
+> On Feb 28, 2024, at 18:43, peter dalgaard <pdalgd at gmail.com> wrote:
+> 
+>> rbind(1:3,4:6)/t(matrix(c(2,3,4), 3,2))
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Fri Mar  1 01:28:18 2024
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leo Mada)
+Date: Fri, 1 Mar 2024 00:28:18 +0000
+Subject: [R] Clustering Functions used by Reverse-Dependencies
+In-Reply-To: <20240228113619.676990bc@Tarkus>
+References: <VI1P192MB0095C4BE0EB8BE16FAABD3D884542@VI1P192MB0095.EURP192.PROD.OUTLOOK.COM>
+ <20240228113619.676990bc@Tarkus>
+Message-ID: <VI1P192MB0095BC51A36ACA9F44314602845F2@VI1P192MB0095.EURP192.PROD.OUTLOOK.COM>
+
+Dear Ivan,
+
+Thank you very much for this interesting information.
+
+Regarding:
+"For well-behaved packages that declare their dependencies correctly,
+parsing the NAMESPACE for importFrom() and import() calls should give
+you the explicit imports."
+
+I did learn something new (I am not very experienced in package writing). Unfortunately, Roxygen2 as of the current version still suggests to use the pkg::fname approach:
+"If you are using just a few functions from another package, we recommending adding the package to the Imports: field of the DESCRIPTION file and calling the functions explicitly using ::, e.g., pkg::fun()."
+https://roxygen2.r-lib.org/articles/namespace.html
+
+Regarding analysing the actual code: it is good to know that CMD check has also some functionality. I will look into it, when I find some free time.
+
+tools:::.check_packages_used is a few pages of code. On the other hand, the help page for codetools::checkUsage is quite cryptic. But it's good to know at least where to look.
+
+Sincerely,
+
+Leonard
+
+________________________________
+From: Ivan Krylov <ikrylov at disroot.org>
+Sent: Wednesday, February 28, 2024 10:36 AM
+To: Leo Mada via R-help <r-help at r-project.org>
+Cc: Leo Mada <leo.mada at syonic.eu>
+Subject: Re: [R] Clustering Functions used by Reverse-Dependencies
+
+? Sat, 24 Feb 2024 03:08:26 +0000
+Leo Mada via R-help <r-help at r-project.org> ?????:
+
+> Are there any tools to extract the function names called by
+> reverse-dependencies?
+
+For well-behaved packages that declare their dependencies correctly,
+parsing the NAMESPACE for importFrom() and import() calls should give
+you the explicit imports. (What if the package imports the whole
+dependency? The safe assumption is that all functions are used, but it
+comes with false positives. You could also walk the package code
+looking for function names that may belong to the imported package, but
+that may involve both false positives and false negatives.)
+
+For the rest of the imports and uses of weak dependencies, you'll have
+to walk the package code looking for the uses of the `::` operator. See
+how R CMD check walks the package code in functions
+tools:::.check_packages_used and codetools::checkUsage.
+
+A less-well-behaved package can always load a namespace during runtime
+and choose the functions to call depending on the phase of the moon or
+weather on Jupiter. For these, like for the halting problem, there's no
+general solution: the package could be written to say, "if Leonard's
+function says I'm about to call foo::bar, I won't do it, otherwise I
+will".
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
