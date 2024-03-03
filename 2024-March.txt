@@ -110,3 +110,967 @@ Ivan
 	[[alternative HTML version deleted]]
 
 
+From rmh @end|ng |rom temp|e@edu  Fri Mar  1 04:12:02 2024
+From: rmh @end|ng |rom temp|e@edu (Richard M. Heiberger)
+Date: Fri, 1 Mar 2024 03:12:02 +0000
+Subject: [R] [External]  converting MATLAB -> R | element-wise operation
+In-Reply-To: <B07BE572-BFAA-4EC3-8D69-28AE94330FB5@temple.edu>
+References: <8ec0980a-1988-484d-bd30-6837f5467e1a@gmail.com>
+ <393E5DD9-BFA1-44E2-A0B3-F3FD1BB29729@dcn.davis.ca.us>
+ <297DC7D4-CD0A-4EE9-A733-BDF59B86A8E4@gmail.com>
+ <B07BE572-BFAA-4EC3-8D69-28AE94330FB5@temple.edu>
+Message-ID: <65420ED3-7098-46BF-9213-B349B210E6FE@temple.edu>
+
+I added two more rows
+
+library(microbenchmark)
+
+NN <- matrix(c(1, 2, 3, 4, 5, 6), nrow = 2, byrow = TRUE)  # Example matrix
+lambda <- c(2, 3, 4)  # Example vector
+colNN <- t(NN)
+matlam <- matrix(lambda, byrow=TRUE, nrow=2, ncol=3)
+
+microbenchmark(
+  sweep     = sweep(NN, 2, lambda, "/"),
+  transpose = t(t(NN)/lambda),
+  colNN     = colNN/lambda,
+  fullsize  = NN / matrix(lambda, byrow=TRUE, nrow=2, ncol=3),
+  rowlam  = NN / matlam
+)
+
+Unit: nanoseconds
+      expr   min    lq     mean  median      uq   max neval cld
+     sweep 12546 12792 13919.91 12997.0 13325.0 85608   100 a
+ transpose  1640  1763  1986.04  1947.5  2050.0  7462   100  b
+     colNN    82    82   161.13   123.0   123.0  3854   100   c
+  fullsize   738   820   932.34   881.5   963.5  2829   100  bc
+    rowlam    82   123   168.92   164.0   164.0   820   100   c
+
+reshaping the denominator to the correct size in advance is very helpful if you will be doing this division more than once.
+
+
+
+> On Feb 29, 2024, at 18:12, Richard M. Heiberger <rmh at temple.edu> wrote:
+>
+> I decided to do a direct comparison of transpose and sweep.
+>
+>
+> library(microbenchmark)
+>
+> NN <- matrix(c(1, 2, 3, 4, 5, 6), nrow = 2, byrow = TRUE)  # Example matrix
+> lambda <- c(2, 3, 4)  # Example vector
+> colNN <- t(NN)
+>
+> microbenchmark(
+>  sweep     = sweep(NN, 2, lambda, "/"),
+>  transpose = t(t(NN)/lambda),
+>  colNN     = colNN/lambda
+> )
+>
+>
+> Unit: nanoseconds
+>      expr   min    lq     mean median      uq   max neval cld
+>     sweep 13817 14145 15115.06  14350 14657.5 75932   100 a
+> transpose  1845  1927  2151.68   2132  2214.0  7093   100  b
+>     colNN    82   123   141.86    123   164.0   492   100   c
+>
+> Note that transpose is much faster than sweep because it is doing less work,
+> I believe essentially just changing the order of indexing.
+>
+> Using the natural sequencing for column-ordered matrices is much much faster.
+>
+>> On Feb 28, 2024, at 18:43, peter dalgaard <pdalgd at gmail.com> wrote:
+>>
+>>> rbind(1:3,4:6)/t(matrix(c(2,3,4), 3,2))
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ev@n@cooch @end|ng |rom gm@||@com  Fri Mar  1 02:40:00 2024
+From: ev@n@cooch @end|ng |rom gm@||@com (Evan Cooch)
+Date: Thu, 29 Feb 2024 20:40:00 -0500
+Subject: [R] [External]  converting MATLAB -> R | element-wise operation
+In-Reply-To: <B07BE572-BFAA-4EC3-8D69-28AE94330FB5@temple.edu>
+References: <8ec0980a-1988-484d-bd30-6837f5467e1a@gmail.com>
+ <393E5DD9-BFA1-44E2-A0B3-F3FD1BB29729@dcn.davis.ca.us>
+ <297DC7D4-CD0A-4EE9-A733-BDF59B86A8E4@gmail.com>
+ <B07BE572-BFAA-4EC3-8D69-28AE94330FB5@temple.edu>
+Message-ID: <cd30267e-a990-46b7-a158-8bc9a3e34232@gmail.com>
+
+Very interesting - thanks! Most of my problems are not limited by 
+compute speed, but its clear that for some sorts of compute-intensive 
+problems, sweep might be a limiting approach.
+
+On 2/29/2024 6:12 PM, Richard M. Heiberger wrote:
+> I decided to do a direct comparison of transpose and sweep.
+>
+>
+> library(microbenchmark)
+>
+> NN <- matrix(c(1, 2, 3, 4, 5, 6), nrow = 2, byrow = TRUE)  # Example matrix
+> lambda <- c(2, 3, 4)  # Example vector
+> colNN <- t(NN)
+>
+> microbenchmark(
+>    sweep     = sweep(NN, 2, lambda, "/"),
+>    transpose = t(t(NN)/lambda),
+>    colNN     = colNN/lambda
+> )
+>
+>
+> Unit: nanoseconds
+>        expr   min    lq     mean median      uq   max neval cld
+>       sweep 13817 14145 15115.06  14350 14657.5 75932   100 a
+>   transpose  1845  1927  2151.68   2132  2214.0  7093   100  b
+>       colNN    82   123   141.86    123   164.0   492   100   c
+>
+> Note that transpose is much faster than sweep because it is doing less work,
+> I believe essentially just changing the order of indexing.
+>
+> Using the natural sequencing for column-ordered matrices is much much faster.
+>
+>> On Feb 28, 2024, at 18:43, peter dalgaard<pdalgd at gmail.com>  wrote:
+>>
+>>> rbind(1:3,4:6)/t(matrix(c(2,3,4), 3,2))
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Fri Mar  1 09:49:19 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Fri, 1 Mar 2024 09:49:19 +0100
+Subject: [R] converting MATLAB -> R | element-wise operation
+In-Reply-To: <20240228174227.38c5a060@dep59159.uniwa.uwa.edu.au>
+References: <8ec0980a-1988-484d-bd30-6837f5467e1a@gmail.com>
+ <393E5DD9-BFA1-44E2-A0B3-F3FD1BB29729@dcn.davis.ca.us>
+ <20240228174227.38c5a060@dep59159.uniwa.uwa.edu.au>
+Message-ID: <26081.38543.928756.456074@stat.math.ethz.ch>
+
+>>>>> Berwin A Turlach 
+>>>>>     on Wed, 28 Feb 2024 17:42:27 +0800 writes:
+
+    > On Tue, 27 Feb 2024 13:51:25 -0800 Jeff Newmiller via
+    > R-help <r-help at r-project.org> wrote:
+
+    >> The fundamental data type in Matlab is a matrix... they
+    >> don't have vectors, they have Nx1 matrices and 1xM
+    >> matrices.
+
+    > Also known as column vectors and row vectors.  :)
+ 
+    >> Vectors don't have any concept of "row" vs. "column".
+
+    > They do in (numerical) linear algebra.  And MATLAB was
+    > written by numerical analysts for numerical analysts. :-)
+    > So they distinguish between row and column vectors.
+
+    > GAUSS also distinguishes between row and column vectors.
+
+There are *vectors* and they belong to a vector space and that's it.
+(and yes, arrays of a given rank and dimensions also are
+ elements of a vector space, and hence matrices are, and then
+ indeed, a 3x1 matrix and a 1x3 matrix are *not* members of the
+ same vector space -- even though the two vector spaces are
+ isomorphic to each other)
+
+The matlab induced --> applied linear algebra / math
+"column- and row-vectors"  have been convenient because then
+everything is a matrix (or scalar), and that fits well with a
+product called "matlab" which is short for "matrix lab(oratory)".
+BUT they are  mathematically confusing and therefore in my view
+very undesirable terminology.
+
+I'm very very strongly with Jeff that "the only" consistent
+language would be to call them 1-row matrix and 1-column matrix,
+because that's what they are, well defined and perfect within 
+the well defined math realm of linear algebra.
+
+Yes, matrix-vector calculus , scalar products, bilinear forms, ...
+can be generalized in such ways that 1-row matrices and 1-column
+matrices can be treated equivalently to vectors and vice versa
+.. and that is sometimes convenient. 
+
+Still, the "column-vector"  and "row-vector"  terms have
+lead to much confusion in my view,
+because really  Nx1  or  1xM  are dimensions of matrices and
+*not* of any vectors  ..
+
+
+    > R (and S) does not distinguish between row and column
+    > vectors, and is in this aspect quite unique among the
+    > groups of vector-oriented programming languages (AFAICT).
+
+I agree. And that's good -- because "vectors are vectors" aka
+"a rank-1 array is a rank-1 array is a rank-1 array" (Richard O'Keefe)
+
+    > But treating every vector as a column vector, together
+    > with the recycling rule, allows for the easy coding of the
+    > matrix/vector calculations that one (mostly) comes across
+    > in statistical computing.  For the rare occasion when this
+    > is not true the sweep() command is provided, typically
+    > remembered once one was bitten by the lack of distinction
+    > between row and column vectors. :)
+
+    > Cheers,
+    > 	Berwin
+
+Martin
+
+
+From |@go@g|ne @end|ng |rom @jd@e@  Fri Mar  1 12:36:46 2024
+From: |@go@g|ne @end|ng |rom @jd@e@ (=?UTF-8?Q?Iago_Gin=C3=A9_V=C3=A1zquez?=)
+Date: Fri, 1 Mar 2024 12:36:46 +0100
+Subject: [R] gsub issue with consecutive pattern finds
+Message-ID: <ce1383d4-8339-47a3-b56c-11c4759e905a@sjd.es>
+
+Hi all,
+
+I tested next command:
+
+gsub("([aeiouAEIOU])([aeiouAEIOU])", "\\1_\\2", "aerioue")
+
+with the following output:
+
+[1] "a_eri_ou_e"
+
+So, there are two consecutive vowels where an underscore is not added.
+
+May it be a bug? Is it expected (bug or not)? Is there any chance to get 
+what I want (an underscore between each pair of consecutive vowels)?
+
+
+Thank you!
+
+Best regards,
+
+Iago
+
+	[[alternative HTML version deleted]]
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Fri Mar  1 12:49:02 2024
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Fri, 1 Mar 2024 06:49:02 -0500
+Subject: [R] gsub issue with consecutive pattern finds
+In-Reply-To: <ce1383d4-8339-47a3-b56c-11c4759e905a@sjd.es>
+References: <ce1383d4-8339-47a3-b56c-11c4759e905a@sjd.es>
+Message-ID: <CADNULg-j9WNxR1CK6ajSY0jGGk-f+83Bhf2rLtV0PSBH3YTXuQ@mail.gmail.com>
+
+Hi Iago,
+
+
+This is not a bug. It is expected. Patterns may not overlap. However, there
+is a way to get the result you want using perl:
+
+```R
+gsub("([aeiouAEIOU])(?=[aeiouAEIOU])", "\\1_", "aerioue", perl = TRUE)
+```
+
+The specific change I made is called a positive lookahead, you can read
+more about it here:
+
+https://www.regular-expressions.info/lookaround.html
+
+It's a way to check for a piece of text without consuming it in the match.
+
+Also, since you don't care about character case, it might be more legible
+to add ignore.case = TRUE and remove the upper case characters:
+
+```R
+gsub("([aeiou])(?=[aeiou])", "\\1_", "aerioue", perl = TRUE, ignore.case =
+TRUE)
+
+## or
+
+gsub("(?i)([aeiou])(?=[aeiou])", "\\1_", "aerioue", perl = TRUE)
+```
+
+I hope this helps!
+
+
+On Fri, Mar 1, 2024, 06:37 Iago Gin? V?zquez <iago.gine at sjd.es> wrote:
+
+> Hi all,
+>
+> I tested next command:
+>
+> gsub("([aeiouAEIOU])([aeiouAEIOU])", "\\1_\\2", "aerioue")
+>
+> with the following output:
+>
+> [1] "a_eri_ou_e"
+>
+> So, there are two consecutive vowels where an underscore is not added.
+>
+> May it be a bug? Is it expected (bug or not)? Is there any chance to get
+> what I want (an underscore between each pair of consecutive vowels)?
+>
+>
+> Thank you!
+>
+> Best regards,
+>
+> Iago
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |@go@g|ne @end|ng |rom @jd@e@  Fri Mar  1 12:52:23 2024
+From: |@go@g|ne @end|ng |rom @jd@e@ (=?UTF-8?Q?Iago_Gin=C3=A9_V=C3=A1zquez?=)
+Date: Fri, 1 Mar 2024 12:52:23 +0100
+Subject: [R] gsub issue with consecutive pattern finds
+In-Reply-To: <CADNULg-j9WNxR1CK6ajSY0jGGk-f+83Bhf2rLtV0PSBH3YTXuQ@mail.gmail.com>
+References: <ce1383d4-8339-47a3-b56c-11c4759e905a@sjd.es>
+ <CADNULg-j9WNxR1CK6ajSY0jGGk-f+83Bhf2rLtV0PSBH3YTXuQ@mail.gmail.com>
+Message-ID: <ad6609e8-a49a-469c-9986-d9c043a5c339@sjd.es>
+
+Hi Iris,
+
+Thank you. Further, very nice solution.
+
+Best,
+
+Iago
+
+On 01/03/2024 12:49, Iris Simmons wrote:
+> Hi Iago,
+>
+>
+> This is not a bug. It is expected. Patterns may not overlap. However, there
+> is a way to get the result you want using perl:
+>
+> ```R
+> gsub("([aeiouAEIOU])(?=[aeiouAEIOU])", "\\1_", "aerioue", perl = TRUE)
+> ```
+>
+> The specific change I made is called a positive lookahead, you can read
+> more about it here:
+>
+> https://www.regular-expressions.info/lookaround.html
+>
+> It's a way to check for a piece of text without consuming it in the match.
+>
+> Also, since you don't care about character case, it might be more legible
+> to add ignore.case = TRUE and remove the upper case characters:
+>
+> ```R
+> gsub("([aeiou])(?=[aeiou])", "\\1_", "aerioue", perl = TRUE, ignore.case =
+> TRUE)
+>
+> ## or
+>
+> gsub("(?i)([aeiou])(?=[aeiou])", "\\1_", "aerioue", perl = TRUE)
+> ```
+>
+> I hope this helps!
+>
+>
+> On Fri, Mar 1, 2024, 06:37 Iago Gin? V?zquez<iago.gine at sjd.es>  wrote:
+>
+>> Hi all,
+>>
+>> I tested next command:
+>>
+>> gsub("([aeiouAEIOU])([aeiouAEIOU])", "\\1_\\2", "aerioue")
+>>
+>> with the following output:
+>>
+>> [1] "a_eri_ou_e"
+>>
+>> So, there are two consecutive vowels where an underscore is not added.
+>>
+>> May it be a bug? Is it expected (bug or not)? Is there any chance to get
+>> what I want (an underscore between each pair of consecutive vowels)?
+>>
+>>
+>> Thank you!
+>>
+>> Best regards,
+>>
+>> Iago
+>>
+>>          [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org  mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+	[[alternative HTML version deleted]]
+
+
+From btyner @end|ng |rom gm@||@com  Fri Mar  1 16:46:53 2024
+From: btyner @end|ng |rom gm@||@com (Benjamin Tyner)
+Date: Fri, 1 Mar 2024 10:46:53 -0500
+Subject: [R] installation: while running make,
+ unable to run pdflatex on 'NEWS.tex'
+Message-ID: <505bdcfd-4dbc-4f78-8b90-58dad3c478d9@gmail.com>
+
+
+A kind member of R-core suggested this is due to a misconfiguration on 
+my system, and to post it to the mailing list for troubleshooting.
+
+When trying to build R version 4.3.3, in at least two places during the 
+process it gives LaTeX errors of the form:
+
+(example 1)
+
+    you should 'make docs' now ...
+    make[1]: Entering directory '/home/btyner/R-4.3.3/doc'
+    creating doc/NEWS
+    creating doc/NEWS.pdf
+    Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet =
+    quiet, :
+    unable to run pdflatex on 'NEWS.tex'
+    LaTeX errors:
+    ! LaTeX Error: File `pdftexcmds.sty' not found.
+
+    Type X to quit or <RETURN> to proceed,
+    or enter new name. (Default extension: sty)
+
+    ! Emergency stop.
+    <read *>
+
+    l.108 RequirePackage{pdftexcmds}[2018/09/10]
+    ^^M
+    ! ==> Fatal error occurred, no output PDF file produced!
+    Calls: <Anonymous> -> texi2pdf -> texi2dvi
+    Execution halted
+    make[1]: /*/ [Makefile:74: NEWS.pdf] Error 1
+    make[1]: Leaving directory '/home/btyner/R-4.3.3/doc'
+    make: [Makefile:73: docs] Error 2 (ignored)
+
+(example 2)
+
+    make[1]: Entering directory '/home/btyner/R-4.3.3/src/library'
+    building/updating vignettes for package 'grid' ...
+    building/updating vignettes for package 'parallel' ...
+    building/updating vignettes for package 'utils' ...
+    building/updating vignettes for package 'stats' ...
+    processing 'reshape.Rnw'
+    Error: compiling TeX file 'reshape.tex' failed with message:
+    unable to run pdflatex on 'reshape.tex'
+    LaTeX errors:
+    ! LaTeX Error: File `pdftexcmds.sty' not found.
+
+    Type X to quit or <RETURN> to proceed,
+    or enter new name. (Default extension: sty)
+
+    ! Emergency stop.
+    <read *>
+
+    l.108 RequirePackage{pdftexcmds}[2018/09/10]
+    ^^M
+    ! ==> Fatal error occurred, no output PDF file produced!
+    Execution halted
+    make[1]: ** [Makefile:103: vignettes] Error 1
+    make[1]: Leaving directory '/home/btyner/R-4.3.3/src/library'
+    make: ** [Makefile:81: vignettes] Error 2
+
+here is my |pdflatex --version| info:
+
+    pdfTeX 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian)
+    kpathsea version 6.3.4/dev
+    Compiled with libpng 1.6.37; using libpng 1.6.37
+    Compiled with zlib 1.2.11; using zlib 1.2.11
+    Compiled with xpdf version 4.03
+
+my platform info:
+
+    Platform: x86_64-pc-linux-gnu (64-bit)
+    Running under: Ubuntu 22.04.4 LTS
+
+I installed from this file with corresponding md5sum
+
+    R-4.3.3.tar.xz 5602f5996107c346dba12a16e866d2e2
+
+The specific commands I ran which led to the error were:
+
+    wget https://cran.r-project.org/src/base/R-4/R-4.3.3.tar.xz
+    mkdir R433
+    tar xJf R-4.3.3.tar.xz
+    cd R-4.3.3
+    ./configure --prefix=/home/btyner/R433
+    make
+
+Happy to provide any additional information needed.
+
+
+From btyner @end|ng |rom gm@||@com  Fri Mar  1 16:54:08 2024
+From: btyner @end|ng |rom gm@||@com (Benjamin Tyner)
+Date: Fri, 1 Mar 2024 10:54:08 -0500
+Subject: [R] dput(..., file = stderr())
+Message-ID: <3b322636-1fce-45cf-bbd1-d5388664ae51@gmail.com>
+
+Curious to know if this warning is expected behavior, and if so, what is 
+the recommended way instead:
+
+     > dput(letters, file = stderr())
+    c("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l",
+    "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y",
+    "z")
+    Warning message:
+    In dput(letters, file = stderr()) : wrote too few characters
+
+(I ask because it doesn't happen when using file = stdout())
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Fri Mar  1 16:57:33 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Fri, 1 Mar 2024 07:57:33 -0800
+Subject: [R] gsub issue with consecutive pattern finds
+In-Reply-To: <ad6609e8-a49a-469c-9986-d9c043a5c339@sjd.es>
+References: <ce1383d4-8339-47a3-b56c-11c4759e905a@sjd.es>
+ <CADNULg-j9WNxR1CK6ajSY0jGGk-f+83Bhf2rLtV0PSBH3YTXuQ@mail.gmail.com>
+ <ad6609e8-a49a-469c-9986-d9c043a5c339@sjd.es>
+Message-ID: <CAGxFJbTXW5us+ARwMOWgJkQGSSc-SX0A8zn2zxR2bK8S8gAb5A@mail.gmail.com>
+
+Here's another *incorrect* way to do it -- incorrect because it will
+not always work, unlike Iris's correct solution. But it does not
+require PERL type matching. The idea: separate the two vowels in the
+regex by a character that you know cannot appear (if there is such)
+and match it optionally, e.g. with '*" repetition specifier. I used
+"?" for the optional character below (which must be escaped).
+
+>    gsub("([aeiouAEIOU])\\?*([aeiouAEIOU])", "\\1_\\2", "aerioue")
+[1] "a_eri_ou_e"
+
+Cheers,
+Bert
+
+
+On Fri, Mar 1, 2024 at 3:59?AM Iago Gin? V?zquez <iago.gine at sjd.es> wrote:
+>
+> Hi Iris,
+>
+> Thank you. Further, very nice solution.
+>
+> Best,
+>
+> Iago
+>
+> On 01/03/2024 12:49, Iris Simmons wrote:
+> > Hi Iago,
+> >
+> >
+> > This is not a bug. It is expected. Patterns may not overlap. However, there
+> > is a way to get the result you want using perl:
+> >
+> > ```R
+> > gsub("([aeiouAEIOU])(?=[aeiouAEIOU])", "\\1_", "aerioue", perl = TRUE)
+> > ```
+> >
+> > The specific change I made is called a positive lookahead, you can read
+> > more about it here:
+> >
+> > https://www.regular-expressions.info/lookaround.html
+> >
+> > It's a way to check for a piece of text without consuming it in the match.
+> >
+> > Also, since you don't care about character case, it might be more legible
+> > to add ignore.case = TRUE and remove the upper case characters:
+> >
+> > ```R
+> > gsub("([aeiou])(?=[aeiou])", "\\1_", "aerioue", perl = TRUE, ignore.case =
+> > TRUE)
+> >
+> > ## or
+> >
+> > gsub("(?i)([aeiou])(?=[aeiou])", "\\1_", "aerioue", perl = TRUE)
+> > ```
+> >
+> > I hope this helps!
+> >
+> >
+> > On Fri, Mar 1, 2024, 06:37 Iago Gin? V?zquez<iago.gine at sjd.es>  wrote:
+> >
+> >> Hi all,
+> >>
+> >> I tested next command:
+> >>
+> >> gsub("([aeiouAEIOU])([aeiouAEIOU])", "\\1_\\2", "aerioue")
+> >>
+> >> with the following output:
+> >>
+> >> [1] "a_eri_ou_e"
+> >>
+> >> So, there are two consecutive vowels where an underscore is not added.
+> >>
+> >> May it be a bug? Is it expected (bug or not)? Is there any chance to get
+> >> what I want (an underscore between each pair of consecutive vowels)?
+> >>
+> >>
+> >> Thank you!
+> >>
+> >> Best regards,
+> >>
+> >> Iago
+> >>
+> >>          [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org  mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide
+> >> http://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+> >>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Fri Mar  1 17:00:01 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Fri, 1 Mar 2024 08:00:01 -0800
+Subject: [R] gsub issue with consecutive pattern finds
+In-Reply-To: <CAGxFJbTXW5us+ARwMOWgJkQGSSc-SX0A8zn2zxR2bK8S8gAb5A@mail.gmail.com>
+References: <ce1383d4-8339-47a3-b56c-11c4759e905a@sjd.es>
+ <CADNULg-j9WNxR1CK6ajSY0jGGk-f+83Bhf2rLtV0PSBH3YTXuQ@mail.gmail.com>
+ <ad6609e8-a49a-469c-9986-d9c043a5c339@sjd.es>
+ <CAGxFJbTXW5us+ARwMOWgJkQGSSc-SX0A8zn2zxR2bK8S8gAb5A@mail.gmail.com>
+Message-ID: <CAGxFJbQN3=CNMY9TfWaNikG+=4=Da5QK088XBrJj3L6AkWcDFw@mail.gmail.com>
+
+Oh, wait a second. I misread your original post. Please ignore my
+truly incorrect suggestion.
+
+-- Bert
+
+On Fri, Mar 1, 2024 at 7:57?AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> Here's another *incorrect* way to do it -- incorrect because it will
+> not always work, unlike Iris's correct solution. But it does not
+> require PERL type matching. The idea: separate the two vowels in the
+> regex by a character that you know cannot appear (if there is such)
+> and match it optionally, e.g. with '*" repetition specifier. I used
+> "?" for the optional character below (which must be escaped).
+>
+> >    gsub("([aeiouAEIOU])\\?*([aeiouAEIOU])", "\\1_\\2", "aerioue")
+> [1] "a_eri_ou_e"
+>
+> Cheers,
+> Bert
+>
+>
+> On Fri, Mar 1, 2024 at 3:59?AM Iago Gin? V?zquez <iago.gine at sjd.es> wrote:
+> >
+> > Hi Iris,
+> >
+> > Thank you. Further, very nice solution.
+> >
+> > Best,
+> >
+> > Iago
+> >
+> > On 01/03/2024 12:49, Iris Simmons wrote:
+> > > Hi Iago,
+> > >
+> > >
+> > > This is not a bug. It is expected. Patterns may not overlap. However, there
+> > > is a way to get the result you want using perl:
+> > >
+> > > ```R
+> > > gsub("([aeiouAEIOU])(?=[aeiouAEIOU])", "\\1_", "aerioue", perl = TRUE)
+> > > ```
+> > >
+> > > The specific change I made is called a positive lookahead, you can read
+> > > more about it here:
+> > >
+> > > https://www.regular-expressions.info/lookaround.html
+> > >
+> > > It's a way to check for a piece of text without consuming it in the match.
+> > >
+> > > Also, since you don't care about character case, it might be more legible
+> > > to add ignore.case = TRUE and remove the upper case characters:
+> > >
+> > > ```R
+> > > gsub("([aeiou])(?=[aeiou])", "\\1_", "aerioue", perl = TRUE, ignore.case =
+> > > TRUE)
+> > >
+> > > ## or
+> > >
+> > > gsub("(?i)([aeiou])(?=[aeiou])", "\\1_", "aerioue", perl = TRUE)
+> > > ```
+> > >
+> > > I hope this helps!
+> > >
+> > >
+> > > On Fri, Mar 1, 2024, 06:37 Iago Gin? V?zquez<iago.gine at sjd.es>  wrote:
+> > >
+> > >> Hi all,
+> > >>
+> > >> I tested next command:
+> > >>
+> > >> gsub("([aeiouAEIOU])([aeiouAEIOU])", "\\1_\\2", "aerioue")
+> > >>
+> > >> with the following output:
+> > >>
+> > >> [1] "a_eri_ou_e"
+> > >>
+> > >> So, there are two consecutive vowels where an underscore is not added.
+> > >>
+> > >> May it be a bug? Is it expected (bug or not)? Is there any chance to get
+> > >> what I want (an underscore between each pair of consecutive vowels)?
+> > >>
+> > >>
+> > >> Thank you!
+> > >>
+> > >> Best regards,
+> > >>
+> > >> Iago
+> > >>
+> > >>          [[alternative HTML version deleted]]
+> > >>
+> > >> ______________________________________________
+> > >> R-help at r-project.org  mailing list -- To UNSUBSCRIBE and more, see
+> > >> https://stat.ethz.ch/mailman/listinfo/r-help
+> > >> PLEASE do read the posting guide
+> > >> http://www.R-project.org/posting-guide.html
+> > >> and provide commented, minimal, self-contained, reproducible code.
+> > >>
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+
+From rmh @end|ng |rom temp|e@edu  Fri Mar  1 17:10:53 2024
+From: rmh @end|ng |rom temp|e@edu (Richard M. Heiberger)
+Date: Fri, 1 Mar 2024 16:10:53 +0000
+Subject: [R] [External]  dput(..., file = stderr())
+In-Reply-To: <3b322636-1fce-45cf-bbd1-d5388664ae51@gmail.com>
+References: <3b322636-1fce-45cf-bbd1-d5388664ae51@gmail.com>
+Message-ID: <01A7EDC4-079C-438D-AC0F-90B4A52216BA@temple.edu>
+
+I see the same thing in a fresh R session
+
+> dput(letters, file = stderr())
+c("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", 
+"m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", 
+"z")
+Warning message:
+In dput(letters, file = stderr()) : wrote too few characters
+> dput(letters, file = stdout())
+c("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", 
+"m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", 
+"z")
+> version
+               _                                          
+platform       aarch64-apple-darwin20                     
+arch           aarch64                                    
+os             darwin20                                   
+system         aarch64, darwin20                          
+status         Patched                                    
+major          4                                          
+minor          3.2                                        
+year           2024                                       
+month          01                                         
+day            23                                         
+svn rev        85822                                      
+language       R                                          
+version.string R version 4.3.2 Patched (2024-01-23 r85822)
+nickname       Eye Holes                                  
+> 
+
+
+
+> On Mar 1, 2024, at 10:54, Benjamin Tyner <btyner at gmail.com> wrote:
+> 
+> dput(letters, file = stderr())
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Mar  1 19:00:10 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 1 Mar 2024 21:00:10 +0300
+Subject: [R] dput(..., file = stderr())
+In-Reply-To: <3b322636-1fce-45cf-bbd1-d5388664ae51@gmail.com>
+References: <3b322636-1fce-45cf-bbd1-d5388664ae51@gmail.com>
+Message-ID: <20240301210010.2a970745@Tarkus>
+
+? Fri, 1 Mar 2024 10:54:08 -0500
+Benjamin Tyner <btyner at gmail.com> ?????:
+
+>      > dput(letters, file = stderr())  
+>     c("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l",
+>     "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y",
+>     "z")
+>     Warning message:
+>     In dput(letters, file = stderr()) : wrote too few characters
+
+Sounds like a bug.
+
+This is where the warning is produced:
+
+    int res = Rconn_printf(con, "%s\n", CHAR(STRING_ELT(tval, i)));
+    if(!havewarned &&
+       res < strlen(CHAR(STRING_ELT(tval, i))) + 1) {
+	warning(_("wrote too few characters"));
+	havewarned = TRUE;
+    }
+
+At this point, `res` is 0, and CHAR(STRING_ELT(tval, i)) is what you'd
+expect:
+
+(gdb) x /s (void*)(STRING_ELT(tval, i))+48
+0x5555561bf0a8: "c(\"a\", \"b\", \"c\", \"d\", \"e\", \"f\", \"g\",
+\"h\", \"i\", \"j\", \"k\", \"l\", "
+
+`res` is 0 because that's what (con->vfprintf)(...) returns:
+
+2813    static int stderr_vfprintf(Rconnection con, const char *format, va_list ap)
+2814    {
+2815        REvprintf(format, ap);
+2816        return 0;
+2817    }
+
+Why doesn't it warn for stdout()? Doesn't stdout_vfprintf(...) behave
+the same? That's because stdout() (connection #1) is special for dput(),
+and instead of going through the connection system, it goes straight for
+Rprintf():
+
+426         else { // ifile == 1 : "Stdout"
+427             for (int i = 0; i < LENGTH(tval); i++)
+428                 Rprintf("%s\n", CHAR(STRING_ELT(tval, i)));
+429         }
+
+Not sure what the right fix is. There may be code depending on
+(con->vfprintf)(...) returning 0.
+
+-- 
+Best regards,
+Ivan
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Fri Mar  1 23:43:36 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Fri, 01 Mar 2024 14:43:36 -0800
+Subject: [R] installation: while running make,
+ unable to run pdflatex on 'NEWS.tex'
+In-Reply-To: <505bdcfd-4dbc-4f78-8b90-58dad3c478d9@gmail.com>
+References: <505bdcfd-4dbc-4f78-8b90-58dad3c478d9@gmail.com>
+Message-ID: <CBB5F436-DFF9-49FE-BF57-658B15F75940@dcn.davis.ca.us>
+
+This really is all LaTeX errors, not R errors. Both examples complain that pdftexcmds.sty is not installed. Most "sty" files are in LaTeX packages. Each LaTeX distribution has its own way to install packages ... but the difficulty is usually on the same order of difficulty as installing R packages from CRAN... that is, pretty easy. But you need to read about _your_ TeX system for details. I use Google to figure out which package has the given file in it... it is usually the same as whatever comes before ".sty", but not always.
+
+On March 1, 2024 7:46:53 AM PST, Benjamin Tyner <btyner at gmail.com> wrote:
+>
+>A kind member of R-core suggested this is due to a misconfiguration on my system, and to post it to the mailing list for troubleshooting.
+>
+>When trying to build R version 4.3.3, in at least two places during the process it gives LaTeX errors of the form:
+>
+>(example 1)
+>
+>   you should 'make docs' now ...
+>   make[1]: Entering directory '/home/btyner/R-4.3.3/doc'
+>   creating doc/NEWS
+>   creating doc/NEWS.pdf
+>   Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet =
+>   quiet, :
+>   unable to run pdflatex on 'NEWS.tex'
+>   LaTeX errors:
+>   ! LaTeX Error: File `pdftexcmds.sty' not found.
+>
+>   Type X to quit or <RETURN> to proceed,
+>   or enter new name. (Default extension: sty)
+>
+>   ! Emergency stop.
+>   <read *>
+>
+>   l.108 RequirePackage{pdftexcmds}[2018/09/10]
+>   ^^M
+>   ! ==> Fatal error occurred, no output PDF file produced!
+>   Calls: <Anonymous> -> texi2pdf -> texi2dvi
+>   Execution halted
+>   make[1]: /*/ [Makefile:74: NEWS.pdf] Error 1
+>   make[1]: Leaving directory '/home/btyner/R-4.3.3/doc'
+>   make: [Makefile:73: docs] Error 2 (ignored)
+>
+>(example 2)
+>
+>   make[1]: Entering directory '/home/btyner/R-4.3.3/src/library'
+>   building/updating vignettes for package 'grid' ...
+>   building/updating vignettes for package 'parallel' ...
+>   building/updating vignettes for package 'utils' ...
+>   building/updating vignettes for package 'stats' ...
+>   processing 'reshape.Rnw'
+>   Error: compiling TeX file 'reshape.tex' failed with message:
+>   unable to run pdflatex on 'reshape.tex'
+>   LaTeX errors:
+>   ! LaTeX Error: File `pdftexcmds.sty' not found.
+>
+>   Type X to quit or <RETURN> to proceed,
+>   or enter new name. (Default extension: sty)
+>
+>   ! Emergency stop.
+>   <read *>
+>
+>   l.108 RequirePackage{pdftexcmds}[2018/09/10]
+>   ^^M
+>   ! ==> Fatal error occurred, no output PDF file produced!
+>   Execution halted
+>   make[1]: ** [Makefile:103: vignettes] Error 1
+>   make[1]: Leaving directory '/home/btyner/R-4.3.3/src/library'
+>   make: ** [Makefile:81: vignettes] Error 2
+>
+>here is my |pdflatex --version| info:
+>
+>   pdfTeX 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian)
+>   kpathsea version 6.3.4/dev
+>   Compiled with libpng 1.6.37; using libpng 1.6.37
+>   Compiled with zlib 1.2.11; using zlib 1.2.11
+>   Compiled with xpdf version 4.03
+>
+>my platform info:
+>
+>   Platform: x86_64-pc-linux-gnu (64-bit)
+>   Running under: Ubuntu 22.04.4 LTS
+>
+>I installed from this file with corresponding md5sum
+>
+>   R-4.3.3.tar.xz 5602f5996107c346dba12a16e866d2e2
+>
+>The specific commands I ran which led to the error were:
+>
+>   wget https://cran.r-project.org/src/base/R-4/R-4.3.3.tar.xz
+>   mkdir R433
+>   tar xJf R-4.3.3.tar.xz
+>   cd R-4.3.3
+>   ./configure --prefix=/home/btyner/R433
+>   make
+>
+>Happy to provide any additional information needed.
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
