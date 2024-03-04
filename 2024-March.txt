@@ -1074,3 +1074,755 @@ On March 1, 2024 7:46:53 AM PST, Benjamin Tyner <btyner at gmail.com> wrote:
 Sent from my phone. Please excuse my brevity.
 
 
+From |kry|ov @end|ng |rom d|@root@org  Sat Mar  2 08:42:28 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sat, 2 Mar 2024 10:42:28 +0300
+Subject: [R] installation: while running make,
+ unable to run pdflatex on 'NEWS.tex'
+In-Reply-To: <505bdcfd-4dbc-4f78-8b90-58dad3c478d9@gmail.com>
+References: <505bdcfd-4dbc-4f78-8b90-58dad3c478d9@gmail.com>
+Message-ID: <20240302104228.470cf687@Tarkus>
+
+? Fri, 1 Mar 2024 10:46:53 -0500
+Benjamin Tyner <btyner at gmail.com> ?????:
+
+> my platform info:
+> 
+>     Platform: x86_64-pc-linux-gnu (64-bit)
+>     Running under: Ubuntu 22.04.4 LTS
+
+Quick things first: have you installed all the build-dependencies? apt
+build-dep r-base (maybe with --install-suggests? haven't tried that in
+a while) should do that. In particular, the build dependencies include
+texlive-fonts-extra and texlive-latex-extra. That's a lot of packages,
+but some of them are required to compile LaTeX documents produced by R.
+
+>     you should 'make docs' now ...
+>     make[1]: Entering directory '/home/btyner/R-4.3.3/doc'
+>     creating doc/NEWS
+>     creating doc/NEWS.pdf
+>     Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet =
+>     quiet, :
+>     unable to run pdflatex on 'NEWS.tex'
+>     LaTeX errors:
+>     ! LaTeX Error: File `pdftexcmds.sty' not found.
+
+Can you compile a minimal LaTeX document? Something like:
+
+\documentclass{article}
+\begin{document}
+\[ \mathbf{y} = \mathbf{X} \beta \]
+\end{document}
+
+Does tools::texi2pdf('THISFILE.tex') fail with a similar error message?
+
+-- 
+Best regards,
+Ivan
+
+
+From r@oknz @end|ng |rom gm@||@com  Sat Mar  2 10:02:13 2024
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Sat, 2 Mar 2024 22:02:13 +1300
+Subject: [R] Initializing vector and matrices
+In-Reply-To: <CH3PR22MB4514525EE09B576456BB56B7CF5F2@CH3PR22MB4514.namprd22.prod.outlook.com>
+References: <656696ba-0785-4068-b7a1-8a751b0ed7d9@ntu.edu.tw>
+ <CABcYAdJoxtVyngjG6g0qTFd3F9O1P+ZKGJGCOcK16bQ9NV2dSg@mail.gmail.com>
+ <CH3PR22MB4514525EE09B576456BB56B7CF5F2@CH3PR22MB4514.namprd22.prod.outlook.com>
+Message-ID: <CABcYAdKKbPXy4FoPA=H2k8KY1yhB2bCJuv5xJg+yvFe4WdD73w@mail.gmail.com>
+
+The matrix equivalent of
+  x <- ...
+  v <- ...
+  x[length(x)+1] <- v
+is
+  m <- ...
+  r <- ...
+  m <- rbind(m, r)
+or
+  m <- ...
+  k <- ...
+  m <- cbind(m, c)
+
+A vector or matrix so constructed never has "holes" in it.
+It's better to think of CONSTRUCTING vectors and matrices rather than
+INITIALISING them,
+because always being fully defined is important.
+
+It would be really really helpful to have a clearer idea of what you
+are trying to do.
+
+On Fri, 1 Mar 2024 at 03:31, Ebert,Timothy Aaron <tebert at ufl.edu> wrote:
+>
+> You could declare a matrix much larger than you intend to use. This works with a few megabytes of data. It is not very efficient, so scaling up may become a problem.
+> m22 <- matrix(NA, 1:600000, ncol=6)
+>
+> It does not work to add a new column to the matrix, as in you get an error if you try m22[ , 7] but convert to data frame and add a column
+>
+> m23 <- data.frame(m22)
+> m23$x7 <- 12
+>
+> The only penalty that I know of to having unused space in a matrix is the amount of memory it takes. One side effect is that your program may have a mistake that you would normally catch with a subscript out of bounds error but with the extra space it now runs without errors.
+>
+> Tim
+>
+>
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Richard O'Keefe
+> Sent: Thursday, February 29, 2024 5:29 AM
+> To: Steven Yen <styen at ntu.edu.tw>
+> Cc: R-help Mailing List <r-help at r-project.org>
+> Subject: Re: [R] Initializing vector and matrices
+>
+> [External Email]
+>
+> x <- numeric(0)
+> for (...) {
+>     x[length(x)+1] <- ...
+> }
+> works.
+> You can build a matrix by building a vector one element at a time this way, and then reshaping it at the end.  That only works if you don't need it to be a matrix at all times.
+> Another approach is to build a list of rows.  It's not a matrix, but a list of rows can be a *ragged* matrix with rows of varying length.
+>
+> On Wed, 28 Feb 2024 at 21:57, Steven Yen <styen at ntu.edu.tw> wrote:
+> >
+> > Is there as way to initialize a vector (matrix) with an unknown length
+> > (dimension)? NULL does not seem to work. The lines below work with a
+> > vector of length 4 and a matrix of 4 x 4. What if I do not know
+> > initially the length/dimension of the vector/matrix?
+> >
+> > All I want is to add up (accumulate)  the vector and matrix as I go
+> > through the loop.
+> >
+> > Or, are there other ways to accumulate such vectors and matrices?
+> >
+> >  > x<-rep(0,4)  # this works but I like to leave the length open  >
+> > for (i in 1:3){
+> > +  x1<-1:4
+> > +  x<-x+x1
+> > + }
+> >  > x
+> > [1]  3  6  9 12
+> >
+> >  > y = 0*matrix(1:16, nrow = 4, ncol = 4); # this works but I like to
+> > leave the dimension open
+> >       [,1] [,2] [,3] [,4]
+> > [1,]    0    0    0    0
+> > [2,]    0    0    0    0
+> > [3,]    0    0    0    0
+> > [4,]    0    0    0    0
+> >  > for (i in 1:3){
+> > +   y1<-matrix(17:32, nrow = 4, ncol = 4)
+> > +   y<-y+y1
+> > + }
+> >  > y
+> >       [,1] [,2] [,3] [,4]
+> > [1,]   51   63   75   87
+> > [2,]   54   66   78   90
+> > [3,]   57   69   81   93
+> > [4,]   60   72   84   96
+> >  >
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat/
+> > .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C02%7Ctebert%40ufl.edu
+> > %7Cdbccaccf29674b10b17308dc39114d38%7C0d4da0f84a314d76ace60a62331e1b84
+> > %7C0%7C0%7C638447993707432549%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAw
+> > MDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=
+> > PtWjcDOnwO7PArVOSdgYbpz8ksjDPK%2Bn9ySyhwQC0gE%3D&reserved=0
+> > PLEASE do read the posting guide
+> > http://www.r/
+> > -project.org%2Fposting-guide.html&data=05%7C02%7Ctebert%40ufl.edu%7Cdb
+> > ccaccf29674b10b17308dc39114d38%7C0d4da0f84a314d76ace60a62331e1b84%7C0%
+> > 7C0%7C638447993707438911%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiL
+> > CJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=Igb16
+> > CBYgG21HLEDH4I4gfjjFBa3KjDFK8yEZUmBo8s%3D&reserved=0
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From r@oknz @end|ng |rom gm@||@com  Sat Mar  2 10:39:28 2024
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Sat, 2 Mar 2024 22:39:28 +1300
+Subject: [R] installation: while running make,
+ unable to run pdflatex on 'NEWS.tex'
+In-Reply-To: <505bdcfd-4dbc-4f78-8b90-58dad3c478d9@gmail.com>
+References: <505bdcfd-4dbc-4f78-8b90-58dad3c478d9@gmail.com>
+Message-ID: <CABcYAdL6hT3=iX1QHkdN7S6AMpGBctym1jSh52i8WpwT8PMTPg@mail.gmail.com>
+
+On my system, pdftexcmds.sty can be found in
+/usr/share/texlive/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty
+A quick poking around with 'apt' and 'dpkg-query -L' told me that this
+comes from the
+texlive-latex-recommended
+Ubuntu package.  So on my system, if I didn't already have this,
+sudo apt install texlive-latex-recommended
+should fix the problem.
+
+On Sat, 2 Mar 2024 at 04:47, Benjamin Tyner <btyner at gmail.com> wrote:
+>
+>
+> A kind member of R-core suggested this is due to a misconfiguration on
+> my system, and to post it to the mailing list for troubleshooting.
+>
+> When trying to build R version 4.3.3, in at least two places during the
+> process it gives LaTeX errors of the form:
+>
+> (example 1)
+>
+>     you should 'make docs' now ...
+>     make[1]: Entering directory '/home/btyner/R-4.3.3/doc'
+>     creating doc/NEWS
+>     creating doc/NEWS.pdf
+>     Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet =
+>     quiet, :
+>     unable to run pdflatex on 'NEWS.tex'
+>     LaTeX errors:
+>     ! LaTeX Error: File `pdftexcmds.sty' not found.
+>
+>     Type X to quit or <RETURN> to proceed,
+>     or enter new name. (Default extension: sty)
+>
+>     ! Emergency stop.
+>     <read *>
+>
+>     l.108 RequirePackage{pdftexcmds}[2018/09/10]
+>     ^^M
+>     ! ==> Fatal error occurred, no output PDF file produced!
+>     Calls: <Anonymous> -> texi2pdf -> texi2dvi
+>     Execution halted
+>     make[1]: /*/ [Makefile:74: NEWS.pdf] Error 1
+>     make[1]: Leaving directory '/home/btyner/R-4.3.3/doc'
+>     make: [Makefile:73: docs] Error 2 (ignored)
+>
+> (example 2)
+>
+>     make[1]: Entering directory '/home/btyner/R-4.3.3/src/library'
+>     building/updating vignettes for package 'grid' ...
+>     building/updating vignettes for package 'parallel' ...
+>     building/updating vignettes for package 'utils' ...
+>     building/updating vignettes for package 'stats' ...
+>     processing 'reshape.Rnw'
+>     Error: compiling TeX file 'reshape.tex' failed with message:
+>     unable to run pdflatex on 'reshape.tex'
+>     LaTeX errors:
+>     ! LaTeX Error: File `pdftexcmds.sty' not found.
+>
+>     Type X to quit or <RETURN> to proceed,
+>     or enter new name. (Default extension: sty)
+>
+>     ! Emergency stop.
+>     <read *>
+>
+>     l.108 RequirePackage{pdftexcmds}[2018/09/10]
+>     ^^M
+>     ! ==> Fatal error occurred, no output PDF file produced!
+>     Execution halted
+>     make[1]: ** [Makefile:103: vignettes] Error 1
+>     make[1]: Leaving directory '/home/btyner/R-4.3.3/src/library'
+>     make: ** [Makefile:81: vignettes] Error 2
+>
+> here is my |pdflatex --version| info:
+>
+>     pdfTeX 3.141592653-2.6-1.40.22 (TeX Live 2022/dev/Debian)
+>     kpathsea version 6.3.4/dev
+>     Compiled with libpng 1.6.37; using libpng 1.6.37
+>     Compiled with zlib 1.2.11; using zlib 1.2.11
+>     Compiled with xpdf version 4.03
+>
+> my platform info:
+>
+>     Platform: x86_64-pc-linux-gnu (64-bit)
+>     Running under: Ubuntu 22.04.4 LTS
+>
+> I installed from this file with corresponding md5sum
+>
+>     R-4.3.3.tar.xz 5602f5996107c346dba12a16e866d2e2
+>
+> The specific commands I ran which led to the error were:
+>
+>     wget https://cran.r-project.org/src/base/R-4/R-4.3.3.tar.xz
+>     mkdir R433
+>     tar xJf R-4.3.3.tar.xz
+>     cd R-4.3.3
+>     ./configure --prefix=/home/btyner/R433
+>     make
+>
+> Happy to provide any additional information needed.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From btyner @end|ng |rom gm@||@com  Sat Mar  2 15:06:21 2024
+From: btyner @end|ng |rom gm@||@com (Benjamin Tyner)
+Date: Sat, 2 Mar 2024 09:06:21 -0500
+Subject: [R] installation: while running make,
+ unable to run pdflatex on 'NEWS.tex'
+In-Reply-To: <20240302104228.470cf687@Tarkus>
+References: <505bdcfd-4dbc-4f78-8b90-58dad3c478d9@gmail.com>
+ <20240302104228.470cf687@Tarkus>
+Message-ID: <7e808784-0ecf-422e-b21d-03c5e4b8ec73@gmail.com>
+
+Thank you Ivan and Richard...
+
+Short version: a simple "sudo apt install texlive" fixed it.
+
+Longer version (attempt at a post-mortem): previously (back on 
+2023-11-05) on this same system I built R version 4.3.2; and 
+/home/btyner/R432/lib/R/doc/NEWS.pdf does exist (and is a valid pdf with 
+48 pages) from that same install. Likewise before that on 2023-07-02 I 
+built R version 4.3.1 and the NEWS.pdf is fine (47 pages) there too.
+
+Still not sure how it happened that my system lost track of the 
+necessary texlive add-ons at some point between 2023-11-05 and now, but 
+running "sudo apt install texlive" made it clear that 
+texlive-latex-recommended was indeed one of the culprits as suggested by 
+Richard.
+
+    The following additional packages will be installed:
+     ? fonts-texgyre tex-gyre texlive-fonts-recommended
+    texlive-latex-recommended tipa
+    Suggested packages:
+     ? texlive-fonts-recommended-doc texlive-latex-recommended-doc
+    texlive-luatex texlive-pstricks tipa-doc
+    The following NEW packages will be installed:
+     ? fonts-texgyre tex-gyre texlive texlive-fonts-recommended
+    texlive-latex-recommended tipa
+
+In an attempt to figure out what might have happened after 2023-11-05,
+
+    zgrep texlive /var/log/dpkg.log.*.gz
+
+revealed some texlive related activity back on 2023-11-23 but no 
+indication that anything was removed...
+
+    /var/log/dpkg.log.4.gz:2023-11-23 11:02:55 install
+    texlive-binaries:amd64 <none> 2021.20210626.59705-1ubuntu0.1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:02:55 status half-installed
+    texlive-binaries:amd64 2021.20210626.59705-1ubuntu0.1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:02:56 status unpacked
+    texlive-binaries:amd64 2021.20210626.59705-1ubuntu0.1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:02:56 install texlive-base:all
+    <none> 2021.20220204-1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:02:56 status half-installed
+    texlive-base:all 2021.20220204-1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:03:02 status unpacked
+    texlive-base:all 2021.20220204-1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:03:02 install
+    texlive-latex-base:all <none> 2021.20220204-1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:03:02 status half-installed
+    texlive-latex-base:all 2021.20220204-1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:03:04 status unpacked
+    texlive-latex-base:all 2021.20220204-1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:03:05 configure
+    texlive-binaries:amd64 2021.20210626.59705-1ubuntu0.1 <none>
+    /var/log/dpkg.log.4.gz:2023-11-23 11:03:05 status unpacked
+    texlive-binaries:amd64 2021.20210626.59705-1ubuntu0.1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:03:05 status half-configured
+    texlive-binaries:amd64 2021.20210626.59705-1ubuntu0.1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:03:05 status installed
+    texlive-binaries:amd64 2021.20210626.59705-1ubuntu0.1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:03:05 configure
+    texlive-base:all 2021.20220204-1 <none>
+    /var/log/dpkg.log.4.gz:2023-11-23 11:03:05 status unpacked
+    texlive-base:all 2021.20220204-1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:03:05 status half-configured
+    texlive-base:all 2021.20220204-1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:03:09 status installed
+    texlive-base:all 2021.20220204-1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:03:09 configure
+    texlive-latex-base:all 2021.20220204-1 <none>
+    /var/log/dpkg.log.4.gz:2023-11-23 11:03:09 status unpacked
+    texlive-latex-base:all 2021.20220204-1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:03:09 status half-configured
+    texlive-latex-base:all 2021.20220204-1
+    /var/log/dpkg.log.4.gz:2023-11-23 11:03:09 status installed
+    texlive-latex-base:all 2021.20220204-1
+
+One more thing:
+
+    HISTTIMEFORMAT="%Y-%m-%d %T " history | grep texlive
+
+revealed that I ran "sudo apt install texlive-latex-base" back on 
+2024-02-19, so maybe that had something to do with it. Sadly the shell 
+history does not exist prior to that date.
+
+
+On 3/2/24 02:42, Ivan Krylov wrote:
+> ? Fri, 1 Mar 2024 10:46:53 -0500
+> Benjamin Tyner <btyner at gmail.com> ?????:
+>
+>> my platform info:
+>>
+>>      Platform: x86_64-pc-linux-gnu (64-bit)
+>>      Running under: Ubuntu 22.04.4 LTS
+> Quick things first: have you installed all the build-dependencies? apt
+> build-dep r-base (maybe with --install-suggests? haven't tried that in
+> a while) should do that. In particular, the build dependencies include
+> texlive-fonts-extra and texlive-latex-extra. That's a lot of packages,
+> but some of them are required to compile LaTeX documents produced by R.
+>
+>>      you should 'make docs' now ...
+>>      make[1]: Entering directory '/home/btyner/R-4.3.3/doc'
+>>      creating doc/NEWS
+>>      creating doc/NEWS.pdf
+>>      Error in texi2dvi(file = file, pdf = TRUE, clean = clean, quiet =
+>>      quiet, :
+>>      unable to run pdflatex on 'NEWS.tex'
+>>      LaTeX errors:
+>>      ! LaTeX Error: File `pdftexcmds.sty' not found.
+> Can you compile a minimal LaTeX document? Something like:
+>
+> \documentclass{article}
+> \begin{document}
+> \[ \mathbf{y} = \mathbf{X} \beta \]
+> \end{document}
+>
+> Does tools::texi2pdf('THISFILE.tex') fail with a similar error message?
+>
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Mar  2 18:53:41 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 2 Mar 2024 09:53:41 -0800
+Subject: [R] Initializing vector and matrices
+In-Reply-To: <CABcYAdKKbPXy4FoPA=H2k8KY1yhB2bCJuv5xJg+yvFe4WdD73w@mail.gmail.com>
+References: <656696ba-0785-4068-b7a1-8a751b0ed7d9@ntu.edu.tw>
+ <CABcYAdJoxtVyngjG6g0qTFd3F9O1P+ZKGJGCOcK16bQ9NV2dSg@mail.gmail.com>
+ <CH3PR22MB4514525EE09B576456BB56B7CF5F2@CH3PR22MB4514.namprd22.prod.outlook.com>
+ <CABcYAdKKbPXy4FoPA=H2k8KY1yhB2bCJuv5xJg+yvFe4WdD73w@mail.gmail.com>
+Message-ID: <CAGxFJbQq9XhkviMEmXmTjfvXtajFyO1Q+SDWojqonWj0=gAj7g@mail.gmail.com>
+
+"It would be really really helpful to have a clearer idea of what you
+are trying to do."
+
+Amen!
+
+But in R, "constructing" objects by extending them piece by piece is
+generally very inefficient (e.g.
+https://r-craft.org/growing-objects-and-loop-memory-pre-allocation/),
+although sometimes?/often? unavoidable (hence the relevance of your
+comment above). R generally prefers to take a "whole object" point of
+view ( see R books by Chambers, et. al.) and provides code for basic
+operations like vector/matrix, etc. construction to do so. When this
+is not possible, I suspect "optimal" efficient strategies for
+allocating space to build objects gets you into the weeds of how R
+works.
+
+Cheers,
+Bert
+
+
+
+
+On Sat, Mar 2, 2024 at 1:02?AM Richard O'Keefe <raoknz at gmail.com> wrote:
+>
+> The matrix equivalent of
+>   x <- ...
+>   v <- ...
+>   x[length(x)+1] <- v
+> is
+>   m <- ...
+>   r <- ...
+>   m <- rbind(m, r)
+> or
+>   m <- ...
+>   k <- ...
+>   m <- cbind(m, c)
+>
+> A vector or matrix so constructed never has "holes" in it.
+> It's better to think of CONSTRUCTING vectors and matrices rather than
+> INITIALISING them,
+> because always being fully defined is important.
+>
+> It would be really really helpful to have a clearer idea of what you
+> are trying to do.
+>
+> On Fri, 1 Mar 2024 at 03:31, Ebert,Timothy Aaron <tebert at ufl.edu> wrote:
+> >
+> > You could declare a matrix much larger than you intend to use. This works with a few megabytes of data. It is not very efficient, so scaling up may become a problem.
+> > m22 <- matrix(NA, 1:600000, ncol=6)
+> >
+> > It does not work to add a new column to the matrix, as in you get an error if you try m22[ , 7] but convert to data frame and add a column
+> >
+> > m23 <- data.frame(m22)
+> > m23$x7 <- 12
+> >
+> > The only penalty that I know of to having unused space in a matrix is the amount of memory it takes. One side effect is that your program may have a mistake that you would normally catch with a subscript out of bounds error but with the extra space it now runs without errors.
+> >
+> > Tim
+> >
+> >
+> >
+> > -----Original Message-----
+> > From: R-help <r-help-bounces at r-project.org> On Behalf Of Richard O'Keefe
+> > Sent: Thursday, February 29, 2024 5:29 AM
+> > To: Steven Yen <styen at ntu.edu.tw>
+> > Cc: R-help Mailing List <r-help at r-project.org>
+> > Subject: Re: [R] Initializing vector and matrices
+> >
+> > [External Email]
+> >
+> > x <- numeric(0)
+> > for (...) {
+> >     x[length(x)+1] <- ...
+> > }
+> > works.
+> > You can build a matrix by building a vector one element at a time this way, and then reshaping it at the end.  That only works if you don't need it to be a matrix at all times.
+> > Another approach is to build a list of rows.  It's not a matrix, but a list of rows can be a *ragged* matrix with rows of varying length.
+> >
+> > On Wed, 28 Feb 2024 at 21:57, Steven Yen <styen at ntu.edu.tw> wrote:
+> > >
+> > > Is there as way to initialize a vector (matrix) with an unknown length
+> > > (dimension)? NULL does not seem to work. The lines below work with a
+> > > vector of length 4 and a matrix of 4 x 4. What if I do not know
+> > > initially the length/dimension of the vector/matrix?
+> > >
+> > > All I want is to add up (accumulate)  the vector and matrix as I go
+> > > through the loop.
+> > >
+> > > Or, are there other ways to accumulate such vectors and matrices?
+> > >
+> > >  > x<-rep(0,4)  # this works but I like to leave the length open  >
+> > > for (i in 1:3){
+> > > +  x1<-1:4
+> > > +  x<-x+x1
+> > > + }
+> > >  > x
+> > > [1]  3  6  9 12
+> > >
+> > >  > y = 0*matrix(1:16, nrow = 4, ncol = 4); # this works but I like to
+> > > leave the dimension open
+> > >       [,1] [,2] [,3] [,4]
+> > > [1,]    0    0    0    0
+> > > [2,]    0    0    0    0
+> > > [3,]    0    0    0    0
+> > > [4,]    0    0    0    0
+> > >  > for (i in 1:3){
+> > > +   y1<-matrix(17:32, nrow = 4, ncol = 4)
+> > > +   y<-y+y1
+> > > + }
+> > >  > y
+> > >       [,1] [,2] [,3] [,4]
+> > > [1,]   51   63   75   87
+> > > [2,]   54   66   78   90
+> > > [3,]   57   69   81   93
+> > > [4,]   60   72   84   96
+> > >  >
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat/
+> > > .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C02%7Ctebert%40ufl.edu
+> > > %7Cdbccaccf29674b10b17308dc39114d38%7C0d4da0f84a314d76ace60a62331e1b84
+> > > %7C0%7C0%7C638447993707432549%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAw
+> > > MDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=
+> > > PtWjcDOnwO7PArVOSdgYbpz8ksjDPK%2Bn9ySyhwQC0gE%3D&reserved=0
+> > > PLEASE do read the posting guide
+> > > http://www.r/
+> > > -project.org%2Fposting-guide.html&data=05%7C02%7Ctebert%40ufl.edu%7Cdb
+> > > ccaccf29674b10b17308dc39114d38%7C0d4da0f84a314d76ace60a62331e1b84%7C0%
+> > > 7C0%7C638447993707438911%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiL
+> > > CJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=Igb16
+> > > CBYgG21HLEDH4I4gfjjFBa3KjDFK8yEZUmBo8s%3D&reserved=0
+> > > and provide commented, minimal, self-contained, reproducible code.
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sat Mar  2 19:52:50 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sat, 02 Mar 2024 10:52:50 -0800
+Subject: [R] Initializing vector and matrices
+In-Reply-To: <CAGxFJbQq9XhkviMEmXmTjfvXtajFyO1Q+SDWojqonWj0=gAj7g@mail.gmail.com>
+References: <656696ba-0785-4068-b7a1-8a751b0ed7d9@ntu.edu.tw>
+ <CABcYAdJoxtVyngjG6g0qTFd3F9O1P+ZKGJGCOcK16bQ9NV2dSg@mail.gmail.com>
+ <CH3PR22MB4514525EE09B576456BB56B7CF5F2@CH3PR22MB4514.namprd22.prod.outlook.com>
+ <CABcYAdKKbPXy4FoPA=H2k8KY1yhB2bCJuv5xJg+yvFe4WdD73w@mail.gmail.com>
+ <CAGxFJbQq9XhkviMEmXmTjfvXtajFyO1Q+SDWojqonWj0=gAj7g@mail.gmail.com>
+Message-ID: <2F0D9571-1B14-4759-A4AE-94B4E223B3C7@dcn.davis.ca.us>
+
+To be fair, these replies no longer include the original question, which was IMO really quite clear (if misguided), and was actually targeted at understanding pre-allocation for better performance. Richard's suggestion to store the along-the-way constructed vectors in a list and examine the lengths of the elements of that list after it is completely constructed if it is really desired to force vectors of varying lengths into a matrix seems appropriate. The possibly-misguided part is in the thought that vectors of different lengths belong in a matrix at all... leaving them in a list seems more likely to be appropriate.
+
+OP: Avoid mis-using NA to "fill out" the end of uniform-length vectors. Each index position in a vector should represent some information... if you are throwing NAs or zeros in willy-nilly then you are not taking care to assign meaning to those positions, and likely wasting memory and time doing so. If you were taking such care, then any appropriate NAs would already be present in the vectors before you put them into the matrix, and the original question would not have crossed OPs mind because the vectors world already be of the same length. NA means that information for a specific position is "unknown", not "space filler".
+
+Now if OP wants better guidance on restructuring their analysis, then certainly sharing those details would help the discussion move away from the original misguided question... but that would be another thread to answer the question that should have been asked.
+
+On March 2, 2024 9:53:41 AM PST, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>"It would be really really helpful to have a clearer idea of what you
+>are trying to do."
+>
+>Amen!
+>
+>But in R, "constructing" objects by extending them piece by piece is
+>generally very inefficient (e.g.
+>https://r-craft.org/growing-objects-and-loop-memory-pre-allocation/),
+>although sometimes?/often? unavoidable (hence the relevance of your
+>comment above). R generally prefers to take a "whole object" point of
+>view ( see R books by Chambers, et. al.) and provides code for basic
+>operations like vector/matrix, etc. construction to do so. When this
+>is not possible, I suspect "optimal" efficient strategies for
+>allocating space to build objects gets you into the weeds of how R
+>works.
+>
+>Cheers,
+>Bert
+>
+>
+>
+>
+>On Sat, Mar 2, 2024 at 1:02?AM Richard O'Keefe <raoknz at gmail.com> wrote:
+>>
+>> The matrix equivalent of
+>>   x <- ...
+>>   v <- ...
+>>   x[length(x)+1] <- v
+>> is
+>>   m <- ...
+>>   r <- ...
+>>   m <- rbind(m, r)
+>> or
+>>   m <- ...
+>>   k <- ...
+>>   m <- cbind(m, c)
+>>
+>> A vector or matrix so constructed never has "holes" in it.
+>> It's better to think of CONSTRUCTING vectors and matrices rather than
+>> INITIALISING them,
+>> because always being fully defined is important.
+>>
+>> It would be really really helpful to have a clearer idea of what you
+>> are trying to do.
+>>
+>> On Fri, 1 Mar 2024 at 03:31, Ebert,Timothy Aaron <tebert at ufl.edu> wrote:
+>> >
+>> > You could declare a matrix much larger than you intend to use. This works with a few megabytes of data. It is not very efficient, so scaling up may become a problem.
+>> > m22 <- matrix(NA, 1:600000, ncol=6)
+>> >
+>> > It does not work to add a new column to the matrix, as in you get an error if you try m22[ , 7] but convert to data frame and add a column
+>> >
+>> > m23 <- data.frame(m22)
+>> > m23$x7 <- 12
+>> >
+>> > The only penalty that I know of to having unused space in a matrix is the amount of memory it takes. One side effect is that your program may have a mistake that you would normally catch with a subscript out of bounds error but with the extra space it now runs without errors.
+>> >
+>> > Tim
+>> >
+>> >
+>> >
+>> > -----Original Message-----
+>> > From: R-help <r-help-bounces at r-project.org> On Behalf Of Richard O'Keefe
+>> > Sent: Thursday, February 29, 2024 5:29 AM
+>> > To: Steven Yen <styen at ntu.edu.tw>
+>> > Cc: R-help Mailing List <r-help at r-project.org>
+>> > Subject: Re: [R] Initializing vector and matrices
+>> >
+>> > [External Email]
+>> >
+>> > x <- numeric(0)
+>> > for (...) {
+>> >     x[length(x)+1] <- ...
+>> > }
+>> > works.
+>> > You can build a matrix by building a vector one element at a time this way, and then reshaping it at the end.  That only works if you don't need it to be a matrix at all times.
+>> > Another approach is to build a list of rows.  It's not a matrix, but a list of rows can be a *ragged* matrix with rows of varying length.
+>> >
+>> > On Wed, 28 Feb 2024 at 21:57, Steven Yen <styen at ntu.edu.tw> wrote:
+>> > >
+>> > > Is there as way to initialize a vector (matrix) with an unknown length
+>> > > (dimension)? NULL does not seem to work. The lines below work with a
+>> > > vector of length 4 and a matrix of 4 x 4. What if I do not know
+>> > > initially the length/dimension of the vector/matrix?
+>> > >
+>> > > All I want is to add up (accumulate)  the vector and matrix as I go
+>> > > through the loop.
+>> > >
+>> > > Or, are there other ways to accumulate such vectors and matrices?
+>> > >
+>> > >  > x<-rep(0,4)  # this works but I like to leave the length open  >
+>> > > for (i in 1:3){
+>> > > +  x1<-1:4
+>> > > +  x<-x+x1
+>> > > + }
+>> > >  > x
+>> > > [1]  3  6  9 12
+>> > >
+>> > >  > y = 0*matrix(1:16, nrow = 4, ncol = 4); # this works but I like to
+>> > > leave the dimension open
+>> > >       [,1] [,2] [,3] [,4]
+>> > > [1,]    0    0    0    0
+>> > > [2,]    0    0    0    0
+>> > > [3,]    0    0    0    0
+>> > > [4,]    0    0    0    0
+>> > >  > for (i in 1:3){
+>> > > +   y1<-matrix(17:32, nrow = 4, ncol = 4)
+>> > > +   y<-y+y1
+>> > > + }
+>> > >  > y
+>> > >       [,1] [,2] [,3] [,4]
+>> > > [1,]   51   63   75   87
+>> > > [2,]   54   66   78   90
+>> > > [3,]   57   69   81   93
+>> > > [4,]   60   72   84   96
+>> > >  >
+>> > >
+>> > > ______________________________________________
+>> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > > https://stat/
+>> > > .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C02%7Ctebert%40ufl.edu
+>> > > %7Cdbccaccf29674b10b17308dc39114d38%7C0d4da0f84a314d76ace60a62331e1b84
+>> > > %7C0%7C0%7C638447993707432549%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAw
+>> > > MDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=
+>> > > PtWjcDOnwO7PArVOSdgYbpz8ksjDPK%2Bn9ySyhwQC0gE%3D&reserved=0
+>> > > PLEASE do read the posting guide
+>> > > http://www.r/
+>> > > -project.org%2Fposting-guide.html&data=05%7C02%7Ctebert%40ufl.edu%7Cdb
+>> > > ccaccf29674b10b17308dc39114d38%7C0d4da0f84a314d76ace60a62331e1b84%7C0%
+>> > > 7C0%7C638447993707438911%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiL
+>> > > CJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=Igb16
+>> > > CBYgG21HLEDH4I4gfjjFBa3KjDFK8yEZUmBo8s%3D&reserved=0
+>> > > and provide commented, minimal, self-contained, reproducible code.
+>> >
+>> > ______________________________________________
+>> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > https://stat.ethz.ch/mailman/listinfo/r-help
+>> > PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
+>> > and provide commented, minimal, self-contained, reproducible code.
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
