@@ -7923,3 +7923,1916 @@ Best regards,
 Ivan
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Mar 21 09:31:40 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 21 Mar 2024 09:31:40 +0100
+Subject: [R] Building Packages.
+In-Reply-To: <0aae7f84-6539-47e4-b222-bae7f39980a2@gmail.com>
+References: <BL0PR01MB443476A7058EAA65165C9587DC332@BL0PR01MB4434.prod.exchangelabs.com>
+ <20240320191353.3d6b36ae@arachnoid>
+ <1680f328-ce34-4276-8be3-d402b372ef2b@gmail.com>
+ <4e4fd9a6-b68e-48a3-96c8-4d63d2846783@gmail.com>
+ <0aae7f84-6539-47e4-b222-bae7f39980a2@gmail.com>
+Message-ID: <26107.61548.432767.678884@stat.math.ethz.ch>
+
+>>>>> "Duncan Murdoch on Wed, 20 Mar 2024 13:20:12 -0400 writes:
+
+    > On 20/03/2024 1:07 p.m., Duncan Murdoch wrote:
+    >> On 20/03/2024 12:37 p.m., Ben Bolker wrote:
+
+    >>> Ivan, can you give more detail on this? I've heard this
+    >>> issue mentioned, but when I open RStudio and run
+    >>> find("install.packages") it returns
+    >>> "utils::install.packages", and running dump() from
+    >>> within RStudio console and from an external "R
+    >>> --vanilla" gives identical results.
+    >>> 
+    >>> I thought at one point this might only refer to the GUI
+    >>> package-installation interface, but you seem to be
+    >>> saying it's the install.packages() function as well.
+    >>> 
+    >>> Running an up-to-date RStudio on Linux, FWIW -- maybe
+    >>> weirdness only happens on other OSs?
+    >> 
+    >> On MacOS, I see this:
+    >> 
+    >> > install.packages function (...)  .rs.callAs(name, hook,
+    >> original, ...)  <environment: 0x7fa7c72a6268>
+    >> 
+    >> I get the same results as you from find().  I'm not sure
+    >> what RStudio is doing to give a different value for the
+    >> function than what find() sees.
+
+    > Turns out that RStudio replaces the install.packages
+    > object in the utils package.
+
+    > Duncan Murdoch
+
+Yes, and this has been the case for several years now, and I
+have mentioned this several times, too  (though some of it
+possibly not in a public R-* mailing list).
+
+And yes, that they modify the package environment
+  as.environment("package:utils")
+but leave the
+  namespace  asNamespace("utils")
+unchanged, makes it harder to see what's
+going on (but also has less severe consequences; if they kept to
+the otherwise universal *rule* that the namespace and package must have the same objects
+apart from those only in the namespace,
+people would not even have access to R's true install.packages()
+but only see the RStudio fake^Hsubstitute..
+
+We are still not happy with their decision. Also
+help(install.packages) goes to R's documentation of R's
+install.packages, so there's even more misleading of useRs.
+
+Martin
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Mar 21 09:40:38 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 21 Mar 2024 09:40:38 +0100
+Subject: [R] Building Packages.
+In-Reply-To: <4e1b1275-935e-4d4a-bd5f-8a8d0f882bb4@gmail.com>
+References: <BL0PR01MB443476A7058EAA65165C9587DC332@BL0PR01MB4434.prod.exchangelabs.com>
+ <20240320191353.3d6b36ae@arachnoid>
+ <1680f328-ce34-4276-8be3-d402b372ef2b@gmail.com>
+ <4e4fd9a6-b68e-48a3-96c8-4d63d2846783@gmail.com>
+ <0aae7f84-6539-47e4-b222-bae7f39980a2@gmail.com>
+ <4e1b1275-935e-4d4a-bd5f-8a8d0f882bb4@gmail.com>
+Message-ID: <26107.62086.606884.394139@stat.math.ethz.ch>
+
+>>>>> Ben Bolker 
+>>>>>     on Wed, 20 Mar 2024 13:25:33 -0400 writes:
+
+    >    Hmm, looks platform-specific.  Under Linux both RStudio
+    > and external R console return
+
+    > a0b52513622c41c11e3ef57c7a485767
+
+    > for digest::digest(install.packages)
+
+Well, platform-specific maybe, notably probably the *RStudio*-version
+matters (for once).
+
+One one of our public compute-machines running Linux Fedora 38
+  (I don't have RStudio installed on my desktop as I loathe it
+   badly to see RStudio start up when I click at an *R script in
+   the OS gui file browser ... !:!P:!)(*&))
+ 
+I definitely see
+
+> R.version.string
+[1] "R version 4.3.3 Patched (2024-02-29 r86162)"
+> RStudio.Version()$version
+[1] ?2023.12.1.402?
+> install.packages
+function (...) 
+.rs.callAs(name, hook, original, ...)
+<environment: 0x55f4e5d82948>
+> 
+
+No need for any hashes to see that install.packages is not the
+one from R.
+
+---
+Concluding from your, Ben's, finding I'd guess that Posit
+finally decided to move away from this very unfriendly idea of
+sneakily replacing a base R function ?
+
+That would actually give raise to some applause..
+
+Martin
+
+
+
+    > On 2024-03-20 1:20 p.m., Duncan Murdoch wrote:
+    >> On 20/03/2024 1:07 p.m., Duncan Murdoch wrote:
+    >>> On 20/03/2024 12:37 p.m., Ben Bolker wrote:
+    >>>> ???? Ivan, can you give more detail on this? I've heard
+    >>>> this issue mentioned, but when I open RStudio and run
+    >>>> find("install.packages") it returns
+    >>>> "utils::install.packages", and running dump() from
+    >>>> within RStudio console and from an external "R
+    >>>> --vanilla" gives identical results.
+    >>>> 
+    >>>> ???? I thought at one point this might only refer to
+    >>>> the GUI package-installation interface, but you seem to
+    >>>> be saying it's the install.packages() function as well.
+    >>>> 
+    >>>> ???? Running an up-to-date RStudio on Linux, FWIW --
+    >>>> maybe weirdness only happens on other OSs?
+    >>> 
+    >>> On MacOS, I see this:
+    >>> 
+    >>> ? > install.packages function (...)  .rs.callAs(name,
+    >>> hook, original, ...)  <environment: 0x7fa7c72a6268>
+    >>> 
+    >>> I get the same results as you from find().? I'm not sure
+    >>> what RStudio is doing to give a different value for the
+    >>> function than what find() sees.
+    >> 
+    >> Turns out that RStudio replaces the install.packages
+    >> object in the utils package.
+    >> 
+    >> Duncan Murdoch
+    >> 
+    >>> 
+    >>> Duncan Murdoch
+    >>> 
+    >>>> 
+    >>>> ????? Ben Bolker
+    >>>> 
+    >>>> On 2024-03-20 12:13 p.m., Ivan Krylov via R-help wrote:
+    >>>>> ? Wed, 20 Mar 2024 16:02:27 +0000 Jorgen Harmse via
+    >>>>> R-help <r-help at r-project.org> ?????:
+    >>>>> 
+    >>>>>>> install.packages(tar,type='source',repos=NULL)
+    >>>>>> 
+>>>>> Error in library(jhBase) : there is no package called
+    >>>>>> ?jhBase?
+    >>>>>> 
+>>>>> Execution halted
+    >>>>>> 
+>>>>> Warning in install.packages(tar, type = "source", repos =
+    >>>>>> NULL) :
+    >>>>>> 
+>>>>> ???? installation of package
+>>>>>
+    >>>>>> ?/Users/jharmse/Library/CloudStorage/OneDrive-RokuInc/jhBase_1.0.1.tar.gz?
+>>>>> had non-zero exit status
+    >>>>> 
+    >>>>> Using RStudio? It happens to override install.packages
+    >>>>> with a function that doesn't quite handle file
+    >>>>> paths. Try utils::install.packages(tar, type =
+    >>>>> "source", repos = NULL).
+    >>>>> 
+    >>>> 
+    >>>> ______________________________________________
+    >>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and
+    >>>> more, see https://stat.ethz.ch/mailman/listinfo/r-help
+    >>>> PLEASE do read the posting guide
+    >>>> http://www.R-project.org/posting-guide.html and provide
+    >>>> commented, minimal, self-contained, reproducible code.
+    >>> 
+    >> 
+
+    > ______________________________________________
+    > R-help at r-project.org mailing list -- To UNSUBSCRIBE and
+    > more, see https://stat.ethz.ch/mailman/listinfo/r-help
+    > PLEASE do read the posting guide
+    > http://www.R-project.org/posting-guide.html and provide
+    > commented, minimal, self-contained, reproducible code.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Mar 21 09:58:32 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 21 Mar 2024 04:58:32 -0400
+Subject: [R] Building Packages.
+In-Reply-To: <26107.61548.432767.678884@stat.math.ethz.ch>
+References: <BL0PR01MB443476A7058EAA65165C9587DC332@BL0PR01MB4434.prod.exchangelabs.com>
+ <20240320191353.3d6b36ae@arachnoid>
+ <1680f328-ce34-4276-8be3-d402b372ef2b@gmail.com>
+ <4e4fd9a6-b68e-48a3-96c8-4d63d2846783@gmail.com>
+ <0aae7f84-6539-47e4-b222-bae7f39980a2@gmail.com>
+ <26107.61548.432767.678884@stat.math.ethz.ch>
+Message-ID: <04d08fbb-cbbd-45cb-8113-5ea19ef2cf72@gmail.com>
+
+The good news for Jorgen (who may not be reading this thread any more) 
+is that one can still be sure of getting the original install.packages() 
+by using
+
+     utils:::install.packages( ... )
+
+with *three* colons, to get the internal (namespace) version of the 
+function.
+
+Duncan Murdoch
+
+
+On 21/03/2024 4:31 a.m., Martin Maechler wrote:
+>>>>>> "Duncan Murdoch on Wed, 20 Mar 2024 13:20:12 -0400 writes:
+> 
+>      > On 20/03/2024 1:07 p.m., Duncan Murdoch wrote:
+>      >> On 20/03/2024 12:37 p.m., Ben Bolker wrote:
+> 
+>      >>> Ivan, can you give more detail on this? I've heard this
+>      >>> issue mentioned, but when I open RStudio and run
+>      >>> find("install.packages") it returns
+>      >>> "utils::install.packages", and running dump() from
+>      >>> within RStudio console and from an external "R
+>      >>> --vanilla" gives identical results.
+>      >>>
+>      >>> I thought at one point this might only refer to the GUI
+>      >>> package-installation interface, but you seem to be
+>      >>> saying it's the install.packages() function as well.
+>      >>>
+>      >>> Running an up-to-date RStudio on Linux, FWIW -- maybe
+>      >>> weirdness only happens on other OSs?
+>      >>
+>      >> On MacOS, I see this:
+>      >>
+>      >> > install.packages function (...)  .rs.callAs(name, hook,
+>      >> original, ...)  <environment: 0x7fa7c72a6268>
+>      >>
+>      >> I get the same results as you from find().  I'm not sure
+>      >> what RStudio is doing to give a different value for the
+>      >> function than what find() sees.
+> 
+>      > Turns out that RStudio replaces the install.packages
+>      > object in the utils package.
+> 
+>      > Duncan Murdoch
+> 
+> Yes, and this has been the case for several years now, and I
+> have mentioned this several times, too  (though some of it
+> possibly not in a public R-* mailing list).
+> 
+> And yes, that they modify the package environment
+>    as.environment("package:utils")
+> but leave the
+>    namespace  asNamespace("utils")
+> unchanged, makes it harder to see what's
+> going on (but also has less severe consequences; if they kept to
+> the otherwise universal *rule* that the namespace and package must have the same objects
+> apart from those only in the namespace,
+> people would not even have access to R's true install.packages()
+> but only see the RStudio fake^Hsubstitute..
+> 
+> We are still not happy with their decision. Also
+> help(install.packages) goes to R's documentation of R's
+> install.packages, so there's even more misleading of useRs.
+> 
+> Martin
+>
+
+
+From pd@|gd @end|ng |rom gm@||@com  Thu Mar 21 10:48:36 2024
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Thu, 21 Mar 2024 10:48:36 +0100
+Subject: [R] Building Packages.
+In-Reply-To: <04d08fbb-cbbd-45cb-8113-5ea19ef2cf72@gmail.com>
+References: <BL0PR01MB443476A7058EAA65165C9587DC332@BL0PR01MB4434.prod.exchangelabs.com>
+ <20240320191353.3d6b36ae@arachnoid>
+ <1680f328-ce34-4276-8be3-d402b372ef2b@gmail.com>
+ <4e4fd9a6-b68e-48a3-96c8-4d63d2846783@gmail.com>
+ <0aae7f84-6539-47e4-b222-bae7f39980a2@gmail.com>
+ <26107.61548.432767.678884@stat.math.ethz.ch>
+ <04d08fbb-cbbd-45cb-8113-5ea19ef2cf72@gmail.com>
+Message-ID: <B2EF575C-211E-4530-8A05-919493F5B203@gmail.com>
+
+Um, what's with the triple colon? At least on my install, double seems to suffice:
+
+> identical(utils:::install.packages, utils::install.packages)
+[1] TRUE
+> install.packages
+function (...) 
+.rs.callAs(name, hook, original, ...)
+<environment: 0x7f79e0019860>
+
+-pd
+
+> On 21 Mar 2024, at 09:58 , Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> 
+> The good news for Jorgen (who may not be reading this thread any more) is that one can still be sure of getting the original install.packages() by using
+> 
+>    utils:::install.packages( ... )
+> 
+> with *three* colons, to get the internal (namespace) version of the function.
+> 
+> Duncan Murdoch
+> 
+> 
+> On 21/03/2024 4:31 a.m., Martin Maechler wrote:
+>>>>>>> "Duncan Murdoch on Wed, 20 Mar 2024 13:20:12 -0400 writes:
+>>     > On 20/03/2024 1:07 p.m., Duncan Murdoch wrote:
+>>     >> On 20/03/2024 12:37 p.m., Ben Bolker wrote:
+>>     >>> Ivan, can you give more detail on this? I've heard this
+>>     >>> issue mentioned, but when I open RStudio and run
+>>     >>> find("install.packages") it returns
+>>     >>> "utils::install.packages", and running dump() from
+>>     >>> within RStudio console and from an external "R
+>>     >>> --vanilla" gives identical results.
+>>     >>>
+>>     >>> I thought at one point this might only refer to the GUI
+>>     >>> package-installation interface, but you seem to be
+>>     >>> saying it's the install.packages() function as well.
+>>     >>>
+>>     >>> Running an up-to-date RStudio on Linux, FWIW -- maybe
+>>     >>> weirdness only happens on other OSs?
+>>     >>
+>>     >> On MacOS, I see this:
+>>     >>
+>>     >> > install.packages function (...)  .rs.callAs(name, hook,
+>>     >> original, ...)  <environment: 0x7fa7c72a6268>
+>>     >>
+>>     >> I get the same results as you from find().  I'm not sure
+>>     >> what RStudio is doing to give a different value for the
+>>     >> function than what find() sees.
+>>     > Turns out that RStudio replaces the install.packages
+>>     > object in the utils package.
+>>     > Duncan Murdoch
+>> Yes, and this has been the case for several years now, and I
+>> have mentioned this several times, too  (though some of it
+>> possibly not in a public R-* mailing list).
+>> And yes, that they modify the package environment
+>>   as.environment("package:utils")
+>> but leave the
+>>   namespace  asNamespace("utils")
+>> unchanged, makes it harder to see what's
+>> going on (but also has less severe consequences; if they kept to
+>> the otherwise universal *rule* that the namespace and package must have the same objects
+>> apart from those only in the namespace,
+>> people would not even have access to R's true install.packages()
+>> but only see the RStudio fake^Hsubstitute..
+>> We are still not happy with their decision. Also
+>> help(install.packages) goes to R's documentation of R's
+>> install.packages, so there's even more misleading of useRs.
+>> Martin
+>> 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From k|mmo@e|o @end|ng |rom utu@||  Thu Mar 21 10:51:22 2024
+From: k|mmo@e|o @end|ng |rom utu@|| (Kimmo Elo)
+Date: Thu, 21 Mar 2024 09:51:22 +0000
+Subject: [R] geom_edge & color
+In-Reply-To: <022201da7af4$704240d0$50c6c270$@gmx.ch>
+References: <022201da7af4$704240d0$50c6c270$@gmx.ch>
+Message-ID: <5a11b20ff6be35626a3db42a9bdb1947cb68997d.camel@utu.fi>
+
+Dear Sibylle,
+
+your example is not working! E.g. no data for "aes_collapsed".
+
+Best,
+
+Kimmo
+
+ke, 2024-03-20 kello 19:28 +0100, SIBYLLE ST?CKLI via R-help kirjoitti:
+> Dear community
+> 
+> I am using ggraph to plot a network analysis. See part 2 in the working
+> example.
+> Besides different colors for different groups of nodes:
+> --> geom_node_point(aes(size = V(network)$hub_score*200, color=
+> as.factor(V(network)$community)))
+> I additionally want to consider different colors for different edge
+> groups
+> The grouping is defined in the edge_list$relationship: negative
+> relationship
+> = red and positive relationship = darkblue. The code is working in the
+> way
+> that the? groups are separated by two colors. However, the code uses not
+> the
+> assigned colors. Does anyone have any idea how to adapt the code?
+> --> geom_edge_arc(curvature=0.3, aes(width=(E(network)$weight/10),
+> color=c("darkblue", "red")[as.factor(edge_list$relationship)],
+> alpha=0.5)) +
+> 
+> Kind regards
+> Sibylle
+> 
+> 
+> 
+> 
+> Working example
+> 
+> library(circlize)
+> library(ggplot2)
+> library(igraph)
+> library(tidyverse)
+> library(RColorBrewer)
+> library(stringi)
+> library(scico)
+> library(plotly)
+> library(ggraph)
+> 
+> edges_table_Test.csv
+> 
+> Names???target??weight relationship
+> B.B?????A.A?????4?????????? pos
+> C.C?????A.A?????5?????????? pos
+> D.D?????A.A?????5?????????? neg
+> E.E?????A.A?????5????????? neg
+> F.F?????A.A?????1????????? pos
+> C.C?????B.B?????5???????? pos
+> E.E?????B.B?????1?????????? pos
+> F.F?????B.B?????2????????? pos
+> A.A?????C.C?????5??????? pos
+> B.B?????C.C?????1??????? pos
+> D.D?????C.C?????5???????? pos
+> E.E?????C.C?????5???????? pos
+> F.F?????C.C?????3???????? pos
+> A.A?????D.D?????5??????? neg
+> B.B?????D.D?????1??????? neg
+> C.C?????D.D?????5??????? neg
+> E.E?????D.D?????5??????? neg
+> F.F?????D.D?????4???????? neg
+> A.A?????E.E?????5???????? neg
+> B.B?????E.E?????1??????? neg
+> C.C?????E.E?????4??????? neg
+> D.D?????E.E?????5??????? neg
+> F.F?????E.E?????5?????? pos
+> A.A?????F.F?????5??????? pos
+> B.B?????F.F?????1?????? pos
+> C.C?????F.F?????2?????? pos
+> D.D?????F.F?????3????? pos
+> E.E?????F.F?????4?????? pos
+> F.F?????F.F?????5?????? pos
+> 
+> edge_list<-read.csv("edges_table_Test.csv")
+> 
+> network <- graph_from_data_frame(aes_collapsed, directed= FALSE,
+> ???????????????????????????????? vertices = details)
+> 
+> temp<-cluster_optimal(network)
+> temp<-cbind(membership=temp$membership, Names=temp$name) aes_collapsed <-
+> aes_collapsed %>%
+> ? merge(temp, by="Names")
+> 
+> 
+> network <- network %>%
+> ? set_edge_attr(name = "type", value = factor(aes_collapsed$Names,
+> ???????????????????????????????????????????????? ordered =
+> is.ordered(V(network)$name))) %>%
+> ? set_edge_attr(name = "membership", value = aes_collapsed$membership)
+> %>%
+> ? set_edge_attr(name = "color",
+> ????????????? value = c(viridis::viridis(5))
+> ????????????? [match(E(.)$type, c(factor(V(.)$name)))]) %>%
+> ? set_vertex_attr(name = "trans_v_net", value = c(transitivity(., type =
+> "local"))) %>%
+> ? set_vertex_attr(name = "hub_score", value = c(hub_score(.)$vector)) %>%
+> ? set_vertex_attr(name = "color",
+> ????????????? value = c(viridis::viridis((5)))
+> ????????????? [match(V(.)$name, c(factor(V(.)$name)))]) %>%
+> ? set_vertex_attr(name= "community", value=cluster_optimal(.)$membership)
+> clrs<-scico(3, palette = "batlow")
+> 
+> ### part 1: network plot
+> par(bg="black")
+> network %>% plot(
+> ???? vertex.color=clrs[V(.)$community],
+> ???? vertex.size=V(.)$hub_score*5,
+> ???? vertex.frame.color=V(.)$color,
+> ???? vertex.label.color="white",
+> ???? vertex.label.cex=0.5,
+> ???? vertex.label.family="Helvetica",
+> ???? vertex.label.font=1,
+> ???? edge.curved=0.5,
+> ???? edge.width= network,
+> ???? layout=layout_with_mds(.))
+> 
+> ### part 2: ggraph
+> tiff("figures/AES_network_bymembership.tiff", width=1000, height=700,
+> res=120) network %>%
+> ? ggraph(., layout = "auto")+
+> geom_edge_arc(curvature=0.3, aes(width=(E(network)$weight/10),
+> color=c("darkblue", "red")[as.factor(edge_list$relationship)],
+> alpha=0.5)) +
+> 
+> ? geom_node_point(aes(size = V(network)$hub_score*200, color=
+> as.factor(V(network)$community))) +
+> ? geom_node_text(aes(label =? V(network)$name), size=5, color="white",
+> repel=T)+
+> ? scale_color_scico_d(palette = "batlow")+
+> ? scale_edge_width(range = c(0.2,4))+
+> ? scale_size(range = c(0.5,20)) +
+> ? #scale_edge_color_manual(values = c(scico(21, palette="batlow")))+
+> ? theme(plot.background = element_rect(fill = "black"),
+> ??????? legend.position = "right",
+> ??????? panel.background = element_rect(fill = "black"))
+> dev.off()
+> 
+> ______________________________________________
+> R-help at r-project.org?mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Mar 21 10:52:58 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 21 Mar 2024 05:52:58 -0400
+Subject: [R] Building Packages.
+In-Reply-To: <B2EF575C-211E-4530-8A05-919493F5B203@gmail.com>
+References: <BL0PR01MB443476A7058EAA65165C9587DC332@BL0PR01MB4434.prod.exchangelabs.com>
+ <20240320191353.3d6b36ae@arachnoid>
+ <1680f328-ce34-4276-8be3-d402b372ef2b@gmail.com>
+ <4e4fd9a6-b68e-48a3-96c8-4d63d2846783@gmail.com>
+ <0aae7f84-6539-47e4-b222-bae7f39980a2@gmail.com>
+ <26107.61548.432767.678884@stat.math.ethz.ch>
+ <04d08fbb-cbbd-45cb-8113-5ea19ef2cf72@gmail.com>
+ <B2EF575C-211E-4530-8A05-919493F5B203@gmail.com>
+Message-ID: <7626100e-297e-4943-8e8e-60d0c4313d7f@gmail.com>
+
+Yes, you're right.  The version found in the search list entry for 
+"package:utils" is the RStudio one; the ones found with two or three 
+colons are the original.
+
+Duncan Murdoch
+
+On 21/03/2024 5:48 a.m., peter dalgaard wrote:
+> Um, what's with the triple colon? At least on my install, double seems to suffice:
+> 
+>> identical(utils:::install.packages, utils::install.packages)
+> [1] TRUE
+>> install.packages
+> function (...)
+> .rs.callAs(name, hook, original, ...)
+> <environment: 0x7f79e0019860>
+> 
+> -pd
+> 
+>> On 21 Mar 2024, at 09:58 , Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>
+>> The good news for Jorgen (who may not be reading this thread any more) is that one can still be sure of getting the original install.packages() by using
+>>
+>>     utils:::install.packages( ... )
+>>
+>> with *three* colons, to get the internal (namespace) version of the function.
+>>
+>> Duncan Murdoch
+>>
+>>
+>> On 21/03/2024 4:31 a.m., Martin Maechler wrote:
+>>>>>>>> "Duncan Murdoch on Wed, 20 Mar 2024 13:20:12 -0400 writes:
+>>>      > On 20/03/2024 1:07 p.m., Duncan Murdoch wrote:
+>>>      >> On 20/03/2024 12:37 p.m., Ben Bolker wrote:
+>>>      >>> Ivan, can you give more detail on this? I've heard this
+>>>      >>> issue mentioned, but when I open RStudio and run
+>>>      >>> find("install.packages") it returns
+>>>      >>> "utils::install.packages", and running dump() from
+>>>      >>> within RStudio console and from an external "R
+>>>      >>> --vanilla" gives identical results.
+>>>      >>>
+>>>      >>> I thought at one point this might only refer to the GUI
+>>>      >>> package-installation interface, but you seem to be
+>>>      >>> saying it's the install.packages() function as well.
+>>>      >>>
+>>>      >>> Running an up-to-date RStudio on Linux, FWIW -- maybe
+>>>      >>> weirdness only happens on other OSs?
+>>>      >>
+>>>      >> On MacOS, I see this:
+>>>      >>
+>>>      >> > install.packages function (...)  .rs.callAs(name, hook,
+>>>      >> original, ...)  <environment: 0x7fa7c72a6268>
+>>>      >>
+>>>      >> I get the same results as you from find().  I'm not sure
+>>>      >> what RStudio is doing to give a different value for the
+>>>      >> function than what find() sees.
+>>>      > Turns out that RStudio replaces the install.packages
+>>>      > object in the utils package.
+>>>      > Duncan Murdoch
+>>> Yes, and this has been the case for several years now, and I
+>>> have mentioned this several times, too  (though some of it
+>>> possibly not in a public R-* mailing list).
+>>> And yes, that they modify the package environment
+>>>    as.environment("package:utils")
+>>> but leave the
+>>>    namespace  asNamespace("utils")
+>>> unchanged, makes it harder to see what's
+>>> going on (but also has less severe consequences; if they kept to
+>>> the otherwise universal *rule* that the namespace and package must have the same objects
+>>> apart from those only in the namespace,
+>>> people would not even have access to R's true install.packages()
+>>> but only see the RStudio fake^Hsubstitute..
+>>> We are still not happy with their decision. Also
+>>> help(install.packages) goes to R's documentation of R's
+>>> install.packages, so there's even more misleading of useRs.
+>>> Martin
+>>>
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From iuke-tier@ey m@iii@g oii uiow@@edu  Thu Mar 21 12:44:00 2024
+From: iuke-tier@ey m@iii@g oii uiow@@edu (iuke-tier@ey m@iii@g oii uiow@@edu)
+Date: Thu, 21 Mar 2024 06:44:00 -0500 (CDT)
+Subject: [R] [External] Re:  Building Packages. (fwd)
+Message-ID: <342885d9-f2d7-b0dd-db2b-1eaac8b0693a@uiowa.edu>
+
+[forgot to copy to R-help so re-sending]
+
+---------- Forwarded message ----------
+Date: Thu, 21 Mar 2024 11:41:52 +0000
+From: luke-tierney at uiowa.edu
+To: Duncan Murdoch <murdoch.duncan at gmail.com>
+Subject: Re: [External] Re: [R] Building Packages.
+
+At least on my installed version (which tells me it is out of date)
+they appear to just be modifying the "package:utils" parent frame of
+the global search path.
+
+There seem to be a few others:
+
+checkUtilsFun <- function(n)
+     identical(get(n, "package:utils"), get(n, getNamespace("utils")))
+names(which(! sapply(ls("package:utils", all = TRUE), checkUtilsFun)))
+## [1] "bug.report"       "file.edit"        "help.request" ## [4] "history" 
+"install.packages" "remove.packages" ## [7] "View"
+
+I don't know why they don't put these overrides in the tools:rstudio frame.
+At least that would make them more visible.
+
+You can fix all of these with something like
+
+local({
+       up <- match("package:utils", search())
+       detach("package:utils")
+       library(utils, pos = up)
+})
+
+or just install.packages with
+
+local({
+     up <- match("package:utils", search())
+     unlockBinding("install.packages", pos.to.env(up))
+     assign("install.packages", utils::install.packages, "package:utils")
+     lockBinding("install.packages", pos.to.env(up))
+})
+
+Best,
+
+luke
+
+On Thu, 21 Mar 2024, Duncan Murdoch wrote:
+
+> Yes, you're right.  The version found in the search list entry for 
+> "package:utils" is the RStudio one; the ones found with two or three colons 
+> are the original.
+> 
+> Duncan Murdoch
+> 
+> On 21/03/2024 5:48 a.m., peter dalgaard wrote:
+>> Um, what's with the triple colon? At least on my install, double seems to 
+>> suffice:
+>> 
+>>> identical(utils:::install.packages, utils::install.packages)
+>> [1] TRUE
+>>> install.packages
+>> function (...)
+>> .rs.callAs(name, hook, original, ...)
+>> <environment: 0x7f79e0019860>
+>> 
+>> -pd
+>> 
+>>> On 21 Mar 2024, at 09:58 , Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>> 
+>>> The good news for Jorgen (who may not be reading this thread any more) is 
+>>> that one can still be sure of getting the original install.packages() by 
+>>> using
+>>>
+>>>     utils:::install.packages( ... )
+>>> 
+>>> with *three* colons, to get the internal (namespace) version of the 
+>>> function.
+>>> 
+>>> Duncan Murdoch
+>>> 
+>>> 
+>>> On 21/03/2024 4:31 a.m., Martin Maechler wrote:
+>>>>>>>>> "Duncan Murdoch on Wed, 20 Mar 2024 13:20:12 -0400 writes:
+>>>>      > On 20/03/2024 1:07 p.m., Duncan Murdoch wrote:
+>>>>      >> On 20/03/2024 12:37 p.m., Ben Bolker wrote:
+>>>>      >>> Ivan, can you give more detail on this? I've heard this
+>>>>      >>> issue mentioned, but when I open RStudio and run
+>>>>      >>> find("install.packages") it returns
+>>>>      >>> "utils::install.packages", and running dump() from
+>>>>      >>> within RStudio console and from an external "R
+>>>>      >>> --vanilla" gives identical results.
+>>>>      >>>
+>>>>      >>> I thought at one point this might only refer to the GUI
+>>>>      >>> package-installation interface, but you seem to be
+>>>>      >>> saying it's the install.packages() function as well.
+>>>>      >>>
+>>>>      >>> Running an up-to-date RStudio on Linux, FWIW -- maybe
+>>>>      >>> weirdness only happens on other OSs?
+>>>>      >>
+>>>>      >> On MacOS, I see this:
+>>>>      >>
+>>>>      >> > install.packages function (...)  .rs.callAs(name, hook,
+>>>>      >> original, ...)  <environment: 0x7fa7c72a6268>
+>>>>      >>
+>>>>      >> I get the same results as you from find().  I'm not sure
+>>>>      >> what RStudio is doing to give a different value for the
+>>>>      >> function than what find() sees.
+>>>>      > Turns out that RStudio replaces the install.packages
+>>>>      > object in the utils package.
+>>>>      > Duncan Murdoch
+>>>> Yes, and this has been the case for several years now, and I
+>>>> have mentioned this several times, too  (though some of it
+>>>> possibly not in a public R-* mailing list).
+>>>> And yes, that they modify the package environment
+>>>>    as.environment("package:utils")
+>>>> but leave the
+>>>>    namespace  asNamespace("utils")
+>>>> unchanged, makes it harder to see what's
+>>>> going on (but also has less severe consequences; if they kept to
+>>>> the otherwise universal *rule* that the namespace and package must have 
+>>>> the same objects
+>>>> apart from those only in the namespace,
+>>>> people would not even have access to R's true install.packages()
+>>>> but only see the RStudio fake^Hsubstitute..
+>>>> We are still not happy with their decision. Also
+>>>> help(install.packages) goes to R's documentation of R's
+>>>> install.packages, so there's even more misleading of useRs.
+>>>> Martin
+>>>> 
+>>> 
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide 
+>>> http://www.r-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>> 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.r-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+-- 
+Luke Tierney
+Ralph E. Wareham Professor of Mathematical Sciences
+University of Iowa                  Phone:             319-335-3386
+Department of Statistics and        Fax:               319-335-3017
+    Actuarial Science
+241 Schaeffer Hall                  email:   luke-tierney at uiowa.edu
+Iowa City, IA 52242                 WWW:  http://www.stat.uiowa.edu/
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Mar 21 13:28:16 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 21 Mar 2024 08:28:16 -0400
+Subject: [R] [External] Re: Building Packages. (fwd)
+In-Reply-To: <342885d9-f2d7-b0dd-db2b-1eaac8b0693a@uiowa.edu>
+References: <342885d9-f2d7-b0dd-db2b-1eaac8b0693a@uiowa.edu>
+Message-ID: <01bf537a-d8e9-44bc-b4f9-566b99bba01f@gmail.com>
+
+If you are wondering why RStudio did this, you can see their substitute 
+function using
+
+   (parent.env(environment(install.packages)))$hook
+
+They appear to do these things:
+
+  - Allow package installation to be disabled.
+
+  - Check if a package to be installed is already loaded, so that 
+RStudio can restart R for the install.
+
+  - Add Rtools to the PATH if necessary.
+
+  - Trigger an event to say that something is about to be changed about 
+the installed packages, presumably so that they can mark a cached list 
+of installed packages as stale.
+
+  - Call the original function.
+
+I think all of these things could be done  if install.packages() called 
+a hook at the start, as library() does (via attachNamespace()) when a 
+package is attached.  It might be that putting the wrapper code into 
+tools:rstudio would cause confusion for users when there were two 
+objects of the same name on the search list, though I don't see how.
+
+Duncan Murdoch
+
+
+On 21/03/2024 7:44 a.m., luke-tierney--- via R-help wrote:
+> [forgot to copy to R-help so re-sending]
+> 
+> ---------- Forwarded message ----------
+> Date: Thu, 21 Mar 2024 11:41:52 +0000
+> From: luke-tierney at uiowa.edu
+> To: Duncan Murdoch <murdoch.duncan at gmail.com>
+> Subject: Re: [External] Re: [R] Building Packages.
+> 
+> At least on my installed version (which tells me it is out of date)
+> they appear to just be modifying the "package:utils" parent frame of
+> the global search path.
+> 
+> There seem to be a few others:
+> 
+> checkUtilsFun <- function(n)
+>       identical(get(n, "package:utils"), get(n, getNamespace("utils")))
+> names(which(! sapply(ls("package:utils", all = TRUE), checkUtilsFun)))
+> ## [1] "bug.report"       "file.edit"        "help.request" ## [4] "history"
+> "install.packages" "remove.packages" ## [7] "View"
+> 
+> I don't know why they don't put these overrides in the tools:rstudio frame.
+> At least that would make them more visible.
+> 
+> You can fix all of these with something like
+> 
+> local({
+>         up <- match("package:utils", search())
+>         detach("package:utils")
+>         library(utils, pos = up)
+> })
+> 
+> or just install.packages with
+> 
+> local({
+>       up <- match("package:utils", search())
+>       unlockBinding("install.packages", pos.to.env(up))
+>       assign("install.packages", utils::install.packages, "package:utils")
+>       lockBinding("install.packages", pos.to.env(up))
+> })
+> 
+> Best,
+> 
+> luke
+> 
+> On Thu, 21 Mar 2024, Duncan Murdoch wrote:
+> 
+>> Yes, you're right.  The version found in the search list entry for
+>> "package:utils" is the RStudio one; the ones found with two or three colons
+>> are the original.
+>>
+>> Duncan Murdoch
+>>
+>> On 21/03/2024 5:48 a.m., peter dalgaard wrote:
+>>> Um, what's with the triple colon? At least on my install, double seems to
+>>> suffice:
+>>>
+>>>> identical(utils:::install.packages, utils::install.packages)
+>>> [1] TRUE
+>>>> install.packages
+>>> function (...)
+>>> .rs.callAs(name, hook, original, ...)
+>>> <environment: 0x7f79e0019860>
+>>>
+>>> -pd
+>>>
+>>>> On 21 Mar 2024, at 09:58 , Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>>>
+>>>> The good news for Jorgen (who may not be reading this thread any more) is
+>>>> that one can still be sure of getting the original install.packages() by
+>>>> using
+>>>>
+>>>>      utils:::install.packages( ... )
+>>>>
+>>>> with *three* colons, to get the internal (namespace) version of the
+>>>> function.
+>>>>
+>>>> Duncan Murdoch
+>>>>
+>>>>
+>>>> On 21/03/2024 4:31 a.m., Martin Maechler wrote:
+>>>>>>>>>> "Duncan Murdoch on Wed, 20 Mar 2024 13:20:12 -0400 writes:
+>>>>>       > On 20/03/2024 1:07 p.m., Duncan Murdoch wrote:
+>>>>>       >> On 20/03/2024 12:37 p.m., Ben Bolker wrote:
+>>>>>       >>> Ivan, can you give more detail on this? I've heard this
+>>>>>       >>> issue mentioned, but when I open RStudio and run
+>>>>>       >>> find("install.packages") it returns
+>>>>>       >>> "utils::install.packages", and running dump() from
+>>>>>       >>> within RStudio console and from an external "R
+>>>>>       >>> --vanilla" gives identical results.
+>>>>>       >>>
+>>>>>       >>> I thought at one point this might only refer to the GUI
+>>>>>       >>> package-installation interface, but you seem to be
+>>>>>       >>> saying it's the install.packages() function as well.
+>>>>>       >>>
+>>>>>       >>> Running an up-to-date RStudio on Linux, FWIW -- maybe
+>>>>>       >>> weirdness only happens on other OSs?
+>>>>>       >>
+>>>>>       >> On MacOS, I see this:
+>>>>>       >>
+>>>>>       >> > install.packages function (...)  .rs.callAs(name, hook,
+>>>>>       >> original, ...)  <environment: 0x7fa7c72a6268>
+>>>>>       >>
+>>>>>       >> I get the same results as you from find().  I'm not sure
+>>>>>       >> what RStudio is doing to give a different value for the
+>>>>>       >> function than what find() sees.
+>>>>>       > Turns out that RStudio replaces the install.packages
+>>>>>       > object in the utils package.
+>>>>>       > Duncan Murdoch
+>>>>> Yes, and this has been the case for several years now, and I
+>>>>> have mentioned this several times, too  (though some of it
+>>>>> possibly not in a public R-* mailing list).
+>>>>> And yes, that they modify the package environment
+>>>>>     as.environment("package:utils")
+>>>>> but leave the
+>>>>>     namespace  asNamespace("utils")
+>>>>> unchanged, makes it harder to see what's
+>>>>> going on (but also has less severe consequences; if they kept to
+>>>>> the otherwise universal *rule* that the namespace and package must have
+>>>>> the same objects
+>>>>> apart from those only in the namespace,
+>>>>> people would not even have access to R's true install.packages()
+>>>>> but only see the RStudio fake^Hsubstitute..
+>>>>> We are still not happy with their decision. Also
+>>>>> help(install.packages) goes to R's documentation of R's
+>>>>> install.packages, so there's even more misleading of useRs.
+>>>>> Martin
+>>>>>
+>>>>
+>>>> ______________________________________________
+>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>> PLEASE do read the posting guide
+>>>> http://www.r-project.org/posting-guide.html
+>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.r-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+
+From bbo|ker @end|ng |rom gm@||@com  Thu Mar 21 14:00:30 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Thu, 21 Mar 2024 09:00:30 -0400
+Subject: [R] Building Packages.
+In-Reply-To: <26107.62086.606884.394139@stat.math.ethz.ch>
+References: <BL0PR01MB443476A7058EAA65165C9587DC332@BL0PR01MB4434.prod.exchangelabs.com>
+ <20240320191353.3d6b36ae@arachnoid>
+ <1680f328-ce34-4276-8be3-d402b372ef2b@gmail.com>
+ <4e4fd9a6-b68e-48a3-96c8-4d63d2846783@gmail.com>
+ <0aae7f84-6539-47e4-b222-bae7f39980a2@gmail.com>
+ <4e1b1275-935e-4d4a-bd5f-8a8d0f882bb4@gmail.com>
+ <26107.62086.606884.394139@stat.math.ethz.ch>
+Message-ID: <cf543167-8b69-4592-ba73-05d880ebb49d@gmail.com>
+
+   Is your Fedora machine using the bspm package with bspm::enable() in 
+the .Rprofile (to install binary packages from the r2u repository)? 
+bspm adds a hook by using trace() on install.packages, which makes it 
+look like this.
+
+   My guess is that if you start with --vanilla *or* run bspm::disable() 
+that you'll get back to the original-as-installed version.
+
+   Even if you have RStudio installed you could change the association 
+in your GUI file browser to open R files in emacs by default ...
+
+   cheers
+    Ben Bolker
+
+
+On 2024-03-21 4:40 a.m., Martin Maechler wrote:
+>>>>>> Ben Bolker
+>>>>>>      on Wed, 20 Mar 2024 13:25:33 -0400 writes:
+> 
+>      >    Hmm, looks platform-specific.  Under Linux both RStudio
+>      > and external R console return
+> 
+>      > a0b52513622c41c11e3ef57c7a485767
+> 
+>      > for digest::digest(install.packages)
+> 
+> Well, platform-specific maybe, notably probably the *RStudio*-version
+> matters (for once).
+> 
+> One one of our public compute-machines running Linux Fedora 38
+>    (I don't have RStudio installed on my desktop as I loathe it
+>     badly to see RStudio start up when I click at an *R script in
+>     the OS gui file browser ... !:!P:!)(*&))
+>   
+> I definitely see
+> 
+>> R.version.string
+> [1] "R version 4.3.3 Patched (2024-02-29 r86162)"
+>> RStudio.Version()$version
+> [1] ?2023.12.1.402?
+>> install.packages
+> function (...)
+> .rs.callAs(name, hook, original, ...)
+> <environment: 0x55f4e5d82948>
+>>
+> 
+> No need for any hashes to see that install.packages is not the
+> one from R.
+> 
+> ---
+> Concluding from your, Ben's, finding I'd guess that Posit
+> finally decided to move away from this very unfriendly idea of
+> sneakily replacing a base R function ?
+> 
+> That would actually give raise to some applause..
+> 
+> Martin
+> 
+> 
+> 
+>      > On 2024-03-20 1:20 p.m., Duncan Murdoch wrote:
+>      >> On 20/03/2024 1:07 p.m., Duncan Murdoch wrote:
+>      >>> On 20/03/2024 12:37 p.m., Ben Bolker wrote:
+>      >>>> ???? Ivan, can you give more detail on this? I've heard
+>      >>>> this issue mentioned, but when I open RStudio and run
+>      >>>> find("install.packages") it returns
+>      >>>> "utils::install.packages", and running dump() from
+>      >>>> within RStudio console and from an external "R
+>      >>>> --vanilla" gives identical results.
+>      >>>>
+>      >>>> ???? I thought at one point this might only refer to
+>      >>>> the GUI package-installation interface, but you seem to
+>      >>>> be saying it's the install.packages() function as well.
+>      >>>>
+>      >>>> ???? Running an up-to-date RStudio on Linux, FWIW --
+>      >>>> maybe weirdness only happens on other OSs?
+>      >>>
+>      >>> On MacOS, I see this:
+>      >>>
+>      >>> ? > install.packages function (...)  .rs.callAs(name,
+>      >>> hook, original, ...)  <environment: 0x7fa7c72a6268>
+>      >>>
+>      >>> I get the same results as you from find().? I'm not sure
+>      >>> what RStudio is doing to give a different value for the
+>      >>> function than what find() sees.
+>      >>
+>      >> Turns out that RStudio replaces the install.packages
+>      >> object in the utils package.
+>      >>
+>      >> Duncan Murdoch
+>      >>
+>      >>>
+>      >>> Duncan Murdoch
+>      >>>
+>      >>>>
+>      >>>> ????? Ben Bolker
+>      >>>>
+>      >>>> On 2024-03-20 12:13 p.m., Ivan Krylov via R-help wrote:
+>      >>>>> ? Wed, 20 Mar 2024 16:02:27 +0000 Jorgen Harmse via
+>      >>>>> R-help <r-help at r-project.org> ?????:
+>      >>>>>
+>      >>>>>>> install.packages(tar,type='source',repos=NULL)
+>      >>>>>>
+>>>>>> Error in library(jhBase) : there is no package called
+>      >>>>>> ?jhBase?
+>      >>>>>>
+>>>>>> Execution halted
+>      >>>>>>
+>>>>>> Warning in install.packages(tar, type = "source", repos =
+>      >>>>>> NULL) :
+>      >>>>>>
+>>>>>>  ???? installation of package
+>>>>>>
+>      >>>>>> ?/Users/jharmse/Library/CloudStorage/OneDrive-RokuInc/jhBase_1.0.1.tar.gz?
+>>>>>> had non-zero exit status
+>      >>>>>
+>      >>>>> Using RStudio? It happens to override install.packages
+>      >>>>> with a function that doesn't quite handle file
+>      >>>>> paths. Try utils::install.packages(tar, type =
+>      >>>>> "source", repos = NULL).
+>      >>>>>
+>      >>>>
+>      >>>> ______________________________________________
+>      >>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and
+>      >>>> more, see https://stat.ethz.ch/mailman/listinfo/r-help
+>      >>>> PLEASE do read the posting guide
+>      >>>> http://www.R-project.org/posting-guide.html and provide
+>      >>>> commented, minimal, self-contained, reproducible code.
+>      >>>
+>      >>
+> 
+>      > ______________________________________________
+>      > R-help at r-project.org mailing list -- To UNSUBSCRIBE and
+>      > more, see https://stat.ethz.ch/mailman/listinfo/r-help
+>      > PLEASE do read the posting guide
+>      > http://www.R-project.org/posting-guide.html and provide
+>      > commented, minimal, self-contained, reproducible code.
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+(Acting) Graduate chair, Mathematics & Statistics
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Thu Mar 21 16:37:27 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Thu, 21 Mar 2024 11:37:27 -0400
+Subject: [R] Building Packages.
+In-Reply-To: <7626100e-297e-4943-8e8e-60d0c4313d7f@gmail.com>
+References: <BL0PR01MB443476A7058EAA65165C9587DC332@BL0PR01MB4434.prod.exchangelabs.com>
+ <20240320191353.3d6b36ae@arachnoid>
+ <1680f328-ce34-4276-8be3-d402b372ef2b@gmail.com>
+ <4e4fd9a6-b68e-48a3-96c8-4d63d2846783@gmail.com>
+ <0aae7f84-6539-47e4-b222-bae7f39980a2@gmail.com>
+ <26107.61548.432767.678884@stat.math.ethz.ch>
+ <04d08fbb-cbbd-45cb-8113-5ea19ef2cf72@gmail.com>
+ <B2EF575C-211E-4530-8A05-919493F5B203@gmail.com>
+ <7626100e-297e-4943-8e8e-60d0c4313d7f@gmail.com>
+Message-ID: <004701da7ba5$ae69a3b0$0b3ceb10$@gmail.com>
+
+With all this discussion, I shudder to ask this. I may have missed the
+answers but the discussion seems to have been about identifying and solving
+the problem rapidly rather than what maybe is best going forward if all
+parties agree.
+
+What was the motivation for what RSTUDIO did for their version and the
+decision to replace what came with utils unless someone very explicitly
+over-rode them by asking for the original? Is their version better in other
+ways? Is there a possibility the two implementations may someday merge into
+something that meets several sets of needs or are they incompatible?
+
+Is there agreement that what broke with the substitution is a valid use or
+is it something that just happens to work on the utils version if not
+patched?
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Duncan Murdoch
+Sent: Thursday, March 21, 2024 5:53 AM
+To: peter dalgaard <pdalgd at gmail.com>
+Cc: Jorgen Harmse <JHarmse at roku.com>; r-help at r-project.org; Martin Maechler
+<maechler at stat.math.ethz.ch>
+Subject: Re: [R] Building Packages.
+
+Yes, you're right.  The version found in the search list entry for 
+"package:utils" is the RStudio one; the ones found with two or three 
+colons are the original.
+
+Duncan Murdoch
+
+On 21/03/2024 5:48 a.m., peter dalgaard wrote:
+> Um, what's with the triple colon? At least on my install, double seems to
+suffice:
+> 
+>> identical(utils:::install.packages, utils::install.packages)
+> [1] TRUE
+>> install.packages
+> function (...)
+> .rs.callAs(name, hook, original, ...)
+> <environment: 0x7f79e0019860>
+> 
+> -pd
+> 
+>> On 21 Mar 2024, at 09:58 , Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+>>
+>> The good news for Jorgen (who may not be reading this thread any more) is
+that one can still be sure of getting the original install.packages() by
+using
+>>
+>>     utils:::install.packages( ... )
+>>
+>> with *three* colons, to get the internal (namespace) version of the
+function.
+>>
+>> Duncan Murdoch
+>>
+>>
+>> On 21/03/2024 4:31 a.m., Martin Maechler wrote:
+>>>>>>>> "Duncan Murdoch on Wed, 20 Mar 2024 13:20:12 -0400 writes:
+>>>      > On 20/03/2024 1:07 p.m., Duncan Murdoch wrote:
+>>>      >> On 20/03/2024 12:37 p.m., Ben Bolker wrote:
+>>>      >>> Ivan, can you give more detail on this? I've heard this
+>>>      >>> issue mentioned, but when I open RStudio and run
+>>>      >>> find("install.packages") it returns
+>>>      >>> "utils::install.packages", and running dump() from
+>>>      >>> within RStudio console and from an external "R
+>>>      >>> --vanilla" gives identical results.
+>>>      >>>
+>>>      >>> I thought at one point this might only refer to the GUI
+>>>      >>> package-installation interface, but you seem to be
+>>>      >>> saying it's the install.packages() function as well.
+>>>      >>>
+>>>      >>> Running an up-to-date RStudio on Linux, FWIW -- maybe
+>>>      >>> weirdness only happens on other OSs?
+>>>      >>
+>>>      >> On MacOS, I see this:
+>>>      >>
+>>>      >> > install.packages function (...)  .rs.callAs(name, hook,
+>>>      >> original, ...)  <environment: 0x7fa7c72a6268>
+>>>      >>
+>>>      >> I get the same results as you from find().  I'm not sure
+>>>      >> what RStudio is doing to give a different value for the
+>>>      >> function than what find() sees.
+>>>      > Turns out that RStudio replaces the install.packages
+>>>      > object in the utils package.
+>>>      > Duncan Murdoch
+>>> Yes, and this has been the case for several years now, and I
+>>> have mentioned this several times, too  (though some of it
+>>> possibly not in a public R-* mailing list).
+>>> And yes, that they modify the package environment
+>>>    as.environment("package:utils")
+>>> but leave the
+>>>    namespace  asNamespace("utils")
+>>> unchanged, makes it harder to see what's
+>>> going on (but also has less severe consequences; if they kept to
+>>> the otherwise universal *rule* that the namespace and package must have
+the same objects
+>>> apart from those only in the namespace,
+>>> people would not even have access to R's true install.packages()
+>>> but only see the RStudio fake^Hsubstitute..
+>>> We are still not happy with their decision. Also
+>>> help(install.packages) goes to R's documentation of R's
+>>> install.packages, so there's even more misleading of useRs.
+>>> Martin
+>>>
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Mar 21 16:51:41 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 21 Mar 2024 11:51:41 -0400
+Subject: [R] Building Packages.
+In-Reply-To: <004701da7ba5$ae69a3b0$0b3ceb10$@gmail.com>
+References: <BL0PR01MB443476A7058EAA65165C9587DC332@BL0PR01MB4434.prod.exchangelabs.com>
+ <20240320191353.3d6b36ae@arachnoid>
+ <1680f328-ce34-4276-8be3-d402b372ef2b@gmail.com>
+ <4e4fd9a6-b68e-48a3-96c8-4d63d2846783@gmail.com>
+ <0aae7f84-6539-47e4-b222-bae7f39980a2@gmail.com>
+ <26107.61548.432767.678884@stat.math.ethz.ch>
+ <04d08fbb-cbbd-45cb-8113-5ea19ef2cf72@gmail.com>
+ <B2EF575C-211E-4530-8A05-919493F5B203@gmail.com>
+ <7626100e-297e-4943-8e8e-60d0c4313d7f@gmail.com>
+ <004701da7ba5$ae69a3b0$0b3ceb10$@gmail.com>
+Message-ID: <647aa330-ad8b-4dc4-b547-e3a8ce61adc5@gmail.com>
+
+I posted a description of their changes this morning.
+
+Duncan Murdoch
+
+On 21/03/2024 11:37 a.m., avi.e.gross at gmail.com wrote:
+> With all this discussion, I shudder to ask this. I may have missed the
+> answers but the discussion seems to have been about identifying and solving
+> the problem rapidly rather than what maybe is best going forward if all
+> parties agree.
+> 
+> What was the motivation for what RSTUDIO did for their version and the
+> decision to replace what came with utils unless someone very explicitly
+> over-rode them by asking for the original? Is their version better in other
+> ways? Is there a possibility the two implementations may someday merge into
+> something that meets several sets of needs or are they incompatible?
+> 
+> Is there agreement that what broke with the substitution is a valid use or
+> is it something that just happens to work on the utils version if not
+> patched?
+> 
+> 
+> 
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Duncan Murdoch
+> Sent: Thursday, March 21, 2024 5:53 AM
+> To: peter dalgaard <pdalgd at gmail.com>
+> Cc: Jorgen Harmse <JHarmse at roku.com>; r-help at r-project.org; Martin Maechler
+> <maechler at stat.math.ethz.ch>
+> Subject: Re: [R] Building Packages.
+> 
+> Yes, you're right.  The version found in the search list entry for
+> "package:utils" is the RStudio one; the ones found with two or three
+> colons are the original.
+> 
+> Duncan Murdoch
+> 
+> On 21/03/2024 5:48 a.m., peter dalgaard wrote:
+>> Um, what's with the triple colon? At least on my install, double seems to
+> suffice:
+>>
+>>> identical(utils:::install.packages, utils::install.packages)
+>> [1] TRUE
+>>> install.packages
+>> function (...)
+>> .rs.callAs(name, hook, original, ...)
+>> <environment: 0x7f79e0019860>
+>>
+>> -pd
+>>
+>>> On 21 Mar 2024, at 09:58 , Duncan Murdoch <murdoch.duncan at gmail.com>
+> wrote:
+>>>
+>>> The good news for Jorgen (who may not be reading this thread any more) is
+> that one can still be sure of getting the original install.packages() by
+> using
+>>>
+>>>      utils:::install.packages( ... )
+>>>
+>>> with *three* colons, to get the internal (namespace) version of the
+> function.
+>>>
+>>> Duncan Murdoch
+>>>
+>>>
+>>> On 21/03/2024 4:31 a.m., Martin Maechler wrote:
+>>>>>>>>> "Duncan Murdoch on Wed, 20 Mar 2024 13:20:12 -0400 writes:
+>>>>       > On 20/03/2024 1:07 p.m., Duncan Murdoch wrote:
+>>>>       >> On 20/03/2024 12:37 p.m., Ben Bolker wrote:
+>>>>       >>> Ivan, can you give more detail on this? I've heard this
+>>>>       >>> issue mentioned, but when I open RStudio and run
+>>>>       >>> find("install.packages") it returns
+>>>>       >>> "utils::install.packages", and running dump() from
+>>>>       >>> within RStudio console and from an external "R
+>>>>       >>> --vanilla" gives identical results.
+>>>>       >>>
+>>>>       >>> I thought at one point this might only refer to the GUI
+>>>>       >>> package-installation interface, but you seem to be
+>>>>       >>> saying it's the install.packages() function as well.
+>>>>       >>>
+>>>>       >>> Running an up-to-date RStudio on Linux, FWIW -- maybe
+>>>>       >>> weirdness only happens on other OSs?
+>>>>       >>
+>>>>       >> On MacOS, I see this:
+>>>>       >>
+>>>>       >> > install.packages function (...)  .rs.callAs(name, hook,
+>>>>       >> original, ...)  <environment: 0x7fa7c72a6268>
+>>>>       >>
+>>>>       >> I get the same results as you from find().  I'm not sure
+>>>>       >> what RStudio is doing to give a different value for the
+>>>>       >> function than what find() sees.
+>>>>       > Turns out that RStudio replaces the install.packages
+>>>>       > object in the utils package.
+>>>>       > Duncan Murdoch
+>>>> Yes, and this has been the case for several years now, and I
+>>>> have mentioned this several times, too  (though some of it
+>>>> possibly not in a public R-* mailing list).
+>>>> And yes, that they modify the package environment
+>>>>     as.environment("package:utils")
+>>>> but leave the
+>>>>     namespace  asNamespace("utils")
+>>>> unchanged, makes it harder to see what's
+>>>> going on (but also has less severe consequences; if they kept to
+>>>> the otherwise universal *rule* that the namespace and package must have
+> the same objects
+>>>> apart from those only in the namespace,
+>>>> people would not even have access to R's true install.packages()
+>>>> but only see the RStudio fake^Hsubstitute..
+>>>> We are still not happy with their decision. Also
+>>>> help(install.packages) goes to R's documentation of R's
+>>>> install.packages, so there's even more misleading of useRs.
+>>>> Martin
+>>>>
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bbo|ker @end|ng |rom gm@||@com  Thu Mar 21 17:09:14 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Thu, 21 Mar 2024 12:09:14 -0400
+Subject: [R] Building Packages.
+In-Reply-To: <647aa330-ad8b-4dc4-b547-e3a8ce61adc5@gmail.com>
+References: <BL0PR01MB443476A7058EAA65165C9587DC332@BL0PR01MB4434.prod.exchangelabs.com>
+ <20240320191353.3d6b36ae@arachnoid>
+ <1680f328-ce34-4276-8be3-d402b372ef2b@gmail.com>
+ <4e4fd9a6-b68e-48a3-96c8-4d63d2846783@gmail.com>
+ <0aae7f84-6539-47e4-b222-bae7f39980a2@gmail.com>
+ <26107.61548.432767.678884@stat.math.ethz.ch>
+ <04d08fbb-cbbd-45cb-8113-5ea19ef2cf72@gmail.com>
+ <B2EF575C-211E-4530-8A05-919493F5B203@gmail.com>
+ <7626100e-297e-4943-8e8e-60d0c4313d7f@gmail.com>
+ <004701da7ba5$ae69a3b0$0b3ceb10$@gmail.com>
+ <647aa330-ad8b-4dc4-b547-e3a8ce61adc5@gmail.com>
+Message-ID: <72d51eb2-d0cc-48e5-a617-0bc4ebfcc7e7@gmail.com>
+
+   I think this might be a good conversation for someone to have with 
+the Posit folks
+
+   * is there a more transparent way to do what they want?
+     * either, long-term, by having utils::install_packages() add a 
+'hook' feature as mentioned by someone
+     * using a similar method to bspm::enable(), which calls trace() to 
+add an external hook
+
+   * is there a good place for them to put the documentation of what 
+they're doing?
+
+   * can they fix things that are broken (e.g.? handling of paths), and 
+allow optional arguments to override behaviours that are different from 
+utils::install.packages (e.g. add a possibility to say force=TRUE to 
+override the "don't reinstall if already installed")
+
+   ?
+
+   cheers
+    Ben
+
+On 2024-03-21 11:51 a.m., Duncan Murdoch wrote:
+> I posted a description of their changes this morning.
+> 
+> Duncan Murdoch
+> 
+> On 21/03/2024 11:37 a.m., avi.e.gross at gmail.com wrote:
+>> With all this discussion, I shudder to ask this. I may have missed the
+>> answers but the discussion seems to have been about identifying and 
+>> solving
+>> the problem rapidly rather than what maybe is best going forward if all
+>> parties agree.
+>>
+>> What was the motivation for what RSTUDIO did for their version and the
+>> decision to replace what came with utils unless someone very explicitly
+>> over-rode them by asking for the original? Is their version better in 
+>> other
+>> ways? Is there a possibility the two implementations may someday merge 
+>> into
+>> something that meets several sets of needs or are they incompatible?
+>>
+>> Is there agreement that what broke with the substitution is a valid 
+>> use or
+>> is it something that just happens to work on the utils version if not
+>> patched?
+>>
+>>
+>>
+>> -----Original Message-----
+>> From: R-help <r-help-bounces at r-project.org> On Behalf Of Duncan Murdoch
+>> Sent: Thursday, March 21, 2024 5:53 AM
+>> To: peter dalgaard <pdalgd at gmail.com>
+>> Cc: Jorgen Harmse <JHarmse at roku.com>; r-help at r-project.org; Martin 
+>> Maechler
+>> <maechler at stat.math.ethz.ch>
+>> Subject: Re: [R] Building Packages.
+>>
+>> Yes, you're right.? The version found in the search list entry for
+>> "package:utils" is the RStudio one; the ones found with two or three
+>> colons are the original.
+>>
+>> Duncan Murdoch
+>>
+>> On 21/03/2024 5:48 a.m., peter dalgaard wrote:
+>>> Um, what's with the triple colon? At least on my install, double 
+>>> seems to
+>> suffice:
+>>>
+>>>> identical(utils:::install.packages, utils::install.packages)
+>>> [1] TRUE
+>>>> install.packages
+>>> function (...)
+>>> .rs.callAs(name, hook, original, ...)
+>>> <environment: 0x7f79e0019860>
+>>>
+>>> -pd
+>>>
+>>>> On 21 Mar 2024, at 09:58 , Duncan Murdoch <murdoch.duncan at gmail.com>
+>> wrote:
+>>>>
+>>>> The good news for Jorgen (who may not be reading this thread any 
+>>>> more) is
+>> that one can still be sure of getting the original install.packages() by
+>> using
+>>>>
+>>>> ???? utils:::install.packages( ... )
+>>>>
+>>>> with *three* colons, to get the internal (namespace) version of the
+>> function.
+>>>>
+>>>> Duncan Murdoch
+>>>>
+>>>>
+>>>> On 21/03/2024 4:31 a.m., Martin Maechler wrote:
+>>>>>>>>>> "Duncan Murdoch on Wed, 20 Mar 2024 13:20:12 -0400 writes:
+>>>>> ????? > On 20/03/2024 1:07 p.m., Duncan Murdoch wrote:
+>>>>> ????? >> On 20/03/2024 12:37 p.m., Ben Bolker wrote:
+>>>>> ????? >>> Ivan, can you give more detail on this? I've heard this
+>>>>> ????? >>> issue mentioned, but when I open RStudio and run
+>>>>> ????? >>> find("install.packages") it returns
+>>>>> ????? >>> "utils::install.packages", and running dump() from
+>>>>> ????? >>> within RStudio console and from an external "R
+>>>>> ????? >>> --vanilla" gives identical results.
+>>>>> ????? >>>
+>>>>> ????? >>> I thought at one point this might only refer to the GUI
+>>>>> ????? >>> package-installation interface, but you seem to be
+>>>>> ????? >>> saying it's the install.packages() function as well.
+>>>>> ????? >>>
+>>>>> ????? >>> Running an up-to-date RStudio on Linux, FWIW -- maybe
+>>>>> ????? >>> weirdness only happens on other OSs?
+>>>>> ????? >>
+>>>>> ????? >> On MacOS, I see this:
+>>>>> ????? >>
+>>>>> ????? >> > install.packages function (...)? .rs.callAs(name, hook,
+>>>>> ????? >> original, ...)? <environment: 0x7fa7c72a6268>
+>>>>> ????? >>
+>>>>> ????? >> I get the same results as you from find().? I'm not sure
+>>>>> ????? >> what RStudio is doing to give a different value for the
+>>>>> ????? >> function than what find() sees.
+>>>>> ????? > Turns out that RStudio replaces the install.packages
+>>>>> ????? > object in the utils package.
+>>>>> ????? > Duncan Murdoch
+>>>>> Yes, and this has been the case for several years now, and I
+>>>>> have mentioned this several times, too? (though some of it
+>>>>> possibly not in a public R-* mailing list).
+>>>>> And yes, that they modify the package environment
+>>>>> ??? as.environment("package:utils")
+>>>>> but leave the
+>>>>> ??? namespace? asNamespace("utils")
+>>>>> unchanged, makes it harder to see what's
+>>>>> going on (but also has less severe consequences; if they kept to
+>>>>> the otherwise universal *rule* that the namespace and package must 
+>>>>> have
+>> the same objects
+>>>>> apart from those only in the namespace,
+>>>>> people would not even have access to R's true install.packages()
+>>>>> but only see the RStudio fake^Hsubstitute..
+>>>>> We are still not happy with their decision. Also
+>>>>> help(install.packages) goes to R's documentation of R's
+>>>>> install.packages, so there's even more misleading of useRs.
+>>>>> Martin
+>>>>>
+>>>>
+>>>> ______________________________________________
+>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Thu Mar 21 17:30:48 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Thu, 21 Mar 2024 12:30:48 -0400
+Subject: [R] [External] Re: Building Packages. (fwd)
+In-Reply-To: <01bf537a-d8e9-44bc-b4f9-566b99bba01f@gmail.com>
+References: <342885d9-f2d7-b0dd-db2b-1eaac8b0693a@uiowa.edu>
+ <01bf537a-d8e9-44bc-b4f9-566b99bba01f@gmail.com>
+Message-ID: <004d01da7bad$21c1f950$6545ebf0$@gmail.com>
+
+Thank you Duncan, you explained quite a bit.
+
+I am unclear how this change causes the problem the OP mentioned.
+
+It is an example of people using a clever trick to get what they think they
+want that could be avoided if the original program provided a hook. Of
+course the hook could be used more maliciously by others.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Duncan Murdoch
+Sent: Thursday, March 21, 2024 8:28 AM
+To: luke-tierney at uiowa.edu; r-help at r-project.org
+Subject: Re: [R] [External] Re: Building Packages. (fwd)
+
+If you are wondering why RStudio did this, you can see their substitute 
+function using
+
+   (parent.env(environment(install.packages)))$hook
+
+They appear to do these things:
+
+  - Allow package installation to be disabled.
+
+  - Check if a package to be installed is already loaded, so that 
+RStudio can restart R for the install.
+
+  - Add Rtools to the PATH if necessary.
+
+  - Trigger an event to say that something is about to be changed about 
+the installed packages, presumably so that they can mark a cached list 
+of installed packages as stale.
+
+  - Call the original function.
+
+I think all of these things could be done  if install.packages() called 
+a hook at the start, as library() does (via attachNamespace()) when a 
+package is attached.  It might be that putting the wrapper code into 
+tools:rstudio would cause confusion for users when there were two 
+objects of the same name on the search list, though I don't see how.
+
+Duncan Murdoch
+
+
+On 21/03/2024 7:44 a.m., luke-tierney--- via R-help wrote:
+> [forgot to copy to R-help so re-sending]
+> 
+> ---------- Forwarded message ----------
+> Date: Thu, 21 Mar 2024 11:41:52 +0000
+> From: luke-tierney at uiowa.edu
+> To: Duncan Murdoch <murdoch.duncan at gmail.com>
+> Subject: Re: [External] Re: [R] Building Packages.
+> 
+> At least on my installed version (which tells me it is out of date)
+> they appear to just be modifying the "package:utils" parent frame of
+> the global search path.
+> 
+> There seem to be a few others:
+> 
+> checkUtilsFun <- function(n)
+>       identical(get(n, "package:utils"), get(n, getNamespace("utils")))
+> names(which(! sapply(ls("package:utils", all = TRUE), checkUtilsFun)))
+> ## [1] "bug.report"       "file.edit"        "help.request" ## [4]
+"history"
+> "install.packages" "remove.packages" ## [7] "View"
+> 
+> I don't know why they don't put these overrides in the tools:rstudio
+frame.
+> At least that would make them more visible.
+> 
+> You can fix all of these with something like
+> 
+> local({
+>         up <- match("package:utils", search())
+>         detach("package:utils")
+>         library(utils, pos = up)
+> })
+> 
+> or just install.packages with
+> 
+> local({
+>       up <- match("package:utils", search())
+>       unlockBinding("install.packages", pos.to.env(up))
+>       assign("install.packages", utils::install.packages, "package:utils")
+>       lockBinding("install.packages", pos.to.env(up))
+> })
+> 
+> Best,
+> 
+> luke
+> 
+> On Thu, 21 Mar 2024, Duncan Murdoch wrote:
+> 
+>> Yes, you're right.  The version found in the search list entry for
+>> "package:utils" is the RStudio one; the ones found with two or three
+colons
+>> are the original.
+>>
+>> Duncan Murdoch
+>>
+>> On 21/03/2024 5:48 a.m., peter dalgaard wrote:
+>>> Um, what's with the triple colon? At least on my install, double seems
+to
+>>> suffice:
+>>>
+>>>> identical(utils:::install.packages, utils::install.packages)
+>>> [1] TRUE
+>>>> install.packages
+>>> function (...)
+>>> .rs.callAs(name, hook, original, ...)
+>>> <environment: 0x7f79e0019860>
+>>>
+>>> -pd
+>>>
+>>>> On 21 Mar 2024, at 09:58 , Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+>>>>
+>>>> The good news for Jorgen (who may not be reading this thread any more)
+is
+>>>> that one can still be sure of getting the original install.packages()
+by
+>>>> using
+>>>>
+>>>>      utils:::install.packages( ... )
+>>>>
+>>>> with *three* colons, to get the internal (namespace) version of the
+>>>> function.
+>>>>
+>>>> Duncan Murdoch
+>>>>
+>>>>
+>>>> On 21/03/2024 4:31 a.m., Martin Maechler wrote:
+>>>>>>>>>> "Duncan Murdoch on Wed, 20 Mar 2024 13:20:12 -0400 writes:
+>>>>>       > On 20/03/2024 1:07 p.m., Duncan Murdoch wrote:
+>>>>>       >> On 20/03/2024 12:37 p.m., Ben Bolker wrote:
+>>>>>       >>> Ivan, can you give more detail on this? I've heard this
+>>>>>       >>> issue mentioned, but when I open RStudio and run
+>>>>>       >>> find("install.packages") it returns
+>>>>>       >>> "utils::install.packages", and running dump() from
+>>>>>       >>> within RStudio console and from an external "R
+>>>>>       >>> --vanilla" gives identical results.
+>>>>>       >>>
+>>>>>       >>> I thought at one point this might only refer to the GUI
+>>>>>       >>> package-installation interface, but you seem to be
+>>>>>       >>> saying it's the install.packages() function as well.
+>>>>>       >>>
+>>>>>       >>> Running an up-to-date RStudio on Linux, FWIW -- maybe
+>>>>>       >>> weirdness only happens on other OSs?
+>>>>>       >>
+>>>>>       >> On MacOS, I see this:
+>>>>>       >>
+>>>>>       >> > install.packages function (...)  .rs.callAs(name, hook,
+>>>>>       >> original, ...)  <environment: 0x7fa7c72a6268>
+>>>>>       >>
+>>>>>       >> I get the same results as you from find().  I'm not sure
+>>>>>       >> what RStudio is doing to give a different value for the
+>>>>>       >> function than what find() sees.
+>>>>>       > Turns out that RStudio replaces the install.packages
+>>>>>       > object in the utils package.
+>>>>>       > Duncan Murdoch
+>>>>> Yes, and this has been the case for several years now, and I
+>>>>> have mentioned this several times, too  (though some of it
+>>>>> possibly not in a public R-* mailing list).
+>>>>> And yes, that they modify the package environment
+>>>>>     as.environment("package:utils")
+>>>>> but leave the
+>>>>>     namespace  asNamespace("utils")
+>>>>> unchanged, makes it harder to see what's
+>>>>> going on (but also has less severe consequences; if they kept to
+>>>>> the otherwise universal *rule* that the namespace and package must
+have
+>>>>> the same objects
+>>>>> apart from those only in the namespace,
+>>>>> people would not even have access to R's true install.packages()
+>>>>> but only see the RStudio fake^Hsubstitute..
+>>>>> We are still not happy with their decision. Also
+>>>>> help(install.packages) goes to R's documentation of R's
+>>>>> install.packages, so there's even more misleading of useRs.
+>>>>> Martin
+>>>>>
+>>>>
+>>>> ______________________________________________
+>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>> PLEASE do read the posting guide
+>>>> http://www.r-project.org/posting-guide.html
+>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.r-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From JH@rm@e @end|ng |rom roku@com  Thu Mar 21 19:45:35 2024
+From: JH@rm@e @end|ng |rom roku@com (Jorgen Harmse)
+Date: Thu, 21 Mar 2024 18:45:35 +0000
+Subject: [R] Building Packages.
+In-Reply-To: <mailman.371075.1.1711018802.62976.r-help@r-project.org>
+References: <mailman.371075.1.1711018802.62976.r-help@r-project.org>
+Message-ID: <BL0PR01MB4434E37C44C441312B0F9DBBDC322@BL0PR01MB4434.prod.exchangelabs.com>
+
+> Turns out that RStudio replaces the install.packages object in the utils
+> package.
+
+> Duncan Murdoch
+
+So RStudio unlocks the bindings and alters the exported environment? That seems like another reason to stick to the terminal interface.
+
+>> Thank you. tools:::.install_packages works.
+
+> I'm glad it works, but it shouldn't be necessary to use (and is not
+> part of the API: not documented to keep working this way).
+> Best regards,
+> Ivan [Krylov]
+
+Thank you for letting me know. I hope I can avoid using private functions in future. As noted below, my function seems to work now.
+
+> Try setting a breakpoint in system2 before launching your function:
+
+> Best regards,
+> Ivan
+
+Now build.package works as written, so there?s nothing to debug. The problem may have been that this package is so important to me that I put it in .Rprofile. The package was not installed for the new version of R, so every R session started with an annoying error message. Presumably a separate session started with R CMD would just fail without installing the package. That?s no longer a problem because the package is now installed. However, I don?t know why the error message wasn?t clearer, and I?m puzzled that I was able to install roxygen2 & devtools. Thank you everyone, and I?m sorry if I didn?t give the right information to diagnose the problem faster.
+
+Regards,
+Jorgen.
+
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Mar 21 19:55:46 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 21 Mar 2024 21:55:46 +0300
+Subject: [R] Building Packages.
+In-Reply-To: <BL0PR01MB4434E37C44C441312B0F9DBBDC322@BL0PR01MB4434.prod.exchangelabs.com>
+References: <mailman.371075.1.1711018802.62976.r-help@r-project.org>
+ <BL0PR01MB4434E37C44C441312B0F9DBBDC322@BL0PR01MB4434.prod.exchangelabs.com>
+Message-ID: <20240321215546.06137b30@Tarkus>
+
+? Thu, 21 Mar 2024 18:45:35 +0000
+Jorgen Harmse via R-help <r-help at r-project.org> ?????:
+
+> The problem may have been that this package is so important to me
+> that I put it in .Rprofile. The package was not installed for the new
+> version of R, so every R session started with an annoying error
+> message. Presumably a separate session started with R CMD would just
+> fail without installing the package.
+
+This must be the solution to the mystery. I have recently added some
+code that raised an error (lattice::standard.theme(...), but without a
+new enough 'lattice' to understand the arguments) to my .Rprofile, and
+it broke quite a few things related to package development until I fixed
+my .Rprofile.
+
+Congratulations on solving the problem!
+
+-- 
+Best regards,
+Ivan
+
+
