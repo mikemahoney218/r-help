@@ -9836,3 +9836,2354 @@ Best regards,
 Ivan
 
 
+From sibyiie@stoeckii m@iii@g oii gmx@ch  Fri Mar 22 08:59:08 2024
+From: sibyiie@stoeckii m@iii@g oii gmx@ch (sibyiie@stoeckii m@iii@g oii gmx@ch)
+Date: Fri, 22 Mar 2024 08:59:08 +0100
+Subject: [R] geom_edge & color
+In-Reply-To: <5a11b20ff6be35626a3db42a9bdb1947cb68997d.camel@utu.fi>
+References: <022201da7af4$704240d0$50c6c270$@gmx.ch>
+ <5a11b20ff6be35626a3db42a9bdb1947cb68997d.camel@utu.fi>
+Message-ID: <008201da7c2e$d215b9f0$76412dd0$@gmx.ch>
+
+Dear community
+
+ 
+
+Find enclosed the full working example.
+
+ 
+
+Many thanks
+
+Sibylle
+
+ 
+
+Test_cat.csv
+
+
+Names
+
+Subcategory_type
+
+sources.cyto
+
+source
+
+Factor
+
+
+A.A
+
+material
+
+"A"
+
+A
+
+1
+
+
+B.B
+
+material
+
+"B"
+
+B
+
+1
+
+
+C.C
+
+regulation
+
+"C"
+
+C
+
+1
+
+
+D.D
+
+regulation
+
+"D"
+
+D
+
+1
+
+
+E.E
+
+habitat
+
+"E"
+
+E
+
+1
+
+
+F.F
+
+cultural
+
+"F"
+
+F
+
+1
+
+ 
+
+Test_adjac.csv
+
+	
+A.A
+
+B.B
+
+C.C
+
+D.D
+
+E.E
+
+F.F
+
+
+A.A
+
+0
+
+0
+
+5
+
+5
+
+5
+
+5
+
+
+B.B
+
+4
+
+0
+
+1
+
+1
+
+1
+
+1
+
+
+C.C
+
+5
+
+5
+
+0
+
+5
+
+4
+
+2
+
+
+D.D
+
+5
+
+0
+
+5
+
+0
+
+5
+
+3
+
+
+E.E
+
+5
+
+1
+
+5
+
+5
+
+0
+
+4
+
+
+F.F
+
+1
+
+2
+
+3
+
+4
+
+5
+
+5
+
+ 
+
+ 
+
+Edges_table-Test.csv
+
+ 
+
+
+Names
+
+target
+
+weight
+
+relationship
+
+
+B.B
+
+A.A
+
+4
+
+pos
+
+
+C.C
+
+A.A
+
+5
+
+pos
+
+
+D.D
+
+A.A
+
+5
+
+neg
+
+
+E.E
+
+A.A
+
+5
+
+pos
+
+
+F.F
+
+A.A
+
+1
+
+pos
+
+
+C.C
+
+B.B
+
+5
+
+pos
+
+
+E.E
+
+B.B
+
+1
+
+pos
+
+
+F.F
+
+B.B
+
+2
+
+neg
+
+
+A.A
+
+C.C
+
+5
+
+pos
+
+
+B.B
+
+C.C
+
+1
+
+pos
+
+
+D.D
+
+C.C
+
+5
+
+pos
+
+
+E.E
+
+C.C
+
+5
+
+pos
+
+
+F.F
+
+C.C
+
+3
+
+pos
+
+
+A.A
+
+D.D
+
+5
+
+neg
+
+
+B.B
+
+D.D
+
+1
+
+pos
+
+
+C.C
+
+D.D
+
+5
+
+pos
+
+
+E.E
+
+D.D
+
+5
+
+pos
+
+
+F.F
+
+D.D
+
+4
+
+pos
+
+
+A.A
+
+E.E
+
+5
+
+pos
+
+
+B.B
+
+E.E
+
+1
+
+pos
+
+
+C.C
+
+E.E
+
+4
+
+pos
+
+
+D.D
+
+E.E
+
+5
+
+pos
+
+
+F.F
+
+E.E
+
+5
+
+pos
+
+
+A.A
+
+F.F
+
+5
+
+pos
+
+
+B.B
+
+F.F
+
+1
+
+neg
+
+
+C.C
+
+F.F
+
+2
+
+pos
+
+
+D.D
+
+F.F
+
+3
+
+pos
+
+
+E.E
+
+F.F
+
+4
+
+pos
+
+
+F.F
+
+F.F
+
+5
+
+pos
+
+ 
+
+ 
+
+ 
+
+#upload librairies
+
+library(circlize)
+
+library(ggplot2)
+
+library(igraph)
+
+library(tidyverse)
+
+library(RColorBrewer)
+
+library(stringi)
+
+library(scico)
+
+library(plotly)
+
+library(ggraph)
+
+ 
+
+#upload
+
+aes<-read.csv("Test_adjac.csv", row.names = 1)
+
+details<-read.csv("Test_cat.csv")
+
+ 
+
+ 
+
+# adjacency  table 
+
+aes_collapsed<-aes %>%
+
+  rownames_to_column(var='Names') %>%
+
+  tidyr::gather(target, weight, 1:ncol(aes)+1) %>%
+
+  dplyr::filter(weight != 0) %>%
+
+  mutate(weight = ifelse(weight == "-1", 0, weight)) # here 0 = negative values
+
+ 
+
+write.csv(aes_collapsed, "edges_table-Test.csv", row.names = F)
+
+edge_list<-read.csv("edges_table-Test.csv")
+
+ 
+
+ 
+
+#create network and add some necessary attributes (vertices) for the plot
+
+ 
+
+network <- graph_from_data_frame(aes_collapsed, directed= FALSE, 
+
+                                 vertices = details)
+
+ 
+
+### network and vertex with 'subcategory_type'
+
+ 
+
+temp<-cluster_optimal(network)
+
+temp<-cbind(membership=temp$membership, Names=temp$name)
+
+aes_collapsed <- aes_collapsed %>%
+
+  merge(temp, by="Names")
+
+ 
+
+network <- network %>%
+
+  set_edge_attr(name = "type", value = factor(aes_collapsed$Names, 
+
+                                                 ordered = is.ordered(V(network)$name))) %>%
+
+  set_edge_attr(name = "membership", value = aes_collapsed$membership) %>%
+
+  set_edge_attr(name = "color", 
+
+              value = c(viridis::viridis(21))
+
+              [match(E(.)$type, c(factor(V(.)$name)))]) %>%
+
+  set_vertex_attr(name = "trans_v_net", value = c(transitivity(., type = "local"))) %>%
+
+  set_vertex_attr(name = "hub_score", value = c(hub_score(.)$vector)) %>%
+
+  set_vertex_attr(name = "color", 
+
+              value = c(viridis::viridis((21)))
+
+              [match(V(.)$name, c(factor(V(.)$name)))]) %>%
+
+  set_vertex_attr(name= "community", value=cluster_optimal(.)$Subcategory_type)
+
+ 
+
+clrs<-scico(3, palette = "batlow")
+
+ 
+
+windowsFonts(Helvetica = windowsFont("Helvetica")) 
+
+ 
+
+par(bg="black")
+
+network %>% plot(
+
+     vertex.color=clrs[V(.)$community], 
+
+     vertex.size=V(.)$hub_score*20, 
+
+     vertex.frame.color=V(.)$color, 
+
+     vertex.label.color="white", 
+
+     vertex.label.cex=0.4, 
+
+     vertex.label.family="Helvetica",
+
+     vertex.label.font=0.75,
+
+     edge.curved=0.5,
+
+     edge.width= E(.)$weight,
+
+     edge.color = ifelse(edge_list$relationship == "pos", "blue", "red"),
+
+     layout=layout_with_mds(.))
+
+ 
+
+tiff("figures/Test_network_bysubcatecory.tiff", width=1000, height=900, res=120)
+
+network %>%
+
+  ggraph(., layout = "auto")+
+
+  geom_edge_arc(curvature=0.3, aes(width=(E(network)$weight/10), color=c("darkblue", "red")[as.factor(edge_list$relationship)], alpha=0.5)) + 
+
+  geom_node_point(aes(size = V(network)$hub_score*200, color= as.factor(V(network)$community))) +
+
+  geom_node_text(aes(label =  V(network)$name), size=3, color="white", repel=T)+
+
+  scale_color_scico_d(palette = "batlow")+
+
+  scale_edge_width(range = c(0.2,4))+
+
+  scale_size(range = c(0.5,15)) +
+
+  theme(plot.background = element_rect(fill = "black"),
+
+        legend.position = "right",
+
+        panel.background = element_rect(fill = "black"))
+
+dev.off()
+
+ 
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Kimmo Elo
+Sent: Thursday, March 21, 2024 10:51 AM
+To: r-help at r-project.org
+Subject: Re: [R] geom_edge & color
+
+ 
+
+Dear Sibylle,
+
+ 
+
+your example is not working! E.g. no data for "aes_collapsed".
+
+ 
+
+Best,
+
+ 
+
+Kimmo
+
+ 
+
+ke, 2024-03-20 kello 19:28 +0100, SIBYLLE ST?CKLI via R-help kirjoitti:
+
+> Dear community
+
+> 
+
+> I am using ggraph to plot a network analysis. See part 2 in the 
+
+> working example.
+
+> Besides different colors for different groups of nodes:
+
+> --> geom_node_point(aes(size = V(network)$hub_score*200, color=
+
+> as.factor(V(network)$community)))
+
+> I additionally want to consider different colors for different edge 
+
+> groups The grouping is defined in the edge_list$relationship: negative 
+
+> relationship = red and positive relationship = darkblue. The code is 
+
+> working in the way that the  groups are separated by two colors. 
+
+> However, the code uses not the assigned colors. Does anyone have any 
+
+> idea how to adapt the code?
+
+> --> geom_edge_arc(curvature=0.3, aes(width=(E(network)$weight/10),
+
+> color=c("darkblue", "red")[as.factor(edge_list$relationship)],
+
+> alpha=0.5)) +
+
+> 
+
+> Kind regards
+
+> Sibylle
+
+> 
+
+> 
+
+> 
+
+> 
+
+> Working example
+
+> 
+
+> library(circlize)
+
+> library(ggplot2)
+
+> library(igraph)
+
+> library(tidyverse)
+
+> library(RColorBrewer)
+
+> library(stringi)
+
+> library(scico)
+
+> library(plotly)
+
+> library(ggraph)
+
+> 
+
+> edges_table_Test.csv
+
+> 
+
+> Names   target  weight relationship
+
+> B.B     A.A     4           pos
+
+> C.C     A.A     5           pos
+
+> D.D     A.A     5           neg
+
+> E.E     A.A     5          neg
+
+> F.F     A.A     1          pos
+
+> C.C     B.B     5         pos
+
+> E.E     B.B     1           pos
+
+> F.F     B.B     2          pos
+
+> A.A     C.C     5        pos
+
+> B.B     C.C     1        pos
+
+> D.D     C.C     5         pos
+
+> E.E     C.C     5         pos
+
+> F.F     C.C     3         pos
+
+> A.A     D.D     5        neg
+
+> B.B     D.D     1        neg
+
+> C.C     D.D     5        neg
+
+> E.E     D.D     5        neg
+
+> F.F     D.D     4         neg
+
+> A.A     E.E     5         neg
+
+> B.B     E.E     1        neg
+
+> C.C     E.E     4        neg
+
+> D.D     E.E     5        neg
+
+> F.F     E.E     5       pos
+
+> A.A     F.F     5        pos
+
+> B.B     F.F     1       pos
+
+> C.C     F.F     2       pos
+
+> D.D     F.F     3      pos
+
+> E.E     F.F     4       pos
+
+> F.F     F.F     5       pos
+
+> 
+
+> edge_list<-read.csv("edges_table_Test.csv")
+
+> 
+
+> network <- graph_from_data_frame(aes_collapsed, directed= FALSE,
+
+>                                  vertices = details)
+
+> 
+
+> temp<-cluster_optimal(network)
+
+> temp<-cbind(membership=temp$membership, Names=temp$name) aes_collapsed 
+
+> <- aes_collapsed %>%
+
+>   merge(temp, by="Names")
+
+> 
+
+> 
+
+> network <- network %>%
+
+>   set_edge_attr(name = "type", value = factor(aes_collapsed$Names,
+
+>                                                  ordered =
+
+> is.ordered(V(network)$name))) %>%
+
+>   set_edge_attr(name = "membership", value = aes_collapsed$membership) 
+
+> %>%
+
+>   set_edge_attr(name = "color",
+
+>               value = c(viridis::viridis(5))
+
+>               [match(E(.)$type, c(factor(V(.)$name)))]) %>%
+
+>   set_vertex_attr(name = "trans_v_net", value = c(transitivity(., type 
+
+> =
+
+> "local"))) %>%
+
+>   set_vertex_attr(name = "hub_score", value = c(hub_score(.)$vector)) 
+
+> %>%
+
+>   set_vertex_attr(name = "color",
+
+>               value = c(viridis::viridis((5)))
+
+>               [match(V(.)$name, c(factor(V(.)$name)))]) %>%
+
+>   set_vertex_attr(name= "community", 
+
+> value=cluster_optimal(.)$membership)
+
+> clrs<-scico(3, palette = "batlow")
+
+> 
+
+> ### part 1: network plot
+
+> par(bg="black")
+
+> network %>% plot(
+
+>      vertex.color=clrs[V(.)$community],
+
+>      vertex.size=V(.)$hub_score*5,
+
+>      vertex.frame.color=V(.)$color,
+
+>      vertex.label.color="white",
+
+>      vertex.label.cex=0.5,
+
+>      vertex.label.family="Helvetica",
+
+>      vertex.label.font=1,
+
+>      edge.curved=0.5,
+
+>      edge.width= network,
+
+>      layout=layout_with_mds(.))
+
+> 
+
+> ### part 2: ggraph
+
+> tiff("figures/AES_network_bymembership.tiff", width=1000, height=700,
+
+> res=120) network %>%
+
+>   ggraph(., layout = "auto")+
+
+> geom_edge_arc(curvature=0.3, aes(width=(E(network)$weight/10), 
+
+> color=c("darkblue", "red")[as.factor(edge_list$relationship)],
+
+> alpha=0.5)) +
+
+> 
+
+>   geom_node_point(aes(size = V(network)$hub_score*200, color=
+
+> as.factor(V(network)$community))) +
+
+>   geom_node_text(aes(label =  V(network)$name), size=5, color="white", 
+
+> repel=T)+
+
+>   scale_color_scico_d(palette = "batlow")+
+
+>   scale_edge_width(range = c(0.2,4))+
+
+>   scale_size(range = c(0.5,20)) +
+
+>   #scale_edge_color_manual(values = c(scico(21, palette="batlow")))+
+
+>   theme(plot.background = element_rect(fill = "black"),
+
+>         legend.position = "right",
+
+>         panel.background = element_rect(fill = "black"))
+
+> dev.off()
+
+> 
+
+> ______________________________________________
+
+>  <mailto:R-help at r-project.org> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see 
+
+>  <https://stat.ethz.ch/mailman/listinfo/r-help> https://stat.ethz.ch/mailman/listinfo/r-help
+
+> PLEASE do read the posting guide
+
+>  <http://www.R-project.org/posting-guide.html> http://www.R-project.org/posting-guide.html
+
+> and provide commented, minimal, self-contained, reproducible code.
+
+ 
+
+______________________________________________
+
+ <mailto:R-help at r-project.org> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see  <https://stat.ethz.ch/mailman/listinfo/r-help> https://stat.ethz.ch/mailman/listinfo/r-help
+
+PLEASE do read the posting guide  <http://www.R-project.org/posting-guide.html> http://www.R-project.org/posting-guide.html
+
+and provide commented, minimal, self-contained, reproducible code.
+
+
+	[[alternative HTML version deleted]]
+
+
+From k|mmo@e|o @end|ng |rom utu@||  Fri Mar 22 12:09:37 2024
+From: k|mmo@e|o @end|ng |rom utu@|| (Kimmo Elo)
+Date: Fri, 22 Mar 2024 11:09:37 +0000
+Subject: [R] geom_edge & color
+In-Reply-To: <008201da7c2e$d215b9f0$76412dd0$@gmx.ch>
+References: <022201da7af4$704240d0$50c6c270$@gmx.ch>
+ <5a11b20ff6be35626a3db42a9bdb1947cb68997d.camel@utu.fi>
+ <008201da7c2e$d215b9f0$76412dd0$@gmx.ch>
+Message-ID: <d0ea5f6da43a81989072efc8f34005caa0d53f66.camel@utu.fi>
+
+Hi,
+
+this seems to work (assuming that your problem was the setting of
+colours...):
+
+--- snip ---
+
+network %>%
+    ggraph(., layout = "auto") +
+    # This produces an error...
+    # geom_edge_arc(curvature=0.3, aes(width=(E(network)$weight/10),
+color=c("darkblue", "red")[as.factor(edge_list$relationship)], alpha=0.5))
++ 
+    # ... this works :-)
+    geom_edge_arc(curvature=0.3, aes(width=E(network)$weight/10,
+color=edge_list$relationship), alpha=.5) +
+    scale_edge_color_manual(values=c("pos"="darkblue", "neg"="red")) +
+    
+    # This does not work either...
+    # geom_node_point(aes(size = V(network)$hub_score*200, color=
+as.factor(V(network)$community))) +
+    # ... so try this :)
+    geom_node_point(aes(size = V(network)$hub_score*200,
+color=V(network)$Subcategory_type)) +
+    geom_node_text(aes(label =  V(network)$name), size=3, color="white",
+repel=T)+
+    scale_color_scico_d(palette = "batlow")+
+    scale_edge_width(range = c(0.2,4))+
+    scale_size(range = c(0.5,15)) +
+    theme(plot.background = element_rect(fill = "black"),
+          legend.position = "right",
+          panel.background = element_rect(fill = "black"))
+
+--- snip ---
+
+At least in my data created with your code, the object "network" does not
+have an attribute "community". I use the existing "Subcategory_type"
+instead, because I had no time to debug this problem :-)
+
+I do not know whether this produces what you expect or want to visualise.
+
+HTH,
+
+Kimmo
+
+
+pe, 2024-03-22 kello 08:59 +0100, sibylle.stoeckli at gmx.ch kirjoitti:
+> Dear community
+> 
+> ?
+> 
+> Find enclosed the full working example.
+> 
+> ?
+> 
+> Many thanks
+> 
+> Sibylle
+> 
+> ?
+> 
+> Test_cat.csv
+> 
+> 
+> Names
+> 
+> Subcategory_type
+> 
+> sources.cyto
+> 
+> source
+> 
+> Factor
+> 
+> 
+> A.A
+> 
+> material
+> 
+> "A"
+> 
+> A
+> 
+> 1
+> 
+> 
+> B.B
+> 
+> material
+> 
+> "B"
+> 
+> B
+> 
+> 1
+> 
+> 
+> C.C
+> 
+> regulation
+> 
+> "C"
+> 
+> C
+> 
+> 1
+> 
+> 
+> D.D
+> 
+> regulation
+> 
+> "D"
+> 
+> D
+> 
+> 1
+> 
+> 
+> E.E
+> 
+> habitat
+> 
+> "E"
+> 
+> E
+> 
+> 1
+> 
+> 
+> F.F
+> 
+> cultural
+> 
+> "F"
+> 
+> F
+> 
+> 1
+> 
+> ?
+> 
+> Test_adjac.csv
+> 
+> ????????
+> A.A
+> 
+> B.B
+> 
+> C.C
+> 
+> D.D
+> 
+> E.E
+> 
+> F.F
+> 
+> 
+> A.A
+> 
+> 0
+> 
+> 0
+> 
+> 5
+> 
+> 5
+> 
+> 5
+> 
+> 5
+> 
+> 
+> B.B
+> 
+> 4
+> 
+> 0
+> 
+> 1
+> 
+> 1
+> 
+> 1
+> 
+> 1
+> 
+> 
+> C.C
+> 
+> 5
+> 
+> 5
+> 
+> 0
+> 
+> 5
+> 
+> 4
+> 
+> 2
+> 
+> 
+> D.D
+> 
+> 5
+> 
+> 0
+> 
+> 5
+> 
+> 0
+> 
+> 5
+> 
+> 3
+> 
+> 
+> E.E
+> 
+> 5
+> 
+> 1
+> 
+> 5
+> 
+> 5
+> 
+> 0
+> 
+> 4
+> 
+> 
+> F.F
+> 
+> 1
+> 
+> 2
+> 
+> 3
+> 
+> 4
+> 
+> 5
+> 
+> 5
+> 
+> ?
+> 
+> ?
+> 
+> Edges_table-Test.csv
+> 
+> ?
+> 
+> 
+> Names
+> 
+> target
+> 
+> weight
+> 
+> relationship
+> 
+> 
+> B.B
+> 
+> A.A
+> 
+> 4
+> 
+> pos
+> 
+> 
+> C.C
+> 
+> A.A
+> 
+> 5
+> 
+> pos
+> 
+> 
+> D.D
+> 
+> A.A
+> 
+> 5
+> 
+> neg
+> 
+> 
+> E.E
+> 
+> A.A
+> 
+> 5
+> 
+> pos
+> 
+> 
+> F.F
+> 
+> A.A
+> 
+> 1
+> 
+> pos
+> 
+> 
+> C.C
+> 
+> B.B
+> 
+> 5
+> 
+> pos
+> 
+> 
+> E.E
+> 
+> B.B
+> 
+> 1
+> 
+> pos
+> 
+> 
+> F.F
+> 
+> B.B
+> 
+> 2
+> 
+> neg
+> 
+> 
+> A.A
+> 
+> C.C
+> 
+> 5
+> 
+> pos
+> 
+> 
+> B.B
+> 
+> C.C
+> 
+> 1
+> 
+> pos
+> 
+> 
+> D.D
+> 
+> C.C
+> 
+> 5
+> 
+> pos
+> 
+> 
+> E.E
+> 
+> C.C
+> 
+> 5
+> 
+> pos
+> 
+> 
+> F.F
+> 
+> C.C
+> 
+> 3
+> 
+> pos
+> 
+> 
+> A.A
+> 
+> D.D
+> 
+> 5
+> 
+> neg
+> 
+> 
+> B.B
+> 
+> D.D
+> 
+> 1
+> 
+> pos
+> 
+> 
+> C.C
+> 
+> D.D
+> 
+> 5
+> 
+> pos
+> 
+> 
+> E.E
+> 
+> D.D
+> 
+> 5
+> 
+> pos
+> 
+> 
+> F.F
+> 
+> D.D
+> 
+> 4
+> 
+> pos
+> 
+> 
+> A.A
+> 
+> E.E
+> 
+> 5
+> 
+> pos
+> 
+> 
+> B.B
+> 
+> E.E
+> 
+> 1
+> 
+> pos
+> 
+> 
+> C.C
+> 
+> E.E
+> 
+> 4
+> 
+> pos
+> 
+> 
+> D.D
+> 
+> E.E
+> 
+> 5
+> 
+> pos
+> 
+> 
+> F.F
+> 
+> E.E
+> 
+> 5
+> 
+> pos
+> 
+> 
+> A.A
+> 
+> F.F
+> 
+> 5
+> 
+> pos
+> 
+> 
+> B.B
+> 
+> F.F
+> 
+> 1
+> 
+> neg
+> 
+> 
+> C.C
+> 
+> F.F
+> 
+> 2
+> 
+> pos
+> 
+> 
+> D.D
+> 
+> F.F
+> 
+> 3
+> 
+> pos
+> 
+> 
+> E.E
+> 
+> F.F
+> 
+> 4
+> 
+> pos
+> 
+> 
+> F.F
+> 
+> F.F
+> 
+> 5
+> 
+> pos
+> 
+> ?
+> 
+> ?
+> 
+> ?
+> 
+> #upload librairies
+> 
+> library(circlize)
+> 
+> library(ggplot2)
+> 
+> library(igraph)
+> 
+> library(tidyverse)
+> 
+> library(RColorBrewer)
+> 
+> library(stringi)
+> 
+> library(scico)
+> 
+> library(plotly)
+> 
+> library(ggraph)
+> 
+> ?
+> 
+> #upload
+> 
+> aes<-read.csv("Test_adjac.csv", row.names = 1)
+> 
+> details<-read.csv("Test_cat.csv")
+> 
+> ?
+> 
+> ?
+> 
+> # adjacency? table 
+> 
+> aes_collapsed<-aes %>%
+> 
+> ? rownames_to_column(var='Names') %>%
+> 
+> ? tidyr::gather(target, weight, 1:ncol(aes)+1) %>%
+> 
+> ? dplyr::filter(weight != 0) %>%
+> 
+> ? mutate(weight = ifelse(weight == "-1", 0, weight)) # here 0 = negative
+> values
+> 
+> ?
+> 
+> write.csv(aes_collapsed, "edges_table-Test.csv", row.names = F)
+> 
+> edge_list<-read.csv("edges_table-Test.csv")
+> 
+> ?
+> 
+> ?
+> 
+> #create network and add some necessary attributes (vertices) for the plot
+> 
+> ?
+> 
+> network <- graph_from_data_frame(aes_collapsed, directed= FALSE, 
+> 
+> ???????????????????????????????? vertices = details)
+> 
+> ?
+> 
+> ### network and vertex with 'subcategory_type'
+> 
+> ?
+> 
+> temp<-cluster_optimal(network)
+> 
+> temp<-cbind(membership=temp$membership, Names=temp$name)
+> 
+> aes_collapsed <- aes_collapsed %>%
+> 
+> ? merge(temp, by="Names")
+> 
+> ?
+> 
+> network <- network %>%
+> 
+> ? set_edge_attr(name = "type", value = factor(aes_collapsed$Names, 
+> 
+> ???????????????????????????????????????????????? ordered =
+> is.ordered(V(network)$name))) %>%
+> 
+> ? set_edge_attr(name = "membership", value = aes_collapsed$membership)
+> %>%
+> 
+> ? set_edge_attr(name = "color", 
+> 
+> ????????????? value = c(viridis::viridis(21))
+> 
+> ????????????? [match(E(.)$type, c(factor(V(.)$name)))]) %>%
+> 
+> ? set_vertex_attr(name = "trans_v_net", value = c(transitivity(., type =
+> "local"))) %>%
+> 
+> ? set_vertex_attr(name = "hub_score", value = c(hub_score(.)$vector)) %>%
+> 
+> ? set_vertex_attr(name = "color", 
+> 
+> ????????????? value = c(viridis::viridis((21)))
+> 
+> ????????????? [match(V(.)$name, c(factor(V(.)$name)))]) %>%
+> 
+> ? set_vertex_attr(name= "community",
+> value=cluster_optimal(.)$Subcategory_type)
+> 
+> ?
+> 
+> clrs<-scico(3, palette = "batlow")
+> 
+> ?
+> 
+> windowsFonts(Helvetica = windowsFont("Helvetica")) 
+> 
+> ?
+> 
+> par(bg="black")
+> 
+> network %>% plot(
+> 
+> ???? vertex.color=clrs[V(.)$community], 
+> 
+> ???? vertex.size=V(.)$hub_score*20, 
+> 
+> ???? vertex.frame.color=V(.)$color, 
+> 
+> ???? vertex.label.color="white", 
+> 
+> ???? vertex.label.cex=0.4, 
+> 
+> ???? vertex.label.family="Helvetica",
+> 
+> ???? vertex.label.font=0.75,
+> 
+> ???? edge.curved=0.5,
+> 
+> ???? edge.width= E(.)$weight,
+> 
+> ???? edge.color = ifelse(edge_list$relationship == "pos", "blue", "red"),
+> 
+> ???? layout=layout_with_mds(.))
+> 
+> ?
+> 
+> tiff("figures/Test_network_bysubcatecory.tiff", width=1000, height=900,
+> res=120)
+> 
+> network %>%
+> 
+> ? ggraph(., layout = "auto")+
+> 
+> ? geom_edge_arc(curvature=0.3, aes(width=(E(network)$weight/10),
+> color=c("darkblue", "red")[as.factor(edge_list$relationship)],
+> alpha=0.5)) + 
+> 
+> ? geom_node_point(aes(size = V(network)$hub_score*200, color=
+> as.factor(V(network)$community))) +
+> 
+> ? geom_node_text(aes(label =? V(network)$name), size=3, color="white",
+> repel=T)+
+> 
+> ? scale_color_scico_d(palette = "batlow")+
+> 
+> ? scale_edge_width(range = c(0.2,4))+
+> 
+> ? scale_size(range = c(0.5,15)) +
+> 
+> ? theme(plot.background = element_rect(fill = "black"),
+> 
+> ??????? legend.position = "right",
+> 
+> ??????? panel.background = element_rect(fill = "black"))
+> 
+> dev.off()
+> 
+> ?
+> 
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Kimmo Elo
+> Sent: Thursday, March 21, 2024 10:51 AM
+> To: r-help at r-project.org
+> Subject: Re: [R] geom_edge & color
+> 
+> ?
+> 
+> Dear Sibylle,
+> 
+> ?
+> 
+> your example is not working! E.g. no data for "aes_collapsed".
+> 
+> ?
+> 
+> Best,
+> 
+> ?
+> 
+> Kimmo
+> 
+> ?
+> 
+> ke, 2024-03-20 kello 19:28 +0100, SIBYLLE ST?CKLI via R-help kirjoitti:
+> 
+> > Dear community
+> 
+> > 
+> 
+> > I am using ggraph to plot a network analysis. See part 2 in the 
+> 
+> > working example.
+> 
+> > Besides different colors for different groups of nodes:
+> 
+> > --> geom_node_point(aes(size = V(network)$hub_score*200, color=
+> 
+> > as.factor(V(network)$community)))
+> 
+> > I additionally want to consider different colors for different edge 
+> 
+> > groups The grouping is defined in the edge_list$relationship: negative 
+> 
+> > relationship = red and positive relationship = darkblue. The code is 
+> 
+> > working in the way that the? groups are separated by two colors. 
+> 
+> > However, the code uses not the assigned colors. Does anyone have any 
+> 
+> > idea how to adapt the code?
+> 
+> > --> geom_edge_arc(curvature=0.3, aes(width=(E(network)$weight/10),
+> 
+> > color=c("darkblue", "red")[as.factor(edge_list$relationship)],
+> 
+> > alpha=0.5)) +
+> 
+> > 
+> 
+> > Kind regards
+> 
+> > Sibylle
+> 
+> > 
+> 
+> > 
+> 
+> > 
+> 
+> > 
+> 
+> > Working example
+> 
+> > 
+> 
+> > library(circlize)
+> 
+> > library(ggplot2)
+> 
+> > library(igraph)
+> 
+> > library(tidyverse)
+> 
+> > library(RColorBrewer)
+> 
+> > library(stringi)
+> 
+> > library(scico)
+> 
+> > library(plotly)
+> 
+> > library(ggraph)
+> 
+> > 
+> 
+> > edges_table_Test.csv
+> 
+> > 
+> 
+> > Names?? target? weight relationship
+> 
+> > B.B???? A.A???? 4?????????? pos
+> 
+> > C.C???? A.A???? 5?????????? pos
+> 
+> > D.D???? A.A???? 5?????????? neg
+> 
+> > E.E???? A.A???? 5????????? neg
+> 
+> > F.F???? A.A???? 1????????? pos
+> 
+> > C.C???? B.B???? 5???????? pos
+> 
+> > E.E???? B.B???? 1?????????? pos
+> 
+> > F.F???? B.B???? 2????????? pos
+> 
+> > A.A???? C.C???? 5??????? pos
+> 
+> > B.B???? C.C???? 1??????? pos
+> 
+> > D.D???? C.C???? 5???????? pos
+> 
+> > E.E???? C.C???? 5???????? pos
+> 
+> > F.F???? C.C???? 3???????? pos
+> 
+> > A.A???? D.D???? 5??????? neg
+> 
+> > B.B???? D.D???? 1??????? neg
+> 
+> > C.C???? D.D???? 5??????? neg
+> 
+> > E.E???? D.D???? 5??????? neg
+> 
+> > F.F???? D.D???? 4???????? neg
+> 
+> > A.A???? E.E???? 5???????? neg
+> 
+> > B.B???? E.E???? 1??????? neg
+> 
+> > C.C???? E.E???? 4??????? neg
+> 
+> > D.D???? E.E???? 5??????? neg
+> 
+> > F.F???? E.E???? 5?????? pos
+> 
+> > A.A???? F.F???? 5??????? pos
+> 
+> > B.B???? F.F???? 1?????? pos
+> 
+> > C.C???? F.F???? 2?????? pos
+> 
+> > D.D???? F.F???? 3????? pos
+> 
+> > E.E???? F.F???? 4?????? pos
+> 
+> > F.F???? F.F???? 5?????? pos
+> 
+> > 
+> 
+> > edge_list<-read.csv("edges_table_Test.csv")
+> 
+> > 
+> 
+> > network <- graph_from_data_frame(aes_collapsed, directed= FALSE,
+> 
+> > ???????????????????????????????? vertices = details)
+> 
+> > 
+> 
+> > temp<-cluster_optimal(network)
+> 
+> > temp<-cbind(membership=temp$membership, Names=temp$name) aes_collapsed 
+> 
+> > <- aes_collapsed %>%
+> 
+> > ? merge(temp, by="Names")
+> 
+> > 
+> 
+> > 
+> 
+> > network <- network %>%
+> 
+> > ? set_edge_attr(name = "type", value = factor(aes_collapsed$Names,
+> 
+> > ???????????????????????????????????????????????? ordered =
+> 
+> > is.ordered(V(network)$name))) %>%
+> 
+> > ? set_edge_attr(name = "membership", value = aes_collapsed$membership) 
+> 
+> > %>%
+> 
+> > ? set_edge_attr(name = "color",
+> 
+> > ????????????? value = c(viridis::viridis(5))
+> 
+> > ????????????? [match(E(.)$type, c(factor(V(.)$name)))]) %>%
+> 
+> > ? set_vertex_attr(name = "trans_v_net", value = c(transitivity(., type 
+> 
+> > =
+> 
+> > "local"))) %>%
+> 
+> > ? set_vertex_attr(name = "hub_score", value = c(hub_score(.)$vector)) 
+> 
+> > %>%
+> 
+> > ? set_vertex_attr(name = "color",
+> 
+> > ????????????? value = c(viridis::viridis((5)))
+> 
+> > ????????????? [match(V(.)$name, c(factor(V(.)$name)))]) %>%
+> 
+> > ? set_vertex_attr(name= "community", 
+> 
+> > value=cluster_optimal(.)$membership)
+> 
+> > clrs<-scico(3, palette = "batlow")
+> 
+> > 
+> 
+> > ### part 1: network plot
+> 
+> > par(bg="black")
+> 
+> > network %>% plot(
+> 
+> > ???? vertex.color=clrs[V(.)$community],
+> 
+> > ???? vertex.size=V(.)$hub_score*5,
+> 
+> > ???? vertex.frame.color=V(.)$color,
+> 
+> > ???? vertex.label.color="white",
+> 
+> > ???? vertex.label.cex=0.5,
+> 
+> > ???? vertex.label.family="Helvetica",
+> 
+> > ???? vertex.label.font=1,
+> 
+> > ???? edge.curved=0.5,
+> 
+> > ???? edge.width= network,
+> 
+> > ???? layout=layout_with_mds(.))
+> 
+> > 
+> 
+> > ### part 2: ggraph
+> 
+> > tiff("figures/AES_network_bymembership.tiff", width=1000, height=700,
+> 
+> > res=120) network %>%
+> 
+> > ? ggraph(., layout = "auto")+
+> 
+> > geom_edge_arc(curvature=0.3, aes(width=(E(network)$weight/10), 
+> 
+> > color=c("darkblue", "red")[as.factor(edge_list$relationship)],
+> 
+> > alpha=0.5)) +
+> 
+> > 
+> 
+> > ? geom_node_point(aes(size = V(network)$hub_score*200, color=
+> 
+> > as.factor(V(network)$community))) +
+> 
+> > ? geom_node_text(aes(label =? V(network)$name), size=5, color="white", 
+> 
+> > repel=T)+
+> 
+> > ? scale_color_scico_d(palette = "batlow")+
+> 
+> > ? scale_edge_width(range = c(0.2,4))+
+> 
+> > ? scale_size(range = c(0.5,20)) +
+> 
+> > ? #scale_edge_color_manual(values = c(scico(21, palette="batlow")))+
+> 
+> > ? theme(plot.background = element_rect(fill = "black"),
+> 
+> > ??????? legend.position = "right",
+> 
+> > ??????? panel.background = element_rect(fill = "black"))
+> 
+> > dev.off()
+> 
+> > 
+> 
+> > ______________________________________________
+> 
+> > ?<mailto:R-help at r-project.org> R-help at r-project.org?mailing list -- To
+> > UNSUBSCRIBE and more, see 
+> 
+> > ?<https://stat.ethz.ch/mailman/listinfo/r-help>
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> 
+> > PLEASE do read the posting guide
+> 
+> > ?<http://www.R-project.org/posting-guide.html>
+> > http://www.R-project.org/posting-guide.html
+> 
+> > and provide commented, minimal, self-contained, reproducible code.
+> 
+> ?
+> 
+> ______________________________________________
+> 
+> ?<mailto:R-help at r-project.org> R-help at r-project.org?mailing list -- To
+> UNSUBSCRIBE and more, see? <https://stat.ethz.ch/mailman/listinfo/r-help>
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> 
+> PLEASE do read the posting guide?
+> <http://www.R-project.org/posting-guide.html>
+> http://www.R-project.org/posting-guide.html
+> 
+> and provide commented, minimal, self-contained, reproducible code.
+> 
+
+
+From b|ck|@ @end|ng |rom m@th@u@@@k@c@  Fri Mar 22 18:43:08 2024
+From: b|ck|@ @end|ng |rom m@th@u@@@k@c@ (Bickis, Mikelis)
+Date: Fri, 22 Mar 2024 17:43:08 +0000
+Subject: [R] Double buffering plots on Windows
+Message-ID: <61932829-7887-4658-BD7A-164D069B9B54@usask.ca>
+
+Hello:
+
+I want to present a sequence of plots as an animation.   As a toy example consider the code
+
+function(n){for (i in 1:n){
+plot(1:100,sin(i*(1:100)),type="l")
+title(paste("n=",i))
+segments(0,0,100,0,col=2)
+}}
+
+This sort-of works on a MacOS platform, but the rendering of the plots is a bit choppy.  Inserting a sleep function allows the plots to evolve smoothly.
+
+function(n){for (i in 1:n){
+plot(1:100,sin(i*(1:100)),type="l")
+title(paste("n=",i))
+segments(0,0,100,0,col=2)
+Sys.sleep(.2)
+}}
+
+However, on a Windows platform, only the last plot is rendered without the Sys.sleep, so the dynamic element is lost.   Inserting the Sys.sleep does allow all the plots to be rendered, but they seem to be erased before they are drawn again, so there is substantial flicker in the appearance.
+
+Is there some kind of double-buffering available within R, so that plots are rendered only after they are fully drawn, leaving the previous plot visible until it is replaced?   I just used the default graphics driver on Windows ? is there perhaps a different driver that will the graphics smoother?
+
+Mik Bickis
+Professor Emeritus
+Department of Mathematics and Statistics
+University of Saskatchewan
+
+From v@|kremk @end|ng |rom gm@||@com  Fri Mar 22 20:02:09 2024
+From: v@|kremk @end|ng |rom gm@||@com (Val)
+Date: Fri, 22 Mar 2024 14:02:09 -0500
+Subject: [R] Error message
+Message-ID: <CAJOiR6a-ZMPLde+41YHpXUwcXzhM0ibPp-A7Le7sngNZDKpQdw@mail.gmail.com>
+
+Hi all,
+
+I am creating an X1.RData file using the R 4.2.2 library.
+   x1.R
+    save(datafilename, file="X1.RData")
+
+When I am trying to load  this file using another script
+
+X2.R
+load("X1.RData")
+
+I am getting this error message:
+ Error in load("X1.RData", :
+ bad restore file magic number (file may be corrupted)  .. no data  loaded.
+
+I am using the same R library (R 4.2.2)
+
+What would be the cause for this error message and how to fix it?
+
+Thank you,
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Mar 22 20:20:08 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 22 Mar 2024 22:20:08 +0300
+Subject: [R] Error message
+In-Reply-To: <CAJOiR6a-ZMPLde+41YHpXUwcXzhM0ibPp-A7Le7sngNZDKpQdw@mail.gmail.com>
+References: <CAJOiR6a-ZMPLde+41YHpXUwcXzhM0ibPp-A7Le7sngNZDKpQdw@mail.gmail.com>
+Message-ID: <20240322222008.5917423d@Tarkus>
+
+? Fri, 22 Mar 2024 14:02:09 -0500
+Val <valkremk at gmail.com> ?????:
+
+> X2.R
+> load("X1.RData")
+> 
+> I am getting this error message:
+>  Error in load("X1.RData", :
+>  bad restore file magic number (file may be corrupted)  .. no data
+> loaded.
+
+This error happens very early when R tries to load the file, right
+at the first few bytes. Is "X1.RData" large? Can you share it, or at
+least a hexadecimal dump of the first few hundred bytes?
+
+-- 
+Best regards,
+Ivan
+
+
+From v@|kremk @end|ng |rom gm@||@com  Fri Mar 22 20:31:17 2024
+From: v@|kremk @end|ng |rom gm@||@com (Val)
+Date: Fri, 22 Mar 2024 14:31:17 -0500
+Subject: [R] Error message
+In-Reply-To: <20240322222008.5917423d@Tarkus>
+References: <CAJOiR6a-ZMPLde+41YHpXUwcXzhM0ibPp-A7Le7sngNZDKpQdw@mail.gmail.com>
+ <20240322222008.5917423d@Tarkus>
+Message-ID: <CAJOiR6a2Bq64F-3dNp1nRaQ=cWn9kj5sr4jzAmB0hdEBsP-tng@mail.gmail.com>
+
+Yes, X1.RData is large(more than 40M rows) .
+How do I get the first   few bytes?
+
+On Fri, Mar 22, 2024 at 2:20?PM Ivan Krylov <ikrylov at disroot.org> wrote:
+>
+> ? Fri, 22 Mar 2024 14:02:09 -0500
+> Val <valkremk at gmail.com> ?????:
+>
+> > X2.R
+> > load("X1.RData")
+> >
+> > I am getting this error message:
+> >  Error in load("X1.RData", :
+> >  bad restore file magic number (file may be corrupted)  .. no data
+> > loaded.
+>
+> This error happens very early when R tries to load the file, right
+> at the first few bytes. Is "X1.RData" large? Can you share it, or at
+> least a hexadecimal dump of the first few hundred bytes?
+>
+> --
+> Best regards,
+> Ivan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Mar 22 20:36:01 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 22 Mar 2024 22:36:01 +0300
+Subject: [R] Error message
+In-Reply-To: <CAJOiR6a2Bq64F-3dNp1nRaQ=cWn9kj5sr4jzAmB0hdEBsP-tng@mail.gmail.com>
+References: <CAJOiR6a-ZMPLde+41YHpXUwcXzhM0ibPp-A7Le7sngNZDKpQdw@mail.gmail.com>
+ <20240322222008.5917423d@Tarkus>
+ <CAJOiR6a2Bq64F-3dNp1nRaQ=cWn9kj5sr4jzAmB0hdEBsP-tng@mail.gmail.com>
+Message-ID: <20240322223601.5c2de3ba@Tarkus>
+
+? Fri, 22 Mar 2024 14:31:17 -0500
+Val <valkremk at gmail.com> ?????:
+
+> How do I get the first   few bytes?
+
+What does file.info('X1.RData') say?
+
+Do you get any output if you run print(readBin('X1.RData', raw(), 128))?
+
+If this is happening on a Linux or macOS machine, the operating system
+command xxd -l 128 X1.RData will give the same output in a more
+readable manner, but the readBin(...) output from R should be fine too.
+
+-- 
+Best regards,
+Ivan
+
+
+From v@|kremk @end|ng |rom gm@||@com  Fri Mar 22 20:52:05 2024
+From: v@|kremk @end|ng |rom gm@||@com (Val)
+Date: Fri, 22 Mar 2024 14:52:05 -0500
+Subject: [R] Error message
+In-Reply-To: <20240322223601.5c2de3ba@Tarkus>
+References: <CAJOiR6a-ZMPLde+41YHpXUwcXzhM0ibPp-A7Le7sngNZDKpQdw@mail.gmail.com>
+ <20240322222008.5917423d@Tarkus>
+ <CAJOiR6a2Bq64F-3dNp1nRaQ=cWn9kj5sr4jzAmB0hdEBsP-tng@mail.gmail.com>
+ <20240322223601.5c2de3ba@Tarkus>
+Message-ID: <CAJOiR6ZkPL_NHJenUe+kaAHhPLeWqwuwaz7kEyCcLyiEvSFLGg@mail.gmail.com>
+
+Here is the first few bytes,
+xxd -l 128 X1.RData
+00000000: 8d5a 35f8 1ac5 cc14 a04e be5c 572f a3ad  .Z5......N.\W/..
+00000010: 6210 7024 9b58 93c7 34d0 acb7 7a82 3f99  b.p$.X..4...z.?.
+00000020: 66ce 0ebb 2057 ec36 55b4 0ece a036 695a  f... W.6U....6iZ
+00000030: 258b 3493 b661 f620 f7fe ada7 158a 15f7  %.4..a. ........
+00000040: e016 a548 6fcb 20c8 6fb4 493d adc9 ea4a  ...Ho. .o.I=...J
+00000050: 0a2b b7cf a416 336e 5e4e abc5 9874 7be3  .+....3n^N...t{.
+00000060: 5a5a 3405 fe35 8a3d ad80 0dc0 ca3e ea7a  ZZ4..5.=.....>.z
+00000070: e628 b220 ee50 0b9f 3a81 e971 8a19 4f54  .(. .P..:..q..OT
+
+On Fri, Mar 22, 2024 at 2:36?PM Ivan Krylov <ikrylov at disroot.org> wrote:
+>
+> ? Fri, 22 Mar 2024 14:31:17 -0500
+> Val <valkremk at gmail.com> ?????:
+>
+> > How do I get the first   few bytes?
+>
+> What does file.info('X1.RData') say?
+>
+> Do you get any output if you run print(readBin('X1.RData', raw(), 128))?
+>
+> If this is happening on a Linux or macOS machine, the operating system
+> command xxd -l 128 X1.RData will give the same output in a more
+> readable manner, but the readBin(...) output from R should be fine too.
+>
+> --
+> Best regards,
+> Ivan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Mar 22 21:06:43 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 22 Mar 2024 23:06:43 +0300
+Subject: [R] Error message
+In-Reply-To: <CAJOiR6ZkPL_NHJenUe+kaAHhPLeWqwuwaz7kEyCcLyiEvSFLGg@mail.gmail.com>
+References: <CAJOiR6a-ZMPLde+41YHpXUwcXzhM0ibPp-A7Le7sngNZDKpQdw@mail.gmail.com>
+ <20240322222008.5917423d@Tarkus>
+ <CAJOiR6a2Bq64F-3dNp1nRaQ=cWn9kj5sr4jzAmB0hdEBsP-tng@mail.gmail.com>
+ <20240322223601.5c2de3ba@Tarkus>
+ <CAJOiR6ZkPL_NHJenUe+kaAHhPLeWqwuwaz7kEyCcLyiEvSFLGg@mail.gmail.com>
+Message-ID: <20240322230643.6b7ad288@Tarkus>
+
+? Fri, 22 Mar 2024 14:52:05 -0500
+Val <valkremk at gmail.com> ?????:
+
+> 00000000: 8d5a 35f8 1ac5 cc14 a04e be5c 572f a3ad  .Z5......N.\W/..
+> 00000010: 6210 7024 9b58 93c7 34d0 acb7 7a82 3f99  b.p$.X..4...z.?.
+
+Thank you!
+
+This doesn't look like any structured data to me. In particular, it
+doesn't look like something written by R: those created by modern
+versions of R with default settings typically start with an "RDX2\n"
+(52 44 58 32 0a) or at least "X\n" (58 0a). Could be a middle of
+compressed stream, as if the file was truncated while it was being
+written.
+
+Do you get similar results with saveRDS(datafilename, 'X1.rds') and
+data2 <- readRDS('X1.rds')? Does this happen with other R objects that
+you try to save or in your other scripts?
+
+-- 
+Best regards,
+Ivan
+
+
+From @|eg|r|ed@m@cho @end|ng |rom un||r@ch  Fri Mar 22 17:11:14 2024
+From: @|eg|r|ed@m@cho @end|ng |rom un||r@ch (MACHO Siegfried)
+Date: Fri, 22 Mar 2024 16:11:14 +0000
+Subject: [R] Problem with new version of R: Mutated vocals
+Message-ID: <GVAP278MB030901B49E045D0062AC79D69B312@GVAP278MB0309.CHEP278.PROD.OUTLOOK.COM>
+
+Dear ladies and gentlemen,
+
+I have recently installed the latest version of R (4.3.3) for windows. Now I have the following problems with mutated vowels like ?, ?, etc. Here is an example:
+If I type the command:
+Dir <- "C/Users/macho/Documents/_LVn/Experimentelle ?bungen"
+in the R console there is no problem. However, if I put the same command into a source file (e.g. Test.r) and call this file from R (via the source command), I get the following error message:
+
+> source("C:\\Users\\macho\\Documents\\_LVn\\Experimentelle ?bungen\\R-Scripts\\R-Dokumentation\\R_scripts zur R_Dokumentation\\Kapitel 4 Erstellen eines Balkendiagramms\\Test.R")
+Fehler: invalid multibyte character in parser (C:\Users\macho\Documents\_LVn\Experimentelle ?bungen\R-Scripts\R-Dokumentation\R_scripts zur R_Dokumentation\Kapitel 4 Erstellen eines Balkendiagramms\Test.R:1:54
+
+In addition, text files saved with an older version of R (using the function write.table) containing mutated vowels are not read-in correctly by the function read.table.
+I would be glad, if someone could help me with this problem.
+
+Kind regards,
+Siegfried Macho.
+
+------------------------------
+PD Dr. Siegfried Macho
+Psychological Department
+University of Fribourg
+Rue de Faucigny 2
+CH-1700 Fribourg
+Tel.: ++41-26-3007635
+-----------------------------
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Mar 22 22:18:13 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sat, 23 Mar 2024 00:18:13 +0300
+Subject: [R] Problem with new version of R: Mutated vocals
+In-Reply-To: <GVAP278MB030901B49E045D0062AC79D69B312@GVAP278MB0309.CHEP278.PROD.OUTLOOK.COM>
+References: <GVAP278MB030901B49E045D0062AC79D69B312@GVAP278MB0309.CHEP278.PROD.OUTLOOK.COM>
+Message-ID: <20240323001813.5f994085@Tarkus>
+
+? Fri, 22 Mar 2024 16:11:14 +0000
+MACHO Siegfried via R-help <r-help at r-project.org> ?????:
+
+> If I type the command:
+> Dir <- "C/Users/macho/Documents/_LVn/Experimentelle _bungen"
+> in the R console there is no problem. However, if I put the same
+> command into a source file (e.g. Test.r) and call this file from R
+> (via the source command), I get the following error message:
+> 
+> > source("C:\\Users\\macho\\Documents\\_LVn\\Experimentelle
+> > _bungen\\R-Scripts\\R-Dokumentation\\R_scripts zur
+> > R_Dokumentation\\Kapitel 4 Erstellen eines
+> > Balkendiagramms\\Test.R")  
+> Fehler: invalid multibyte character in parser
+> (C:\Users\macho\Documents\_LVn\Experimentelle
+> _bungen\R-Scripts\R-Dokumentation\R_scripts zur
+> R_Dokumentation\Kapitel 4 Erstellen eines Balkendiagramms\Test.R:1:54
+
+A few versions ago, the R developers made the change of the encoding
+used by R on Windows. Instead of the ANSI encoding, R now uses UTF-8:
+https://blog.r-project.org/2020/05/02/utf-8-support-on-windows/index.html
+
+This makes it possible to represent many more characters than the
+256-byte range covered by CP1252, but the byte sequences are now
+different. Also, non-ASCII characters will take more than one byte to
+store.
+
+Can you save the script using the UTF-8 encoding instead of CP1252?
+Alternatively, try source(..., encoding = 'CP1252').
+
+> In addition, text files saved with an older version of R (using the
+> function write.table) containing mutated vowels are not read-in
+> correctly by the function read.table.
+
+In a similar manner, try read.table(..., fileEncoding = 'CP1252').
+Setting encoding = 'latin1' may also work, even if it's technically a
+different encoding.
+
+-- 
+Best regards,
+Ivan
+
+
