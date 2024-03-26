@@ -12187,3 +12187,1383 @@ Best regards,
 Ivan
 
 
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Mar 24 05:01:52 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 24 Mar 2024 05:01:52 +0100
+Subject: [R] Double buffering plots on Windows
+In-Reply-To: <61932829-7887-4658-BD7A-164D069B9B54@usask.ca>
+References: <61932829-7887-4658-BD7A-164D069B9B54@usask.ca>
+Message-ID: <CAGxFJbQXZyP3mD4Hw1kGkStbXDf37XJJsg3vaW3XQGq=JOZbNA@mail.gmail.com>
+
+A search on "make animated plots in R" brought up many hits and the
+gganimate package (and maybe others, as I didn't scroll through).
+
+Bert
+
+On Fri, Mar 22, 2024, 18:45 Bickis, Mikelis <bickis at math.usask.ca> wrote:
+
+> Hello:
+>
+> I want to present a sequence of plots as an animation.   As a toy example
+> consider the code
+>
+> function(n){for (i in 1:n){
+> plot(1:100,sin(i*(1:100)),type="l")
+> title(paste("n=",i))
+> segments(0,0,100,0,col=2)
+> }}
+>
+> This sort-of works on a MacOS platform, but the rendering of the plots is
+> a bit choppy.  Inserting a sleep function allows the plots to evolve
+> smoothly.
+>
+> function(n){for (i in 1:n){
+> plot(1:100,sin(i*(1:100)),type="l")
+> title(paste("n=",i))
+> segments(0,0,100,0,col=2)
+> Sys.sleep(.2)
+> }}
+>
+> However, on a Windows platform, only the last plot is rendered without the
+> Sys.sleep, so the dynamic element is lost.   Inserting the Sys.sleep does
+> allow all the plots to be rendered, but they seem to be erased before they
+> are drawn again, so there is substantial flicker in the appearance.
+>
+> Is there some kind of double-buffering available within R, so that plots
+> are rendered only after they are fully drawn, leaving the previous plot
+> visible until it is replaced?   I just used the default graphics driver on
+> Windows ? is there perhaps a different driver that will the graphics
+> smoother?
+>
+> Mik Bickis
+> Professor Emeritus
+> Department of Mathematics and Statistics
+> University of Saskatchewan
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From sibyiie@stoeckii m@iii@g oii gmx@ch  Sun Mar 24 12:16:58 2024
+From: sibyiie@stoeckii m@iii@g oii gmx@ch (sibyiie@stoeckii m@iii@g oii gmx@ch)
+Date: Sun, 24 Mar 2024 12:16:58 +0100
+Subject: [R] geom_edge & color
+In-Reply-To: <d0ea5f6da43a81989072efc8f34005caa0d53f66.camel@utu.fi>
+References: <022201da7af4$704240d0$50c6c270$@gmx.ch>
+ <5a11b20ff6be35626a3db42a9bdb1947cb68997d.camel@utu.fi>
+ <008201da7c2e$d215b9f0$76412dd0$@gmx.ch>
+ <d0ea5f6da43a81989072efc8f34005caa0d53f66.camel@utu.fi>
+Message-ID: <018201da7ddc$c9965280$5cc2f780$@gmx.ch>
+
+Dear Kommo
+
+Many thanks for the valuable solution.
+
+Sibylle
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Kimmo Elo
+Sent: Friday, March 22, 2024 12:10 PM
+To: r-help at r-project.org
+Subject: Re: [R] geom_edge & color
+
+Hi,
+
+this seems to work (assuming that your problem was the setting of
+colours...):
+
+--- snip ---
+
+network %>%
+    ggraph(., layout = "auto") +
+    # This produces an error...
+    # geom_edge_arc(curvature=0.3, aes(width=(E(network)$weight/10), color=c("darkblue", "red")[as.factor(edge_list$relationship)], alpha=0.5))
++ 
+    # ... this works :-)
+    geom_edge_arc(curvature=0.3, aes(width=E(network)$weight/10, color=edge_list$relationship), alpha=.5) +
+    scale_edge_color_manual(values=c("pos"="darkblue", "neg"="red")) +
+    
+    # This does not work either...
+    # geom_node_point(aes(size = V(network)$hub_score*200, color=
+as.factor(V(network)$community))) +
+    # ... so try this :)
+    geom_node_point(aes(size = V(network)$hub_score*200,
+color=V(network)$Subcategory_type)) +
+    geom_node_text(aes(label =  V(network)$name), size=3, color="white", repel=T)+
+    scale_color_scico_d(palette = "batlow")+
+    scale_edge_width(range = c(0.2,4))+
+    scale_size(range = c(0.5,15)) +
+    theme(plot.background = element_rect(fill = "black"),
+          legend.position = "right",
+          panel.background = element_rect(fill = "black"))
+
+--- snip ---
+
+At least in my data created with your code, the object "network" does not have an attribute "community". I use the existing "Subcategory_type"
+instead, because I had no time to debug this problem :-)
+
+I do not know whether this produces what you expect or want to visualise.
+
+HTH,
+
+Kimmo
+
+
+pe, 2024-03-22 kello 08:59 +0100, sibylle.stoeckli at gmx.ch kirjoitti:
+> Dear community
+> 
+>  
+> 
+> Find enclosed the full working example.
+> 
+>  
+> 
+> Many thanks
+> 
+> Sibylle
+> 
+>  
+> 
+> Test_cat.csv
+> 
+> 
+> Names
+> 
+> Subcategory_type
+> 
+> sources.cyto
+> 
+> source
+> 
+> Factor
+> 
+> 
+> A.A
+> 
+> material
+> 
+> "A"
+> 
+> A
+> 
+> 1
+> 
+> 
+> B.B
+> 
+> material
+> 
+> "B"
+> 
+> B
+> 
+> 1
+> 
+> 
+> C.C
+> 
+> regulation
+> 
+> "C"
+> 
+> C
+> 
+> 1
+> 
+> 
+> D.D
+> 
+> regulation
+> 
+> "D"
+> 
+> D
+> 
+> 1
+> 
+> 
+> E.E
+> 
+> habitat
+> 
+> "E"
+> 
+> E
+> 
+> 1
+> 
+> 
+> F.F
+> 
+> cultural
+> 
+> "F"
+> 
+> F
+> 
+> 1
+> 
+>  
+> 
+> Test_adjac.csv
+> 
+>         
+> A.A
+> 
+> B.B
+> 
+> C.C
+> 
+> D.D
+> 
+> E.E
+> 
+> F.F
+> 
+> 
+> A.A
+> 
+> 0
+> 
+> 0
+> 
+> 5
+> 
+> 5
+> 
+> 5
+> 
+> 5
+> 
+> 
+> B.B
+> 
+> 4
+> 
+> 0
+> 
+> 1
+> 
+> 1
+> 
+> 1
+> 
+> 1
+> 
+> 
+> C.C
+> 
+> 5
+> 
+> 5
+> 
+> 0
+> 
+> 5
+> 
+> 4
+> 
+> 2
+> 
+> 
+> D.D
+> 
+> 5
+> 
+> 0
+> 
+> 5
+> 
+> 0
+> 
+> 5
+> 
+> 3
+> 
+> 
+> E.E
+> 
+> 5
+> 
+> 1
+> 
+> 5
+> 
+> 5
+> 
+> 0
+> 
+> 4
+> 
+> 
+> F.F
+> 
+> 1
+> 
+> 2
+> 
+> 3
+> 
+> 4
+> 
+> 5
+> 
+> 5
+> 
+>  
+> 
+>  
+> 
+> Edges_table-Test.csv
+> 
+>  
+> 
+> 
+> Names
+> 
+> target
+> 
+> weight
+> 
+> relationship
+> 
+> 
+> B.B
+> 
+> A.A
+> 
+> 4
+> 
+> pos
+> 
+> 
+> C.C
+> 
+> A.A
+> 
+> 5
+> 
+> pos
+> 
+> 
+> D.D
+> 
+> A.A
+> 
+> 5
+> 
+> neg
+> 
+> 
+> E.E
+> 
+> A.A
+> 
+> 5
+> 
+> pos
+> 
+> 
+> F.F
+> 
+> A.A
+> 
+> 1
+> 
+> pos
+> 
+> 
+> C.C
+> 
+> B.B
+> 
+> 5
+> 
+> pos
+> 
+> 
+> E.E
+> 
+> B.B
+> 
+> 1
+> 
+> pos
+> 
+> 
+> F.F
+> 
+> B.B
+> 
+> 2
+> 
+> neg
+> 
+> 
+> A.A
+> 
+> C.C
+> 
+> 5
+> 
+> pos
+> 
+> 
+> B.B
+> 
+> C.C
+> 
+> 1
+> 
+> pos
+> 
+> 
+> D.D
+> 
+> C.C
+> 
+> 5
+> 
+> pos
+> 
+> 
+> E.E
+> 
+> C.C
+> 
+> 5
+> 
+> pos
+> 
+> 
+> F.F
+> 
+> C.C
+> 
+> 3
+> 
+> pos
+> 
+> 
+> A.A
+> 
+> D.D
+> 
+> 5
+> 
+> neg
+> 
+> 
+> B.B
+> 
+> D.D
+> 
+> 1
+> 
+> pos
+> 
+> 
+> C.C
+> 
+> D.D
+> 
+> 5
+> 
+> pos
+> 
+> 
+> E.E
+> 
+> D.D
+> 
+> 5
+> 
+> pos
+> 
+> 
+> F.F
+> 
+> D.D
+> 
+> 4
+> 
+> pos
+> 
+> 
+> A.A
+> 
+> E.E
+> 
+> 5
+> 
+> pos
+> 
+> 
+> B.B
+> 
+> E.E
+> 
+> 1
+> 
+> pos
+> 
+> 
+> C.C
+> 
+> E.E
+> 
+> 4
+> 
+> pos
+> 
+> 
+> D.D
+> 
+> E.E
+> 
+> 5
+> 
+> pos
+> 
+> 
+> F.F
+> 
+> E.E
+> 
+> 5
+> 
+> pos
+> 
+> 
+> A.A
+> 
+> F.F
+> 
+> 5
+> 
+> pos
+> 
+> 
+> B.B
+> 
+> F.F
+> 
+> 1
+> 
+> neg
+> 
+> 
+> C.C
+> 
+> F.F
+> 
+> 2
+> 
+> pos
+> 
+> 
+> D.D
+> 
+> F.F
+> 
+> 3
+> 
+> pos
+> 
+> 
+> E.E
+> 
+> F.F
+> 
+> 4
+> 
+> pos
+> 
+> 
+> F.F
+> 
+> F.F
+> 
+> 5
+> 
+> pos
+> 
+>  
+> 
+>  
+> 
+>  
+> 
+> #upload librairies
+> 
+> library(circlize)
+> 
+> library(ggplot2)
+> 
+> library(igraph)
+> 
+> library(tidyverse)
+> 
+> library(RColorBrewer)
+> 
+> library(stringi)
+> 
+> library(scico)
+> 
+> library(plotly)
+> 
+> library(ggraph)
+> 
+>  
+> 
+> #upload
+> 
+> aes<-read.csv("Test_adjac.csv", row.names = 1)
+> 
+> details<-read.csv("Test_cat.csv")
+> 
+>  
+> 
+>  
+> 
+> # adjacency  table
+> 
+> aes_collapsed<-aes %>%
+> 
+>   rownames_to_column(var='Names') %>%
+> 
+>   tidyr::gather(target, weight, 1:ncol(aes)+1) %>%
+> 
+>   dplyr::filter(weight != 0) %>%
+> 
+>   mutate(weight = ifelse(weight == "-1", 0, weight)) # here 0 = 
+> negative values
+> 
+>  
+> 
+> write.csv(aes_collapsed, "edges_table-Test.csv", row.names = F)
+> 
+> edge_list<-read.csv("edges_table-Test.csv")
+> 
+>  
+> 
+>  
+> 
+> #create network and add some necessary attributes (vertices) for the 
+> plot
+> 
+>  
+> 
+> network <- graph_from_data_frame(aes_collapsed, directed= FALSE,
+> 
+>                                  vertices = details)
+> 
+>  
+> 
+> ### network and vertex with 'subcategory_type'
+> 
+>  
+> 
+> temp<-cluster_optimal(network)
+> 
+> temp<-cbind(membership=temp$membership, Names=temp$name)
+> 
+> aes_collapsed <- aes_collapsed %>%
+> 
+>   merge(temp, by="Names")
+> 
+>  
+> 
+> network <- network %>%
+> 
+>   set_edge_attr(name = "type", value = factor(aes_collapsed$Names,
+> 
+>                                                  ordered =
+> is.ordered(V(network)$name))) %>%
+> 
+>   set_edge_attr(name = "membership", value = aes_collapsed$membership) 
+> %>%
+> 
+>   set_edge_attr(name = "color",
+> 
+>               value = c(viridis::viridis(21))
+> 
+>               [match(E(.)$type, c(factor(V(.)$name)))]) %>%
+> 
+>   set_vertex_attr(name = "trans_v_net", value = c(transitivity(., type 
+> =
+> "local"))) %>%
+> 
+>   set_vertex_attr(name = "hub_score", value = c(hub_score(.)$vector)) 
+> %>%
+> 
+>   set_vertex_attr(name = "color",
+> 
+>               value = c(viridis::viridis((21)))
+> 
+>               [match(V(.)$name, c(factor(V(.)$name)))]) %>%
+> 
+>   set_vertex_attr(name= "community",
+> value=cluster_optimal(.)$Subcategory_type)
+> 
+>  
+> 
+> clrs<-scico(3, palette = "batlow")
+> 
+>  
+> 
+> windowsFonts(Helvetica = windowsFont("Helvetica"))
+> 
+>  
+> 
+> par(bg="black")
+> 
+> network %>% plot(
+> 
+>      vertex.color=clrs[V(.)$community],
+> 
+>      vertex.size=V(.)$hub_score*20,
+> 
+>      vertex.frame.color=V(.)$color,
+> 
+>      vertex.label.color="white",
+> 
+>      vertex.label.cex=0.4,
+> 
+>      vertex.label.family="Helvetica",
+> 
+>      vertex.label.font=0.75,
+> 
+>      edge.curved=0.5,
+> 
+>      edge.width= E(.)$weight,
+> 
+>      edge.color = ifelse(edge_list$relationship == "pos", "blue", 
+> "red"),
+> 
+>      layout=layout_with_mds(.))
+> 
+>  
+> 
+> tiff("figures/Test_network_bysubcatecory.tiff", width=1000, 
+> height=900,
+> res=120)
+> 
+> network %>%
+> 
+>   ggraph(., layout = "auto")+
+> 
+>   geom_edge_arc(curvature=0.3, aes(width=(E(network)$weight/10), 
+> color=c("darkblue", "red")[as.factor(edge_list$relationship)],
+> alpha=0.5)) +
+> 
+>   geom_node_point(aes(size = V(network)$hub_score*200, color=
+> as.factor(V(network)$community))) +
+> 
+>   geom_node_text(aes(label =  V(network)$name), size=3, color="white", 
+> repel=T)+
+> 
+>   scale_color_scico_d(palette = "batlow")+
+> 
+>   scale_edge_width(range = c(0.2,4))+
+> 
+>   scale_size(range = c(0.5,15)) +
+> 
+>   theme(plot.background = element_rect(fill = "black"),
+> 
+>         legend.position = "right",
+> 
+>         panel.background = element_rect(fill = "black"))
+> 
+> dev.off()
+> 
+>  
+> 
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Kimmo Elo
+> Sent: Thursday, March 21, 2024 10:51 AM
+> To: r-help at r-project.org
+> Subject: Re: [R] geom_edge & color
+> 
+>  
+> 
+> Dear Sibylle,
+> 
+>  
+> 
+> your example is not working! E.g. no data for "aes_collapsed".
+> 
+>  
+> 
+> Best,
+> 
+>  
+> 
+> Kimmo
+> 
+>  
+> 
+> ke, 2024-03-20 kello 19:28 +0100, SIBYLLE ST?CKLI via R-help kirjoitti:
+> 
+> > Dear community
+> 
+> > 
+> 
+> > I am using ggraph to plot a network analysis. See part 2 in the
+> 
+> > working example.
+> 
+> > Besides different colors for different groups of nodes:
+> 
+> > --> geom_node_point(aes(size = V(network)$hub_score*200, color=
+> 
+> > as.factor(V(network)$community)))
+> 
+> > I additionally want to consider different colors for different edge
+> 
+> > groups The grouping is defined in the edge_list$relationship: 
+> > negative
+> 
+> > relationship = red and positive relationship = darkblue. The code is
+> 
+> > working in the way that the  groups are separated by two colors. 
+> 
+> > However, the code uses not the assigned colors. Does anyone have any
+> 
+> > idea how to adapt the code?
+> 
+> > --> geom_edge_arc(curvature=0.3, aes(width=(E(network)$weight/10),
+> 
+> > color=c("darkblue", "red")[as.factor(edge_list$relationship)],
+> 
+> > alpha=0.5)) +
+> 
+> > 
+> 
+> > Kind regards
+> 
+> > Sibylle
+> 
+> > 
+> 
+> > 
+> 
+> > 
+> 
+> > 
+> 
+> > Working example
+> 
+> > 
+> 
+> > library(circlize)
+> 
+> > library(ggplot2)
+> 
+> > library(igraph)
+> 
+> > library(tidyverse)
+> 
+> > library(RColorBrewer)
+> 
+> > library(stringi)
+> 
+> > library(scico)
+> 
+> > library(plotly)
+> 
+> > library(ggraph)
+> 
+> > 
+> 
+> > edges_table_Test.csv
+> 
+> > 
+> 
+> > Names   target  weight relationship
+> 
+> > B.B     A.A     4           pos
+> 
+> > C.C     A.A     5           pos
+> 
+> > D.D     A.A     5           neg
+> 
+> > E.E     A.A     5          neg
+> 
+> > F.F     A.A     1          pos
+> 
+> > C.C     B.B     5         pos
+> 
+> > E.E     B.B     1           pos
+> 
+> > F.F     B.B     2          pos
+> 
+> > A.A     C.C     5        pos
+> 
+> > B.B     C.C     1        pos
+> 
+> > D.D     C.C     5         pos
+> 
+> > E.E     C.C     5         pos
+> 
+> > F.F     C.C     3         pos
+> 
+> > A.A     D.D     5        neg
+> 
+> > B.B     D.D     1        neg
+> 
+> > C.C     D.D     5        neg
+> 
+> > E.E     D.D     5        neg
+> 
+> > F.F     D.D     4         neg
+> 
+> > A.A     E.E     5         neg
+> 
+> > B.B     E.E     1        neg
+> 
+> > C.C     E.E     4        neg
+> 
+> > D.D     E.E     5        neg
+> 
+> > F.F     E.E     5       pos
+> 
+> > A.A     F.F     5        pos
+> 
+> > B.B     F.F     1       pos
+> 
+> > C.C     F.F     2       pos
+> 
+> > D.D     F.F     3      pos
+> 
+> > E.E     F.F     4       pos
+> 
+> > F.F     F.F     5       pos
+> 
+> > 
+> 
+> > edge_list<-read.csv("edges_table_Test.csv")
+> 
+> > 
+> 
+> > network <- graph_from_data_frame(aes_collapsed, directed= FALSE,
+> 
+> >                                  vertices = details)
+> 
+> > 
+> 
+> > temp<-cluster_optimal(network)
+> 
+> > temp<-cbind(membership=temp$membership, Names=temp$name) 
+> > aes_collapsed
+> 
+> > <- aes_collapsed %>%
+> 
+> >   merge(temp, by="Names")
+> 
+> > 
+> 
+> > 
+> 
+> > network <- network %>%
+> 
+> >   set_edge_attr(name = "type", value = factor(aes_collapsed$Names,
+> 
+> >                                                  ordered =
+> 
+> > is.ordered(V(network)$name))) %>%
+> 
+> >   set_edge_attr(name = "membership", value = 
+> > aes_collapsed$membership)
+> 
+> > %>%
+> 
+> >   set_edge_attr(name = "color",
+> 
+> >               value = c(viridis::viridis(5))
+> 
+> >               [match(E(.)$type, c(factor(V(.)$name)))]) %>%
+> 
+> >   set_vertex_attr(name = "trans_v_net", value = c(transitivity(., 
+> > type
+> 
+> > =
+> 
+> > "local"))) %>%
+> 
+> >   set_vertex_attr(name = "hub_score", value = 
+> > c(hub_score(.)$vector))
+> 
+> > %>%
+> 
+> >   set_vertex_attr(name = "color",
+> 
+> >               value = c(viridis::viridis((5)))
+> 
+> >               [match(V(.)$name, c(factor(V(.)$name)))]) %>%
+> 
+> >   set_vertex_attr(name= "community",
+> 
+> > value=cluster_optimal(.)$membership)
+> 
+> > clrs<-scico(3, palette = "batlow")
+> 
+> > 
+> 
+> > ### part 1: network plot
+> 
+> > par(bg="black")
+> 
+> > network %>% plot(
+> 
+> >      vertex.color=clrs[V(.)$community],
+> 
+> >      vertex.size=V(.)$hub_score*5,
+> 
+> >      vertex.frame.color=V(.)$color,
+> 
+> >      vertex.label.color="white",
+> 
+> >      vertex.label.cex=0.5,
+> 
+> >      vertex.label.family="Helvetica",
+> 
+> >      vertex.label.font=1,
+> 
+> >      edge.curved=0.5,
+> 
+> >      edge.width= network,
+> 
+> >      layout=layout_with_mds(.))
+> 
+> > 
+> 
+> > ### part 2: ggraph
+> 
+> > tiff("figures/AES_network_bymembership.tiff", width=1000, 
+> > height=700,
+> 
+> > res=120) network %>%
+> 
+> >   ggraph(., layout = "auto")+
+> 
+> > geom_edge_arc(curvature=0.3, aes(width=(E(network)$weight/10),
+> 
+> > color=c("darkblue", "red")[as.factor(edge_list$relationship)],
+> 
+> > alpha=0.5)) +
+> 
+> > 
+> 
+> >   geom_node_point(aes(size = V(network)$hub_score*200, color=
+> 
+> > as.factor(V(network)$community))) +
+> 
+> >   geom_node_text(aes(label =  V(network)$name), size=5, 
+> > color="white",
+> 
+> > repel=T)+
+> 
+> >   scale_color_scico_d(palette = "batlow")+
+> 
+> >   scale_edge_width(range = c(0.2,4))+
+> 
+> >   scale_size(range = c(0.5,20)) +
+> 
+> >   #scale_edge_color_manual(values = c(scico(21, palette="batlow")))+
+> 
+> >   theme(plot.background = element_rect(fill = "black"),
+> 
+> >         legend.position = "right",
+> 
+> >         panel.background = element_rect(fill = "black"))
+> 
+> > dev.off()
+> 
+> > 
+> 
+> > ______________________________________________
+> 
+> >  <mailto:R-help at r-project.org> R-help at r-project.org mailing list -- 
+> > To UNSUBSCRIBE and more, see
+> 
+> >  <https://stat.ethz.ch/mailman/listinfo/r-help>
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> 
+> > PLEASE do read the posting guide
+> 
+> >  <http://www.R-project.org/posting-guide.html>
+> > http://www.R-project.org/posting-guide.html
+> 
+> > and provide commented, minimal, self-contained, reproducible code.
+> 
+>  
+> 
+> ______________________________________________
+> 
+>  <mailto:R-help at r-project.org> R-help at r-project.org mailing list -- To 
+> UNSUBSCRIBE and more, see  
+> <https://stat.ethz.ch/mailman/listinfo/r-help>
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> 
+> PLEASE do read the posting guide
+> <http://www.R-project.org/posting-guide.html>
+> http://www.R-project.org/posting-guide.html
+> 
+> and provide commented, minimal, self-contained, reproducible code.
+> 
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From pb @end|ng |rom |n|o||nk@com@br  Sun Mar 24 19:19:59 2024
+From: pb @end|ng |rom |n|o||nk@com@br (Paulo Barata)
+Date: Sun, 24 Mar 2024 15:19:59 -0300
+Subject: [R] an issue about subsetting a vector
+Message-ID: <73cc0a70-a8c1-41f7-afb5-967a092ff0ec@infolink.com.br>
+
+
+To the R-Help list,
+
+I would like to have a clarification about an issue that I observe when 
+subsetting a vector. This is R version 4.3.3 on Windows 10.
+
+-- Example with a vector:
+
+ > a <- 1:5
+ > a
+[1] 1 2 3 4 5
+
+So we have, with a negative index:
+ > a[-3]
+[1] 1 2 4 5
+
+But when the index is integer(0), we have this:
+
+ > a[integer(0)]
+integer(0)
+ > a[-integer(0)]
+integer(0)
+
+When it comes to the function integer(), the R Help file says:
+
+"Value: integer creates a integer vector of the specified length. Each 
+element of the vector is equal to 0."
+
+But we see below that integer(0) is some kind of null vector, that is, 
+no numbers are represented by integer(0):
+
+ > class(integer(0))
+[1] "integer"
+ > length(integer(0))
+[1] 0
+
+So my question: in the expression a[-integer(0)], what happens exactly 
+with the index -integer(0)? We see that integer(0), although of class 
+integer, does not represent any numbers, as its length is zero, so it 
+seems to me that it makes no sense to calculate its negative 
+-integer(0). What exactly is -integer(0)?
+
+In particular, why a[-integer(0)] is not the whole vector a, that is, 
+[1] 1 2 3 4 5? In the example below, if the invalid index -99 is 
+presented to a, the result is the whole vector:
+
+ > a[-99]
+[1] 1 2 3 4 5
+
+If -integer(0) is an invalid index, why do we have this?
+
+ > a[-integer(0)]
+integer(0)
+
+Why a[-integer(0)] is not the whole vector a?
+
+Thank you very much.
+
+Paulo Barata
+
+Rio de Janeiro, Brazil
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sun Mar 24 19:30:25 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sun, 24 Mar 2024 14:30:25 -0400
+Subject: [R] an issue about subsetting a vector
+In-Reply-To: <73cc0a70-a8c1-41f7-afb5-967a092ff0ec@infolink.com.br>
+References: <73cc0a70-a8c1-41f7-afb5-967a092ff0ec@infolink.com.br>
+Message-ID: <cc5d7871-4db9-4438-b4c2-88f093372916@gmail.com>
+
+    As with a lot of things in R, the behaviour is counterintuitive but 
+(arguably) logical. The key (maybe) is that `a[-x]` does not mean "take 
+all of the elements of a except those indicated by `x`, but rather, 
+"negate x, then take all but the negative elements".  In other words,
+
+  -integer(0)  is   integer(0)  (we multiply *each of the elements of 
+integer(0)* by -1, but integer(0) has no elements)
+
+   that reduces to a[integer(0)]
+
+and from there you get "select none of the elements".
+
+   A related point is explained in the R Inferno 
+https://www.burns-stat.com/pages/Tutor/R_inferno.pdf section 8.1.13, 
+"negative nothing is something".
+
+   See also
+
+https://stackoverflow.com/questions/42615728/subsetting-vector-how-to-programatically-pass-negative-index-safely
+
+https://stackoverflow.com/questions/40026975/subsetting-with-negative-indices-best-practices/40029485#40029485
+
+On 2024-03-24 2:19 p.m., Paulo Barata wrote:
+> 
+> To the R-Help list,
+> 
+> I would like to have a clarification about an issue that I observe when 
+> subsetting a vector. This is R version 4.3.3 on Windows 10.
+> 
+> -- Example with a vector:
+> 
+>  > a <- 1:5
+>  > a
+> [1] 1 2 3 4 5
+> 
+> So we have, with a negative index:
+>  > a[-3]
+> [1] 1 2 4 5
+> 
+> But when the index is integer(0), we have this:
+> 
+>  > a[integer(0)]
+> integer(0)
+>  > a[-integer(0)]
+> integer(0)
+> 
+> When it comes to the function integer(), the R Help file says:
+> 
+> "Value: integer creates a integer vector of the specified length. Each 
+> element of the vector is equal to 0."
+> 
+> But we see below that integer(0) is some kind of null vector, that is, 
+> no numbers are represented by integer(0):
+> 
+>  > class(integer(0))
+> [1] "integer"
+>  > length(integer(0))
+> [1] 0
+> 
+> So my question: in the expression a[-integer(0)], what happens exactly 
+> with the index -integer(0)? We see that integer(0), although of class 
+> integer, does not represent any numbers, as its length is zero, so it 
+> seems to me that it makes no sense to calculate its negative 
+> -integer(0). What exactly is -integer(0)?
+> 
+> In particular, why a[-integer(0)] is not the whole vector a, that is, 
+> [1] 1 2 3 4 5? In the example below, if the invalid index -99 is 
+> presented to a, the result is the whole vector:
+> 
+>  > a[-99]
+> [1] 1 2 3 4 5
+> 
+> If -integer(0) is an invalid index, why do we have this?
+> 
+>  > a[-integer(0)]
+> integer(0)
+> 
+> Why a[-integer(0)] is not the whole vector a?
+> 
+> Thank you very much.
+> 
+> Paulo Barata
+> 
+> Rio de Janeiro, Brazil
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From p@u| @end|ng |rom @t@t@@uck|@nd@@c@nz  Sun Mar 24 22:43:29 2024
+From: p@u| @end|ng |rom @t@t@@uck|@nd@@c@nz (Paul Murrell)
+Date: Mon, 25 Mar 2024 10:43:29 +1300
+Subject: [R] Double buffering plots on Windows
+In-Reply-To: <61932829-7887-4658-BD7A-164D069B9B54@usask.ca>
+References: <61932829-7887-4658-BD7A-164D069B9B54@usask.ca>
+Message-ID: <b74c68da-a0b2-47dd-b54f-6b318488c24a@stat.auckland.ac.nz>
+
+Hi
+
+Take a look at dev.hold() and dev.flush()
+
+Paul
+
+On 23/03/24 06:43, Bickis, Mikelis wrote:
+> Hello:
+> 
+> I want to present a sequence of plots as an animation. As a toy example 
+> consider the code
+> 
+> function(n){for (i in 1:n){
+> plot(1:100,sin(i*(1:100)),type="l")
+> title(paste("n=",i))
+> segments(0,0,100,0,col=2)
+> }}
+> 
+> This sort-of works on a MacOS platform, but the rendering of the plots 
+> is a bit choppy. Inserting a sleep function allows the plots to evolve 
+> smoothly.
+> 
+> function(n){for (i in 1:n){
+> plot(1:100,sin(i*(1:100)),type="l")
+> title(paste("n=",i))
+> segments(0,0,100,0,col=2)
+> Sys.sleep(.2)
+> }}
+> 
+> However, on a Windows platform, only the last plot is rendered without 
+> the Sys.sleep, so the dynamic element is lost. Inserting the Sys.sleep 
+> does allow all the plots to be rendered, but they seem to be erased 
+> before they are drawn again, so there is substantial flicker in the 
+> appearance.
+> 
+> Is there some kind of double-buffering available within R, so that plots 
+> are rendered only after they are fully drawn, leaving the previous plot 
+> visible until it is replaced? I just used the default graphics driver on 
+> Windows ? is there perhaps a different driver that will the graphics 
+> smoother?
+> 
+> Mik Bickis
+> Professor Emeritus
+> Department of Mathematics and Statistics
+> University of Saskatchewan
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help 
+> <https://stat.ethz.ch/mailman/listinfo/r-help>
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html 
+> <http://www.R-project.org/posting-guide.html>
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Dr Paul Murrell (he/him)
+Te Kura Tatauranga | Department of Statistics
+Waipapa Taumata Rau | The University of Auckland
+Private Bag 92019, Auckland 1142, New Zealand
+64 9 3737599 x85392
+paul at stat.auckland.ac.nz
+www.stat.auckland.ac.nz/~paul/
+
+
