@@ -13567,3 +13567,482 @@ paul at stat.auckland.ac.nz
 www.stat.auckland.ac.nz/~paul/
 
 
+From r@oknz @end|ng |rom gm@||@com  Mon Mar 25 10:11:25 2024
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Mon, 25 Mar 2024 22:11:25 +1300
+Subject: [R] an issue about subsetting a vector
+In-Reply-To: <cc5d7871-4db9-4438-b4c2-88f093372916@gmail.com>
+References: <73cc0a70-a8c1-41f7-afb5-967a092ff0ec@infolink.com.br>
+ <cc5d7871-4db9-4438-b4c2-88f093372916@gmail.com>
+Message-ID: <CABcYAdLASM+6k9=h97y4pJgPSk7i1K06tPbWM5Uqw1_7z58_bw@mail.gmail.com>
+
+For questions like this, go to the manual.
+
+Visit cran.r-project.org
+The nav-bar on the left includes
+"Documentation/Manuals/FAQ/Contributed".  Click on Manuals.
+Look at "An Introduction to R" and click on the HTML link for the
+current release
+(this is the first link on the page)
+Scroll down to see the table of contents.
+2.7 Index vectors; selecting and modifying subsets of a data set
+is the link you want.  Click on it.
+The way it works is that integer(0) is "A vector of positive integral
+quantities".
+The relevant sentence is "The index vector can be of any length and
+the result is of the same length as the index vector."
+"Any length" here includes 0.
+
+Your example would be a bit clearer if the elements of a[] were not integers.
+So let's make them strings.
+> a <- LETTERS[1:5]
+> a
+[1] "A" "B" "C" "D" "E"
+> a[integer(0)]
+character(0)
+
+So selecting no elements from a vector of strings gives us a vector
+with no strings
+(rather than a vector with no integers).
+-integer(0)
+makes perfect sense and does exactly what anyone should expect:
+the result and operand of unary - have the same kind of elements and the
+same length and corresponding elements (of which there happen in this
+case to be none) are negatives of each other.  So -integer(0) is predictably
+the same as integer(0), and a[-integer(0)] is the same as a[integer(0)].
+
+The key point is clarified in section 2.7; _[- _] is NOT special syntax.
+What matters in vector[index] is what the *elements* of index are, not
+what the syntax of the expression happens to be.
+
+The tricky thing here is that integer(0) is logically BOTH a vector of positive
+integer quantities AND a vector of negative integer quantities and the fact that
+S (and following it, R) prefers the first interpretation in this
+context is just a
+fact about S (and following it, R).
+
+It gets even trickier when you start including index value 0 into a vector of
+otherwise positive (negative) integers, where in effect the zeros are
+ignored.
+> a[c(0,0,0,0,0,0)]
+character(0)
+> a[-c(0,0,0,0,0,0)]
+character(0)
+
+On Mon, 25 Mar 2024 at 07:31, Ben Bolker <bbolker at gmail.com> wrote:
+>
+>     As with a lot of things in R, the behaviour is counterintuitive but
+> (arguably) logical. The key (maybe) is that `a[-x]` does not mean "take
+> all of the elements of a except those indicated by `x`, but rather,
+> "negate x, then take all but the negative elements".  In other words,
+>
+>   -integer(0)  is   integer(0)  (we multiply *each of the elements of
+> integer(0)* by -1, but integer(0) has no elements)
+>
+>    that reduces to a[integer(0)]
+>
+> and from there you get "select none of the elements".
+>
+>    A related point is explained in the R Inferno
+> https://www.burns-stat.com/pages/Tutor/R_inferno.pdf section 8.1.13,
+> "negative nothing is something".
+>
+>    See also
+>
+> https://stackoverflow.com/questions/42615728/subsetting-vector-how-to-programatically-pass-negative-index-safely
+>
+> https://stackoverflow.com/questions/40026975/subsetting-with-negative-indices-best-practices/40029485#40029485
+>
+> On 2024-03-24 2:19 p.m., Paulo Barata wrote:
+> >
+> > To the R-Help list,
+> >
+> > I would like to have a clarification about an issue that I observe when
+> > subsetting a vector. This is R version 4.3.3 on Windows 10.
+> >
+> > -- Example with a vector:
+> >
+> >  > a <- 1:5
+> >  > a
+> > [1] 1 2 3 4 5
+> >
+> > So we have, with a negative index:
+> >  > a[-3]
+> > [1] 1 2 4 5
+> >
+> > But when the index is integer(0), we have this:
+> >
+> >  > a[integer(0)]
+> > integer(0)
+> >  > a[-integer(0)]
+> > integer(0)
+> >
+> > When it comes to the function integer(), the R Help file says:
+> >
+> > "Value: integer creates a integer vector of the specified length. Each
+> > element of the vector is equal to 0."
+> >
+> > But we see below that integer(0) is some kind of null vector, that is,
+> > no numbers are represented by integer(0):
+> >
+> >  > class(integer(0))
+> > [1] "integer"
+> >  > length(integer(0))
+> > [1] 0
+> >
+> > So my question: in the expression a[-integer(0)], what happens exactly
+> > with the index -integer(0)? We see that integer(0), although of class
+> > integer, does not represent any numbers, as its length is zero, so it
+> > seems to me that it makes no sense to calculate its negative
+> > -integer(0). What exactly is -integer(0)?
+> >
+> > In particular, why a[-integer(0)] is not the whole vector a, that is,
+> > [1] 1 2 3 4 5? In the example below, if the invalid index -99 is
+> > presented to a, the result is the whole vector:
+> >
+> >  > a[-99]
+> > [1] 1 2 3 4 5
+> >
+> > If -integer(0) is an invalid index, why do we have this?
+> >
+> >  > a[-integer(0)]
+> > integer(0)
+> >
+> > Why a[-integer(0)] is not the whole vector a?
+> >
+> > Thank you very much.
+> >
+> > Paulo Barata
+> >
+> > Rio de Janeiro, Brazil
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> > http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bo@@ @end|ng |rom b@nge|@tech  Mon Mar 25 08:23:43 2024
+From: bo@@ @end|ng |rom b@nge|@tech (Thomas K)
+Date: Mon, 25 Mar 2024 07:23:43 +0000
+Subject: [R] as.complex()
+Message-ID: <7494a1e1-6ef0-4137-bd1f-60e52ce49b83@bangel.tech>
+
+Needing a < , > comparison for imaginary numbers
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Mon Mar 25 15:31:00 2024
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Mon, 25 Mar 2024 10:31:00 -0400
+Subject: [R] as.complex()
+In-Reply-To: <7494a1e1-6ef0-4137-bd1f-60e52ce49b83@bangel.tech>
+References: <7494a1e1-6ef0-4137-bd1f-60e52ce49b83@bangel.tech>
+Message-ID: <CADNULg-wy-PZrpD41Szfg0PftMtmE4roWmaPzwoNQTX=Bt0wnw@mail.gmail.com>
+
+Hi Thomas,
+
+
+If you want to compare the imaginary portions, you could do:
+
+Im(z1) < Im(z2)
+
+If you want to compare the magnitudes, you could do:
+
+Mod(z1) < Mod(z2)
+
+If you want to compare complex numbers, i.e. z1 < z2, well that just
+doesn't make sense.
+
+On Mon, Mar 25, 2024, 10:17 Thomas K <boss at bangel.tech> wrote:
+
+> Needing a < , > comparison for imaginary numbers
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Mon Mar 25 15:37:28 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Mon, 25 Mar 2024 07:37:28 -0700
+Subject: [R] as.complex()
+In-Reply-To: <7494a1e1-6ef0-4137-bd1f-60e52ce49b83@bangel.tech>
+References: <7494a1e1-6ef0-4137-bd1f-60e52ce49b83@bangel.tech>
+Message-ID: <F20ED986-B6E6-4164-A754-BB4CACF36977@dcn.davis.ca.us>
+
+?complex
+
+On March 25, 2024 12:23:43 AM PDT, Thomas K <boss at bangel.tech> wrote:
+>Needing a < , > comparison for imaginary numbers
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From |r|end|y @end|ng |rom yorku@c@  Mon Mar 25 16:23:53 2024
+From: |r|end|y @end|ng |rom yorku@c@ (Michael L Friendly)
+Date: Mon, 25 Mar 2024 15:23:53 +0000
+Subject: [R] Double buffering plots on Windows
+Message-ID: <YQBPR0101MB4652D695075E3AF26A47E426AB362@YQBPR0101MB4652.CANPRD01.PROD.OUTLOOK.COM>
+
+Hi Paul
+
+Is there a concrete working example somewhere that shows how to use these to do an animation on Windows (R Gui &/or RStudio) using base R plot() and friends?
+
+I have several old examples somewhere that used to work (R < ~ 3), but now no longer work as before.
+
+
+
+
+Date: Mon, 25 Mar 2024 10:43:29 +1300
+
+From: Paul Murrell <paul at stat.auckland.ac.nz<mailto:paul at stat.auckland.ac.nz>>
+
+To: "Bickis, Mikelis" <bickis at math.usask.ca<mailto:bickis at math.usask.ca>>, "r-help at r-project.org<mailto:r-help at r-project.org>"
+
+                <r-help at r-project.org<mailto:r-help at r-project.org>>
+
+Subject: Re: [R] Double buffering plots on Windows
+
+Message-ID: <b74c68da-a0b2-47dd-b54f-6b318488c24a at stat.auckland.ac.nz<mailto:b74c68da-a0b2-47dd-b54f-6b318488c24a at stat.auckland.ac.nz>>
+
+Content-Type: text/plain; charset="utf-8"; Format="flowed"
+
+
+
+Hi
+
+
+
+Take a look at dev.hold() and dev.flush()
+
+
+
+Paul
+
+
+---
+Michael Friendly     Email: friendly AT yorku DOT ca
+Professor, Psychology Dept.
+York University      Voice: 416 736-2100 x66249
+4700 Keele Street    Web: http://www.datavis.ca<http://www.datavis.ca/> | @datavisFriendly
+Toronto, ONT  M3J 1P3 CANADA
+
+
+	[[alternative HTML version deleted]]
+
+
+From bbo|ker @end|ng |rom gm@||@com  Mon Mar 25 15:27:56 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Mon, 25 Mar 2024 10:27:56 -0400
+Subject: [R] as.complex()
+In-Reply-To: <7494a1e1-6ef0-4137-bd1f-60e52ce49b83@bangel.tech>
+References: <7494a1e1-6ef0-4137-bd1f-60e52ce49b83@bangel.tech>
+Message-ID: <3dce08e8-72e2-426d-802f-7d0dfd398f53@gmail.com>
+
+   That's hard to define unambiguously at a mathematical level.  What 
+definition did you have in mind?  Can you provide more context?  (Maybe 
+you want to compare Mod(x) to Mod(y) ?)
+
+On 2024-03-25 3:23 a.m., Thomas K wrote:
+> Needing a < , > comparison for imaginary numbers
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From p@u| @end|ng |rom @t@t@@uck|@nd@@c@nz  Mon Mar 25 22:59:56 2024
+From: p@u| @end|ng |rom @t@t@@uck|@nd@@c@nz (Paul Murrell)
+Date: Tue, 26 Mar 2024 10:59:56 +1300
+Subject: [R] Double buffering plots on Windows
+In-Reply-To: <YQBPR0101MB4652D695075E3AF26A47E426AB362@YQBPR0101MB4652.CANPRD01.PROD.OUTLOOK.COM>
+References: <YQBPR0101MB4652D695075E3AF26A47E426AB362@YQBPR0101MB4652.CANPRD01.PROD.OUTLOOK.COM>
+Message-ID: <0c5e79c6-b080-4ae6-800d-0448f8f2109c@stat.auckland.ac.nz>
+
+Hi
+
+I would not describe myself as a heavy user of this stuff (either 
+Windows or animation) - are you able to share your examples ?
+
+Paul
+
+On 26/03/24 04:23, Michael L Friendly wrote:
+> Hi Paul
+> 
+> Is there a concrete working example somewhere that shows how to use 
+> these to do an animation on Windows (R Gui &/or RStudio) using base R 
+> plot() and friends?
+> 
+> I have several old examples somewhere that used to work (R < ~ 3), but 
+> now no longer work as before.
+> 
+> 
+> 
+> 
+> Date: Mon, 25 Mar 2024 10:43:29 +1300
+> 
+> From: Paul Murrell 
+> <paul at stat.auckland.ac.nz<mailto:paul at stat.auckland.ac.nz>>
+> 
+> To: "Bickis, Mikelis" 
+> <bickis at math.usask.ca<mailto:bickis at math.usask.ca>>, 
+> "r-help at r-project.org<mailto:r-help at r-project.org>"
+> 
+> <r-help at r-project.org<mailto:r-help at r-project.org>>
+> 
+> Subject: Re: [R] Double buffering plots on Windows
+> 
+> Message-ID: 
+> <b74c68da-a0b2-47dd-b54f-6b318488c24a at stat.auckland.ac.nz<mailto:b74c68da-a0b2-47dd-b54f-6b318488c24a at stat.auckland.ac.nz>>
+> 
+> Content-Type: text/plain; charset="utf-8"; Format="flowed"
+> 
+> 
+> 
+> Hi
+> 
+> 
+> 
+> Take a look at dev.hold() and dev.flush()
+> 
+> 
+> 
+> Paul
+> 
+> 
+> ---
+> Michael Friendly Email: friendly AT yorku DOT ca
+> Professor, Psychology Dept.
+> York University Voice: 416 736-2100 x66249
+> 4700 Keele Street Web: http://www.datavis.ca 
+> <http://www.datavis.ca><http://www.datavis.ca/ <http://www.datavis.ca/>> | @datavisFriendly
+> Toronto, ONT M3J 1P3 CANADA
+> 
+> 
+> [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help 
+> <https://stat.ethz.ch/mailman/listinfo/r-help>
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html 
+> <http://www.R-project.org/posting-guide.html>
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Dr Paul Murrell (he/him)
+Te Kura Tatauranga | Department of Statistics
+Waipapa Taumata Rau | The University of Auckland
+Private Bag 92019, Auckland 1142, New Zealand
+64 9 3737599 x85392
+paul at stat.auckland.ac.nz
+www.stat.auckland.ac.nz/~paul/
+
+
+From r@oknz @end|ng |rom gm@||@com  Mon Mar 25 23:57:04 2024
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Tue, 26 Mar 2024 11:57:04 +1300
+Subject: [R] as.complex()
+In-Reply-To: <7494a1e1-6ef0-4137-bd1f-60e52ce49b83@bangel.tech>
+References: <7494a1e1-6ef0-4137-bd1f-60e52ce49b83@bangel.tech>
+Message-ID: <CABcYAdLHrXqtm4k=7e2XJWGTZ=zKCGffjsbmdmFbbPPje7-hgg@mail.gmail.com>
+
+What is your actual problem that you are trying to solve by comparing
+imaginary numbers?
+The reals are an ordered field.
+The complex numbers are a field but cannot support an ordering that is
+consistent with
+the field (or even ring) axioms.
+The imaginary numbers are not a field or even a ring.
+To quote Brian Marick's wonderful sticker, "An example would be good about now".
+
+
+On Tue, 26 Mar 2024 at 03:17, Thomas K <boss at bangel.tech> wrote:
+>
+> Needing a < , > comparison for imaginary numbers
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @tyen @end|ng |rom ntu@edu@tw  Tue Mar 26 03:02:55 2024
+From: @tyen @end|ng |rom ntu@edu@tw (Steven Yen)
+Date: Tue, 26 Mar 2024 10:02:55 +0800
+Subject: [R] Printout and saved results
+Message-ID: <cc7aaa3b-3016-4b7e-8cd5-733cbb7450a0@ntu.edu.tw>
+
+How can I have both printout and saved results at the same time.
+
+The subroutine first return "out" and the printout gets printed, but not 
+saved.
+
+I then run the "invisible" line. Results got saved and accessible but no 
+printout.
+
+How can I have both printout and also have the results saved? Thank you!
+
+ > dstat4 <- function(data,digits=3){
++?? Mean??? <- apply(data,2,mean,na.rm=TRUE)
++?? Std.dev <- apply(data,2,sd,? na.rm=TRUE)
++?? Min <- apply(data,2,min,na.rm=TRUE)
++?? Max <- apply(data,2,max,na.rm=TRUE)
++?? Obs <- dim(data)[1]
++?? out <-round(cbind(Mean,Std.dev,Min,Max,Obs),digits)
++?? out
++ # invisible(list(Mean=Mean,Std.dev=Std.dev,Min=Min,Max=Max))
++ }
+ > x1<-rnorm(n=5,mean=5, sd=1)
+ > x2<-rnorm(n=5,mean=10,sd=2)
+ > w<-rnorm(n=5,mean=2,sd=0.3)
+ > mydata<-data.frame(cbind(x1,x2))
+ > v<-dstat4(mydata); v
+ ???? Mean Std.dev?? Min??? Max Obs
+x1? 5.000?? 0.922 3.900? 6.282?? 5
+x2 10.769?? 1.713 9.209 13.346?? 5
+ > v$Mean
+Error in v$Mean : $ operator is invalid for atomic vectors
+ > dstat4 <- function(data,digits=3){
++?? Mean??? <- apply(data,2,mean,na.rm=TRUE)
++?? Std.dev <- apply(data,2,sd,? na.rm=TRUE)
++?? Min <- apply(data,2,min,na.rm=TRUE)
++?? Max <- apply(data,2,max,na.rm=TRUE)
++?? Obs <- dim(data)[1]
++?? out <-round(cbind(Mean,Std.dev,Min,Max,Obs),digits)
++ # out
++?? invisible(list(Mean=Mean,Std.dev=Std.dev,Min=Min,Max=Max))
++ }
+
+ > v<-dstat4(mydata)
+ > v$Mean
+ ????? x1?????? x2
+4.233051 9.564454
+
+
