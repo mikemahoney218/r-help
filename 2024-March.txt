@@ -15387,3 +15387,1221 @@ Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a 
 www.avg.com
 
 
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Thu Mar 28 03:40:37 2024
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Thu, 28 Mar 2024 08:10:37 +0530
+Subject: [R] Output of tapply function as data frame
+In-Reply-To: <2480bdca-a38e-4e56-bf32-ac5d014c9a00@sapo.pt>
+References: <CAC8ss307yPyFvs57kPk-enQNH+Kxg+OZfMPOnTg2qQ8v=NKyhQ@mail.gmail.com>
+ <2480bdca-a38e-4e56-bf32-ac5d014c9a00@sapo.pt>
+Message-ID: <CADfFDC6wcTF4W8SzvPxOz6EjugGm7Jgod3YOCioUfKY9hoOmDQ@mail.gmail.com>
+
+For more complicated examples, the (relatively new) array2DF()
+function is also useful:
+
+> with(data, tapply(count, Date, mean)) |> array2DF()
+        Var1    Value
+1 2024-03-23 5.416667
+2 2024-03-24 5.500000
+3 2024-03-25 6.000000
+4 2024-03-26 4.476190
+5 2024-03-27 6.538462
+6 2024-03-28 5.200000
+
+or
+
+> tapply(data, ~ Date, with, mean(count)) |> array2DF(responseName = "count")
+        Date    count
+1 2024-03-23 5.416667
+2 2024-03-24 5.500000
+3 2024-03-25 6.000000
+4 2024-03-26 4.476190
+5 2024-03-27 6.538462
+6 2024-03-28 5.200000
+
+Best,
+-Deepayan
+
+On Wed, 27 Mar 2024 at 13:15, Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>
+> ?s 04:30 de 27/03/2024, Ogbos Okike escreveu:
+> > Warm greetings to you all.
+> >
+> > Using the tapply function below:
+> > data<-read.table("FD1month",col.names = c("Dates","count"))
+> > x=data$count
+> >   f<-factor(data$Dates)
+> > AB<- tapply(x,f,mean)
+> >
+> >
+> > I made a simple calculation. The result, stored in AB, is of the form
+> > below. But an effort to write AB to a file as a data frame fails. When I
+> > use the write table, it only produces the count column and strip of the
+> > first column (date).
+> >
+> > 2005-11-01 2005-12-01 2006-01-01 2006-02-01 2006-03-01 2006-04-01
+> > 2006-05-01
+> >   -4.106887  -4.259154  -5.836090  -4.756757  -4.118011  -4.487942
+> >   -4.430705
+> > 2006-06-01 2006-07-01 2006-08-01 2006-09-01 2006-10-01 2006-11-01
+> > 2006-12-01
+> >   -3.856727  -6.067103  -6.418767  -4.383031  -3.985805  -4.768196
+> > -10.072579
+> > 2007-01-01 2007-02-01 2007-03-01 2007-04-01 2007-05-01 2007-06-01
+> > 2007-07-01
+> >   -5.342338  -4.653128  -4.325094  -4.525373  -4.574783  -3.915600
+> >   -4.127980
+> > 2007-08-01 2007-09-01 2007-10-01 2007-11-01 2007-12-01 2008-01-01
+> > 2008-02-01
+> >   -3.952150  -4.033518  -4.532878  -4.522941  -4.485693  -3.922155
+> >   -4.183578
+> > 2008-03-01 2008-04-01 2008-05-01 2008-06-01 2008-07-01 2008-08-01
+> > 2008-09-01
+> >   -4.336969  -3.813306  -4.296579  -4.575095  -4.036036  -4.727994
+> >   -4.347428
+> > 2008-10-01 2008-11-01 2008-12-01
+> >   -4.029918  -4.260326  -4.454224
+> >
+> > But the normal format I wish to display only appears on the terminal,
+> > leading me to copy it and paste into a text file. That is, when I enter AB
+> > on the terminal, it returns a format in the form:
+> >
+> > 008-02-01  -4.183578
+> > 2008-03-01  -4.336969
+> > 2008-04-01  -3.813306
+> > 2008-05-01  -4.296579
+> > 2008-06-01  -4.575095
+> > 2008-07-01  -4.036036
+> > 2008-08-01  -4.727994
+> > 2008-09-01  -4.347428
+> > 2008-10-01  -4.029918
+> > 2008-11-01  -4.260326
+> > 2008-12-01  -4.454224
+> >
+> > Now, my question: How do I write out two columns displayed by AB on the
+> > terminal to a file?
+> >
+> > I have tried using AB<-data.frame(AB) but it doesn't work either.
+> >
+> > Many thanks for your time.
+> > Ogbos
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+>
+> The main trick is to pipe to as.data.frame. But the result will have one
+> column only, you must assign the dates from the df's row names.
+> I also include an aggregate solution.
+>
+>
+>
+> # create a test data set
+> set.seed(2024)
+> data <- data.frame(
+>    Date = sample(seq(Sys.Date() - 5, Sys.Date(), by = "1 days"), 100L,
+> TRUE),
+>    count = sample(10L, 100L, TRUE)
+> )
+>
+> # coerce tapply's result to class "data.frame"
+> res <- with(data, tapply(count, Date, mean)) |> as.data.frame()
+> # assign a dates column from the row names
+> res$Date <- row.names(res)
+> # cosmetics
+> names(res)[2:1] <- names(data)
+> # note that the row names are still tapply's names vector
+> # and that the columns order is not Date/count. Both are fixed
+> # after the calculations.
+> res
+> #>               count       Date
+> #> 2024-03-22 5.416667 2024-03-22
+> #> 2024-03-23 5.500000 2024-03-23
+> #> 2024-03-24 6.000000 2024-03-24
+> #> 2024-03-25 4.476190 2024-03-25
+> #> 2024-03-26 6.538462 2024-03-26
+> #> 2024-03-27 5.200000 2024-03-27
+>
+> # fix the columns' order
+> res <- res[2:1]
+>
+>
+>
+> # better all in one instruction
+> aggregate(count ~ Date, data, mean)
+> #>         Date    count
+> #> 1 2024-03-22 5.416667
+> #> 2 2024-03-23 5.500000
+> #> 3 2024-03-24 6.000000
+> #> 4 2024-03-25 4.476190
+> #> 5 2024-03-26 6.538462
+> #> 6 2024-03-27 5.200000
+>
+>
+>
+> Also,
+> I'm glad to help as always but Ogbos, you have been an R-Help
+> contributor for quite a while, please post data in dput format. Given
+> the problem the output of the following is more than enough.
+>
+>
+> dput(head(data, 20L))
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+> --
+> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+> www.avg.com
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @te|@no@@o||@ @end|ng |rom reg|one@m@rche@|t  Thu Mar 28 11:29:09 2024
+From: @te|@no@@o||@ @end|ng |rom reg|one@m@rche@|t (Stefano Sofia)
+Date: Thu, 28 Mar 2024 10:29:09 +0000
+Subject: [R] split a factor into single elements
+Message-ID: <9bc23d07aefe431a9ab87d18c97805ef@regione.marche.it>
+
+Dear R-list users,
+
+forgive me for this silly question, I did my best to find a solution with no success.
+
+Suppose I have a factor type like
+
+
+myfactor <- as.factor(2024, 2, 1, 0, 0)
+
+
+There are no characters (and therefore strsplit for eample does not work).
+
+I need to store separately the 1st, 2nd and 3rd elements as integers. How can I do?
+
+
+Thank you for your help
+
+Stefano
+
+
+         (oo)
+--oOO--( )--OOo--------------------------------------
+Stefano Sofia PhD
+Civil Protection - Marche Region - Italy
+Meteo Section
+Snow Section
+Via del Colle Ameno 5
+60126 Torrette di Ancona, Ancona (AN)
+Uff: +39 071 806 7743
+E-mail: stefano.sofia at regione.marche.it
+---Oo---------oO----------------------------------------
+
+________________________________
+
+AVVISO IMPORTANTE: Questo messaggio di posta elettronica pu? contenere informazioni confidenziali, pertanto ? destinato solo a persone autorizzate alla ricezione. I messaggi di posta elettronica per i client di Regione Marche possono contenere informazioni confidenziali e con privilegi legali. Se non si ? il destinatario specificato, non leggere, copiare, inoltrare o archiviare questo messaggio. Se si ? ricevuto questo messaggio per errore, inoltrarlo al mittente ed eliminarlo completamente dal sistema del proprio computer. Ai sensi dell'art. 6 della DGR n. 1394/2008 si segnala che, in caso di necessit? ed urgenza, la risposta al presente messaggio di posta elettronica pu? essere visionata da persone estranee al destinatario.
+IMPORTANT NOTICE: This e-mail message is intended to be received only by persons entitled to receive the confidential information it may contain. E-mail messages to clients of Regione Marche may contain information that is confidential and legally privileged. Please do not read, copy, forward, or store this message unless you are an intended recipient of it. If you have received this message in error, please forward it to the sender and delete it completely from your computer system.
+
+	[[alternative HTML version deleted]]
+
+
+From d@go@t|no|@b| @end|ng |rom gm@||@com  Thu Mar 28 12:20:00 2024
+From: d@go@t|no|@b| @end|ng |rom gm@||@com (Fabio D'Agostino)
+Date: Thu, 28 Mar 2024 12:20:00 +0100
+Subject: [R] split a factor into single elements
+In-Reply-To: <9bc23d07aefe431a9ab87d18c97805ef@regione.marche.it>
+References: <9bc23d07aefe431a9ab87d18c97805ef@regione.marche.it>
+Message-ID: <CADUGNTyhGD-yAAXrep2uUjtcCOU9fQrN0yuw-rb9vDxucaywEQ@mail.gmail.com>
+
+Hi Stefano,
+maybe something like this can help you?
+
+myfactor <- as.factor(c(2024, 2, 1, 0, 0))
+
+# Convert factor values to integers
+first_element <- as.integer(as.character(myfactor)[1])
+second_element <- as.integer(as.character(myfactor)[2])
+third_element <- as.integer(as.character(myfactor)[3])
+
+# Print the results
+first_element
+[1] 2024
+second_element
+[1] 2
+third_element
+[1] 1
+
+# Check the type of the object
+typeof(first_element)
+[1] "integer"
+
+Fabio
+
+Il giorno gio 28 mar 2024 alle ore 11:29 Stefano Sofia <
+stefano.sofia at regione.marche.it> ha scritto:
+
+> Dear R-list users,
+>
+> forgive me for this silly question, I did my best to find a solution with
+> no success.
+>
+> Suppose I have a factor type like
+>
+>
+> myfactor <- as.factor(2024, 2, 1, 0, 0)
+>
+>
+> There are no characters (and therefore strsplit for eample does not work).
+>
+> I need to store separately the 1st, 2nd and 3rd elements as integers. How
+> can I do?
+>
+>
+> Thank you for your help
+>
+> Stefano
+>
+>
+>          (oo)
+> --oOO--( )--OOo--------------------------------------
+> Stefano Sofia PhD
+> Civil Protection - Marche Region - Italy
+> Meteo Section
+> Snow Section
+> Via del Colle Ameno 5
+> 60126 Torrette di Ancona, Ancona (AN)
+> Uff: +39 071 806 7743
+> E-mail: stefano.sofia at regione.marche.it
+> ---Oo---------oO----------------------------------------
+>
+> ________________________________
+>
+> AVVISO IMPORTANTE: Questo messaggio di posta elettronica pu? contenere
+> informazioni confidenziali, pertanto ? destinato solo a persone autorizzate
+> alla ricezione. I messaggi di posta elettronica per i client di Regione
+> Marche possono contenere informazioni confidenziali e con privilegi legali.
+> Se non si ? il destinatario specificato, non leggere, copiare, inoltrare o
+> archiviare questo messaggio. Se si ? ricevuto questo messaggio per errore,
+> inoltrarlo al mittente ed eliminarlo completamente dal sistema del proprio
+> computer. Ai sensi dell'art. 6 della DGR n. 1394/2008 si segnala che, in
+> caso di necessit? ed urgenza, la risposta al presente messaggio di posta
+> elettronica pu? essere visionata da persone estranee al destinatario.
+> IMPORTANT NOTICE: This e-mail message is intended to be received only by
+> persons entitled to receive the confidential information it may contain.
+> E-mail messages to clients of Regione Marche may contain information that
+> is confidential and legally privileged. Please do not read, copy, forward,
+> or store this message unless you are an intended recipient of it. If you
+> have received this message in error, please forward it to the sender and
+> delete it completely from your computer system.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @te|@no@@o||@ @end|ng |rom reg|one@m@rche@|t  Thu Mar 28 12:26:38 2024
+From: @te|@no@@o||@ @end|ng |rom reg|one@m@rche@|t (Stefano Sofia)
+Date: Thu, 28 Mar 2024 11:26:38 +0000
+Subject: [R] split a factor into single elements
+In-Reply-To: <CADUGNTyhGD-yAAXrep2uUjtcCOU9fQrN0yuw-rb9vDxucaywEQ@mail.gmail.com>
+References: <9bc23d07aefe431a9ab87d18c97805ef@regione.marche.it>,
+ <CADUGNTyhGD-yAAXrep2uUjtcCOU9fQrN0yuw-rb9vDxucaywEQ@mail.gmail.com>
+Message-ID: <1d6fbe058edb4a819b6cb212ad5fd512@regione.marche.it>
+
+Thank you Fabio.
+
+So easy and straighforward!
+
+
+Stefano
+
+
+         (oo)
+--oOO--( )--OOo--------------------------------------
+Stefano Sofia PhD
+Civil Protection - Marche Region - Italy
+Meteo Section
+Snow Section
+Via del Colle Ameno 5
+60126 Torrette di Ancona, Ancona (AN)
+Uff: +39 071 806 7743
+E-mail: stefano.sofia at regione.marche.it
+---Oo---------oO----------------------------------------
+
+
+________________________________
+Da: Fabio D'Agostino <dagostinofabi at gmail.com>
+Inviato: gioved? 28 marzo 2024 12:20
+A: Stefano Sofia; r-help at R-project.org
+Oggetto: Re: [R] split a factor into single elements
+
+
+Non si ricevono spesso messaggi di posta elettronica da dagostinofabi at gmail.com. Informazioni sul perch? ? importante<https://aka.ms/LearnAboutSenderIdentification>
+
+Hi Stefano,
+maybe something like this can help you?
+
+myfactor <- as.factor(c(2024, 2, 1, 0, 0))
+
+# Convert factor values to integers
+first_element <- as.integer(as.character(myfactor)[1])
+second_element <- as.integer(as.character(myfactor)[2])
+third_element <- as.integer(as.character(myfactor)[3])
+
+# Print the results
+first_element
+[1] 2024
+second_element
+[1] 2
+third_element
+[1] 1
+
+# Check the type of the object
+typeof(first_element)
+[1] "integer"
+
+Fabio
+
+Il giorno gio 28 mar 2024 alle ore 11:29 Stefano Sofia <stefano.sofia at regione.marche.it<mailto:stefano.sofia at regione.marche.it>> ha scritto:
+Dear R-list users,
+
+forgive me for this silly question, I did my best to find a solution with no success.
+
+Suppose I have a factor type like
+
+
+myfactor <- as.factor(2024, 2, 1, 0, 0)
+
+
+There are no characters (and therefore strsplit for eample does not work).
+
+I need to store separately the 1st, 2nd and 3rd elements as integers. How can I do?
+
+
+Thank you for your help
+
+Stefano
+
+
+         (oo)
+--oOO--( )--OOo--------------------------------------
+Stefano Sofia PhD
+Civil Protection - Marche Region - Italy
+Meteo Section
+Snow Section
+Via del Colle Ameno 5
+60126 Torrette di Ancona, Ancona (AN)
+Uff: +39 071 806 7743
+E-mail: stefano.sofia at regione.marche.it<mailto:stefano.sofia at regione.marche.it>
+---Oo---------oO----------------------------------------
+
+________________________________
+
+AVVISO IMPORTANTE: Questo messaggio di posta elettronica pu? contenere informazioni confidenziali, pertanto ? destinato solo a persone autorizzate alla ricezione. I messaggi di posta elettronica per i client di Regione Marche possono contenere informazioni confidenziali e con privilegi legali. Se non si ? il destinatario specificato, non leggere, copiare, inoltrare o archiviare questo messaggio. Se si ? ricevuto questo messaggio per errore, inoltrarlo al mittente ed eliminarlo completamente dal sistema del proprio computer. Ai sensi dell'art. 6 della DGR n. 1394/2008 si segnala che, in caso di necessit? ed urgenza, la risposta al presente messaggio di posta elettronica pu? essere visionata da persone estranee al destinatario.
+IMPORTANT NOTICE: This e-mail message is intended to be received only by persons entitled to receive the confidential information it may contain. E-mail messages to clients of Regione Marche may contain information that is confidential and legally privileged. Please do not read, copy, forward, or store this message unless you are an intended recipient of it. If you have received this message in error, please forward it to the sender and delete it completely from your computer system.
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help<https://eur02.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C02%7Cstefano.sofia%40regione.marche.it%7Cbdac99e047dc4e07d0d508dc4f19093d%7C295eaa1431a14b09bfe65a338b679f60%7C0%7C0%7C638472216145063263%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=9KrZWiZG0YnRgIlfzNgVoeo3viH1Sqtq%2BkcrEXa1kv0%3D&reserved=0>
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html<https://eur02.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C02%7Cstefano.sofia%40regione.marche.it%7Cbdac99e047dc4e07d0d508dc4f19093d%7C295eaa1431a14b09bfe65a338b679f60%7C0%7C0%7C638472216145063263%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=PKViM4DWqRNrcOiMaEtWYZb3dHfIV2r9nP%2B%2FE5KpZwM%3D&reserved=0>
+and provide commented, minimal, self-contained, reproducible code.
+
+________________________________
+
+AVVISO IMPORTANTE: Questo messaggio di posta elettronica pu? contenere informazioni confidenziali, pertanto ? destinato solo a persone autorizzate alla ricezione. I messaggi di posta elettronica per i client di Regione Marche possono contenere informazioni confidenziali e con privilegi legali. Se non si ? il destinatario specificato, non leggere, copiare, inoltrare o archiviare questo messaggio. Se si ? ricevuto questo messaggio per errore, inoltrarlo al mittente ed eliminarlo completamente dal sistema del proprio computer. Ai sensi dell'art. 6 della DGR n. 1394/2008 si segnala che, in caso di necessit? ed urgenza, la risposta al presente messaggio di posta elettronica pu? essere visionata da persone estranee al destinatario.
+IMPORTANT NOTICE: This e-mail message is intended to be received only by persons entitled to receive the confidential information it may contain. E-mail messages to clients of Regione Marche may contain information that is confidential and legally privileged. Please do not read, copy, forward, or store this message unless you are an intended recipient of it. If you have received this message in error, please forward it to the sender and delete it completely from your computer system.
+
+	[[alternative HTML version deleted]]
+
+
+From @te|@no@@o||@ @end|ng |rom reg|one@m@rche@|t  Thu Mar 28 12:48:01 2024
+From: @te|@no@@o||@ @end|ng |rom reg|one@m@rche@|t (Stefano Sofia)
+Date: Thu, 28 Mar 2024 11:48:01 +0000
+Subject: [R] split a factor into single elements
+In-Reply-To: <CADUGNTyhGD-yAAXrep2uUjtcCOU9fQrN0yuw-rb9vDxucaywEQ@mail.gmail.com>
+References: <9bc23d07aefe431a9ab87d18c97805ef@regione.marche.it>,
+ <CADUGNTyhGD-yAAXrep2uUjtcCOU9fQrN0yuw-rb9vDxucaywEQ@mail.gmail.com>
+Message-ID: <75993e80f96448d380b25f3c327a4076@regione.marche.it>
+
+Sorry for my hurry.
+
+The correct reproducible code is different from the initial one. The correct example is
+
+
+mydf <- data.frame(id_station = 1234, string_data = as.factor(2024, 12, 1, 0, 0), rainfall_value= 55)
+
+
+In this case mydf$string_data is a factor, but of length 1 (and not 5 like in the initial example).
+
+Therefore the suggestion offered by Fabio does not work.
+
+
+Any suggestion?
+
+Sorry again for my mistake
+
+Stefano
+
+
+
+         (oo)
+--oOO--( )--OOo--------------------------------------
+Stefano Sofia PhD
+Civil Protection - Marche Region - Italy
+Meteo Section
+Snow Section
+Via del Colle Ameno 5
+60126 Torrette di Ancona, Ancona (AN)
+Uff: +39 071 806 7743
+E-mail: stefano.sofia at regione.marche.it
+---Oo---------oO----------------------------------------
+
+
+________________________________
+Da: Fabio D'Agostino <dagostinofabi at gmail.com>
+Inviato: gioved? 28 marzo 2024 12:20
+A: Stefano Sofia; r-help at R-project.org
+Oggetto: Re: [R] split a factor into single elements
+
+
+Non si ricevono spesso messaggi di posta elettronica da dagostinofabi at gmail.com. Informazioni sul perch? ? importante<https://aka.ms/LearnAboutSenderIdentification>
+
+Hi Stefano,
+maybe something like this can help you?
+
+myfactor <- as.factor(c(2024, 2, 1, 0, 0))
+
+# Convert factor values to integers
+first_element <- as.integer(as.character(myfactor)[1])
+second_element <- as.integer(as.character(myfactor)[2])
+third_element <- as.integer(as.character(myfactor)[3])
+
+# Print the results
+first_element
+[1] 2024
+second_element
+[1] 2
+third_element
+[1] 1
+
+# Check the type of the object
+typeof(first_element)
+[1] "integer"
+
+Fabio
+
+Il giorno gio 28 mar 2024 alle ore 11:29 Stefano Sofia <stefano.sofia at regione.marche.it<mailto:stefano.sofia at regione.marche.it>> ha scritto:
+Dear R-list users,
+
+forgive me for this silly question, I did my best to find a solution with no success.
+
+Suppose I have a factor type like
+
+
+myfactor <- as.factor(2024, 2, 1, 0, 0)
+
+
+There are no characters (and therefore strsplit for eample does not work).
+
+I need to store separately the 1st, 2nd and 3rd elements as integers. How can I do?
+
+
+Thank you for your help
+
+Stefano
+
+
+         (oo)
+--oOO--( )--OOo--------------------------------------
+Stefano Sofia PhD
+Civil Protection - Marche Region - Italy
+Meteo Section
+Snow Section
+Via del Colle Ameno 5
+60126 Torrette di Ancona, Ancona (AN)
+Uff: +39 071 806 7743
+E-mail: stefano.sofia at regione.marche.it<mailto:stefano.sofia at regione.marche.it>
+---Oo---------oO----------------------------------------
+
+________________________________
+
+AVVISO IMPORTANTE: Questo messaggio di posta elettronica pu? contenere informazioni confidenziali, pertanto ? destinato solo a persone autorizzate alla ricezione. I messaggi di posta elettronica per i client di Regione Marche possono contenere informazioni confidenziali e con privilegi legali. Se non si ? il destinatario specificato, non leggere, copiare, inoltrare o archiviare questo messaggio. Se si ? ricevuto questo messaggio per errore, inoltrarlo al mittente ed eliminarlo completamente dal sistema del proprio computer. Ai sensi dell'art. 6 della DGR n. 1394/2008 si segnala che, in caso di necessit? ed urgenza, la risposta al presente messaggio di posta elettronica pu? essere visionata da persone estranee al destinatario.
+IMPORTANT NOTICE: This e-mail message is intended to be received only by persons entitled to receive the confidential information it may contain. E-mail messages to clients of Regione Marche may contain information that is confidential and legally privileged. Please do not read, copy, forward, or store this message unless you are an intended recipient of it. If you have received this message in error, please forward it to the sender and delete it completely from your computer system.
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help<https://eur02.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C02%7Cstefano.sofia%40regione.marche.it%7Cbdac99e047dc4e07d0d508dc4f19093d%7C295eaa1431a14b09bfe65a338b679f60%7C0%7C0%7C638472216145063263%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=9KrZWiZG0YnRgIlfzNgVoeo3viH1Sqtq%2BkcrEXa1kv0%3D&reserved=0>
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html<https://eur02.safelinks.protection.outlook.com/?url=http%3A%2F%2Fwww.r-project.org%2Fposting-guide.html&data=05%7C02%7Cstefano.sofia%40regione.marche.it%7Cbdac99e047dc4e07d0d508dc4f19093d%7C295eaa1431a14b09bfe65a338b679f60%7C0%7C0%7C638472216145063263%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=PKViM4DWqRNrcOiMaEtWYZb3dHfIV2r9nP%2B%2FE5KpZwM%3D&reserved=0>
+and provide commented, minimal, self-contained, reproducible code.
+
+________________________________
+
+AVVISO IMPORTANTE: Questo messaggio di posta elettronica pu? contenere informazioni confidenziali, pertanto ? destinato solo a persone autorizzate alla ricezione. I messaggi di posta elettronica per i client di Regione Marche possono contenere informazioni confidenziali e con privilegi legali. Se non si ? il destinatario specificato, non leggere, copiare, inoltrare o archiviare questo messaggio. Se si ? ricevuto questo messaggio per errore, inoltrarlo al mittente ed eliminarlo completamente dal sistema del proprio computer. Ai sensi dell'art. 6 della DGR n. 1394/2008 si segnala che, in caso di necessit? ed urgenza, la risposta al presente messaggio di posta elettronica pu? essere visionata da persone estranee al destinatario.
+IMPORTANT NOTICE: This e-mail message is intended to be received only by persons entitled to receive the confidential information it may contain. E-mail messages to clients of Regione Marche may contain information that is confidential and legally privileged. Please do not read, copy, forward, or store this message unless you are an intended recipient of it. If you have received this message in error, please forward it to the sender and delete it completely from your computer system.
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Mar 28 12:53:35 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 28 Mar 2024 07:53:35 -0400
+Subject: [R] split a factor into single elements
+In-Reply-To: <75993e80f96448d380b25f3c327a4076@regione.marche.it>
+References: <9bc23d07aefe431a9ab87d18c97805ef@regione.marche.it>
+ <CADUGNTyhGD-yAAXrep2uUjtcCOU9fQrN0yuw-rb9vDxucaywEQ@mail.gmail.com>
+ <75993e80f96448d380b25f3c327a4076@regione.marche.it>
+Message-ID: <9e99ef15-d909-41ca-92ba-96c543f19dc0@gmail.com>
+
+On 28/03/2024 7:48 a.m., Stefano Sofia wrote:
+> as.factor(2024, 12, 1, 0, 0)
+
+That doesn't work.  You need to put the numbers in a single vector as 
+Fabio did, or you'll see this:
+
+Error in as.factor(2024, 12, 1, 0, 0) : unused arguments (12, 1, 0, 0)
+
+Duncan Murdoch
+
+
+From tebert @end|ng |rom u||@edu  Thu Mar 28 15:17:41 2024
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Thu, 28 Mar 2024 14:17:41 +0000
+Subject: [R] split a factor into single elements
+In-Reply-To: <75993e80f96448d380b25f3c327a4076@regione.marche.it>
+References: <9bc23d07aefe431a9ab87d18c97805ef@regione.marche.it>,
+ <CADUGNTyhGD-yAAXrep2uUjtcCOU9fQrN0yuw-rb9vDxucaywEQ@mail.gmail.com>
+ <75993e80f96448d380b25f3c327a4076@regione.marche.it>
+Message-ID: <CH3PR22MB4514C06AF9230DF23066EB02CF3B2@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+Here are some pieces of working code. I assume you want the second one or the third one that is functionally the same but all in one statement. I do not understand why it is a factor, but I will assume that there is a current and future reason for that. This means I cannot alter the string_data variable, or you can simplify by not making the variable a factor only to turn it back into character.
+
+mydf <- data.frame(id_station = 1234, string_data = c(2024, 12, 1, 0, 0), rainfall_value= 55)
+mydf$string_data <- as.factor(mydf$string_data)
+
+mydf <- data.frame(id_station = 1234, string_data = "2024, 12, 1, 0, 0", rainfall_value= 55)
+mydf$string_data <- as.factor(mydf$string_data)
+
+mydf <- data.frame(id_station = 1234, string_data = as.factor("2024, 12, 1, 0, 0"), rainfall_value= 55)
+
+mydf <- data.frame(id_station = 1234, string_data = as.factor("2024, 12, 1, 0, 0"), rainfall_value= 55)
+mydf$string_data2 <- as.character(mydf$string_data)
+
+#I assume there are many records in the data frame and your example is for demonstration only.
+#I cannot assume that all records are the same, though you may be able to simplify if that is true.
+#Split the string based on commas.
+split_values <- strsplit(mydf$string_data2, ",")
+
+# find the maximum string length
+max_length <- max(lengths(split_values))
+
+# Add new variables to the data frame
+for (i in 1:max_length) {
+  new_var_name <- paste0("VAR_", i)
+  mydf[[new_var_name]] <- sapply(split_values, function(x) ifelse(length(x) >= i, x[i], NA))
+}
+
+# Convert to numeric
+ for (i in 1:max_length) {
+   new_var_name <- paste0("VAR_", i)
+   mydf[[new_var_name]] <- as.numeric(mydf[[new_var_name]])
+ }
+# remove trash
+mydf <- mydf[,-4]
+# Provide more useful names
+colnames(mydf) <- c("id_station", "string_data", "rainfall_mm", "Year", "Month", "Day", "hour", "minute")
+
+Regards,
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Stefano Sofia
+Sent: Thursday, March 28, 2024 7:48 AM
+To: Fabio D'Agostino <dagostinofabi at gmail.com>; r-help at R-project.org
+Subject: Re: [R] split a factor into single elements
+
+[External Email]
+
+Sorry for my hurry.
+
+The correct reproducible code is different from the initial one. The correct example is
+
+
+mydf <- data.frame(id_station = 1234, string_data = as.factor(2024, 12, 1, 0, 0), rainfall_value= 55)
+
+
+In this case mydf$string_data is a factor, but of length 1 (and not 5 like in the initial example).
+
+Therefore the suggestion offered by Fabio does not work.
+
+
+Any suggestion?
+
+Sorry again for my mistake
+
+Stefano
+
+
+
+         (oo)
+--oOO--( )--OOo--------------------------------------
+Stefano Sofia PhD
+Civil Protection - Marche Region - Italy Meteo Section Snow Section Via del Colle Ameno 5
+60126 Torrette di Ancona, Ancona (AN)
+Uff: +39 071 806 7743
+E-mail: stefano.sofia at regione.marche.it
+---Oo---------oO----------------------------------------
+
+
+________________________________
+Da: Fabio D'Agostino <dagostinofabi at gmail.com>
+Inviato: gioved  28 marzo 2024 12:20
+A: Stefano Sofia; r-help at R-project.org
+Oggetto: Re: [R] split a factor into single elements
+
+
+Non si ricevono spesso messaggi di posta elettronica da dagostinofabi at gmail.com. Informazioni sul perch    importante<https://aka.ms/LearnAboutSenderIdentification>
+
+Hi Stefano,
+maybe something like this can help you?
+
+myfactor <- as.factor(c(2024, 2, 1, 0, 0))
+
+# Convert factor values to integers
+first_element <- as.integer(as.character(myfactor)[1])
+second_element <- as.integer(as.character(myfactor)[2])
+third_element <- as.integer(as.character(myfactor)[3])
+
+# Print the results
+first_element
+[1] 2024
+second_element
+[1] 2
+third_element
+[1] 1
+
+# Check the type of the object
+typeof(first_element)
+[1] "integer"
+
+Fabio
+
+Il giorno gio 28 mar 2024 alle ore 11:29 Stefano Sofia <stefano.sofia at regione.marche.it<mailto:stefano.sofia at regione.marche.it>> ha scritto:
+Dear R-list users,
+
+forgive me for this silly question, I did my best to find a solution with no success.
+
+Suppose I have a factor type like
+
+
+myfactor <- as.factor(2024, 2, 1, 0, 0)
+
+
+There are no characters (and therefore strsplit for eample does not work).
+
+I need to store separately the 1st, 2nd and 3rd elements as integers. How can I do?
+
+
+Thank you for your help
+
+Stefano
+
+
+         (oo)
+--oOO--( )--OOo--------------------------------------
+Stefano Sofia PhD
+Civil Protection - Marche Region - Italy Meteo Section Snow Section Via del Colle Ameno 5
+60126 Torrette di Ancona, Ancona (AN)
+Uff: +39 071 806 7743
+E-mail: stefano.sofia at regione.marche.it<mailto:stefano.sofia at regione.marche.it>
+---Oo---------oO----------------------------------------
+
+________________________________
+
+AVVISO IMPORTANTE: Questo messaggio di posta elettronica pu  contenere informazioni confidenziali, pertanto   destinato solo a persone autorizzate alla ricezione. I messaggi di posta elettronica per i client di Regione Marche possono contenere informazioni confidenziali e con privilegi legali. Se non si   il destinatario specificato, non leggere, copiare, inoltrare o archiviare questo messaggio. Se si   ricevuto questo messaggio per errore, inoltrarlo al mittente ed eliminarlo completamente dal sistema del proprio computer. Ai sensi dell'art. 6 della DGR n. 1394/2008 si segnala che, in caso di necessit  ed urgenza, la risposta al presente messaggio di posta elettronica pu  essere visionata da persone estranee al destinatario.
+IMPORTANT NOTICE: This e-mail message is intended to be received only by persons entitled to receive the confidential information it may contain. E-mail messages to clients of Regione Marche may contain information that is confidential and legally privileged. Please do not read, copy, forward, or store this message unless you are an intended recipient of it. If you have received this message in error, please forward it to the sender and delete it completely from your computer system.
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see https://stat.ethz.ch/mailman/listinfo/r-help<https://stat.ethz.ch/mailman/listinfo/r-help>
+PLEASE do read the posting guide http://www.r-project.org/posting-guide.html<http://www.r-project.org/posting-guide.html>
+and provide commented, minimal, self-contained, reproducible code.
+
+________________________________
+
+AVVISO IMPORTANTE: Questo messaggio di posta elettronica pu  contenere informazioni confidenziali, pertanto   destinato solo a persone autorizzate alla ricezione. I messaggi di posta elettronica per i client di Regione Marche possono contenere informazioni confidenziali e con privilegi legali. Se non si   il destinatario specificato, non leggere, copiare, inoltrare o archiviare questo messaggio. Se si   ricevuto questo messaggio per errore, inoltrarlo al mittente ed eliminarlo completamente dal sistema del proprio computer. Ai sensi dell'art. 6 della DGR n. 1394/2008 si segnala che, in caso di necessit  ed urgenza, la risposta al presente messaggio di posta elettronica pu  essere visionata da persone estranee al destinatario.
+IMPORTANT NOTICE: This e-mail message is intended to be received only by persons entitled to receive the confidential information it may contain. E-mail messages to clients of Regione Marche may contain information that is confidential and legally privileged. Please do not read, copy, forward, or store this message unless you are an intended recipient of it. If you have received this message in error, please forward it to the sender and delete it completely from your computer system.
+
+        [[alternative HTML version deleted]]
+
+
+From g||ted|||e2014 @end|ng |rom gm@||@com  Fri Mar 29 02:43:05 2024
+From: g||ted|||e2014 @end|ng |rom gm@||@com (Ogbos Okike)
+Date: Fri, 29 Mar 2024 02:43:05 +0100
+Subject: [R] Output of tapply function as data frame: Problem Fixed
+In-Reply-To: <18c36343-ac71-4915-acf4-a24282153c3d@sapo.pt>
+References: <CAC8ss307yPyFvs57kPk-enQNH+Kxg+OZfMPOnTg2qQ8v=NKyhQ@mail.gmail.com>
+ <2480bdca-a38e-4e56-bf32-ac5d014c9a00@sapo.pt>
+ <CAC8ss334xxa8oiBKyBPnUKsQ2HyrYiyJ=WVmOzkPWy1fyyPpjg@mail.gmail.com>
+ <18c36343-ac71-4915-acf4-a24282153c3d@sapo.pt>
+Message-ID: <CAC8ss302-yh+hJ1DOub_QZWXTV1A=26YJuGhKLGXRd3L0DbLWw@mail.gmail.com>
+
+Dear Rui,
+Thanks again for resolving this. I have already started using the version
+that works for me.
+
+But to clarify the second part, please let me paste the what I did and the
+error message:
+
+> set.seed(2024)
+> data <- data.frame(
++    Date = sample(seq(Sys.Date() - 5, Sys.Date(), by = "1 days"), 100L,
++ TRUE),
++    count = sample(10L, 100L, TRUE)
++ )
+>
+> # coerce tapply's result to class "data.frame"
+> res <- with(data, tapply(count, Date, mean)) |> as.data.frame()
+Error: unexpected '>' in "res <- with(data, tapply(count, Date, mean)) |>"
+> # assign a dates column from the row names
+> res$Date <- row.names(res)
+Error in row.names(res) : object 'res' not found
+> # cosmetics
+> names(res)[2:1] <- names(data)
+Error in names(res)[2:1] <- names(data) : object 'res' not found
+> # note that the row names are still tapply's names vector
+> # and that the columns order is not Date/count. Both are fixed
+> # after the calculations.
+> res
+
+You can see that the error message is on the pipe. Please, let me know
+where I am missing it.
+Thanks.
+
+On Wed, Mar 27, 2024 at 10:45?PM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+
+> ?s 08:58 de 27/03/2024, Ogbos Okike escreveu:
+> > Dear Rui,
+> > Nice to hear from you!
+> >
+> > I am sorry for the omission and I have taken note.
+> >
+> > Many thanks for responding. The second solution looks elegant as it
+> quickly
+> > resolved the problem.
+> >
+> > Please, take a second look at the first solution. It refused to run.
+> Looks
+> > as if the pipe is not properly positioned. Efforts to correct it and get
+> it
+> > run failed. If you can look further, it would be great. If time does not
+> > permit, I am fine too.
+> >
+> > But having the too solutions will certainly make the subject more
+> > interesting.
+> > Thank you so much.
+> > With warmest regards from
+> > Ogbos
+> >
+> > On Wed, Mar 27, 2024 at 8:44?AM Rui Barradas <ruipbarradas at sapo.pt>
+> wrote:
+> >
+> >> ?s 04:30 de 27/03/2024, Ogbos Okike escreveu:
+> >>> Warm greetings to you all.
+> >>>
+> >>> Using the tapply function below:
+> >>> data<-read.table("FD1month",col.names = c("Dates","count"))
+> >>> x=data$count
+> >>>    f<-factor(data$Dates)
+> >>> AB<- tapply(x,f,mean)
+> >>>
+> >>>
+> >>> I made a simple calculation. The result, stored in AB, is of the form
+> >>> below. But an effort to write AB to a file as a data frame fails. When
+> I
+> >>> use the write table, it only produces the count column and strip of the
+> >>> first column (date).
+> >>>
+> >>> 2005-11-01 2005-12-01 2006-01-01 2006-02-01 2006-03-01 2006-04-01
+> >>> 2006-05-01
+> >>>    -4.106887  -4.259154  -5.836090  -4.756757  -4.118011  -4.487942
+> >>>    -4.430705
+> >>> 2006-06-01 2006-07-01 2006-08-01 2006-09-01 2006-10-01 2006-11-01
+> >>> 2006-12-01
+> >>>    -3.856727  -6.067103  -6.418767  -4.383031  -3.985805  -4.768196
+> >>> -10.072579
+> >>> 2007-01-01 2007-02-01 2007-03-01 2007-04-01 2007-05-01 2007-06-01
+> >>> 2007-07-01
+> >>>    -5.342338  -4.653128  -4.325094  -4.525373  -4.574783  -3.915600
+> >>>    -4.127980
+> >>> 2007-08-01 2007-09-01 2007-10-01 2007-11-01 2007-12-01 2008-01-01
+> >>> 2008-02-01
+> >>>    -3.952150  -4.033518  -4.532878  -4.522941  -4.485693  -3.922155
+> >>>    -4.183578
+> >>> 2008-03-01 2008-04-01 2008-05-01 2008-06-01 2008-07-01 2008-08-01
+> >>> 2008-09-01
+> >>>    -4.336969  -3.813306  -4.296579  -4.575095  -4.036036  -4.727994
+> >>>    -4.347428
+> >>> 2008-10-01 2008-11-01 2008-12-01
+> >>>    -4.029918  -4.260326  -4.454224
+> >>>
+> >>> But the normal format I wish to display only appears on the terminal,
+> >>> leading me to copy it and paste into a text file. That is, when I enter
+> >> AB
+> >>> on the terminal, it returns a format in the form:
+> >>>
+> >>> 008-02-01  -4.183578
+> >>> 2008-03-01  -4.336969
+> >>> 2008-04-01  -3.813306
+> >>> 2008-05-01  -4.296579
+> >>> 2008-06-01  -4.575095
+> >>> 2008-07-01  -4.036036
+> >>> 2008-08-01  -4.727994
+> >>> 2008-09-01  -4.347428
+> >>> 2008-10-01  -4.029918
+> >>> 2008-11-01  -4.260326
+> >>> 2008-12-01  -4.454224
+> >>>
+> >>> Now, my question: How do I write out two columns displayed by AB on the
+> >>> terminal to a file?
+> >>>
+> >>> I have tried using AB<-data.frame(AB) but it doesn't work either.
+> >>>
+> >>> Many thanks for your time.
+> >>> Ogbos
+> >>>
+> >>>        [[alternative HTML version deleted]]
+> >>>
+> >>> ______________________________________________
+> >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>> PLEASE do read the posting guide
+> >> http://www.R-project.org/posting-guide.html
+> >>> and provide commented, minimal, self-contained, reproducible code.
+> >> Hello,
+> >>
+> >> The main trick is to pipe to as.data.frame. But the result will have one
+> >> column only, you must assign the dates from the df's row names.
+> >> I also include an aggregate solution.
+> >>
+> >>
+> >>
+> >> # create a test data set
+> >> set.seed(2024)
+> >> data <- data.frame(
+> >>     Date = sample(seq(Sys.Date() - 5, Sys.Date(), by = "1 days"), 100L,
+> >> TRUE),
+> >>     count = sample(10L, 100L, TRUE)
+> >> )
+> >>
+> >> # coerce tapply's result to class "data.frame"
+> >> res <- with(data, tapply(count, Date, mean)) |> as.data.frame()
+> >> # assign a dates column from the row names
+> >> res$Date <- row.names(res)
+> >> # cosmetics
+> >> names(res)[2:1] <- names(data)
+> >> # note that the row names are still tapply's names vector
+> >> # and that the columns order is not Date/count. Both are fixed
+> >> # after the calculations.
+> >> res
+> >> #>               count       Date
+> >> #> 2024-03-22 5.416667 2024-03-22
+> >> #> 2024-03-23 5.500000 2024-03-23
+> >> #> 2024-03-24 6.000000 2024-03-24
+> >> #> 2024-03-25 4.476190 2024-03-25
+> >> #> 2024-03-26 6.538462 2024-03-26
+> >> #> 2024-03-27 5.200000 2024-03-27
+> >>
+> >> # fix the columns' order
+> >> res <- res[2:1]
+> >>
+> >>
+> >>
+> >> # better all in one instruction
+> >> aggregate(count ~ Date, data, mean)
+> >> #>         Date    count
+> >> #> 1 2024-03-22 5.416667
+> >> #> 2 2024-03-23 5.500000
+> >> #> 3 2024-03-24 6.000000
+> >> #> 4 2024-03-25 4.476190
+> >> #> 5 2024-03-26 6.538462
+> >> #> 6 2024-03-27 5.200000
+> >>
+> >>
+> >>
+> >> Also,
+> >> I'm glad to help as always but Ogbos, you have been an R-Help
+> >> contributor for quite a while, please post data in dput format. Given
+> >> the problem the output of the following is more than enough.
+> >>
+> >>
+> >> dput(head(data, 20L))
+> >>
+> >>
+> >> Hope this helps,
+> >>
+> >> Rui Barradas
+> >>
+> >>
+> >> --
+> >> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a
+> >> presen?a de v?rus.
+> >> www.avg.com
+> >>
+> >
+> Hello,
+>
+> This pipe?
+>
+>
+> with(data, tapply(count, Date, mean)) |> as.data.frame()
+>
+>
+> I am not seeing anything wrong with it. I have tried it again just now
+> and it runs with no problems, like it had before.
+> A solution is not to pipe, separate the instructions.
+>
+>
+> res <- with(data, tapply(count, Date, mean))
+> res <- as.data.frame(res)
+>
+>
+> But this should be equivalent to the pipe, I cannot think of a way to
+> have this separated instructions run but not the pipe.
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+> --
+> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a
+> presen?a de v?rus.
+> www.avg.com
+>
+
+	[[alternative HTML version deleted]]
+
+
+From g||ted|||e2014 @end|ng |rom gm@||@com  Fri Mar 29 03:12:44 2024
+From: g||ted|||e2014 @end|ng |rom gm@||@com (Ogbos Okike)
+Date: Fri, 29 Mar 2024 03:12:44 +0100
+Subject: [R] Output of tapply function as data frame
+In-Reply-To: <CADfFDC6wcTF4W8SzvPxOz6EjugGm7Jgod3YOCioUfKY9hoOmDQ@mail.gmail.com>
+References: <CAC8ss307yPyFvs57kPk-enQNH+Kxg+OZfMPOnTg2qQ8v=NKyhQ@mail.gmail.com>
+ <2480bdca-a38e-4e56-bf32-ac5d014c9a00@sapo.pt>
+ <CADfFDC6wcTF4W8SzvPxOz6EjugGm7Jgod3YOCioUfKY9hoOmDQ@mail.gmail.com>
+Message-ID: <CAC8ss33oDzdGx=yiP79ZhMoVvSS-RQ5h3F=7EOB6b7TdNb6yFw@mail.gmail.com>
+
+Dear Deepayan,
+Thanks for your kind response.
+Regards
+Ogbos
+
+On Thu, Mar 28, 2024 at 3:40?AM Deepayan Sarkar <deepayan.sarkar at gmail.com>
+wrote:
+
+> For more complicated examples, the (relatively new) array2DF()
+> function is also useful:
+>
+> > with(data, tapply(count, Date, mean)) |> array2DF()
+>         Var1    Value
+> 1 2024-03-23 5.416667
+> 2 2024-03-24 5.500000
+> 3 2024-03-25 6.000000
+> 4 2024-03-26 4.476190
+> 5 2024-03-27 6.538462
+> 6 2024-03-28 5.200000
+>
+> or
+>
+> > tapply(data, ~ Date, with, mean(count)) |> array2DF(responseName =
+> "count")
+>         Date    count
+> 1 2024-03-23 5.416667
+> 2 2024-03-24 5.500000
+> 3 2024-03-25 6.000000
+> 4 2024-03-26 4.476190
+> 5 2024-03-27 6.538462
+> 6 2024-03-28 5.200000
+>
+> Best,
+> -Deepayan
+>
+> On Wed, 27 Mar 2024 at 13:15, Rui Barradas <ruipbarradas at sapo.pt> wrote:
+> >
+> > ?s 04:30 de 27/03/2024, Ogbos Okike escreveu:
+> > > Warm greetings to you all.
+> > >
+> > > Using the tapply function below:
+> > > data<-read.table("FD1month",col.names = c("Dates","count"))
+> > > x=data$count
+> > >   f<-factor(data$Dates)
+> > > AB<- tapply(x,f,mean)
+> > >
+> > >
+> > > I made a simple calculation. The result, stored in AB, is of the form
+> > > below. But an effort to write AB to a file as a data frame fails. When
+> I
+> > > use the write table, it only produces the count column and strip of the
+> > > first column (date).
+> > >
+> > > 2005-11-01 2005-12-01 2006-01-01 2006-02-01 2006-03-01 2006-04-01
+> > > 2006-05-01
+> > >   -4.106887  -4.259154  -5.836090  -4.756757  -4.118011  -4.487942
+> > >   -4.430705
+> > > 2006-06-01 2006-07-01 2006-08-01 2006-09-01 2006-10-01 2006-11-01
+> > > 2006-12-01
+> > >   -3.856727  -6.067103  -6.418767  -4.383031  -3.985805  -4.768196
+> > > -10.072579
+> > > 2007-01-01 2007-02-01 2007-03-01 2007-04-01 2007-05-01 2007-06-01
+> > > 2007-07-01
+> > >   -5.342338  -4.653128  -4.325094  -4.525373  -4.574783  -3.915600
+> > >   -4.127980
+> > > 2007-08-01 2007-09-01 2007-10-01 2007-11-01 2007-12-01 2008-01-01
+> > > 2008-02-01
+> > >   -3.952150  -4.033518  -4.532878  -4.522941  -4.485693  -3.922155
+> > >   -4.183578
+> > > 2008-03-01 2008-04-01 2008-05-01 2008-06-01 2008-07-01 2008-08-01
+> > > 2008-09-01
+> > >   -4.336969  -3.813306  -4.296579  -4.575095  -4.036036  -4.727994
+> > >   -4.347428
+> > > 2008-10-01 2008-11-01 2008-12-01
+> > >   -4.029918  -4.260326  -4.454224
+> > >
+> > > But the normal format I wish to display only appears on the terminal,
+> > > leading me to copy it and paste into a text file. That is, when I
+> enter AB
+> > > on the terminal, it returns a format in the form:
+> > >
+> > > 008-02-01  -4.183578
+> > > 2008-03-01  -4.336969
+> > > 2008-04-01  -3.813306
+> > > 2008-05-01  -4.296579
+> > > 2008-06-01  -4.575095
+> > > 2008-07-01  -4.036036
+> > > 2008-08-01  -4.727994
+> > > 2008-09-01  -4.347428
+> > > 2008-10-01  -4.029918
+> > > 2008-11-01  -4.260326
+> > > 2008-12-01  -4.454224
+> > >
+> > > Now, my question: How do I write out two columns displayed by AB on the
+> > > terminal to a file?
+> > >
+> > > I have tried using AB<-data.frame(AB) but it doesn't work either.
+> > >
+> > > Many thanks for your time.
+> > > Ogbos
+> > >
+> > >       [[alternative HTML version deleted]]
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+> > Hello,
+> >
+> > The main trick is to pipe to as.data.frame. But the result will have one
+> > column only, you must assign the dates from the df's row names.
+> > I also include an aggregate solution.
+> >
+> >
+> >
+> > # create a test data set
+> > set.seed(2024)
+> > data <- data.frame(
+> >    Date = sample(seq(Sys.Date() - 5, Sys.Date(), by = "1 days"), 100L,
+> > TRUE),
+> >    count = sample(10L, 100L, TRUE)
+> > )
+> >
+> > # coerce tapply's result to class "data.frame"
+> > res <- with(data, tapply(count, Date, mean)) |> as.data.frame()
+> > # assign a dates column from the row names
+> > res$Date <- row.names(res)
+> > # cosmetics
+> > names(res)[2:1] <- names(data)
+> > # note that the row names are still tapply's names vector
+> > # and that the columns order is not Date/count. Both are fixed
+> > # after the calculations.
+> > res
+> > #>               count       Date
+> > #> 2024-03-22 5.416667 2024-03-22
+> > #> 2024-03-23 5.500000 2024-03-23
+> > #> 2024-03-24 6.000000 2024-03-24
+> > #> 2024-03-25 4.476190 2024-03-25
+> > #> 2024-03-26 6.538462 2024-03-26
+> > #> 2024-03-27 5.200000 2024-03-27
+> >
+> > # fix the columns' order
+> > res <- res[2:1]
+> >
+> >
+> >
+> > # better all in one instruction
+> > aggregate(count ~ Date, data, mean)
+> > #>         Date    count
+> > #> 1 2024-03-22 5.416667
+> > #> 2 2024-03-23 5.500000
+> > #> 3 2024-03-24 6.000000
+> > #> 4 2024-03-25 4.476190
+> > #> 5 2024-03-26 6.538462
+> > #> 6 2024-03-27 5.200000
+> >
+> >
+> >
+> > Also,
+> > I'm glad to help as always but Ogbos, you have been an R-Help
+> > contributor for quite a while, please post data in dput format. Given
+> > the problem the output of the following is more than enough.
+> >
+> >
+> > dput(head(data, 20L))
+> >
+> >
+> > Hope this helps,
+> >
+> > Rui Barradas
+> >
+> >
+> > --
+> > Este e-mail foi analisado pelo software antiv?rus AVG para verificar a
+> presen?a de v?rus.
+> > www.avg.com
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
