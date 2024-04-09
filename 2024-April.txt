@@ -1912,3 +1912,1352 @@ PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From j@b@y@t194 @end|ng |rom gm@||@com  Mon Apr  8 05:55:59 2024
+From: j@b@y@t194 @end|ng |rom gm@||@com (javad bayat)
+Date: Mon, 8 Apr 2024 07:25:59 +0330
+Subject: [R] Question regarding reservoir volume and water level
+In-Reply-To: <009101da892d$93a3cc50$baeb64f0$@gmail.com>
+References: <CANTxAmJrvE5tHoyU1dgs0epeKrMv4tqg-R9K53CPA_TcR8sOvQ@mail.gmail.com>
+ <9155638a-7a32-4b20-bc1b-e171d72a053c@sapo.pt>
+ <DM6PR03MB5049C4C70B571CD3DD9B25F2E2012@DM6PR03MB5049.namprd03.prod.outlook.com>
+ <009101da892d$93a3cc50$baeb64f0$@gmail.com>
+Message-ID: <CANTxAmJzd2n8C0a=LhJzDU6K8GFr7p6q9hXP=zcthQqvitusvw@mail.gmail.com>
+
+Dear all;
+Many thanks for your replies. This was not homework. I apologize.
+Let me explain more.
+There is a dam constructed in a valley with the highest elevation of 1255
+m. The area of its reservoir can be calculated by drawing a polygon around
+the water and it is known.
+I have the Digital Elevation Model (DEM) of the region (reservoir and its
+surrounding area). I have calculated the volume of the current reservoir
+(7e6 m3) using the following codes.
+library(raster)
+library(terra)
+library(exactextractr)
+library(dplyr)
+library(sf)
+# Calculate volume for polygon
+# Read the DEM raster file
+r <- rast("E:/...DEM.tif")
+# Read the polygon shapefile
+p <- st_read("E:/...Dam.shp")
+
+r <- crop(r, extent(p))
+r <- mask(r, p)
+
+# Extract the cells in each polygon and calculate the area of each cell
+x <- exact_extract(r, p, coverage_area = TRUE)
+# Extract polygon values as a dataframe
+x1 = as.data.frame(x[1])
+head(x1)
+x1 = na.omit(x1)
+# Calculate the height above the minimum elevation in the polygon
+x1$Height = max(x1[,1]) - x1[,1]
+# Calculate the volume of each cell
+x1$Vol = x1[,2] * x1[,3]
+sum(x1$Vol)
+x2 = x1[,c(1,2,4)]
+x2 = sort(x2,'value')
+head(x2)
+x3 <- aggregate(Vol ~ value, data = x2, FUN = sum)
+x4 <- aggregate(coverage_area ~ value, data = x2, FUN = sum)
+x5 = cbind(x3, Area = x4[,2])
+library(dplyr)
+x6 <- x5 %>%
+  mutate(V_sum = cumsum(Vol)) %>%
+  mutate(A_sum = cumsum(Area))
+plot(x6$value~x6$V_sum)
+
+And I thought that it is possible to get the elevation for a specific
+volume by linear model between elevation and volume, as follow:
+
+# Get a linear model between elevation and the volume
+lm1 <- lm(value ~ V_sum, data = x6)
+d <- data.frame(V_sum = 14e6)  #
+predict(lm1, newdata = d)
+
+But it is not possible through the LM.
+Now I want to know what would be the water level in the reservoir if the
+reservoir volume doubled or we adding a known volume to it?
+Also what would be the volume if the water level increases to 1250 m?
+
+I would be more than happy if you help me to do this.
+Sincerely
+
+On Mon, Apr 8, 2024 at 12:23?AM <avi.e.gross at gmail.com> wrote:
+
+> John,
+>
+> Your reaction was what my original reaction was until I realized I had to
+> find out what a DEM file was and that contains enough of the kind of
+> depth-dimension data you describe albeit what may be a very irregular cross
+> section to calculate for areas and thence volumes.
+>
+> If I read it correctly, this can be a very real-world problem worthy of a
+> solution, such as in places like California where they had a tad more rain
+> than usual and some reservoirs may overflow. Someone else provided what
+> sounds like a mathematical algorithm but my guess is what is needed here is
+> perhaps less analytic since there may be no trivial way to create formulas
+> and take integrals and so on, but simply an approximate way to calculate
+> incremental volumes for each horizontal "slice" and keep adding or
+> subtracting them till you reach a target and then read off another variable
+> at that point such as depth.
+>
+> Some care must be taken as water level has to be relative to something and
+> many natural reservoirs have no unique bottom level. Some water may also be
+> stored underground and to the side and pour in if the level lowers or can
+> be
+> used to escape if the level rises.
+>
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+> Sent: Sunday, April 7, 2024 3:08 PM
+> To: Rui Barradas <ruipbarradas at sapo.pt>; javad bayat <j.bayat194 at gmail.com
+> >;
+> R-help <R-help at r-project.org>
+> Subject: Re: [R] Question regarding reservoir volume and water level
+>
+> Aside from the fact that the original question might well be a class
+> exercise (or homework), the question is unanswerable given the data given
+> by
+> the original poster. One needs to know the dimensions of the reservoir,
+> above and below the current waterline. Are the sides, above and below the
+> waterline smooth? Is the region currently above the waterline that can
+> store
+> water a mirror image of the region below the waterline? Is the region above
+> the reservoir include a flood plane? Will the additional water go into the
+> flood plane?
+>
+> The lack of required detail in the question posed by the original poster
+> suggests that there are strong assumptions, assumptions that typically
+> would
+> be made in a class-room example or exercise.
+>
+> John
+>
+> John David Sorkin M.D., Ph.D.
+> Professor of Medicine, University of Maryland School of Medicine;
+> Associate Director for Biostatistics and Informatics, Baltimore VA Medical
+> Center Geriatrics Research, Education, and Clinical Center;
+> PI Biostatistics and Informatics Core, University of Maryland School of
+> Medicine Claude D. Pepper Older Americans Independence Center;
+> Senior Statistician University of Maryland Center for Vascular Research;
+>
+> Division of Gerontology and Paliative Care,
+> 10 North Greene Street
+> GRECC (BT/18/GR)
+> Baltimore, MD 21201-1524
+> Cell phone 443-418-5382
+>
+>
+>
+>
+> ________________________________________
+> From: R-help <r-help-bounces at r-project.org> on behalf of Rui Barradas
+> <ruipbarradas at sapo.pt>
+> Sent: Sunday, April 7, 2024 10:53 AM
+> To: javad bayat; R-help
+> Subject: Re: [R] Question regarding reservoir volume and water level
+>
+> ?s 13:27 de 07/04/2024, javad bayat escreveu:
+> > Dear all;
+> > I have a question about the water level of a reservoir, when the volume
+> > changed or doubled.
+> > There is a DEM file with the highest elevation 1267 m. The lowest
+> elevation
+> > is 1230 m. The current volume of the reservoir is 7,000,000 m3 at 1240 m.
+> > Now I want to know what would be the water level if the volume rises to
+> > 1250 m? or what would be the water level if the volume doubled
+> (14,000,000
+> > m3)?
+> >
+> > Is there any way to write codes to do this in R?
+> > I would be more than happy if anyone could help me.
+> > Sincerely
+> >
+> >
+> >
+> >
+> >
+> >
+> >
+> >
+> Hello,
+>
+> This is a simple rule of three.
+> If you know the level l the argument doesn't need to be named but if you
+> know the volume v then it must be named.
+>
+>
+> water_level <- function(l, v, level = 1240, volume = 7e6) {
+>    if(missing(v)) {
+>      volume * l / level
+>    } else level * v / volume
+> }
+>
+> lev <- 1250
+> vol <- 14e6
+>
+> water_level(l = lev)
+> #> [1] 7056452
+> water_level(v = vol)
+> #> [1] 2480
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+> --
+> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a
+> presen?a de v?rus.
+> http://www.avg.com/
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.r-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+>
+
+-- 
+Best Regards
+Javad Bayat
+M.Sc. Environment Engineering
+Alternative Mail: bayat194 at yahoo.com
+
+	[[alternative HTML version deleted]]
+
+
+From ger@ophii m@iii@g oii gmx@@et  Mon Apr  8 10:29:53 2024
+From: ger@ophii m@iii@g oii gmx@@et (ger@ophii m@iii@g oii gmx@@et)
+Date: Mon, 8 Apr 2024 10:29:53 +0200
+Subject: [R] How to set the correct libomp for R
+Message-ID: <trinity-16663902-ac9a-41c0-ba5e-ebe725249518-1712564993044@3c-app-gmx-bap10>
+
+Hey everyone,
+
+I have some weird issue with using multithreaded data.table in macOS and I am trying to figure out, if it?s connected to my libomp.dylib. I started using libomp as stated here: https://mac.r-project.org/openmp/
+?
+Everything worked fine till beginning of this year, but all of a sudden, I get random fatal errors, when using data.table with multithreading. I figured that R (used in RStudio) is not loading this libomp.dylib (located at /usr/local/lib/libomp.dylib), but the one bundled with R (/Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libomp.dylib). I sued this command to check for this:
+
+system(paste("lsof -p", Sys.getpid(), "| grep dylib"))
+?
+I never checked, which one was used before, but this raised some questions for me:
+?
+1. Was libomp.dylib always bundled with R and if yes, what?s the point of this separate libomp.dylib from this page (https://mac.r-project.org/openmp/)?
+2. Is there a way to set the libomp.dylib to another path and does this even make sense or should I always use the one bundled with R?
+3. Could it be that one of the libraries is used for installing packages by Xcode?s clang and the other is used during usage of the package?
+?
+Maybe someone could shed some light onto this topic :).
+?
+P.S.: If you need some more details about the actual issue with data.table you can also check here (https://github.com/rstudio/rstudio/issues/14517) and here (https://github.com/Rdatatable/data.table/issues/5957). Or you can of course ask me, but it would be a little overkill to share everything that has been tried yet :).
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Apr  8 11:13:45 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 8 Apr 2024 12:13:45 +0300
+Subject: [R] How to set the correct libomp for R
+In-Reply-To: <trinity-16663902-ac9a-41c0-ba5e-ebe725249518-1712564993044@3c-app-gmx-bap10>
+References: <trinity-16663902-ac9a-41c0-ba5e-ebe725249518-1712564993044@3c-app-gmx-bap10>
+Message-ID: <20240408121345.4f3f15e4@arachnoid>
+
+? Mon, 8 Apr 2024 10:29:53 +0200
+gernophil--- via R-help <r-help at r-project.org> ?????:
+
+> I have some weird issue with using multithreaded data.table in macOS
+> and I am trying to figure out, if it?s connected to my libomp.dylib.
+> I started using libomp as stated here:
+> https://mac.r-project.org/openmp/
+
+Does the behaviour change if you temporarily move away
+/usr/local/lib/libomp.dylib? 
+
+> P.S.: If you need some more details about the actual issue with
+> data.table you can also check here
+> (https://github.com/rstudio/rstudio/issues/14517) and here
+> (https://github.com/Rdatatable/data.table/issues/5957)
+
+The debugger may be able to shed more light on the problem than just
+"yes, this is due to OpenMP":
+https://github.com/rstudio/rstudio/issues/14517#issuecomment-2040231196
+
+When you reproduce the crash, what does the backtrace say?
+
+-- 
+Best regards,
+Ivan
+
+
+From dd|xon @end|ng |rom @wcp@com  Mon Apr  8 07:47:52 2024
+From: dd|xon @end|ng |rom @wcp@com (Dave Dixon)
+Date: Sun, 7 Apr 2024 23:47:52 -0600
+Subject: [R] Exceptional slowness with read.csv
+Message-ID: <2a1f4ec9-26ae-4e80-bd40-10c4a919849f@swcp.com>
+
+Greetings,
+
+I have a csv file of 76 fields and about 4 million records. I know that 
+some of the records have errors - unmatched quotes, specifically.? 
+Reading the file with readLines and parsing the lines with read.csv(text 
+= ...) is really slow. I know that the first 2459465 records are good. 
+So I try this:
+
+ > startTime <- Sys.time()
+ > first_records <- read.csv(file_name, nrows = 2459465)
+ > endTime <- Sys.time()
+ > cat("elapsed time = ", endTime - startTime, "\n")
+
+elapsed time = ? 24.12598
+
+ > startTime <- Sys.time()
+ > second_records <- read.csv(file_name, skip = 2459465, nrows = 5)
+ > endTime <- Sys.time()
+ > cat("elapsed time = ", endTime - startTime, "\n")
+
+This appears to never finish. I have been waiting over 20 minutes.
+
+So why would (skip = 2459465, nrows = 5) take orders of magnitude longer 
+than (nrows = 2459465) ?
+
+Thanks!
+
+-dave
+
+PS: readLines(n=2459470) takes 10.42731 seconds.
+
+
+From @tephen@peder@on@@u @end|ng |rom gm@||@com  Mon Apr  8 17:18:46 2024
+From: @tephen@peder@on@@u @end|ng |rom gm@||@com (Stevie Pederson)
+Date: Tue, 9 Apr 2024 00:48:46 +0930
+Subject: [R] Exceptional slowness with read.csv
+In-Reply-To: <2a1f4ec9-26ae-4e80-bd40-10c4a919849f@swcp.com>
+References: <2a1f4ec9-26ae-4e80-bd40-10c4a919849f@swcp.com>
+Message-ID: <CAGCDhaVgEmWJXapLZJRU_1BegB-=1KyaT2wDNHNqKTs5VSrhvw@mail.gmail.com>
+
+Hi Dave,
+
+That's rather frustrating. I've found vroom (from the package vroom) to be
+helpful with large files like this.
+
+Does the following give you any better luck?
+
+vroom(file_name, delim = ",", skip = 2459465, n_max = 5)
+
+Of course, when you know you've got errors & the files are big like that it
+can take a bit of work resolving things. The command line tools awk & sed
+might even be a good plan for finding lines that have errors & figuring out
+a fix, but I certainly don't envy you.
+
+All the best
+
+Stevie
+
+On Tue, 9 Apr 2024 at 00:36, Dave Dixon <ddixon at swcp.com> wrote:
+
+> Greetings,
+>
+> I have a csv file of 76 fields and about 4 million records. I know that
+> some of the records have errors - unmatched quotes, specifically.
+> Reading the file with readLines and parsing the lines with read.csv(text
+> = ...) is really slow. I know that the first 2459465 records are good.
+> So I try this:
+>
+>  > startTime <- Sys.time()
+>  > first_records <- read.csv(file_name, nrows = 2459465)
+>  > endTime <- Sys.time()
+>  > cat("elapsed time = ", endTime - startTime, "\n")
+>
+> elapsed time =   24.12598
+>
+>  > startTime <- Sys.time()
+>  > second_records <- read.csv(file_name, skip = 2459465, nrows = 5)
+>  > endTime <- Sys.time()
+>  > cat("elapsed time = ", endTime - startTime, "\n")
+>
+> This appears to never finish. I have been waiting over 20 minutes.
+>
+> So why would (skip = 2459465, nrows = 5) take orders of magnitude longer
+> than (nrows = 2459465) ?
+>
+> Thanks!
+>
+> -dave
+>
+> PS: readLines(n=2459470) takes 10.42731 seconds.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From z|y@n@22 @end|ng |rom |nt|@zju@edu@cn  Sun Apr  7 10:18:40 2024
+From: z|y@n@22 @end|ng |rom |nt|@zju@edu@cn (Jin, Ziyan)
+Date: Sun, 7 Apr 2024 08:18:40 +0000
+Subject: [R] Questions about ks.test function {stats}
+Message-ID: <TYYP286MB19073D6D7978CD95E7BDF6F39C012@TYYP286MB1907.JPNP286.PROD.OUTLOOK.COM>
+
+Dear R-help,
+
+Hope this email finds you well. My name is Ziyan. I am a graduate student in Zhejiang University. My subject research involves ks.test in stats-package {stats}. Based on the code,  I have two main questions. Could you provide me some more information?
+
+I download different versions of the r language source code through r language website (https://www.r-project.org/). By reading R-4.3.3/src/library/stats/R/ks.test.R, I encounter the following problem: before call the default psmirnov function (in two-sample case), z <- NULL. According to the T and F the TIES, determines the value of z assigned to w or not. However, when psmirnov is called, z=w is always used. I am curious whether the TIES parameter can be omitted.
+
+Compared with the previous ks.test, such as version 4.1.3, the method of calculating p value in version 4.3.3 has changed a lot. ks.test() now provides exact p-values also with ties. For the psmirnov_exact_uniq_upper function in the ks.c file (R-4.3.3/src/stats/src/ks.c), could you please provide some details for the mathematical basis used to calculate the p-value? If you could provide me with some references, I would be grateful .
+
+Thank you for your patience. I am eagerly awaiting your response.
+
+Best,
+Ziyan
+
+	[[alternative HTML version deleted]]
+
+
+From JH@rm@e @end|ng |rom roku@com  Mon Apr  8 19:03:00 2024
+From: JH@rm@e @end|ng |rom roku@com (Jorgen Harmse)
+Date: Mon, 8 Apr 2024 17:03:00 +0000
+Subject: [R] duplicated() on zero-column data frames returns empty
+In-Reply-To: <mailman.371154.1.1712570401.39107.r-help@r-project.org>
+References: <mailman.371154.1.1712570401.39107.r-help@r-project.org>
+Message-ID: <BL0PR01MB44344C7BE5F045434E49B7E9DC002@BL0PR01MB4434.prod.exchangelabs.com>
+
+I appreciate the compliment from Ivan and still share the puzzlement at the empty return.
+
+What is the policy for changing something that is wrong? There is a trade-off between breaking old code that worked around a problem and breaking new code written by people who make reasonable assumptions. Mathematically, it seems obvious to me that duplicated.matrix(A) should do something like this:
+
+v <- matrix(FALSE, nrow = nrow(A) -> nr, ncol=1L) # or an ordinary vector?
+if (nr > 1L) # Check because 2:0 & 2:1 do not do what we want.
+{ for (i in 2:nr)
+  { for (j in 1:(i-1))
+    if (identical(A[i,],A[j,])) # or something more complicated to handle incomparables
+    { v[i] <- TRUE; break}
+  }
+}
+v
+
+Of course my code is horribly inefficient, but the difference should be just in computing the same result faster. An empty vector of some type is identical to an empty vector of the same type, so this computes
+
+      [,1]
+
+[1,] FALSE
+
+[2,]  TRUE
+
+[3,]  TRUE
+
+[4,]  TRUE
+
+[5,]  TRUE
+, and I argue that that is correct.
+
+A gap in documentation makes a change to the correct behaviour easier. (If the current behaviour were documented then the first step in changing the behaviour would be to issue a warning that the change is coming in a future version.) The protection for old code could be just a warning that can be turned off with a call to options. The new documentation should be more explicit.
+
+Regards,
+Jorgen.
+
+From: Mark Webster <markwebster204 at yahoo.co.uk>
+To: Jorgen Harmse <jharmse at roku.com>, Ivan Krylov
+        <ikrylov at disroot.org>
+Cc: "r-help at r-project.org" <r-help at r-project.org>
+Subject: Re: [R] duplicated() on zero-column data frames returns empty
+Message-ID: <603481690.9150754.1712522666289 at mail.yahoo.com>
+Content-Type: text/plain; charset="utf-8"
+
+ duplicated.matrix is an interesting one. I think a similar change would make sense, because it would have the dimensions that people would expect when using the default MARGIN = 1. However, it could be argued that it's not a needed change, because the Value section of its documentation only guarantees the dimensions of the output when using MARGIN = 0. In that case, duplicated.matrix does indeed return the expected 5x0 matrix for your example:
+str(duplicated(matrix(0, 5, 0), MARGIN = 0))# logi[1:5, 0 ]
+Best Regards,
+Mark Webster
+        [[alternative HTML version deleted]]
+
+From: Mark Webster markwebster204 at yahoo.co.uk<mailto:markwebster204 at yahoo.co.uk>
+To: Ivan Krylov ikrylov at disroot.org<mailto:ikrylov at disroot.org>,  r-help at r-project.org<mailto:r-help at r-project.org>
+        r-help at r-project.org<mailto:r-help at r-project.org>
+Subject: Re: [R]  duplicated() on zero-column data frames returns
+        empty vector
+Message-ID: 1379736116.7985600.1712306452176 at mail.yahoo.com<mailto:1379736116.7985600.1712306452176 at mail.yahoo.com>
+Content-Type: text/plain; charset="utf-8"
+
+ Do you mean the row names should mean all the rows should be counted as non-duplicates?Yes, I can see the argument for that, thanks.I must say I'm still puzzled at what interpretation would motivate the current behaviour of returning a logical(0), however.
+
+Date: Sun, 7 Apr 2024 11:00:51 +0300
+From: Ivan Krylov <ikrylov at disroot.org<mailto:ikrylov at disroot.org>>
+To: Jorgen Harmse <JHarmse at roku.com<mailto:JHarmse at roku.com>>
+Cc: "r-help at r-project.org<mailto:r-help at r-project.org>" <r-help at r-project.org<mailto:r-help at r-project.org>>,
+        "markwebster204 at yahoo.co.uk<mailto:markwebster204 at yahoo.co.uk>" <markwebster204 at yahoo.co.uk<mailto:markwebster204 at yahoo.co.uk>>
+Subject: Re: [R] duplicated() on zero-column data frames returns empty
+Message-ID: 20240407110051.7924c03c at Tarkus<mailto:20240407110051.7924c03c at Tarkus>
+Content-Type: text/plain; charset="utf-8"
+
+? Fri, 5 Apr 2024 16:08:13 +0000
+Jorgen Harmse <JHarmse at roku.com<mailto:JHarmse at roku.com>> ?????:
+
+> if duplicated really treated a row name as part of the row then
+> any(duplicated(data.frame(?))) would always be FALSE. My expectation
+> is that if key1 is a subset of key2 then all(duplicated(df[key1]) >=
+> duplicated(df[key2])) should always be TRUE.
+
+That's a good argument, thank you!
+
+Would you suggest similar changes to duplicated.matrix too? Currently
+it too returns 0-length output for 0-column inputs:
+
+# 0-column matrix for 0-column input
+str(duplicated(matrix(0, 5, 0)))
+# logi[1:5, 0 ]
+
+# 1-column matrix for 1-column input
+str(duplicated(matrix(0, 5, 1)))
+# logi [1:5, 1] FALSE TRUE TRUE TRUE TRUE
+
+# a dim-1 array for >1-column input
+str(duplicated(matrix(0, 5, 10)))
+# logi [1:5(1d)] FALSE TRUE TRUE TRUE TRUE
+
+--
+Best regards,
+Ivan
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Mon Apr  8 19:49:22 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Mon, 8 Apr 2024 10:49:22 -0700
+Subject: [R] Exceptional slowness with read.csv
+In-Reply-To: <2a1f4ec9-26ae-4e80-bd40-10c4a919849f@swcp.com>
+References: <2a1f4ec9-26ae-4e80-bd40-10c4a919849f@swcp.com>
+Message-ID: <CAGxFJbSPZTFqrrjht3pyKFz-QmX1DfOfd86tkMHxNBB2FLpXVA@mail.gmail.com>
+
+No idea, but have you tried using ?scan to read those next 5 rows? It might
+give you a better idea of the pathologies that are causing problems. For
+example, an unmatched quote might result in some huge number of characters
+trying to be read into a single element of a character variable. As your
+previous respondent said, resolving such problems can be a challenge.
+
+Cheers,
+Bert
+
+
+
+On Mon, Apr 8, 2024 at 8:06?AM Dave Dixon <ddixon at swcp.com> wrote:
+
+> Greetings,
+>
+> I have a csv file of 76 fields and about 4 million records. I know that
+> some of the records have errors - unmatched quotes, specifically.
+> Reading the file with readLines and parsing the lines with read.csv(text
+> = ...) is really slow. I know that the first 2459465 records are good.
+> So I try this:
+>
+>  > startTime <- Sys.time()
+>  > first_records <- read.csv(file_name, nrows = 2459465)
+>  > endTime <- Sys.time()
+>  > cat("elapsed time = ", endTime - startTime, "\n")
+>
+> elapsed time =   24.12598
+>
+>  > startTime <- Sys.time()
+>  > second_records <- read.csv(file_name, skip = 2459465, nrows = 5)
+>  > endTime <- Sys.time()
+>  > cat("elapsed time = ", endTime - startTime, "\n")
+>
+> This appears to never finish. I have been waiting over 20 minutes.
+>
+> So why would (skip = 2459465, nrows = 5) take orders of magnitude longer
+> than (nrows = 2459465) ?
+>
+> Thanks!
+>
+> -dave
+>
+> PS: readLines(n=2459470) takes 10.42731 seconds.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From po|c1410 @end|ng |rom gm@||@com  Mon Apr  8 20:14:06 2024
+From: po|c1410 @end|ng |rom gm@||@com (CALUM POLWART)
+Date: Mon, 8 Apr 2024 19:14:06 +0100
+Subject: [R] Exceptional slowness with read.csv
+In-Reply-To: <CAGCDhaVgEmWJXapLZJRU_1BegB-=1KyaT2wDNHNqKTs5VSrhvw@mail.gmail.com>
+References: <2a1f4ec9-26ae-4e80-bd40-10c4a919849f@swcp.com>
+ <CAGCDhaVgEmWJXapLZJRU_1BegB-=1KyaT2wDNHNqKTs5VSrhvw@mail.gmail.com>
+Message-ID: <CA+etgPnYTPkuwcFkOfdPZPXazgg6UMVnYcJjoHaWG=Ki2_AUiw@mail.gmail.com>
+
+data.table's fread is also fast. Not sure about error handling. But I can
+merge 300 csvs with a total of 0.5m lines and 50 columns in a couple of
+minutes versus a lifetime with read.csv or readr::read_csv
+
+
+
+On Mon, 8 Apr 2024, 16:19 Stevie Pederson, <stephen.pederson.au at gmail.com>
+wrote:
+
+> Hi Dave,
+>
+> That's rather frustrating. I've found vroom (from the package vroom) to be
+> helpful with large files like this.
+>
+> Does the following give you any better luck?
+>
+> vroom(file_name, delim = ",", skip = 2459465, n_max = 5)
+>
+> Of course, when you know you've got errors & the files are big like that it
+> can take a bit of work resolving things. The command line tools awk & sed
+> might even be a good plan for finding lines that have errors & figuring out
+> a fix, but I certainly don't envy you.
+>
+> All the best
+>
+> Stevie
+>
+> On Tue, 9 Apr 2024 at 00:36, Dave Dixon <ddixon at swcp.com> wrote:
+>
+> > Greetings,
+> >
+> > I have a csv file of 76 fields and about 4 million records. I know that
+> > some of the records have errors - unmatched quotes, specifically.
+> > Reading the file with readLines and parsing the lines with read.csv(text
+> > = ...) is really slow. I know that the first 2459465 records are good.
+> > So I try this:
+> >
+> >  > startTime <- Sys.time()
+> >  > first_records <- read.csv(file_name, nrows = 2459465)
+> >  > endTime <- Sys.time()
+> >  > cat("elapsed time = ", endTime - startTime, "\n")
+> >
+> > elapsed time =   24.12598
+> >
+> >  > startTime <- Sys.time()
+> >  > second_records <- read.csv(file_name, skip = 2459465, nrows = 5)
+> >  > endTime <- Sys.time()
+> >  > cat("elapsed time = ", endTime - startTime, "\n")
+> >
+> > This appears to never finish. I have been waiting over 20 minutes.
+> >
+> > So why would (skip = 2459465, nrows = 5) take orders of magnitude longer
+> > than (nrows = 2459465) ?
+> >
+> > Thanks!
+> >
+> > -dave
+> >
+> > PS: readLines(n=2459470) takes 10.42731 seconds.
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> > http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From r@hep@rd @end|ng |rom @pp|-eco@y@@com  Mon Apr  8 20:32:43 2024
+From: r@hep@rd @end|ng |rom @pp|-eco@y@@com (Rich Shepard)
+Date: Mon, 8 Apr 2024 11:32:43 -0700 (PDT)
+Subject: [R] Building R-4,3,3 fails
+Message-ID: <2d4e6da0-bc51-4cab-8b84-f7631744b17@appl-ecosys.com>
+
+I've been building R versions for years with no issues. Now I'm trying to
+build R-4.3.3 on Slackware64-15.0 (fully patched) with TeXLive2024 (fully
+patched) installed. The error occurs building a vignette.
+
+Is this mail list the appropriate place to ask for help or should I post the
+request on stackoverflow.com?
+
+TIA,
+
+Rich
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Apr  8 20:38:59 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 8 Apr 2024 21:38:59 +0300
+Subject: [R] Building R-4,3,3 fails
+In-Reply-To: <2d4e6da0-bc51-4cab-8b84-f7631744b17@appl-ecosys.com>
+References: <2d4e6da0-bc51-4cab-8b84-f7631744b17@appl-ecosys.com>
+Message-ID: <20240408213859.78c94c34@Tarkus>
+
+Hello Rich,
+
+? Mon, 8 Apr 2024 11:32:43 -0700 (PDT)
+Rich Shepard <rshepard at appl-ecosys.com> ?????:
+
+> I've been building R versions for years with no issues. Now I'm
+> trying to build R-4.3.3 on Slackware64-15.0 (fully patched) with
+> TeXLive2024 (fully patched) installed. The error occurs building a
+> vignette.
+
+Questions about building R do get asked here and R-devel. Since you're
+compiling a released version of R and we don't have an R-SIG-Slackware
+mailing list, R-help sounds like the right place.
+
+What are the last lines of the build log, containing the error message?
+If it's a LaTeX error, it may be that you need some extra TeX Live
+packages, there is a list in R-admin:
+https://cran.r-project.org/doc/manuals/R-admin.html#Making-the-manuals
+
+-- 
+Best regards,
+Ivan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Apr  8 20:42:33 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 8 Apr 2024 21:42:33 +0300
+Subject: [R] Exceptional slowness with read.csv
+In-Reply-To: <2a1f4ec9-26ae-4e80-bd40-10c4a919849f@swcp.com>
+References: <2a1f4ec9-26ae-4e80-bd40-10c4a919849f@swcp.com>
+Message-ID: <20240408214233.7f70549f@Tarkus>
+
+? Sun, 7 Apr 2024 23:47:52 -0600
+Dave Dixon <ddixon at swcp.com> ?????:
+
+>  > second_records <- read.csv(file_name, skip = 2459465, nrows = 5)
+
+It may or may not be important that read.csv defaults to header =
+TRUE. Having skipped 2459465 lines, it may attempt to parse the next
+one as a header, so the second call read.csv() should probably include
+header = FALSE.
+
+Bert's advice to try scan() is on point, though. It's likely that the
+default-enabled header is not the most serious problem here.
+
+-- 
+Best regards,
+Ivan
+
+
+From r@hep@rd @end|ng |rom @pp|-eco@y@@com  Mon Apr  8 20:51:42 2024
+From: r@hep@rd @end|ng |rom @pp|-eco@y@@com (Rich Shepard)
+Date: Mon, 8 Apr 2024 11:51:42 -0700 (PDT)
+Subject: [R] Building R-4,3,3 fails
+In-Reply-To: <20240408213859.78c94c34@Tarkus>
+References: <2d4e6da0-bc51-4cab-8b84-f7631744b17@appl-ecosys.com>
+ <20240408213859.78c94c34@Tarkus>
+Message-ID: <7a7ddee-5da4-a48-f5c-328436577d6@appl-ecosys.com>
+
+On Mon, 8 Apr 2024, Ivan Krylov wrote:
+
+> Questions about building R do get asked here and R-devel. Since you're
+> compiling a released version of R and we don't have an R-SIG-Slackware
+> mailing list, R-help sounds like the right place.
+
+Ivan,
+
+Okay:
+
+> What are the last lines of the build log, containing the error message? If
+> it's a LaTeX error, it may be that you need some extra TeX Live packages,
+> there is a list in R-admin:
+> https://cran.r-project.org/doc/manuals/R-admin.html#Making-the-manuals
+
+* DONE (mgcv)
+make[2]: Leaving directory '/tmp/SBo/R-4.3.3/src/library/Recommended'
+make[1]: Leaving directory '/tmp/SBo/R-4.3.3/src/library/Recommended'
+make[1]: Entering directory '/tmp/SBo/R-4.3.3/src/library'
+building/updating vignettes for package 'grid' ...
+building/updating vignettes for package 'parallel' ...
+building/updating vignettes for package 'utils' ...
+building/updating vignettes for package 'stats' ...
+processing 'reshape.Rnw'
+Error: compiling TeX file 'reshape.tex' failed with message:
+Running 'texi2dvi' on 'reshape.tex' failed.
+Messages:
+/usr/bin/texi2dvi: TeX neither supports -recorder nor outputs \openout lines in its log file
+Execution halted
+make[1]: *** [Makefile:103: vignettes] Error 1
+make[1]: Leaving directory '/tmp/SBo/R-4.3.3/src/library'
+make: *** [Makefile:81: vignettes] Error 2
+# (running time: 12m3.057s)
+
+I don't know why /usr/bin/texi2dvi doesn't support -recorder nor the other
+error. TeXLive2023 had no issues building R-4.1.1.
+
+Thanks,
+
+Rich
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Apr  8 21:14:52 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 8 Apr 2024 20:14:52 +0100
+Subject: [R] Exceptional slowness with read.csv
+In-Reply-To: <20240408214233.7f70549f@Tarkus>
+References: <2a1f4ec9-26ae-4e80-bd40-10c4a919849f@swcp.com>
+ <20240408214233.7f70549f@Tarkus>
+Message-ID: <01f08462-b4a7-4b76-b7b9-f65641073d49@sapo.pt>
+
+?s 19:42 de 08/04/2024, Ivan Krylov via R-help escreveu:
+> ? Sun, 7 Apr 2024 23:47:52 -0600
+> Dave Dixon <ddixon at swcp.com> ?????:
+> 
+>>   > second_records <- read.csv(file_name, skip = 2459465, nrows = 5)
+> 
+> It may or may not be important that read.csv defaults to header =
+> TRUE. Having skipped 2459465 lines, it may attempt to parse the next
+> one as a header, so the second call read.csv() should probably include
+> header = FALSE.
+
+
+This will throw an error, call read.table with sep="," instead.
+
+
+> 
+> Bert's advice to try scan() is on point, though. It's likely that the
+> default-enabled header is not the most serious problem here.
+> 
+
+Hoep this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Apr  8 21:27:32 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 8 Apr 2024 22:27:32 +0300
+Subject: [R] Building R-4,3,3 fails
+In-Reply-To: <7a7ddee-5da4-a48-f5c-328436577d6@appl-ecosys.com>
+References: <2d4e6da0-bc51-4cab-8b84-f7631744b17@appl-ecosys.com>
+ <20240408213859.78c94c34@Tarkus>
+ <7a7ddee-5da4-a48-f5c-328436577d6@appl-ecosys.com>
+Message-ID: <20240408222732.1a4b3be4@parabola>
+
+? Mon, 8 Apr 2024 11:51:42 -0700 (PDT)
+Rich Shepard <rshepard at appl-ecosys.com> ?????:
+
+> processing 'reshape.Rnw'
+> Error: compiling TeX file 'reshape.tex' failed with message:
+> Running 'texi2dvi' on 'reshape.tex' failed.
+> Messages:
+> /usr/bin/texi2dvi: TeX neither supports -recorder nor outputs
+> \openout lines in its log file
+> Execution halted
+
+A Web search suggests that texi2dvi may output this message by mistake
+when the TeX installation is subject to a different problem:
+https://web.archive.org/web/20191006123002/https://lists.gnu.org/r/bug-texinfo/2016-10/msg00036.html
+
+Find the reshape.Rnw file and try running bin/R CMD Sweave
+path/to/reshape.Rnw. It should produce reshape.tex. When you run
+pdflatex reshape.tex, do you get a more useful error message?
+
+-- 
+Best regards,
+Ivan
+
+
+From r@hep@rd @end|ng |rom @pp|-eco@y@@com  Mon Apr  8 22:13:39 2024
+From: r@hep@rd @end|ng |rom @pp|-eco@y@@com (Rich Shepard)
+Date: Mon, 8 Apr 2024 13:13:39 -0700 (PDT)
+Subject: [R] Building R-4,3,3 fails
+In-Reply-To: <20240408222732.1a4b3be4@parabola>
+References: <2d4e6da0-bc51-4cab-8b84-f7631744b17@appl-ecosys.com>
+ <20240408213859.78c94c34@Tarkus>
+ <7a7ddee-5da4-a48-f5c-328436577d6@appl-ecosys.com>
+ <20240408222732.1a4b3be4@parabola>
+Message-ID: <9d3127ec-f236-adf-765d-96d65a2b60ec@appl-ecosys.com>
+
+On Mon, 8 Apr 2024, Ivan Krylov wrote:
+
+> A Web search suggests that texi2dvi may output this message by mistake
+> when the TeX installation is subject to a different problem:
+> https://web.archive.org/web/20191006123002/https://lists.gnu.org/r/bug-texinfo/2016-10/msg00036.html
+
+Ivan,
+
+That thread is 8 years old and may no longer apply to TeXLive2024.
+
+> Find the reshape.Rnw file and try running bin/R CMD Sweave
+> path/to/reshape.Rnw. It should produce reshape.tex. When you run pdflatex
+> reshape.tex, do you get a more useful error message?
+
+The error occurs when building R. Since R's not installed I cannot run it to
+build reshape.tex.
+
+Thanks,
+
+Rich
+
+
+From dd|xon @end|ng |rom @wcp@com  Mon Apr  8 22:21:49 2024
+From: dd|xon @end|ng |rom @wcp@com (Dave Dixon)
+Date: Mon, 8 Apr 2024 14:21:49 -0600
+Subject: [R] Exceptional slowness with read.csv
+In-Reply-To: <CAGCDhaVgEmWJXapLZJRU_1BegB-=1KyaT2wDNHNqKTs5VSrhvw@mail.gmail.com>
+References: <2a1f4ec9-26ae-4e80-bd40-10c4a919849f@swcp.com>
+ <CAGCDhaVgEmWJXapLZJRU_1BegB-=1KyaT2wDNHNqKTs5VSrhvw@mail.gmail.com>
+Message-ID: <ed0e6ed0-6f15-4e76-8a4f-a946838f6e28@swcp.com>
+
+I solved the mystery, but not the problem. The problem is that there's 
+an unclosed quote somewhere in those 5 additional records I'm trying to 
+access. So read.csv is reading million-character fields. It's slow at 
+that. That mystery solved.
+
+However, the the problem persists: how to fix what is obvious to the 
+naked eye - a quote not adjacent to a comma - but that read.csv can't 
+handle. readLines followed by read.csv(text= ) works great because, in 
+that case, read.csv knows where the record terminates. Meaning, read.csv 
+throws an exception that I can catch and handle with a quick and clean 
+regex expression.
+
+Thanks, I'll take a look at vroom.
+
+-dave
+
+On 4/8/24 09:18, Stevie Pederson wrote:
+> Hi Dave,
+>
+> That's rather frustrating. I've found vroom (from the package vroom) 
+> to be helpful with large files like this.
+>
+> Does the following give you any better luck?
+>
+> vroom(file_name, delim = ",", skip = 2459465, n_max = 5)
+>
+> Of course, when you know you've got errors & the files are big like 
+> that it can take a bit of work resolving things. The command line 
+> tools awk & sed might even be a good plan for finding lines that have 
+> errors & figuring out a fix, but I certainly don't envy you.
+>
+> All the best
+>
+> Stevie
+>
+> On Tue, 9 Apr 2024 at 00:36, Dave Dixon <ddixon at swcp.com> wrote:
+>
+>     Greetings,
+>
+>     I have a csv file of 76 fields and about 4 million records. I know
+>     that
+>     some of the records have errors - unmatched quotes, specifically.
+>     Reading the file with readLines and parsing the lines with
+>     read.csv(text
+>     = ...) is really slow. I know that the first 2459465 records are
+>     good.
+>     So I try this:
+>
+>     ?> startTime <- Sys.time()
+>     ?> first_records <- read.csv(file_name, nrows = 2459465)
+>     ?> endTime <- Sys.time()
+>     ?> cat("elapsed time = ", endTime - startTime, "\n")
+>
+>     elapsed time = ? 24.12598
+>
+>     ?> startTime <- Sys.time()
+>     ?> second_records <- read.csv(file_name, skip = 2459465, nrows = 5)
+>     ?> endTime <- Sys.time()
+>     ?> cat("elapsed time = ", endTime - startTime, "\n")
+>
+>     This appears to never finish. I have been waiting over 20 minutes.
+>
+>     So why would (skip = 2459465, nrows = 5) take orders of magnitude
+>     longer
+>     than (nrows = 2459465) ?
+>
+>     Thanks!
+>
+>     -dave
+>
+>     PS: readLines(n=2459470) takes 10.42731 seconds.
+>
+>     ______________________________________________
+>     R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>     https://stat.ethz.ch/mailman/listinfo/r-help
+>     PLEASE do read the posting guide
+>     http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>     and provide commented, minimal, self-contained, reproducible code.
+>
+	[[alternative HTML version deleted]]
+
+
+From dd|xon @end|ng |rom @wcp@com  Mon Apr  8 22:22:20 2024
+From: dd|xon @end|ng |rom @wcp@com (Dave Dixon)
+Date: Mon, 8 Apr 2024 14:22:20 -0600
+Subject: [R] Exceptional slowness with read.csv
+In-Reply-To: <CAGxFJbSPZTFqrrjht3pyKFz-QmX1DfOfd86tkMHxNBB2FLpXVA@mail.gmail.com>
+References: <2a1f4ec9-26ae-4e80-bd40-10c4a919849f@swcp.com>
+ <CAGxFJbSPZTFqrrjht3pyKFz-QmX1DfOfd86tkMHxNBB2FLpXVA@mail.gmail.com>
+Message-ID: <44f9eb27-a12f-4b0f-8432-5c70470cce85@swcp.com>
+
+Thanks, yeah, I think scan is more promising. I'll check it out.
+
+On 4/8/24 11:49, Bert Gunter wrote:
+> No idea, but have you tried using ?scan to read those next 5 rows? It 
+> might give you a better idea of the pathologies that are causing 
+> problems. For example, an unmatched quote might result in some huge 
+> number of characters trying to be read into a single element of a 
+> character variable. As your previous respondent said, resolving such 
+> problems can be a challenge.
+>
+> Cheers,
+> Bert
+>
+>
+>
+> On Mon, Apr 8, 2024 at 8:06?AM Dave Dixon <ddixon at swcp.com> wrote:
+>
+>     Greetings,
+>
+>     I have a csv file of 76 fields and about 4 million records. I know
+>     that
+>     some of the records have errors - unmatched quotes, specifically.
+>     Reading the file with readLines and parsing the lines with
+>     read.csv(text
+>     = ...) is really slow. I know that the first 2459465 records are
+>     good.
+>     So I try this:
+>
+>     ?> startTime <- Sys.time()
+>     ?> first_records <- read.csv(file_name, nrows = 2459465)
+>     ?> endTime <- Sys.time()
+>     ?> cat("elapsed time = ", endTime - startTime, "\n")
+>
+>     elapsed time = ? 24.12598
+>
+>     ?> startTime <- Sys.time()
+>     ?> second_records <- read.csv(file_name, skip = 2459465, nrows = 5)
+>     ?> endTime <- Sys.time()
+>     ?> cat("elapsed time = ", endTime - startTime, "\n")
+>
+>     This appears to never finish. I have been waiting over 20 minutes.
+>
+>     So why would (skip = 2459465, nrows = 5) take orders of magnitude
+>     longer
+>     than (nrows = 2459465) ?
+>
+>     Thanks!
+>
+>     -dave
+>
+>     PS: readLines(n=2459470) takes 10.42731 seconds.
+>
+>     ______________________________________________
+>     R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>     https://stat.ethz.ch/mailman/listinfo/r-help
+>     PLEASE do read the posting guide
+>     http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>     and provide commented, minimal, self-contained, reproducible code.
+>
+	[[alternative HTML version deleted]]
+
+
+From dd|xon @end|ng |rom @wcp@com  Mon Apr  8 22:23:41 2024
+From: dd|xon @end|ng |rom @wcp@com (Dave Dixon)
+Date: Mon, 8 Apr 2024 14:23:41 -0600
+Subject: [R] Exceptional slowness with read.csv
+In-Reply-To: <CA+etgPnYTPkuwcFkOfdPZPXazgg6UMVnYcJjoHaWG=Ki2_AUiw@mail.gmail.com>
+References: <2a1f4ec9-26ae-4e80-bd40-10c4a919849f@swcp.com>
+ <CAGCDhaVgEmWJXapLZJRU_1BegB-=1KyaT2wDNHNqKTs5VSrhvw@mail.gmail.com>
+ <CA+etgPnYTPkuwcFkOfdPZPXazgg6UMVnYcJjoHaWG=Ki2_AUiw@mail.gmail.com>
+Message-ID: <418eeb84-db64-4694-96cd-5ab5c8947908@swcp.com>
+
+Good suggestion - I'll look into data.table.
+
+On 4/8/24 12:14, CALUM POLWART wrote:
+> data.table's fread is also fast. Not sure about error handling. But I 
+> can merge 300 csvs with a total of 0.5m lines and 50 columns in a 
+> couple of minutes versus a lifetime with read.csv or readr::read_csv
+>
+>
+>
+> On Mon, 8 Apr 2024, 16:19 Stevie Pederson, 
+> <stephen.pederson.au at gmail.com> wrote:
+>
+>     Hi Dave,
+>
+>     That's rather frustrating. I've found vroom (from the package
+>     vroom) to be
+>     helpful with large files like this.
+>
+>     Does the following give you any better luck?
+>
+>     vroom(file_name, delim = ",", skip = 2459465, n_max = 5)
+>
+>     Of course, when you know you've got errors & the files are big
+>     like that it
+>     can take a bit of work resolving things. The command line tools
+>     awk & sed
+>     might even be a good plan for finding lines that have errors &
+>     figuring out
+>     a fix, but I certainly don't envy you.
+>
+>     All the best
+>
+>     Stevie
+>
+>     On Tue, 9 Apr 2024 at 00:36, Dave Dixon <ddixon at swcp.com> wrote:
+>
+>     > Greetings,
+>     >
+>     > I have a csv file of 76 fields and about 4 million records. I
+>     know that
+>     > some of the records have errors - unmatched quotes, specifically.
+>     > Reading the file with readLines and parsing the lines with
+>     read.csv(text
+>     > = ...) is really slow. I know that the first 2459465 records are
+>     good.
+>     > So I try this:
+>     >
+>     >? > startTime <- Sys.time()
+>     >? > first_records <- read.csv(file_name, nrows = 2459465)
+>     >? > endTime <- Sys.time()
+>     >? > cat("elapsed time = ", endTime - startTime, "\n")
+>     >
+>     > elapsed time =? ?24.12598
+>     >
+>     >? > startTime <- Sys.time()
+>     >? > second_records <- read.csv(file_name, skip = 2459465, nrows = 5)
+>     >? > endTime <- Sys.time()
+>     >? > cat("elapsed time = ", endTime - startTime, "\n")
+>     >
+>     > This appears to never finish. I have been waiting over 20 minutes.
+>     >
+>     > So why would (skip = 2459465, nrows = 5) take orders of
+>     magnitude longer
+>     > than (nrows = 2459465) ?
+>     >
+>     > Thanks!
+>     >
+>     > -dave
+>     >
+>     > PS: readLines(n=2459470) takes 10.42731 seconds.
+>     >
+>     > ______________________________________________
+>     > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>     > https://stat.ethz.ch/mailman/listinfo/r-help
+>     > PLEASE do read the posting guide
+>     > http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>     > and provide commented, minimal, self-contained, reproducible code.
+>     >
+>
+>     ? ? ? ? [[alternative HTML version deleted]]
+>
+>     ______________________________________________
+>     R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>     https://stat.ethz.ch/mailman/listinfo/r-help
+>     PLEASE do read the posting guide
+>     http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>     and provide commented, minimal, self-contained, reproducible code.
+>
+	[[alternative HTML version deleted]]
+
+
+From dd|xon @end|ng |rom @wcp@com  Mon Apr  8 22:25:07 2024
+From: dd|xon @end|ng |rom @wcp@com (Dave Dixon)
+Date: Mon, 8 Apr 2024 14:25:07 -0600
+Subject: [R] Exceptional slowness with read.csv
+In-Reply-To: <20240408214233.7f70549f@Tarkus>
+References: <2a1f4ec9-26ae-4e80-bd40-10c4a919849f@swcp.com>
+ <20240408214233.7f70549f@Tarkus>
+Message-ID: <97f52a33-8071-48ba-bb7c-711168a8c892@swcp.com>
+
+Right, I meant to add header=FALSE. And, it looks now like the next line 
+is the one with the unclosed quote, so read.csv is trying to read 
+million-character headers!
+
+On 4/8/24 12:42, Ivan Krylov wrote:
+> ? Sun, 7 Apr 2024 23:47:52 -0600
+> Dave Dixon <ddixon at swcp.com> ?????:
+>
+>>   > second_records <- read.csv(file_name, skip = 2459465, nrows = 5)
+> It may or may not be important that read.csv defaults to header =
+> TRUE. Having skipped 2459465 lines, it may attempt to parse the next
+> one as a header, so the second call read.csv() should probably include
+> header = FALSE.
+>
+> Bert's advice to try scan() is on point, though. It's likely that the
+> default-enabled header is not the most serious problem here.
+>
+
+
+From no@p@m @end|ng |rom ||@@e@NA  Tue Apr  9 01:17:22 2024
+From: no@p@m @end|ng |rom ||@@e@NA (Eberhard W Lisse)
+Date: Tue, 9 Apr 2024 01:17:22 +0200
+Subject: [R] Exceptional slowness with read.csv
+In-Reply-To: <ed0e6ed0-6f15-4e76-8a4f-a946838f6e28@swcp.com>
+References: <2a1f4ec9-26ae-4e80-bd40-10c4a919849f@swcp.com>
+ <CAGCDhaVgEmWJXapLZJRU_1BegB-=1KyaT2wDNHNqKTs5VSrhvw@mail.gmail.com>
+ <ed0e6ed0-6f15-4e76-8a4f-a946838f6e28@swcp.com>
+Message-ID: <uv1tu2$ns9$1@ciao.gmane.io>
+
+I find QSV very helpful.
+
+el
+
+On 08/04/2024 22:21, Dave Dixon wrote:
+> I solved the mystery, but not the problem. The problem is that
+> there's an unclosed quote somewhere in those 5 additional records I'm
+> trying to access. So read.csv is reading million-character fields.
+> It's slow at that. That mystery solved.
+> 
+> However, the the problem persists: how to fix what is obvious to the
+> naked eye - a quote not adjacent to a comma - but that read.csv
+> can't handle. readLines followed by read.csv(text= ) works great
+> because, in that case, read.csv knows where the record terminates.
+> Meaning, read.csv throws an exception that I can catch and handle
+> with a quick and clean regex expression.
+> 
+> Thanks, I'll take a look at vroom.
+[...]
+
+
+From jho|tm@n @end|ng |rom gm@||@com  Tue Apr  9 01:31:01 2024
+From: jho|tm@n @end|ng |rom gm@||@com (jim holtman)
+Date: Mon, 8 Apr 2024 18:31:01 -0500
+Subject: [R] Exceptional slowness with read.csv
+In-Reply-To: <ed0e6ed0-6f15-4e76-8a4f-a946838f6e28@swcp.com>
+References: <2a1f4ec9-26ae-4e80-bd40-10c4a919849f@swcp.com>
+ <CAGCDhaVgEmWJXapLZJRU_1BegB-=1KyaT2wDNHNqKTs5VSrhvw@mail.gmail.com>
+ <ed0e6ed0-6f15-4e76-8a4f-a946838f6e28@swcp.com>
+Message-ID: <CAAxdm-7TE7JQ_eTMiwwzXO0OdSkcmgfdw993=Ls+uj49yYqXUg@mail.gmail.com>
+
+Try reading the lines in (readLines), count the number of both types of
+quotes in each line. Find out which are not even and investigate.
+
+On Mon, Apr 8, 2024, 15:24 Dave Dixon <ddixon at swcp.com> wrote:
+
+> I solved the mystery, but not the problem. The problem is that there's
+> an unclosed quote somewhere in those 5 additional records I'm trying to
+> access. So read.csv is reading million-character fields. It's slow at
+> that. That mystery solved.
+>
+> However, the the problem persists: how to fix what is obvious to the
+> naked eye - a quote not adjacent to a comma - but that read.csv can't
+> handle. readLines followed by read.csv(text= ) works great because, in
+> that case, read.csv knows where the record terminates. Meaning, read.csv
+> throws an exception that I can catch and handle with a quick and clean
+> regex expression.
+>
+> Thanks, I'll take a look at vroom.
+>
+> -dave
+>
+> On 4/8/24 09:18, Stevie Pederson wrote:
+> > Hi Dave,
+> >
+> > That's rather frustrating. I've found vroom (from the package vroom)
+> > to be helpful with large files like this.
+> >
+> > Does the following give you any better luck?
+> >
+> > vroom(file_name, delim = ",", skip = 2459465, n_max = 5)
+> >
+> > Of course, when you know you've got errors & the files are big like
+> > that it can take a bit of work resolving things. The command line
+> > tools awk & sed might even be a good plan for finding lines that have
+> > errors & figuring out a fix, but I certainly don't envy you.
+> >
+> > All the best
+> >
+> > Stevie
+> >
+> > On Tue, 9 Apr 2024 at 00:36, Dave Dixon <ddixon at swcp.com> wrote:
+> >
+> >     Greetings,
+> >
+> >     I have a csv file of 76 fields and about 4 million records. I know
+> >     that
+> >     some of the records have errors - unmatched quotes, specifically.
+> >     Reading the file with readLines and parsing the lines with
+> >     read.csv(text
+> >     = ...) is really slow. I know that the first 2459465 records are
+> >     good.
+> >     So I try this:
+> >
+> >      > startTime <- Sys.time()
+> >      > first_records <- read.csv(file_name, nrows = 2459465)
+> >      > endTime <- Sys.time()
+> >      > cat("elapsed time = ", endTime - startTime, "\n")
+> >
+> >     elapsed time =   24.12598
+> >
+> >      > startTime <- Sys.time()
+> >      > second_records <- read.csv(file_name, skip = 2459465, nrows = 5)
+> >      > endTime <- Sys.time()
+> >      > cat("elapsed time = ", endTime - startTime, "\n")
+> >
+> >     This appears to never finish. I have been waiting over 20 minutes.
+> >
+> >     So why would (skip = 2459465, nrows = 5) take orders of magnitude
+> >     longer
+> >     than (nrows = 2459465) ?
+> >
+> >     Thanks!
+> >
+> >     -dave
+> >
+> >     PS: readLines(n=2459470) takes 10.42731 seconds.
+> >
+> >     ______________________________________________
+> >     R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >     https://stat.ethz.ch/mailman/listinfo/r-help
+> >     PLEASE do read the posting guide
+> >     http://www.R-project.org/posting-guide.html
+> >     <http://www.R-project.org/posting-guide.html>
+> >     and provide commented, minimal, self-contained, reproducible code.
+> >
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
