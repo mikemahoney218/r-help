@@ -3261,3 +3261,1476 @@ On Mon, Apr 8, 2024, 15:24 Dave Dixon <ddixon at swcp.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From |kry|ov @end|ng |rom d|@root@org  Tue Apr  9 07:56:17 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 9 Apr 2024 08:56:17 +0300
+Subject: [R] Building R-4,3,3 fails
+In-Reply-To: <9d3127ec-f236-adf-765d-96d65a2b60ec@appl-ecosys.com>
+References: <2d4e6da0-bc51-4cab-8b84-f7631744b17@appl-ecosys.com>
+ <20240408213859.78c94c34@Tarkus>
+ <7a7ddee-5da4-a48-f5c-328436577d6@appl-ecosys.com>
+ <20240408222732.1a4b3be4@parabola>
+ <9d3127ec-f236-adf-765d-96d65a2b60ec@appl-ecosys.com>
+Message-ID: <20240409085617.2ae6bdb1@Tarkus>
+
+? Mon, 8 Apr 2024 13:13:39 -0700 (PDT)
+Rich Shepard <rshepard at appl-ecosys.com> ?????:
+
+> That thread is 8 years old and may no longer apply to TeXLive2024.
+
+True, but the /usr/bin/texi2dvi from GNU Texinfo 6.8 (2021) on my
+Debian Bookworm system still contains this error message:
+
+  case $TEXI2DVI_USE_RECORDER in
+    yes) set_aux_files_from_fls;;
+
+    no)	set_aux_files_from_log;;
+
+    yesmaybe)
+      if check_recorder_support; then
+        set_aux_files_from_fls
+      elif check_openout_in_log_support; then
+        set_aux_files_from_log
+      else
+        error 1 "TeX neither supports -recorder nor outputs \\openout lines in its log file"
+      fi
+
+And even if the problem is somewhere else, the steps to debug it are
+the same: use Sweave to obtain the *.tex file that fails to compile
+using texi2pdf, then check what happens inside check_recorder_support
+or check_openout_in_log_support to find out why. It's probably pdflatex
+that fails, so we'll likely save some time by going straight for it.
+
+> The error occurs when building R. Since R's not installed I cannot
+> run it to build reshape.tex.
+
+At this point in the build, R already exists, is quite operable and
+even has all the recommended packages installed. The build system then
+uses this freshly compiled R to run Sweave on the vignettes. Let me
+break the build in a similar manner and see what happens:
+
+sed -i.bak '8i\\\xlerb' src/library/stats/vignettes/reshape.Rnw
+./configure
+make
+# Error: compiling TeX file 'reshape.tex' failed with message:
+# Running 'texi2dvi' on 'reshape.tex' failed.
+# LaTeX errors:
+# ! Undefined control sequence.
+# l.8 \xlerb
+<...>
+# Execution halted
+# make[1]: *** [Makefile:103: vignettes] Error 1
+bin/R CMD Sweave src/library/stats/vignettes/reshape.Rnw 
+# Output file:  reshape.tex
+pdflatex reshape.tex
+# This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022/Debian)
+# (preloaded format=pdflatex)
+<...>
+# ! Undefined control sequence.
+# l.8 \xlerb
+#           
+# ?
+
+If pdflatex reshape.tex does succeed on your system, try texi2pdf -V
+reshape.rex. If that doesn't fail either, we'll have to read the
+makefiles and reconstruct the exact command used by the build system.
+
+-- 
+Best regards,
+Ivan
+
+
+From ger@ophii m@iii@g oii gmx@@et  Tue Apr  9 09:47:36 2024
+From: ger@ophii m@iii@g oii gmx@@et (ger@ophii m@iii@g oii gmx@@et)
+Date: Tue, 9 Apr 2024 09:47:36 +0200
+Subject: [R] How to set the correct libomp for R
+Message-ID: <trinity-209a2008-97b9-4c14-a46c-89d317ec58d7-1712648856444@3c-app-gmx-bs03>
+
+
+Sorry fort he late reply, your mail ended up in my spam and I've just seen it recently.
+
+> Does the behaviour change if you temporarily move away
+> /usr/local/lib/libomp.dylib?
+
+It does not change the behavior after loading (or attaching) data.table using "library(data.table)". It is still loaded with multiple threads:
+"data.table 1.15.4 using 4 threads (see ?getDTthreads). Latest news: r-datatable.com"
+
+It does however make it impossible to install data.table from source with these flags (set in ~/.R/Makevars; I also temporarily removed the omp files from /usr/local/include that are bundled in the tarball)
+"""
+CPPFLAGS += -Xclang -fopenmp
+LDFLAGS += -lomp
+"""
+
+This is the error that happens then:
+"""
+...
+In file included from ./data.table.h:1:
+./myomp.h:2:12: fatal error: 'omp.h' file not found
+#include <omp.h>
+^~~~~~~
+1 error generated.
+make: *** [assign.o] Error 1
+ERROR: compilation failed for package ?data.table?
+* removing ?/Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/library/data.table?
+* restoring previous ?/Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/library/data.table?
+Warning in install.packages :
+installation of package ?data.table? had non-zero exit status
+"""
+So, the libomp.dylib does indeed seem to be necessary for installing from source with OpenMP support, but not for executing the code
+
+
+> When you reproduce the crash, what does the backtrace say?
+
+I haven't done that yet, since I was on the non-OpenMP version right now. I'll come back to you once I tried.
+
+Thanks,
+Philipp
+
+
+
+?Am 08.04.24, 11:13 schrieb "Ivan Krylov" <ikrylov at disroot.org <mailto:ikrylov at disroot.org>>:
+
+
+? Mon, 8 Apr 2024 10:29:53 +0200
+gernophil--- via R-help <r-help at r-project.org <mailto:r-help at r-project.org>> ?????:
+
+
+> I have some weird issue with using multithreaded data.table in macOS
+> and I am trying to figure out, if it?s connected to my libomp.dylib.
+> I started using libomp as stated here:
+> https://mac.r-project.org/openmp/ <https://mac.r-project.org/openmp/[https://mac.r-project.org/openmp/]>
+
+
+Does the behaviour change if you temporarily move away
+/usr/local/lib/libomp.dylib?
+
+
+> P.S.: If you need some more details about the actual issue with
+> data.table you can also check here
+> (https://github.com/rstudio/rstudio/issues/14517[https://github.com/rstudio/rstudio/issues/14517] <https://github.com/rstudio/rstudio/issues/14517[https://github.com/rstudio/rstudio/issues/14517]>) and here
+> (https://github.com/Rdatatable/data.table/issues/5957[https://github.com/Rdatatable/data.table/issues/5957] <https://github.com/Rdatatable/data.table/issues/5957[https://github.com/Rdatatable/data.table/issues/5957]>)
+
+
+The debugger may be able to shed more light on the problem than just
+"yes, this is due to OpenMP":
+https://github.com/rstudio/rstudio/issues/14517#issuecomment-2040231196[https://github.com/rstudio/rstudio/issues/14517#issuecomment-2040231196] <https://github.com/rstudio/rstudio/issues/14517#issuecomment-2040231196[https://github.com/rstudio/rstudio/issues/14517#issuecomment-2040231196]>
+
+
+When you reproduce the crash, what does the backtrace say?
+
+
+--
+Best regards,
+Ivan
+
+
+?
+
+
+From ger@ophii m@iii@g oii gmx@@et  Tue Apr  9 09:55:06 2024
+From: ger@ophii m@iii@g oii gmx@@et (ger@ophii m@iii@g oii gmx@@et)
+Date: Tue, 9 Apr 2024 09:55:06 +0200
+Subject: [R] How to set the correct libomp for R
+In-Reply-To: <trinity-209a2008-97b9-4c14-a46c-89d317ec58d7-1712648856444@3c-app-gmx-bs03>
+References: <trinity-209a2008-97b9-4c14-a46c-89d317ec58d7-1712648856444@3c-app-gmx-bs03>
+Message-ID: <trinity-dcf5da2d-0931-462e-9f46-bd63b3b05b04-1712649306412@3c-app-gmx-bs03>
+
+Sorry, if have to correct this. If I only move away /usr/local/lib/libomp.dylib, I can still install it. So it seems that also here the internal libomp.dylib from R is used. Just the bundled omp files at /usr/local/include (omp-tools.h, omp.h, ompt.h)?seem to be used. So maybe this is caused by a mismatch of these file and the used libomp.dylib?
+?
+?
+
+Gesendet:?Dienstag, 09. April 2024 um 09:47 Uhr
+Von:?gernophil at gmx.net
+An:?"Ivan Krylov" <ikrylov at disroot.org>, "gernophil--- via R-help" <r-help at r-project.org>
+Cc:?gernophil at gmx.net
+Betreff:?Re: [R] How to set the correct libomp for R
+Sorry fort he late reply, your mail ended up in my spam and I've just seen it recently.
+
+> Does the behaviour change if you temporarily move away
+> /usr/local/lib/libomp.dylib?
+
+It does not change the behavior after loading (or attaching) data.table using "library(data.table)". It is still loaded with multiple threads:
+"data.table 1.15.4 using 4 threads (see ?getDTthreads). Latest news: r-datatable.com"
+
+It does however make it impossible to install data.table from source with these flags (set in ~/.R/Makevars; I also temporarily removed the omp files from /usr/local/include that are bundled in the tarball)
+"""
+CPPFLAGS += -Xclang -fopenmp
+LDFLAGS += -lomp
+"""
+
+This is the error that happens then:
+"""
+...
+In file included from ./data.table.h:1:
+./myomp.h:2:12: fatal error: 'omp.h' file not found
+#include <omp.h>
+^~~~~~~
+1 error generated.
+make: *** [assign.o] Error 1
+ERROR: compilation failed for package ?data.table?
+* removing ?/Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/library/data.table?
+* restoring previous ?/Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/library/data.table?
+Warning in install.packages :
+installation of package ?data.table? had non-zero exit status
+"""
+So, the libomp.dylib does indeed seem to be necessary for installing from source with OpenMP support, but not for executing the code
+
+
+> When you reproduce the crash, what does the backtrace say?
+
+I haven't done that yet, since I was on the non-OpenMP version right now. I'll come back to you once I tried.
+
+Thanks,
+Philipp
+
+
+
+?Am 08.04.24, 11:13 schrieb "Ivan Krylov" <ikrylov at disroot.org <mailto:ikrylov at disroot.org>>:
+
+
+? Mon, 8 Apr 2024 10:29:53 +0200
+gernophil--- via R-help <r-help at r-project.org <mailto:r-help at r-project.org>> ?????:
+
+
+> I have some weird issue with using multithreaded data.table in macOS
+> and I am trying to figure out, if it?s connected to my libomp.dylib.
+> I started using libomp as stated here:
+> https://mac.r-project.org/openmp/ <https://mac.r-project.org/openmp/[https://mac.r-project.org/openmp/][https://mac.r-project.org/openmp/[https://mac.r-project.org/openmp/]]>
+
+
+Does the behaviour change if you temporarily move away
+/usr/local/lib/libomp.dylib?
+
+
+> P.S.: If you need some more details about the actual issue with
+> data.table you can also check here
+> (https://github.com/rstudio/rstudio/issues/14517[https://github.com/rstudio/rstudio/issues/14517][https://github.com/rstudio/rstudio/issues/14517[https://github.com/rstudio/rstudio/issues/14517]] <https://github.com/rstudio/rstudio/issues/14517[https://github.com/rstudio/rstudio/issues/14517][https://github.com/rstudio/rstudio/issues/14517[https://github.com/rstudio/rstudio/issues/14517]]>) and here
+> (https://github.com/Rdatatable/data.table/issues/5957[https://github.com/Rdatatable/data.table/issues/5957][https://github.com/Rdatatable/data.table/issues/5957[https://github.com/Rdatatable/data.table/issues/5957]] <https://github.com/Rdatatable/data.table/issues/5957[https://github.com/Rdatatable/data.table/issues/5957][https://github.com/Rdatatable/data.table/issues/5957[https://github.com/Rdatatable/data.table/issues/5957]]>)
+
+
+The debugger may be able to shed more light on the problem than just
+"yes, this is due to OpenMP":
+https://github.com/rstudio/rstudio/issues/14517#issuecomment-2040231196[https://github.com/rstudio/rstudio/issues/14517#issuecomment-2040231196][https://github.com/rstudio/rstudio/issues/14517#issuecomment-2040231196[https://github.com/rstudio/rstudio/issues/14517#issuecomment-2040231196]] <https://github.com/rstudio/rstudio/issues/14517#issuecomment-2040231196[https://github.com/rstudio/rstudio/issues/14517#issuecomment-2040231196][https://github.com/rstudio/rstudio/issues/14517#issuecomment-2040231196[https://github.com/rstudio/rstudio/issues/14517#issuecomment-2040231196]]>
+
+
+When you reproduce the crash, what does the backtrace say?
+
+
+--
+Best regards,
+Ivan
+
+
+?
+
+
+From @zz@||n| @end|ng |rom @t@t@un|pd@|t  Tue Apr  9 12:04:26 2024
+From: @zz@||n| @end|ng |rom @t@t@un|pd@|t (Adelchi Azzalini)
+Date: Tue, 9 Apr 2024 12:04:26 +0200
+Subject: [R] CEoptim problems
+Message-ID: <ADB924D2-5C1C-478B-9B95-E4FFCB23C179@stat.unipd.it>
+
+In the attempt to explore the usage of package CEoptim, I have run the code listed at the end of this message. This code is nothing but the one associated to example 5.7 in the main reference of the package, available at https://www.jstatsoft.org/article/view/v076i08
+and is included in the associated file  v76i08.R
+
+Unfortunately, the call to CEoptim stops with error message 
+
+Error in is.null(A) || is.na(A) : 
+  'length = 18' in coercion to 'logical(1)?
+
+On 2024?04-03, I have written about this problem to 
+Maintainer: Benoit Liquet <b.liquet at uq.edu.au>
+but so far no reply has reached me. 
+
+Could anyone help?
+
+Best regards,
+
+Adelchi Azzalini
+http://azzalini.stat.unipd.it
+
+////////////////////////////////////////////////////////////////////////
+
+library(CEoptim)
+## 5.7 AR(1) Model with Regime Switching
+set.seed(123)
+
+sumsqrs <- function(theta, rm1, x) {
+  N <- length(x)  #without x[0]
+  r <- 1 + sort(rm1)  # internal end points of regimes
+  if (r[1] == r[2]) {
+    # test for dupes -> invalid regime
+    return(Inf)
+  }
+     thetas <- rep(theta, times = c(r, N) - c(1, r + 1) + 1)
+  xhat <- c(0, head(x, -1)) * thetas
+  ## Compute sum of squared errors
+  sum((x - xhat)^2)
+}
+
+## Read the data from CEoptim package
+data("yt", package = "CEoptim")
+xt <- yt - c(0, yt[-300])
+A <- rbind(diag(3), -diag(3))
+b <- rep(1, 6)
+
+res <- CEoptim(sumsqrs, f.arg = list(xt), continuous = list(mean = c(0, 0, 0), sd = rep(1,    3), conMat = A, conVec = b), discrete = list(categories = c(298L, 298L), smoothProb = 0.5),    N = 10000, rho = 0.001)
+
+Error in is.null(A) || is.na(A) : 
+  'length = 18' in coercion to 'logical(1)'
+
+R> sessionInfo()
+R version 4.3.3 (2024-02-29)
+Platform: aarch64-apple-darwin20 (64-bit)
+Running under: macOS Ventura 13.0
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRblas.0.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.11.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: Europe/Rome
+tzcode source: internal
+
+attached base packages:
+[1] stats     utils     datasets  grDevices graphics  methods   base     
+
+other attached packages:
+[1] CEoptim_1.3          sna_2.7-2            network_1.18.2       statnet.common_4.9.0
+[5] msm_1.7.1            MASS_7.3-60.0.1     
+
+loaded via a namespace (and not attached):
+ [1] vctrs_0.6.2        cli_3.6.1          rlang_1.1.1        generics_0.1.3    
+ [5] jsonlite_1.8.4     glue_1.6.2         colorspace_2.1-0   scales_1.2.1      
+ [9] fansi_1.0.4        dlstats_0.1.7      grid_4.3.3         expm_0.999-9      
+[13] munsell_0.5.0      tibble_3.2.1       mvtnorm_1.1-3      lifecycle_1.0.3   
+[17] compiler_4.3.3     dplyr_1.1.2        coda_0.19-4.1      RColorBrewer_1.1-3
+[21] pkgconfig_2.0.3    lattice_0.22-5     R6_2.5.1           tidyselect_1.2.0  
+[25] utf8_1.2.3         splines_4.3.3      pillar_1.9.0       magrittr_2.0.3    
+[29] Matrix_1.6-5       tools_4.3.3        gtable_0.3.3       survival_3.5-8    
+[33] ggplot2_3.4.2     
+R> 
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Apr  9 12:22:04 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 9 Apr 2024 13:22:04 +0300
+Subject: [R] CEoptim problems
+In-Reply-To: <ADB924D2-5C1C-478B-9B95-E4FFCB23C179@stat.unipd.it>
+References: <ADB924D2-5C1C-478B-9B95-E4FFCB23C179@stat.unipd.it>
+Message-ID: <20240409132204.5b64f713@arachnoid>
+
+? Tue, 9 Apr 2024 12:04:26 +0200
+Adelchi Azzalini <azzalini at stat.unipd.it> ?????:
+
+> res <- CEoptim(sumsqrs, f.arg = list(xt), continuous = list(mean =
+> c(0, 0, 0), sd = rep(1,    3), conMat = A, conVec = b), discrete =
+> list(categories = c(298L, 298L), smoothProb = 0.5),    N = 10000, rho
+> = 0.001)
+> 
+> Error in is.null(A) || is.na(A) : 
+>   'length = 18' in coercion to 'logical(1)'
+
+There is a book titled "The R Inferno" with lots of debugging tips for
+R: https://www.burns-stat.com/documents/books/the-r-inferno/
+
+Start with a traceback(). Which function gave a matrix to the ||
+operator (which accepts only logical scalars)?
+
+If traceback is not enough, use options(error = recover). Once the
+error happens, you will be able to inspect local variables inside any
+of the active call frames, which may help understand where did A come
+from and why it was given to the || operator.
+
+Good luck!
+
+-- 
+Best regards,
+Ivan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Apr  9 12:50:26 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 9 Apr 2024 13:50:26 +0300
+Subject: [R] How to set the correct libomp for R
+In-Reply-To: <trinity-dcf5da2d-0931-462e-9f46-bd63b3b05b04-1712649306412@3c-app-gmx-bs03>
+References: <trinity-209a2008-97b9-4c14-a46c-89d317ec58d7-1712648856444@3c-app-gmx-bs03>
+ <trinity-dcf5da2d-0931-462e-9f46-bd63b3b05b04-1712649306412@3c-app-gmx-bs03>
+Message-ID: <20240409135026.6ed7bb0e@arachnoid>
+
+? Tue, 9 Apr 2024 09:55:06 +0200
+gernophil at gmx.net ?????:
+
+> If I only move away /usr/local/lib/libomp.dylib, I can still install
+> it. So it seems that also here the internal libomp.dylib from R is
+> used. Just the bundled omp files at /usr/local/include (omp-tools.h,
+> omp.h, ompt.h)?seem to be used. So maybe this is caused by a mismatch
+> of these file and the used libomp.dylib?
+
+This is valuable information, thank you. This is evidence in favour of
+libomp.dylib mismatch causing the problem. I hope that the backtrace
+will help shine more light on the problem.
+
+I'm out of ideas for now, but if I get any, I'll send another message.
+If you don't get an answer here, try R-SIG-Mac at r-project.org.
+
+-- 
+Best regards,
+Ivan
+
+
+From pd@|gd @end|ng |rom gm@||@com  Tue Apr  9 14:54:46 2024
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Tue, 9 Apr 2024 14:54:46 +0200
+Subject: [R] CEoptim problems
+In-Reply-To: <ADB924D2-5C1C-478B-9B95-E4FFCB23C179@stat.unipd.it>
+References: <ADB924D2-5C1C-478B-9B95-E4FFCB23C179@stat.unipd.it>
+Message-ID: <0A9C199F-C68F-4B40-B035-EC7ECCC93829@gmail.com>
+
+Hi, Adelchi,
+
+Depends on what you want help with... 
+
+The proximate cause would seem to be that the code ought to have "is.null(A) || any(is.NA(A))", which I presume you could fairly easily fix for yourself in the package sources or even locally in an R session. Vector-valued logicals in flow control constructions have gone through an elborate deprecation process before getting turned into errors.
+
+If the problem is how to activate a dormant maintainer and fix the issue for everyone, I don't really have a clue,  but you might consider cantacting the CRAN team.
+
+Best,
+Peter D.
+
+> On 9 Apr 2024, at 12:04 , Adelchi Azzalini <azzalini at stat.unipd.it> wrote:
+> 
+> In the attempt to explore the usage of package CEoptim, I have run the code listed at the end of this message. This code is nothing but the one associated to example 5.7 in the main reference of the package, available at https://www.jstatsoft.org/article/view/v076i08
+> and is included in the associated file  v76i08.R
+> 
+> Unfortunately, the call to CEoptim stops with error message 
+> 
+> Error in is.null(A) || is.na(A) : 
+>  'length = 18' in coercion to 'logical(1)?
+> 
+> On 2024?04-03, I have written about this problem to 
+> Maintainer: Benoit Liquet <b.liquet at uq.edu.au>
+> but so far no reply has reached me. 
+> 
+> Could anyone help?
+> 
+> Best regards,
+> 
+> Adelchi Azzalini
+> http://azzalini.stat.unipd.it
+> 
+> ////////////////////////////////////////////////////////////////////////
+> 
+> library(CEoptim)
+> ## 5.7 AR(1) Model with Regime Switching
+> set.seed(123)
+> 
+> sumsqrs <- function(theta, rm1, x) {
+>  N <- length(x)  #without x[0]
+>  r <- 1 + sort(rm1)  # internal end points of regimes
+>  if (r[1] == r[2]) {
+>    # test for dupes -> invalid regime
+>    return(Inf)
+>  }
+>     thetas <- rep(theta, times = c(r, N) - c(1, r + 1) + 1)
+>  xhat <- c(0, head(x, -1)) * thetas
+>  ## Compute sum of squared errors
+>  sum((x - xhat)^2)
+> }
+> 
+> ## Read the data from CEoptim package
+> data("yt", package = "CEoptim")
+> xt <- yt - c(0, yt[-300])
+> A <- rbind(diag(3), -diag(3))
+> b <- rep(1, 6)
+> 
+> res <- CEoptim(sumsqrs, f.arg = list(xt), continuous = list(mean = c(0, 0, 0), sd = rep(1,    3), conMat = A, conVec = b), discrete = list(categories = c(298L, 298L), smoothProb = 0.5),    N = 10000, rho = 0.001)
+> 
+> Error in is.null(A) || is.na(A) : 
+>  'length = 18' in coercion to 'logical(1)'
+> 
+> R> sessionInfo()
+> R version 4.3.3 (2024-02-29)
+> Platform: aarch64-apple-darwin20 (64-bit)
+> Running under: macOS Ventura 13.0
+> 
+> Matrix products: default
+> BLAS:   /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRblas.0.dylib 
+> LAPACK: /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.11.0
+> 
+> locale:
+> [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+> 
+> time zone: Europe/Rome
+> tzcode source: internal
+> 
+> attached base packages:
+> [1] stats     utils     datasets  grDevices graphics  methods   base     
+> 
+> other attached packages:
+> [1] CEoptim_1.3          sna_2.7-2            network_1.18.2       statnet.common_4.9.0
+> [5] msm_1.7.1            MASS_7.3-60.0.1     
+> 
+> loaded via a namespace (and not attached):
+> [1] vctrs_0.6.2        cli_3.6.1          rlang_1.1.1        generics_0.1.3    
+> [5] jsonlite_1.8.4     glue_1.6.2         colorspace_2.1-0   scales_1.2.1      
+> [9] fansi_1.0.4        dlstats_0.1.7      grid_4.3.3         expm_0.999-9      
+> [13] munsell_0.5.0      tibble_3.2.1       mvtnorm_1.1-3      lifecycle_1.0.3   
+> [17] compiler_4.3.3     dplyr_1.1.2        coda_0.19-4.1      RColorBrewer_1.1-3
+> [21] pkgconfig_2.0.3    lattice_0.22-5     R6_2.5.1           tidyselect_1.2.0  
+> [25] utf8_1.2.3         splines_4.3.3      pillar_1.9.0       magrittr_2.0.3    
+> [29] Matrix_1.6-5       tools_4.3.3        gtable_0.3.3       survival_3.5-8    
+> [33] ggplot2_3.4.2     
+> R> 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From pd@|gd @end|ng |rom gm@||@com  Tue Apr  9 16:01:50 2024
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Tue, 9 Apr 2024 16:01:50 +0200
+Subject: [R] Question regarding reservoir volume and water level
+In-Reply-To: <CANTxAmJzd2n8C0a=LhJzDU6K8GFr7p6q9hXP=zcthQqvitusvw@mail.gmail.com>
+References: <CANTxAmJrvE5tHoyU1dgs0epeKrMv4tqg-R9K53CPA_TcR8sOvQ@mail.gmail.com>
+ <9155638a-7a32-4b20-bc1b-e171d72a053c@sapo.pt>
+ <DM6PR03MB5049C4C70B571CD3DD9B25F2E2012@DM6PR03MB5049.namprd03.prod.outlook.com>
+ <009101da892d$93a3cc50$baeb64f0$@gmail.com>
+ <CANTxAmJzd2n8C0a=LhJzDU6K8GFr7p6q9hXP=zcthQqvitusvw@mail.gmail.com>
+Message-ID: <D6742E57-4A8A-46DD-9F22-A85F2503A9E0@gmail.com>
+
+So, you know how to get volume for given water level. 
+
+For the reverse problem, you get in trouble because of the nonlinearity inherent in the dependence of surface area on the level. 
+
+I don't think there is a simple solution to this, save for mapping out the volume as a function of water level and solving equations for the water level using (say) uniroot(). Which may actually suffice for practical purposes.
+
+For small changes, finding the derivative of the relation is easy: d(volume) = Area * d(level) and this can be used as an approximate relation as long as the Area remains nearly constant. 
+
+However generic questions like doubling the volume are impossible to answer without knowledge of the reservoir shape. E.g. in a cylindrical reservoir halving the water level also halves the volume, but in a conical reservoir, halving the level leaves only 1/8 of the volume.
+
+-pd
+
+
+
+> On 8 Apr 2024, at 05:55 , javad bayat <j.bayat194 at gmail.com> wrote:
+> 
+> Dear all;
+> Many thanks for your replies. This was not homework. I apologize.
+> Let me explain more.
+> There is a dam constructed in a valley with the highest elevation of 1255
+> m. The area of its reservoir can be calculated by drawing a polygon around
+> the water and it is known.
+> I have the Digital Elevation Model (DEM) of the region (reservoir and its
+> surrounding area). I have calculated the volume of the current reservoir
+> (7e6 m3) using the following codes.
+> library(raster)
+> library(terra)
+> library(exactextractr)
+> library(dplyr)
+> library(sf)
+> # Calculate volume for polygon
+> # Read the DEM raster file
+> r <- rast("E:/...DEM.tif")
+> # Read the polygon shapefile
+> p <- st_read("E:/...Dam.shp")
+> 
+> r <- crop(r, extent(p))
+> r <- mask(r, p)
+> 
+> # Extract the cells in each polygon and calculate the area of each cell
+> x <- exact_extract(r, p, coverage_area = TRUE)
+> # Extract polygon values as a dataframe
+> x1 = as.data.frame(x[1])
+> head(x1)
+> x1 = na.omit(x1)
+> # Calculate the height above the minimum elevation in the polygon
+> x1$Height = max(x1[,1]) - x1[,1]
+> # Calculate the volume of each cell
+> x1$Vol = x1[,2] * x1[,3]
+> sum(x1$Vol)
+> x2 = x1[,c(1,2,4)]
+> x2 = sort(x2,'value')
+> head(x2)
+> x3 <- aggregate(Vol ~ value, data = x2, FUN = sum)
+> x4 <- aggregate(coverage_area ~ value, data = x2, FUN = sum)
+> x5 = cbind(x3, Area = x4[,2])
+> library(dplyr)
+> x6 <- x5 %>%
+>  mutate(V_sum = cumsum(Vol)) %>%
+>  mutate(A_sum = cumsum(Area))
+> plot(x6$value~x6$V_sum)
+> 
+> And I thought that it is possible to get the elevation for a specific
+> volume by linear model between elevation and volume, as follow:
+> 
+> # Get a linear model between elevation and the volume
+> lm1 <- lm(value ~ V_sum, data = x6)
+> d <- data.frame(V_sum = 14e6)  #
+> predict(lm1, newdata = d)
+> 
+> But it is not possible through the LM.
+> Now I want to know what would be the water level in the reservoir if the
+> reservoir volume doubled or we adding a known volume to it?
+> Also what would be the volume if the water level increases to 1250 m?
+> 
+> I would be more than happy if you help me to do this.
+> Sincerely
+> 
+> On Mon, Apr 8, 2024 at 12:23?AM <avi.e.gross at gmail.com> wrote:
+> 
+>> John,
+>> 
+>> Your reaction was what my original reaction was until I realized I had to
+>> find out what a DEM file was and that contains enough of the kind of
+>> depth-dimension data you describe albeit what may be a very irregular cross
+>> section to calculate for areas and thence volumes.
+>> 
+>> If I read it correctly, this can be a very real-world problem worthy of a
+>> solution, such as in places like California where they had a tad more rain
+>> than usual and some reservoirs may overflow. Someone else provided what
+>> sounds like a mathematical algorithm but my guess is what is needed here is
+>> perhaps less analytic since there may be no trivial way to create formulas
+>> and take integrals and so on, but simply an approximate way to calculate
+>> incremental volumes for each horizontal "slice" and keep adding or
+>> subtracting them till you reach a target and then read off another variable
+>> at that point such as depth.
+>> 
+>> Some care must be taken as water level has to be relative to something and
+>> many natural reservoirs have no unique bottom level. Some water may also be
+>> stored underground and to the side and pour in if the level lowers or can
+>> be
+>> used to escape if the level rises.
+>> 
+>> 
+>> -----Original Message-----
+>> From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+>> Sent: Sunday, April 7, 2024 3:08 PM
+>> To: Rui Barradas <ruipbarradas at sapo.pt>; javad bayat <j.bayat194 at gmail.com
+>>> ;
+>> R-help <R-help at r-project.org>
+>> Subject: Re: [R] Question regarding reservoir volume and water level
+>> 
+>> Aside from the fact that the original question might well be a class
+>> exercise (or homework), the question is unanswerable given the data given
+>> by
+>> the original poster. One needs to know the dimensions of the reservoir,
+>> above and below the current waterline. Are the sides, above and below the
+>> waterline smooth? Is the region currently above the waterline that can
+>> store
+>> water a mirror image of the region below the waterline? Is the region above
+>> the reservoir include a flood plane? Will the additional water go into the
+>> flood plane?
+>> 
+>> The lack of required detail in the question posed by the original poster
+>> suggests that there are strong assumptions, assumptions that typically
+>> would
+>> be made in a class-room example or exercise.
+>> 
+>> John
+>> 
+>> John David Sorkin M.D., Ph.D.
+>> Professor of Medicine, University of Maryland School of Medicine;
+>> Associate Director for Biostatistics and Informatics, Baltimore VA Medical
+>> Center Geriatrics Research, Education, and Clinical Center;
+>> PI Biostatistics and Informatics Core, University of Maryland School of
+>> Medicine Claude D. Pepper Older Americans Independence Center;
+>> Senior Statistician University of Maryland Center for Vascular Research;
+>> 
+>> Division of Gerontology and Paliative Care,
+>> 10 North Greene Street
+>> GRECC (BT/18/GR)
+>> Baltimore, MD 21201-1524
+>> Cell phone 443-418-5382
+>> 
+>> 
+>> 
+>> 
+>> ________________________________________
+>> From: R-help <r-help-bounces at r-project.org> on behalf of Rui Barradas
+>> <ruipbarradas at sapo.pt>
+>> Sent: Sunday, April 7, 2024 10:53 AM
+>> To: javad bayat; R-help
+>> Subject: Re: [R] Question regarding reservoir volume and water level
+>> 
+>> ?s 13:27 de 07/04/2024, javad bayat escreveu:
+>>> Dear all;
+>>> I have a question about the water level of a reservoir, when the volume
+>>> changed or doubled.
+>>> There is a DEM file with the highest elevation 1267 m. The lowest
+>> elevation
+>>> is 1230 m. The current volume of the reservoir is 7,000,000 m3 at 1240 m.
+>>> Now I want to know what would be the water level if the volume rises to
+>>> 1250 m? or what would be the water level if the volume doubled
+>> (14,000,000
+>>> m3)?
+>>> 
+>>> Is there any way to write codes to do this in R?
+>>> I would be more than happy if anyone could help me.
+>>> Sincerely
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>>> 
+>> Hello,
+>> 
+>> This is a simple rule of three.
+>> If you know the level l the argument doesn't need to be named but if you
+>> know the volume v then it must be named.
+>> 
+>> 
+>> water_level <- function(l, v, level = 1240, volume = 7e6) {
+>>   if(missing(v)) {
+>>     volume * l / level
+>>   } else level * v / volume
+>> }
+>> 
+>> lev <- 1250
+>> vol <- 14e6
+>> 
+>> water_level(l = lev)
+>> #> [1] 7056452
+>> water_level(v = vol)
+>> #> [1] 2480
+>> 
+>> 
+>> Hope this helps,
+>> 
+>> Rui Barradas
+>> 
+>> 
+>> --
+>> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a
+>> presen?a de v?rus.
+>> http://www.avg.com/
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.r-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>> 
+>> 
+> 
+> -- 
+> Best Regards
+> Javad Bayat
+> M.Sc. Environment Engineering
+> Alternative Mail: bayat194 at yahoo.com
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From @zz@||n| @end|ng |rom @t@t@un|pd@|t  Tue Apr  9 16:23:35 2024
+From: @zz@||n| @end|ng |rom @t@t@un|pd@|t (Adelchi Azzalini)
+Date: Tue, 9 Apr 2024 16:23:35 +0200
+Subject: [R] CEoptim problems
+In-Reply-To: <0A9C199F-C68F-4B40-B035-EC7ECCC93829@gmail.com>
+References: <ADB924D2-5C1C-478B-9B95-E4FFCB23C179@stat.unipd.it>
+ <0A9C199F-C68F-4B40-B035-EC7ECCC93829@gmail.com>
+Message-ID: <F82FCD75-9872-4421-B26C-41047B80B3F0@stat.unipd.it>
+
+
+
+> On 9 Apr 2024, at 14:54, peter dalgaard <pdalgd at gmail.com> wrote:
+> 
+> Hi, Adelchi,
+> 
+> Depends on what you want help with... 
+> 
+> The proximate cause would seem to be that the code ought to have "is.null(A) || any(is.NA(A))", which I presume you could fairly easily fix for yourself in the package sources or even locally in an R session. Vector-valued logicals in flow control constructions have gone through an elborate deprecation process before getting turned into errors.
+
+Thanks, Peter. This has actually solved the problem.
+I should have thought about this fix.
+
+It surprises me that problems of this sort are not caught by the extensive automatic checks which a package goes through when is submitted to CRAN. Probably it happens because the only example within the CEoptim documentation is quite basic, while the more substantial examples are in the accompanying paper, but these are not checked by CRAN.
+
+Best regards,
+
+Adelchi
+
+> 
+> If the problem is how to activate a dormant maintainer and fix the issue for everyone, I don't really have a clue,  but you might consider cantacting the CRAN team.
+> 
+> Best,
+> Peter D.
+> 
+>> On 9 Apr 2024, at 12:04 , Adelchi Azzalini <azzalini at stat.unipd.it> wrote:
+>> 
+>> In the attempt to explore the usage of package CEoptim, I have run the code listed at the end of this message. This code is nothing but the one associated to example 5.7 in the main reference of the package, available at https://www.jstatsoft.org/article/view/v076i08
+>> and is included in the associated file  v76i08.R
+>> 
+>> Unfortunately, the call to CEoptim stops with error message 
+>> 
+>> Error in is.null(A) || is.na(A) : 
+>> 'length = 18' in coercion to 'logical(1)?
+>> 
+>> On 2024?04-03, I have written about this problem to 
+>> Maintainer: Benoit Liquet <b.liquet at uq.edu.au>
+>> but so far no reply has reached me. 
+>> 
+>> Could anyone help?
+>> 
+>> Best regards,
+>> 
+>> Adelchi Azzalini
+>> http://azzalini.stat.unipd.it
+>> 
+>> ////////////////////////////////////////////////////////////////////////
+>> 
+>> library(CEoptim)
+>> ## 5.7 AR(1) Model with Regime Switching
+>> set.seed(123)
+>> 
+>> sumsqrs <- function(theta, rm1, x) {
+>> N <- length(x)  #without x[0]
+>> r <- 1 + sort(rm1)  # internal end points of regimes
+>> if (r[1] == r[2]) {
+>>   # test for dupes -> invalid regime
+>>   return(Inf)
+>> }
+>>    thetas <- rep(theta, times = c(r, N) - c(1, r + 1) + 1)
+>> xhat <- c(0, head(x, -1)) * thetas
+>> ## Compute sum of squared errors
+>> sum((x - xhat)^2)
+>> }
+>> 
+>> ## Read the data from CEoptim package
+>> data("yt", package = "CEoptim")
+>> xt <- yt - c(0, yt[-300])
+>> A <- rbind(diag(3), -diag(3))
+>> b <- rep(1, 6)
+>> 
+>> res <- CEoptim(sumsqrs, f.arg = list(xt), continuous = list(mean = c(0, 0, 0), sd = rep(1,    3), conMat = A, conVec = b), discrete = list(categories = c(298L, 298L), smoothProb = 0.5),    N = 10000, rho = 0.001)
+>> 
+>> Error in is.null(A) || is.na(A) : 
+>> 'length = 18' in coercion to 'logical(1)'
+>> 
+>> R> sessionInfo()
+>> R version 4.3.3 (2024-02-29)
+>> Platform: aarch64-apple-darwin20 (64-bit)
+>> Running under: macOS Ventura 13.0
+>> 
+>> Matrix products: default
+>> BLAS:   /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRblas.0.dylib 
+>> LAPACK: /Library/Frameworks/R.framework/Versions/4.3-arm64/Resources/lib/libRlapack.dylib;  LAPACK version 3.11.0
+>> 
+>> locale:
+>> [1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+>> 
+>> time zone: Europe/Rome
+>> tzcode source: internal
+>> 
+>> attached base packages:
+>> [1] stats     utils     datasets  grDevices graphics  methods   base     
+>> 
+>> other attached packages:
+>> [1] CEoptim_1.3          sna_2.7-2            network_1.18.2       statnet.common_4.9.0
+>> [5] msm_1.7.1            MASS_7.3-60.0.1     
+>> 
+>> loaded via a namespace (and not attached):
+>> [1] vctrs_0.6.2        cli_3.6.1          rlang_1.1.1        generics_0.1.3    
+>> [5] jsonlite_1.8.4     glue_1.6.2         colorspace_2.1-0   scales_1.2.1      
+>> [9] fansi_1.0.4        dlstats_0.1.7      grid_4.3.3         expm_0.999-9      
+>> [13] munsell_0.5.0      tibble_3.2.1       mvtnorm_1.1-3      lifecycle_1.0.3   
+>> [17] compiler_4.3.3     dplyr_1.1.2        coda_0.19-4.1      RColorBrewer_1.1-3
+>> [21] pkgconfig_2.0.3    lattice_0.22-5     R6_2.5.1           tidyselect_1.2.0  
+>> [25] utf8_1.2.3         splines_4.3.3      pillar_1.9.0       magrittr_2.0.3    
+>> [29] Matrix_1.6-5       tools_4.3.3        gtable_0.3.3       survival_3.5-8    
+>> [33] ggplot2_3.4.2     
+>> R> 
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> -- 
+> Peter Dalgaard, Professor,
+> Center for Statistics, Copenhagen Business School
+> Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+> Phone: (+45)38153501
+> Office: A 4.23
+> Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+> 
+
+
+From @zz@||n| @end|ng |rom @t@t@un|pd@|t  Tue Apr  9 16:36:53 2024
+From: @zz@||n| @end|ng |rom @t@t@un|pd@|t (Adelchi Azzalini)
+Date: Tue, 9 Apr 2024 16:36:53 +0200
+Subject: [R] CEoptim problems
+In-Reply-To: <20240409132204.5b64f713@arachnoid>
+References: <ADB924D2-5C1C-478B-9B95-E4FFCB23C179@stat.unipd.it>
+ <20240409132204.5b64f713@arachnoid>
+Message-ID: <F3E1427E-2588-4BC1-B596-7BAD06CB6309@stat.unipd.it>
+
+Thanks for the suggestion, Ivan.
+
+The issue has been overcome with a simple change of the code to the form
+
+(is.null(A) || any(is.na(A))
+
+following advice from Peter Dalgard.
+
+However, I have kept a note of the R Inferno reference, for future problems.
+
+Best wishes,
+
+Adelchi
+
+
+> On 9 Apr 2024, at 12:22, Ivan Krylov <ikrylov at disroot.org> wrote:
+> 
+> ? Tue, 9 Apr 2024 12:04:26 +0200
+> Adelchi Azzalini <azzalini at stat.unipd.it> ?????:
+> 
+>> res <- CEoptim(sumsqrs, f.arg = list(xt), continuous = list(mean =
+>> c(0, 0, 0), sd = rep(1,    3), conMat = A, conVec = b), discrete =
+>> list(categories = c(298L, 298L), smoothProb = 0.5),    N = 10000, rho
+>> = 0.001)
+>> 
+>> Error in is.null(A) || is.na(A) : 
+>>  'length = 18' in coercion to 'logical(1)'
+> 
+> There is a book titled "The R Inferno" with lots of debugging tips for
+> R: https://www.burns-stat.com/documents/books/the-r-inferno/
+> 
+> Start with a traceback(). Which function gave a matrix to the ||
+> operator (which accepts only logical scalars)?
+> 
+> If traceback is not enough, use options(error = recover). Once the
+> error happens, you will be able to inspect local variables inside any
+> of the active call frames, which may help understand where did A come
+> from and why it was given to the || operator.
+> 
+> Good luck!
+> 
+> -- 
+> Best regards,
+> Ivan
+
+
+From d@v|d@@teven@ @end|ng |rom u@u@edu  Tue Apr  9 18:55:35 2024
+From: d@v|d@@teven@ @end|ng |rom u@u@edu (David Stevens)
+Date: Tue, 9 Apr 2024 16:55:35 +0000
+Subject: [R] Question regarding reservoir volume and water level
+In-Reply-To: <D6742E57-4A8A-46DD-9F22-A85F2503A9E0@gmail.com>
+References: <CANTxAmJrvE5tHoyU1dgs0epeKrMv4tqg-R9K53CPA_TcR8sOvQ@mail.gmail.com>
+ <9155638a-7a32-4b20-bc1b-e171d72a053c@sapo.pt>
+ <DM6PR03MB5049C4C70B571CD3DD9B25F2E2012@DM6PR03MB5049.namprd03.prod.outlook.com>
+ <009101da892d$93a3cc50$baeb64f0$@gmail.com>
+ <CANTxAmJzd2n8C0a=LhJzDU6K8GFr7p6q9hXP=zcthQqvitusvw@mail.gmail.com>
+ <D6742E57-4A8A-46DD-9F22-A85F2503A9E0@gmail.com>
+Message-ID: <a979f03b-0273-4428-abd0-1d75d2048d88@usu.edu>
+
+Water engineer here. The standard approach is to 1) get the storage vs. 
+elevation data from the designers of the reservoir or, barring that, 2) 
+get the bathymetry data from USBR or state DWR, or, if available, get 
+the DEM data from USGS if the survey was done before the reservoir was 
+built or 3) get a boat+sonar with GPS? +lots of time and survey the 
+bottom elevation yourself. Put the xyz data into ArcGIS and have it 
+create the bottom surface, then, with several elevations, integrate the 
+xyz data from Z to the bottom to find the storage. Plot the storage at 
+each water surface to get an idea of the shape and then use 
+lm(Elevation~f(Storage) where f(Storage) may be a cubic or quartic 
+polynomial. Then double the Storage and calculate Elevation. This type 
+of thing is done everyday by hydrologists.
+
+Good luck
+
+David K Stevens, PhD, PE, Professor
+Civil and Environmental Engineering
+Utah Water Research Laboratory
+Utah State University
+8200 Old Main Hill
+Logan, UT 84322-8200
+david.stevens at usu.edu
+(435) 797-3229 (office)
+
+On 4/9/2024 8:01 AM, peter dalgaard wrote:
+> So, you know how to get volume for given water level.
+>
+> For the reverse problem, you get in trouble because of the nonlinearity inherent in the dependence of surface area on the level.
+>
+> I don't think there is a simple solution to this, save for mapping out the volume as a function of water level and solving equations for the water level using (say) uniroot(). Which may actually suffice for practical purposes.
+>
+> For small changes, finding the derivative of the relation is easy: d(volume) = Area * d(level) and this can be used as an approximate relation as long as the Area remains nearly constant.
+>
+> However generic questions like doubling the volume are impossible to answer without knowledge of the reservoir shape. E.g. in a cylindrical reservoir halving the water level also halves the volume, but in a conical reservoir, halving the level leaves only 1/8 of the volume.
+>
+> -pd
+>
+>
+>
+>> On 8 Apr 2024, at 05:55 , javad bayat <j.bayat194 at gmail.com> wrote:
+>>
+>> Dear all;
+>> Many thanks for your replies. This was not homework. I apologize.
+>> Let me explain more.
+>> There is a dam constructed in a valley with the highest elevation of 1255
+>> m. The area of its reservoir can be calculated by drawing a polygon around
+>> the water and it is known.
+>> I have the Digital Elevation Model (DEM) of the region (reservoir and its
+>> surrounding area). I have calculated the volume of the current reservoir
+>> (7e6 m3) using the following codes.
+>> library(raster)
+>> library(terra)
+>> library(exactextractr)
+>> library(dplyr)
+>> library(sf)
+>> # Calculate volume for polygon
+>> # Read the DEM raster file
+>> r <- rast("E:/...DEM.tif")
+>> # Read the polygon shapefile
+>> p <- st_read("E:/...Dam.shp")
+>>
+>> r <- crop(r, extent(p))
+>> r <- mask(r, p)
+>>
+>> # Extract the cells in each polygon and calculate the area of each cell
+>> x <- exact_extract(r, p, coverage_area = TRUE)
+>> # Extract polygon values as a dataframe
+>> x1 = as.data.frame(x[1])
+>> head(x1)
+>> x1 = na.omit(x1)
+>> # Calculate the height above the minimum elevation in the polygon
+>> x1$Height = max(x1[,1]) - x1[,1]
+>> # Calculate the volume of each cell
+>> x1$Vol = x1[,2] * x1[,3]
+>> sum(x1$Vol)
+>> x2 = x1[,c(1,2,4)]
+>> x2 = sort(x2,'value')
+>> head(x2)
+>> x3 <- aggregate(Vol ~ value, data = x2, FUN = sum)
+>> x4 <- aggregate(coverage_area ~ value, data = x2, FUN = sum)
+>> x5 = cbind(x3, Area = x4[,2])
+>> library(dplyr)
+>> x6 <- x5 %>%
+>>   mutate(V_sum = cumsum(Vol)) %>%
+>>   mutate(A_sum = cumsum(Area))
+>> plot(x6$value~x6$V_sum)
+>>
+>> And I thought that it is possible to get the elevation for a specific
+>> volume by linear model between elevation and volume, as follow:
+>>
+>> # Get a linear model between elevation and the volume
+>> lm1 <- lm(value ~ V_sum, data = x6)
+>> d <- data.frame(V_sum = 14e6)  #
+>> predict(lm1, newdata = d)
+>>
+>> But it is not possible through the LM.
+>> Now I want to know what would be the water level in the reservoir if the
+>> reservoir volume doubled or we adding a known volume to it?
+>> Also what would be the volume if the water level increases to 1250 m?
+>>
+>> I would be more than happy if you help me to do this.
+>> Sincerely
+>>
+>> On Mon, Apr 8, 2024 at 12:23?AM <avi.e.gross at gmail.com> wrote:
+>>
+>>> John,
+>>>
+>>> Your reaction was what my original reaction was until I realized I had to
+>>> find out what a DEM file was and that contains enough of the kind of
+>>> depth-dimension data you describe albeit what may be a very irregular cross
+>>> section to calculate for areas and thence volumes.
+>>>
+>>> If I read it correctly, this can be a very real-world problem worthy of a
+>>> solution, such as in places like California where they had a tad more rain
+>>> than usual and some reservoirs may overflow. Someone else provided what
+>>> sounds like a mathematical algorithm but my guess is what is needed here is
+>>> perhaps less analytic since there may be no trivial way to create formulas
+>>> and take integrals and so on, but simply an approximate way to calculate
+>>> incremental volumes for each horizontal "slice" and keep adding or
+>>> subtracting them till you reach a target and then read off another variable
+>>> at that point such as depth.
+>>>
+>>> Some care must be taken as water level has to be relative to something and
+>>> many natural reservoirs have no unique bottom level. Some water may also be
+>>> stored underground and to the side and pour in if the level lowers or can
+>>> be
+>>> used to escape if the level rises.
+>>>
+>>>
+>>> -----Original Message-----
+>>> From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+>>> Sent: Sunday, April 7, 2024 3:08 PM
+>>> To: Rui Barradas <ruipbarradas at sapo.pt>; javad bayat <j.bayat194 at gmail.com
+>>>> ;
+>>> R-help <R-help at r-project.org>
+>>> Subject: Re: [R] Question regarding reservoir volume and water level
+>>>
+>>> Aside from the fact that the original question might well be a class
+>>> exercise (or homework), the question is unanswerable given the data given
+>>> by
+>>> the original poster. One needs to know the dimensions of the reservoir,
+>>> above and below the current waterline. Are the sides, above and below the
+>>> waterline smooth? Is the region currently above the waterline that can
+>>> store
+>>> water a mirror image of the region below the waterline? Is the region above
+>>> the reservoir include a flood plane? Will the additional water go into the
+>>> flood plane?
+>>>
+>>> The lack of required detail in the question posed by the original poster
+>>> suggests that there are strong assumptions, assumptions that typically
+>>> would
+>>> be made in a class-room example or exercise.
+>>>
+>>> John
+>>>
+>>> John David Sorkin M.D., Ph.D.
+>>> Professor of Medicine, University of Maryland School of Medicine;
+>>> Associate Director for Biostatistics and Informatics, Baltimore VA Medical
+>>> Center Geriatrics Research, Education, and Clinical Center;
+>>> PI Biostatistics and Informatics Core, University of Maryland School of
+>>> Medicine Claude D. Pepper Older Americans Independence Center;
+>>> Senior Statistician University of Maryland Center for Vascular Research;
+>>>
+>>> Division of Gerontology and Paliative Care,
+>>> 10 North Greene Street
+>>> GRECC (BT/18/GR)
+>>> Baltimore, MD 21201-1524
+>>> Cell phone 443-418-5382
+>>>
+>>>
+>>>
+>>>
+>>> ________________________________________
+>>> From: R-help <r-help-bounces at r-project.org> on behalf of Rui Barradas
+>>> <ruipbarradas at sapo.pt>
+>>> Sent: Sunday, April 7, 2024 10:53 AM
+>>> To: javad bayat; R-help
+>>> Subject: Re: [R] Question regarding reservoir volume and water level
+>>>
+>>> ?s 13:27 de 07/04/2024, javad bayat escreveu:
+>>>> Dear all;
+>>>> I have a question about the water level of a reservoir, when the volume
+>>>> changed or doubled.
+>>>> There is a DEM file with the highest elevation 1267 m. The lowest
+>>> elevation
+>>>> is 1230 m. The current volume of the reservoir is 7,000,000 m3 at 1240 m.
+>>>> Now I want to know what would be the water level if the volume rises to
+>>>> 1250 m? or what would be the water level if the volume doubled
+>>> (14,000,000
+>>>> m3)?
+>>>>
+>>>> Is there any way to write codes to do this in R?
+>>>> I would be more than happy if anyone could help me.
+>>>> Sincerely
+>>>>
+>>>>
+>>>>
+>>>>
+>>>>
+>>>>
+>>>>
+>>>>
+>>> Hello,
+>>>
+>>> This is a simple rule of three.
+>>> If you know the level l the argument doesn't need to be named but if you
+>>> know the volume v then it must be named.
+>>>
+>>>
+>>> water_level <- function(l, v, level = 1240, volume = 7e6) {
+>>>    if(missing(v)) {
+>>>      volume * l / level
+>>>    } else level * v / volume
+>>> }
+>>>
+>>> lev <- 1250
+>>> vol <- 14e6
+>>>
+>>> water_level(l = lev)
+>>> #> [1] 7056452
+>>> water_level(v = vol)
+>>> #> [1] 2480
+>>>
+>>>
+>>> Hope this helps,
+>>>
+>>> Rui Barradas
+>>>
+>>>
+>>> --
+>>> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a
+>>> presen?a de v?rus.
+>>> http://www.avg.com/
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> http://www.r-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>>
+>> -- 
+>> Best Regards
+>> Javad Bayat
+>> M.Sc. Environment Engineering
+>> Alternative Mail: bayat194 at yahoo.com
+>>
+>> 	[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+From |@urentrhe|p @end|ng |rom |ree@|r  Tue Apr  9 19:48:51 2024
+From: |@urentrhe|p @end|ng |rom |ree@|r (laurentRhelp)
+Date: Tue, 9 Apr 2024 19:48:51 +0200
+Subject: [R] cpgram: confidence band with a chirp signal
+Message-ID: <c177eeec-5f6a-480b-ae21-41d1b0ba9c31@free.fr>
+
+Dear RHelp-list,
+
+ ?? I generate a swept sine signal using the signal library. I can see 
+using the spec.pgram command that the spectrum of this signal is white. 
+But when I am calculating the cumulative periodogram using the command 
+cpgram the process doesn't stay inside the confidence band (cf. code 
+below). I missed something.
+
+May you please explain to me why the process don not stay inside the 
+confidence band ?
+
+Thank you
+
+Laurent
+
+
+library(signal)
+
+t1 <- 2
+f0 <- 0
+f1 <- 15000
+Fs <- 44100
+Ts <- 1/Fs
+t <- seq(0,t1-Ts,by=Ts)
+y <- signal::chirp(t=t,f0=f0,t1=t1,f1=f1
+ ?????????????????? ,form="linear")
+y.ts <- ts(y,frequency=Fs,start=0)
+par( mfrow=c(1,2))
+spec.pgram(y.ts)
+cpgram(y.ts)
+
+
+From r@hep@rd @end|ng |rom @pp|-eco@y@@com  Tue Apr  9 19:58:43 2024
+From: r@hep@rd @end|ng |rom @pp|-eco@y@@com (Rich Shepard)
+Date: Tue, 9 Apr 2024 10:58:43 -0700 (PDT)
+Subject: [R] Building R-4,3,3 fails
+In-Reply-To: <20240409085617.2ae6bdb1@Tarkus>
+References: <2d4e6da0-bc51-4cab-8b84-f7631744b17@appl-ecosys.com>
+ <20240408213859.78c94c34@Tarkus>
+ <7a7ddee-5da4-a48-f5c-328436577d6@appl-ecosys.com>
+ <20240408222732.1a4b3be4@parabola>
+ <9d3127ec-f236-adf-765d-96d65a2b60ec@appl-ecosys.com>
+ <20240409085617.2ae6bdb1@Tarkus>
+Message-ID: <806a3233-15fd-c985-9ae9-6f665d6fdc9@appl-ecosys.com>
+
+On Tue, 9 Apr 2024, Ivan Krylov wrote:
+
+> At this point in the build, R already exists, is quite operable and
+> even has all the recommended packages installed. The build system then
+> uses this freshly compiled R to run Sweave on the vignettes. Let me
+> break the build in a similar manner and see what happens:
+
+Ivan,
+
+The R.SlackBuild script does not install a package unless the build
+compeletes with exit code 0. Because building the vignettes failed it exited
+with a non-0 exit code and is not installed. This is standard
+SlackBuilds.org practice for non-core packages.
+
+I could send you the build script off the mail list, but like all linux
+distros each has a reason for building packages as they do.
+
+Thanks,
+
+Rich
+
+
+From |kry|ov @end|ng |rom d|@root@org  Tue Apr  9 20:34:16 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 9 Apr 2024 21:34:16 +0300
+Subject: [R] Building R-4,3,3 fails
+In-Reply-To: <806a3233-15fd-c985-9ae9-6f665d6fdc9@appl-ecosys.com>
+References: <2d4e6da0-bc51-4cab-8b84-f7631744b17@appl-ecosys.com>
+ <20240408213859.78c94c34@Tarkus>
+ <7a7ddee-5da4-a48-f5c-328436577d6@appl-ecosys.com>
+ <20240408222732.1a4b3be4@parabola>
+ <9d3127ec-f236-adf-765d-96d65a2b60ec@appl-ecosys.com>
+ <20240409085617.2ae6bdb1@Tarkus>
+ <806a3233-15fd-c985-9ae9-6f665d6fdc9@appl-ecosys.com>
+Message-ID: <20240409213416.7fed08c8@parabola>
+
+? Tue, 9 Apr 2024 10:58:43 -0700 (PDT)
+Rich Shepard <rshepard at appl-ecosys.com> ?????:
+
+> The R.SlackBuild script does not install a package unless the build
+> compeletes with exit code 0.
+
+That's fine, R will run straight from the build directory. It has to do
+so in order to compile the vignettes.
+
+But let's skip this step. Here's reshape.tex from R-4.3.3:
+https://0x0.st/XidU.tex/reshape.tex
+
+(Feel free to inspect the plain text before running LaTeX on it. TeX
+has primitives that may execute arbitrary commands.)
+
+If you run texi2pdf -V reshape.tex on your system, does it break in a
+similar manner? What about pdflatex reshape.tex?
+
+-- 
+Best regards,
+Ivan
+
+
+From r@hep@rd @end|ng |rom @pp|-eco@y@@com  Tue Apr  9 20:43:49 2024
+From: r@hep@rd @end|ng |rom @pp|-eco@y@@com (Rich Shepard)
+Date: Tue, 9 Apr 2024 11:43:49 -0700 (PDT)
+Subject: [R] Building R-4,3,3 fails
+In-Reply-To: <20240409213416.7fed08c8@parabola>
+References: <2d4e6da0-bc51-4cab-8b84-f7631744b17@appl-ecosys.com>
+ <20240408213859.78c94c34@Tarkus>
+ <7a7ddee-5da4-a48-f5c-328436577d6@appl-ecosys.com>
+ <20240408222732.1a4b3be4@parabola>
+ <9d3127ec-f236-adf-765d-96d65a2b60ec@appl-ecosys.com>
+ <20240409085617.2ae6bdb1@Tarkus>
+ <806a3233-15fd-c985-9ae9-6f665d6fdc9@appl-ecosys.com>
+ <20240409213416.7fed08c8@parabola>
+Message-ID: <1dcae547-8124-9dda-c035-d4829375328@appl-ecosys.com>
+
+On Tue, 9 Apr 2024, Ivan Krylov wrote:
+
+> That's fine, R will run straight from the build directory. It has to do
+> so in order to compile the vignettes.
+
+Ivan,
+
+That's good to know. Thanks.
+
+> But let's skip this step. Here's reshape.tex from R-4.3.3:
+> https://0x0.st/XidU.tex/reshape.tex
+>
+> (Feel free to inspect the plain text before running LaTeX on it. TeX
+> has primitives that may execute arbitrary commands.)
+>
+> If you run texi2pdf -V reshape.tex on your system, does it break in a
+> similar manner? What about pdflatex reshape.tex?
+
+Will do. Busy this week, probably get back to this on the weekend.
+
+Regards,
+
+Rich
+
+
+From L@urentRHe|p @end|ng |rom |ree@|r  Tue Apr  9 20:58:21 2024
+From: L@urentRHe|p @end|ng |rom |ree@|r (Laurent Rhelp)
+Date: Tue, 9 Apr 2024 20:58:21 +0200
+Subject: [R] cpgram: confidence band with a chirp signal
+In-Reply-To: <c177eeec-5f6a-480b-ae21-41d1b0ba9c31@free.fr>
+References: <c177eeec-5f6a-480b-ae21-41d1b0ba9c31@free.fr>
+Message-ID: <fe109fc1-af51-480e-8cdf-c2091e3f8908@free.fr>
+
+I answer to myself: I have to generate my signal up to f1 = Fs/2 in 
+order to have a flat response over the entire frequency range.
+
+Le 09/04/2024 ? 19:48, laurentRhelp a ?crit?:
+> Dear RHelp-list,
+>
+> ?? I generate a swept sine signal using the signal library. I can see 
+> using the spec.pgram command that the spectrum of this signal is 
+> white. But when I am calculating the cumulative periodogram using the 
+> command cpgram the process doesn't stay inside the confidence band 
+> (cf. code below). I missed something.
+>
+> May you please explain to me why the process don not stay inside the 
+> confidence band ?
+>
+> Thank you
+>
+> Laurent
+>
+>
+> library(signal)
+>
+> t1 <- 2
+> f0 <- 0
+> f1 <- 15000
+> Fs <- 44100
+> Ts <- 1/Fs
+> t <- seq(0,t1-Ts,by=Ts)
+> y <- signal::chirp(t=t,f0=f0,t1=t1,f1=f1
+> ?????????????????? ,form="linear")
+> y.ts <- ts(y,frequency=Fs,start=0)
+> par( mfrow=c(1,2))
+> spec.pgram(y.ts)
+> cpgram(y.ts)
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+
+-- 
+Cet e-mail a ?t? v?rifi? par le logiciel antivirus d'Avast.
+www.avast.com
+
+
