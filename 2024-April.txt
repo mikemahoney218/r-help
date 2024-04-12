@@ -5675,3 +5675,445 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From mbudh|r@j@ @end|ng |rom um@@@@edu  Wed Apr 10 21:16:12 2024
+From: mbudh|r@j@ @end|ng |rom um@@@@edu (Manya Budhiraja)
+Date: Wed, 10 Apr 2024 15:16:12 -0400
+Subject: [R] seeking help with splicing in R
+Message-ID: <CAPNKbsAk9Gag2k4diGMqwKEMHo7Tu-UvvrMxAkYYFw-uqzhzHA@mail.gmail.com>
+
+Hello!
+
+I was trying to splice two wholesale price index deflators series which
+have different base years. One of them is called wpi_def_nic2004(from 2005
+to 2012), and another is called wpi_def_nic2008(from 2012 to 2019). I am
+trying to create a single series such that the base year prices are
+consistent with wpi_def_nic2008. The common year is 2012, which is used for
+starting the splicing.
+
+I would like to keep the values in the nic2008 series unchanged. The
+nic2004 starts in 2005, and I would like to make the nic2004 series
+consistent with nic2008. Moreover, I need to do this for each 2 digit
+industry. I tried the following code, *but the problem I encounter is that
+R only splices the nic2004 series only for the year 2011.* It does not
+understand from my code that it can use the spliced value of 2011 in the
+nic2004 series to go further back in the nic2004 series to splice the
+remaining values from 2005-2011. This is the code I am using:
+
+ merged <- full_join(wpi_def_nic2004,wpi_def_nic2008)
+
+merged <- merged |> group_by(IND_CD_2D) |>
+  mutate(spliced = case_when(year >= 2012 ~ def_value_nic2008,
+                             year <= 2011 ~
+
+ def_value_nic2004*(lead(def_value_nic2008)/lead(def_value_nic2004))))
+
+Thanks a lot!
+Manya
+
+	[[alternative HTML version deleted]]
+
+
+From tebert @end|ng |rom u||@edu  Thu Apr 11 14:13:06 2024
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Thu, 11 Apr 2024 12:13:06 +0000
+Subject: [R] seeking help with splicing in R
+In-Reply-To: <CAPNKbsAk9Gag2k4diGMqwKEMHo7Tu-UvvrMxAkYYFw-uqzhzHA@mail.gmail.com>
+References: <CAPNKbsAk9Gag2k4diGMqwKEMHo7Tu-UvvrMxAkYYFw-uqzhzHA@mail.gmail.com>
+Message-ID: <CH3PR22MB451495823E04A55BB102E3FACF052@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+Whatever you had as HTML was deleted. If that was data we did not get it.
+1) manipulate wpi_def_nic2004 and wpi_def_nic2008 first so that the data are compatible, then join them.
+2) The full_join statement should explicitly state the columns to join by. Using by=NULL joins by all the columns with the same name and that is risky. I might want to reuse code or I might change things and suddenly the code does not behave in the same way because I have used the default. That might be the answer: if both data frames have year as a common variable then they will be joined by year, but the years do not overlap. Look at your "merged" data frame carefully. Are you sure it is in the right format?
+3) Are you sure you want a full_join, or do you want an inner_join where you get back only industries that are in both.
+4) A stupid question: why not adjust the 2005-2012 data for inflation to "convert" base years?
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Manya Budhiraja
+Sent: Wednesday, April 10, 2024 3:16 PM
+To: r-help at r-project.org
+Subject: [R] seeking help with splicing in R
+
+[External Email]
+
+Hello!
+
+I was trying to splice two wholesale price index deflators series which have different base years. One of them is called wpi_def_nic2004(from 2005 to 2012), and another is called wpi_def_nic2008(from 2012 to 2019). I am trying to create a single series such that the base year prices are consistent with wpi_def_nic2008. The common year is 2012, which is used for starting the splicing.
+
+I would like to keep the values in the nic2008 series unchanged. The
+nic2004 starts in 2005, and I would like to make the nic2004 series consistent with nic2008. Moreover, I need to do this for each 2 digit industry. I tried the following code, *but the problem I encounter is that R only splices the nic2004 series only for the year 2011.* It does not understand from my code that it can use the spliced value of 2011 in the
+nic2004 series to go further back in the nic2004 series to splice the remaining values from 2005-2011. This is the code I am using:
+
+ merged <- full_join(wpi_def_nic2004,wpi_def_nic2008)
+
+merged <- merged |> group_by(IND_CD_2D) |>
+  mutate(spliced = case_when(year >= 2012 ~ def_value_nic2008,
+                             year <= 2011 ~
+
+ def_value_nic2004*(lead(def_value_nic2008)/lead(def_value_nic2004))))
+
+Thanks a lot!
+Manya
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Apr 11 18:35:31 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 11 Apr 2024 12:35:31 -0400
+Subject: [R] Regexp pattern but fixed replacement?
+Message-ID: <17ff868c-3e2c-4901-8214-5e8d9cdb6d03@gmail.com>
+
+I noticed this issue in stringr::str_replace, but it also affects sub() 
+in base R.
+
+If the pattern in a call to one of these needs to be a regular 
+expression, then backslashes in the replacement text are treated specially.
+
+For example,
+
+   gsub("a|b", "\\", "abcdef")
+
+gives "def", not "\\\\def" as I wanted.  To get the latter, I need to 
+escape the replacement backslashes, e.g.
+
+   gsub("a|b", "\\\\", "abcdef")
+
+which gives "\\\\cdef".
+
+I have two questions:
+
+1.  Is there a variant on sub or str_replace which allows the pattern to 
+be declared as a regular expression, but the replacement to be declared 
+as fixed?
+
+2.  To get what I want, I can double the backslashes in the replacement 
+text.  This would do that:
+
+    replacement <- gsub("\\\\", "\\\\\\\\", replacement)
+
+Are there any other special characters to worry about besides backslashes?
+
+Duncan Murdoch
+
+
+From dd|xon @end|ng |rom @wcp@com  Thu Apr 11 18:57:07 2024
+From: dd|xon @end|ng |rom @wcp@com (Dave Dixon)
+Date: Thu, 11 Apr 2024 10:57:07 -0600
+Subject: [R] Regexp pattern but fixed replacement?
+In-Reply-To: <17ff868c-3e2c-4901-8214-5e8d9cdb6d03@gmail.com>
+References: <17ff868c-3e2c-4901-8214-5e8d9cdb6d03@gmail.com>
+Message-ID: <8f76f68c-ddd3-4214-a9b2-81fc980e49e8@swcp.com>
+
+Backslashes in regex expressions in R are maddening, but they make sense.
+
+R string handling interprets your replacement string "\\" as just one 
+backslash. Your string is received by gsub as "\" - that is, just the 
+control backslash, NOT the character backslash. gsub is expecting to see 
+\0, \1, \2, or some other control starting with backslash.
+
+If you want gsub to replace with a backslash character, you have to send 
+it as "\\". In order to get two backslash characters in an R string, you 
+have to double them ALL: "\\\\".
+
+The string that is output is an R string: the backslashes are escaped 
+with a backslash, so "\\\\" really means two backslashes.
+
+There are lots of special characters in the search string, but only one 
+in the replacement string: backslash.
+
+Here's my favorite resource on this topic is 
+https://www.regular-expressions.info/replacecharacters.html
+
+
+On 4/11/24 10:35, Duncan Murdoch wrote:
+> I noticed this issue in stringr::str_replace, but it also affects 
+> sub() in base R.
+>
+> If the pattern in a call to one of these needs to be a regular 
+> expression, then backslashes in the replacement text are treated 
+> specially.
+>
+> For example,
+>
+> ? gsub("a|b", "\\", "abcdef")
+>
+> gives "def", not "\\\\def" as I wanted.? To get the latter, I need to 
+> escape the replacement backslashes, e.g.
+>
+> ? gsub("a|b", "\\\\", "abcdef")
+>
+> which gives "\\\\cdef".
+>
+> I have two questions:
+>
+> 1.? Is there a variant on sub or str_replace which allows the pattern 
+> to be declared as a regular expression, but the replacement to be 
+> declared as fixed?
+>
+> 2.? To get what I want, I can double the backslashes in the 
+> replacement text.? This would do that:
+>
+> ?? replacement <- gsub("\\\\", "\\\\\\\\", replacement)
+>
+> Are there any other special characters to worry about besides 
+> backslashes?
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Thu Apr 11 18:58:11 2024
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Thu, 11 Apr 2024 12:58:11 -0400
+Subject: [R] Regexp pattern but fixed replacement?
+In-Reply-To: <17ff868c-3e2c-4901-8214-5e8d9cdb6d03@gmail.com>
+References: <17ff868c-3e2c-4901-8214-5e8d9cdb6d03@gmail.com>
+Message-ID: <CADNULg8udxTTwNbFGJebycRRYVra-G0ryyQbM8x2oi8wDyB4Xg@mail.gmail.com>
+
+Hi Duncan,
+
+
+I only know about sub() and gsub().
+
+There is no way to have pattern be a regular expression and replacement be
+a fixed string.
+
+Backslash is the only special character in replacement. If you need a
+reference, see this file:
+https://github.com/wch/r-source/blob/04650eddd6d844963b6d7aac02bd8d13cbf440d4/src/main/grep.c
+particularly functions R_pcre_string_adj and wstring_adj. So just double
+the backslashes in replacement and you'll be good to go.
+
+On Thu, Apr 11, 2024, 12:36 Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+
+> I noticed this issue in stringr::str_replace, but it also affects sub()
+> in base R.
+>
+> If the pattern in a call to one of these needs to be a regular
+> expression, then backslashes in the replacement text are treated specially.
+>
+> For example,
+>
+>    gsub("a|b", "\\", "abcdef")
+>
+> gives "def", not "\\\\def" as I wanted.  To get the latter, I need to
+> escape the replacement backslashes, e.g.
+>
+>    gsub("a|b", "\\\\", "abcdef")
+>
+> which gives "\\\\cdef".
+>
+> I have two questions:
+>
+> 1.  Is there a variant on sub or str_replace which allows the pattern to
+> be declared as a regular expression, but the replacement to be declared
+> as fixed?
+>
+> 2.  To get what I want, I can double the backslashes in the replacement
+> text.  This would do that:
+>
+>     replacement <- gsub("\\\\", "\\\\\\\\", replacement)
+>
+> Are there any other special characters to worry about besides backslashes?
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Apr 11 19:08:41 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 11 Apr 2024 13:08:41 -0400
+Subject: [R] Regexp pattern but fixed replacement?
+In-Reply-To: <8f76f68c-ddd3-4214-a9b2-81fc980e49e8@swcp.com>
+References: <17ff868c-3e2c-4901-8214-5e8d9cdb6d03@gmail.com>
+ <8f76f68c-ddd3-4214-a9b2-81fc980e49e8@swcp.com>
+Message-ID: <a372c42e-6265-46b9-8489-679548a1c90a@gmail.com>
+
+On 11/04/2024 12:57 p.m., Dave Dixon wrote:
+> Backslashes in regex expressions in R are maddening, but they make sense.
+> 
+> R string handling interprets your replacement string "\\" as just one
+> backslash. Your string is received by gsub as "\" - that is, just the
+> control backslash, NOT the character backslash. gsub is expecting to see
+> \0, \1, \2, or some other control starting with backslash.
+> 
+> If you want gsub to replace with a backslash character, you have to send
+> it as "\\". In order to get two backslash characters in an R string, you
+> have to double them ALL: "\\\\".
+
+You can use "\\" if the pattern is declared as "fixed", via
+
+   sub("a", "\\", "abcdef", fixed = TRUE)
+
+or
+
+   stringr::str_replace("abcdef", fixed("a"), "\\")
+
+My first question was whether there is a sub-like function with a way to 
+declare the pattern as a regexp, but the replacement as fixed.  Thanks 
+for your answer to my second question.
+
+Duncan Murdoch
+
+> 
+> The string that is output is an R string: the backslashes are escaped
+> with a backslash, so "\\\\" really means two backslashes.
+> 
+> There are lots of special characters in the search string, but only one
+> in the replacement string: backslash.
+> 
+> Here's my favorite resource on this topic is
+> https://www.regular-expressions.info/replacecharacters.html
+> 
+> 
+> On 4/11/24 10:35, Duncan Murdoch wrote:
+>> I noticed this issue in stringr::str_replace, but it also affects
+>> sub() in base R.
+>>
+>> If the pattern in a call to one of these needs to be a regular
+>> expression, then backslashes in the replacement text are treated
+>> specially.
+>>
+>> For example,
+>>
+>>  ? gsub("a|b", "\\", "abcdef")
+>>
+>> gives "def", not "\\\\def" as I wanted.? To get the latter, I need to
+>> escape the replacement backslashes, e.g.
+>>
+>>  ? gsub("a|b", "\\\\", "abcdef")
+>>
+>> which gives "\\\\cdef".
+>>
+>> I have two questions:
+>>
+>> 1.? Is there a variant on sub or str_replace which allows the pattern
+>> to be declared as a regular expression, but the replacement to be
+>> declared as fixed?
+>>
+>> 2.? To get what I want, I can double the backslashes in the
+>> replacement text.? This would do that:
+>>
+>>  ?? replacement <- gsub("\\\\", "\\\\\\\\", replacement)
+>>
+>> Are there any other special characters to worry about besides
+>> backslashes?
+>>
+>> Duncan Murdoch
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Apr 11 19:11:11 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 11 Apr 2024 13:11:11 -0400
+Subject: [R] Regexp pattern but fixed replacement?
+In-Reply-To: <CADNULg8udxTTwNbFGJebycRRYVra-G0ryyQbM8x2oi8wDyB4Xg@mail.gmail.com>
+References: <17ff868c-3e2c-4901-8214-5e8d9cdb6d03@gmail.com>
+ <CADNULg8udxTTwNbFGJebycRRYVra-G0ryyQbM8x2oi8wDyB4Xg@mail.gmail.com>
+Message-ID: <f628af15-35a4-4092-bfac-6d4cfabd45ea@gmail.com>
+
+On 11/04/2024 12:58 p.m., Iris Simmons wrote:
+> Hi?Duncan,
+> 
+> 
+> I only know about sub() and gsub().
+> 
+> There is no way to have pattern be a regular expression and replacement 
+> be a fixed string.
+> 
+> Backslash is the only special character in replacement. If you need a 
+> reference, see this file:
+> https://github.com/wch/r-source/blob/04650eddd6d844963b6d7aac02bd8d13cbf440d4/src/main/grep.c <https://github.com/wch/r-source/blob/04650eddd6d844963b6d7aac02bd8d13cbf440d4/src/main/grep.c>
+> particularly functions R_pcre_string_adj and wstring_adj. So just double 
+> the backslashes in replacement and you'll be good to go.
+
+Thanks, that's what I've done.
+
+Duncan Murdoch
+
+> 
+> On Thu, Apr 11, 2024, 12:36 Duncan Murdoch <murdoch.duncan at gmail.com 
+> <mailto:murdoch.duncan at gmail.com>> wrote:
+> 
+>     I noticed this issue in stringr::str_replace, but it also affects sub()
+>     in base R.
+> 
+>     If the pattern in a call to one of these needs to be a regular
+>     expression, then backslashes in the replacement text are treated
+>     specially.
+> 
+>     For example,
+> 
+>      ? ?gsub("a|b", "\\", "abcdef")
+> 
+>     gives "def", not "\\\\def" as I wanted.? To get the latter, I need to
+>     escape the replacement backslashes, e.g.
+> 
+>      ? ?gsub("a|b", "\\\\", "abcdef")
+> 
+>     which gives "\\\\cdef".
+> 
+>     I have two questions:
+> 
+>     1.? Is there a variant on sub or str_replace which allows the
+>     pattern to
+>     be declared as a regular expression, but the replacement to be declared
+>     as fixed?
+> 
+>     2.? To get what I want, I can double the backslashes in the replacement
+>     text.? This would do that:
+> 
+>      ? ? replacement <- gsub("\\\\", "\\\\\\\\", replacement)
+> 
+>     Are there any other special characters to worry about besides
+>     backslashes?
+> 
+>     Duncan Murdoch
+> 
+>     ______________________________________________
+>     R-help at r-project.org <mailto:R-help at r-project.org> mailing list --
+>     To UNSUBSCRIBE and more, see
+>     https://stat.ethz.ch/mailman/listinfo/r-help
+>     <https://stat.ethz.ch/mailman/listinfo/r-help>
+>     PLEASE do read the posting guide
+>     http://www.R-project.org/posting-guide.html
+>     <http://www.R-project.org/posting-guide.html>
+>     and provide commented, minimal, self-contained, reproducible code.
+>
+
+
