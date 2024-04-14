@@ -6117,3 +6117,1320 @@ Duncan Murdoch
 >
 
 
+From |@go@g|ne @end|ng |rom @jd@e@  Fri Apr 12 14:15:07 2024
+From: |@go@g|ne @end|ng |rom @jd@e@ (=?iso-8859-1?Q?Iago_Gin=E9_V=E1zquez?=)
+Date: Fri, 12 Apr 2024 12:15:07 +0000
+Subject: [R] Debugging functions defined (locally) inside another functions
+Message-ID: <AM0PR02MB4420AA5EEAB875377371849994042@AM0PR02MB4420.eurprd02.prod.outlook.com>
+
+Hi all, I am trying to debug an error of a function g defined and used inside another function f of a package.
+So I have
+
+f <- function(whatever){
+   ...
+   g <- function(whatever2){
+     ...
+   }
+   ...
+}
+
+If I wanted to debug some thing directly inside f I would do debug(f). But this does not go inside g code. On the other hand, debug(g) does not work as g is not a defined function in the namespace of the package.
+
+Is there some way to debug errors inside g?
+
+Thank you in advance.
+
+All the best,
+Iago
+
+	[[alternative HTML version deleted]]
+
+
+From |@go@g|ne @end|ng |rom @jd@e@  Fri Apr 12 14:22:03 2024
+From: |@go@g|ne @end|ng |rom @jd@e@ (=?Windows-1252?Q?Iago_Gin=E9_V=E1zquez?=)
+Date: Fri, 12 Apr 2024 12:22:03 +0000
+Subject: [R] 
+ Debugging functions defined (locally) inside another functions
+In-Reply-To: <AM0PR02MB4420AA5EEAB875377371849994042@AM0PR02MB4420.eurprd02.prod.outlook.com>
+References: <AM0PR02MB4420AA5EEAB875377371849994042@AM0PR02MB4420.eurprd02.prod.outlook.com>
+Message-ID: <AM0PR02MB4420063E22452480AA3CFA8894042@AM0PR02MB4420.eurprd02.prod.outlook.com>
+
+To be precise, in the case I am looking this time f is not a function, but
+
+f <- ggplot2::ggproto(...)
+
+So debug(f) produces
+Error in debug(f) : argument must be a function
+
+Iago
+________________________________
+De: R-help <r-help-bounces at r-project.org> de part de Iago Gin? V?zquez <iago.gine at sjd.es>
+Enviat el: divendres, 12 d?abril de 2024 14:15
+Per a: r-help at r-project.org <r-help at r-project.org>
+Tema: [R] Debugging functions defined (locally) inside another functions
+
+Hi all, I am trying to debug an error of a function g defined and used inside another function f of a package.
+So I have
+
+f <- function(whatever){
+   ...
+   g <- function(whatever2){
+     ...
+   }
+   ...
+}
+
+If I wanted to debug some thing directly inside f I would do debug(f). But this does not go inside g code. On the other hand, debug(g) does not work as g is not a defined function in the namespace of the package.
+
+Is there some way to debug errors inside g?
+
+Thank you in advance.
+
+All the best,
+Iago
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Apr 12 14:38:13 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 12 Apr 2024 15:38:13 +0300
+Subject: [R] 
+ Debugging functions defined (locally) inside another functions
+In-Reply-To: <AM0PR02MB4420AA5EEAB875377371849994042@AM0PR02MB4420.eurprd02.prod.outlook.com>
+References: <AM0PR02MB4420AA5EEAB875377371849994042@AM0PR02MB4420.eurprd02.prod.outlook.com>
+Message-ID: <20240412153813.2b384e89@arachnoid>
+
+? Fri, 12 Apr 2024 12:15:07 +0000
+Iago Gin? V?zquez <iago.gine at sjd.es> ?????:
+
+> f <- function(whatever){
+>    ...
+>    g <- function(whatever2){
+>      ...
+>    }
+>    ...
+> }
+> 
+> If I wanted to debug some thing directly inside f I would do
+> debug(f). But this does not go inside g code. On the other hand,
+> debug(g) does not work as g is not a defined function in the
+> namespace of the package.
+
+Moreover, `g` doesn't exist at all until f() is evaluated and reaches
+this point. If `f` was a function, it would be possible to trace() it,
+inserting a call to debug(g) after it's created.
+
+> f <- ggplot2::ggproto(...)
+> 
+> So debug(f) produces
+> Error in debug(f) : argument must be a function
+
+Can you show more information about the call that produces `f`? Where
+does `g` come into play? Following ?ggplot2::ggproto, I can trigger the
+browser if I reach into the environment of the publicly available
+method:
+
+Adder <- ggproto(...) # from the example
+debug(environment(Adder$add)$add)
+Adder$add(1234)
+# debugging in: add(..., self = self)
+# debug ?? #3: {
+#     self$x <- self$x + n
+#     self$x
+# }
+
+-- 
+Best regards,
+Ivan
+
+
+From |@go@g|ne @end|ng |rom @jd@e@  Fri Apr 12 14:53:02 2024
+From: |@go@g|ne @end|ng |rom @jd@e@ (=?gb2312?B?SWFnbyBHaW6opiBWqKJ6cXVleg==?=)
+Date: Fri, 12 Apr 2024 12:53:02 +0000
+Subject: [R] 
+ Debugging functions defined (locally) inside another functions
+In-Reply-To: <20240412153813.2b384e89@arachnoid>
+References: <AM0PR02MB4420AA5EEAB875377371849994042@AM0PR02MB4420.eurprd02.prod.outlook.com>
+ <20240412153813.2b384e89@arachnoid>
+Message-ID: <AM0PR02MB4420C9EA577899CC58EA045094042@AM0PR02MB4420.eurprd02.prod.outlook.com>
+
+Thank you Ivan, your example solves my issue this time through
+
+debug(environment(Adder$add)$add)
+
+
+Just for the future, you say
+
+    Moreover, `g` doesn't exist at all until f() is evaluated and reaches
+    this point. If `f` was a function, it would be possible to trace() it,
+    inserting a call to debug(g) after it's created.
+
+How should I call trace() if f was a function?
+
+
+Best regards,
+Iago
+
+________________________________
+De: Ivan Krylov <ikrylov at disroot.org>
+Enviat el: divendres, 12 d??abril de 2024 14:38
+Per a: Iago Gin?? V??zquez <iago.gine at sjd.es>
+A/c: r-help at r-project.org <r-help at r-project.org>
+Tema: Re: [R] Debugging functions defined (locally) inside another functions
+
+?? Fri, 12 Apr 2024 12:15:07 +0000
+Iago Gin?? V??zquez <iago.gine at sjd.es> ??????:
+
+> f <- function(whatever){
+>    ...
+>    g <- function(whatever2){
+>      ...
+>    }
+>    ...
+> }
+>
+> If I wanted to debug some thing directly inside f I would do
+> debug(f). But this does not go inside g code. On the other hand,
+> debug(g) does not work as g is not a defined function in the
+> namespace of the package.
+
+Moreover, `g` doesn't exist at all until f() is evaluated and reaches
+this point. If `f` was a function, it would be possible to trace() it,
+inserting a call to debug(g) after it's created.
+
+> f <- ggplot2::ggproto(...)
+>
+> So debug(f) produces
+> Error in debug(f) : argument must be a function
+
+Can you show more information about the call that produces `f`? Where
+does `g` come into play? Following ?ggplot2::ggproto, I can trigger the
+browser if I reach into the environment of the publicly available
+method:
+
+Adder <- ggproto(...) # from the example
+debug(environment(Adder$add)$add)
+Adder$add(1234)
+# debugging in: add(..., self = self)
+# debug ??? #3: {
+#     self$x <- self$x + n
+#     self$x
+# }
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Fri Apr 12 15:32:17 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 12 Apr 2024 16:32:17 +0300
+Subject: [R] 
+ Debugging functions defined (locally) inside another functions
+In-Reply-To: <AM0PR02MB4420C9EA577899CC58EA045094042@AM0PR02MB4420.eurprd02.prod.outlook.com>
+References: <AM0PR02MB4420AA5EEAB875377371849994042@AM0PR02MB4420.eurprd02.prod.outlook.com>
+ <20240412153813.2b384e89@arachnoid>
+ <AM0PR02MB4420C9EA577899CC58EA045094042@AM0PR02MB4420.eurprd02.prod.outlook.com>
+Message-ID: <20240412163217.4d99204a@arachnoid>
+
+? Fri, 12 Apr 2024 12:53:02 +0000
+Iago Gin? V?zquez <iago.gine at sjd.es> ?????:
+
+> How should I call trace() if f was a function?
+
+Let the tracer be quote(debug(g)) and use as.list(body(f)) to determine
+where it should be injected:
+
+f <- function() {
+ message('exists("g") so far is ', exists('g'))
+ g <- function() {
+  flag <- TRUE
+  if (flag) stop('an error')
+ }
+ message('about to run g()')
+ g()
+}
+
+In this example, step number 4 is message("about to run g()"), so
+injecting a call to debug() before it should work:
+
+trace(f, quote(debug(g)), at = 4)
+f()
+# exists("g") so far is FALSE
+# Tracing f() step 4 # <-- at this point debug(g) is run
+# about to run g()
+# debugging in: g()
+# debug at #3: {
+#    flag <- TRUE
+#     if (flag)
+#         stop("an error")
+# }
+
+help(trace) has an extensive example showing how to use it for many
+similar purposes.
+
+-- 
+Best regards,
+Ivan
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Apr 12 15:36:00 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 12 Apr 2024 09:36:00 -0400
+Subject: [R] 
+ Debugging functions defined (locally) inside another functions
+In-Reply-To: <AM0PR02MB4420AA5EEAB875377371849994042@AM0PR02MB4420.eurprd02.prod.outlook.com>
+References: <AM0PR02MB4420AA5EEAB875377371849994042@AM0PR02MB4420.eurprd02.prod.outlook.com>
+Message-ID: <4110467b-3405-4c52-90ce-93c63546a2c9@gmail.com>
+
+On 12/04/2024 8:15 a.m., Iago Gin? V?zquez wrote:
+> Hi all, I am trying to debug an error of a function g defined and used inside another function f of a package.
+> So I have
+> 
+> f <- function(whatever){
+>     ...
+>     g <- function(whatever2){
+>       ...
+>     }
+>     ...
+> }
+> 
+> If I wanted to debug some thing directly inside f I would do debug(f). But this does not go inside g code. On the other hand, debug(g) does not work as g is not a defined function in the namespace of the package.
+> 
+> Is there some way to debug errors inside g?
+
+The easiest case is if you have access to the source code.  Just put a 
+browser() statement at the start of g, i.e. change it to
+
+      g <- function(whatever2){
+        browser()
+        ...
+      }
+
+and it will break very similarly to what happens if you have set debug(g).
+
+Another possibility if you have the source but don't want to edit it is 
+to use trace.  Suppose that the definition of g is in source.R at lines 
+100 to 120.  Then you can run
+
+   setBreakpoint("source.R#101")
+
+to set a breakpoint via trace() just before line 101 runs.  trace() has 
+lots of options; it can just print things, or call browser(), etc.  They 
+are available in setBreakpoint().
+
+If you are executing code from a package and you don't have the source 
+handy it's a bit tedious, but you can still do the search that 
+setBreakpoint() does to find the source.  For example, let's set a 
+breakpoint just before the print statement in g in this example:
+
+  f <- function() {
+    g <- function() {
+      print("this is g")
+    }
+    print("this is f")
+    g()
+  }
+
+You need to find the location of that line in f.  Look at as.list(body(f)):
+
+ > as.list(body(f))
+[[1]]
+`{`
+
+[[2]]
+g <- function() {
+     print("this is g")
+}
+
+[[3]]
+print("this is f")
+
+[[4]]
+g()
+
+So we need to look within entry 2:
+
+ > as.list(body(f)[[2]])
+[[1]]
+`<-`
+
+[[2]]
+g
+
+[[3]]
+function() {
+     print("this is g")
+}
+
+Continue drilling down:
+
+ > as.list(body(f)[[c(2,3)]])
+[[1]]
+`function`
+
+[[2]]
+NULL
+
+[[3]]
+{
+     print("this is g")
+}
+
+[[4]]
+function() {
+      print("this is g")
+    }
+
+ > as.list(body(f)[[c(2,3, 3)]])
+[[1]]
+`{`
+
+[[2]]
+print("this is g")
+
+So now we know the print statement is at location c(2,3,3,2).  Set a 
+browser call there:
+
+ > trace(f, at=list(c(2,3,3,2)), tracer = quote(browser()))
+[1] "f"
+ > body(f)
+{
+     g <- function() {
+         {
+             .doTrace(browser(), "step 2,3,3,2")
+             print("this is g")
+         }
+     }
+     print("this is f")
+     g()
+}
+
+Note that the "at" argument needs to be a list to drill down; if you 
+just said at=c(2,3,3,2) it would set breakpoints at step 2 and 3.
+
+Duncan Murdoch
+
+
+From |@go@g|ne @end|ng |rom @jd@e@  Fri Apr 12 19:08:41 2024
+From: |@go@g|ne @end|ng |rom @jd@e@ (=?Windows-1252?Q?Iago_Gin=E9_V=E1zquez?=)
+Date: Fri, 12 Apr 2024 17:08:41 +0000
+Subject: [R] 
+ Debugging functions defined (locally) inside another functions
+In-Reply-To: <4110467b-3405-4c52-90ce-93c63546a2c9@gmail.com>
+References: <AM0PR02MB4420AA5EEAB875377371849994042@AM0PR02MB4420.eurprd02.prod.outlook.com>
+ <4110467b-3405-4c52-90ce-93c63546a2c9@gmail.com>
+Message-ID: <AM0PR02MB442037EEE4BC6A035337B22E94042@AM0PR02MB4420.eurprd02.prod.outlook.com>
+
+Thanks a lot both Duncan and Ivan,
+
+I will keep that example in mind, Duncan, great!
+
+Best  regards,
+Iago
+
+________________________________
+De: Duncan Murdoch <murdoch.duncan at gmail.com>
+Enviat el: divendres, 12 d?abril de 2024 15:36
+Per a: Iago Gin? V?zquez <iago.gine at sjd.es>; r-help at r-project.org <r-help at r-project.org>
+Tema: Re: [R] Debugging functions defined (locally) inside another functions
+
+On 12/04/2024 8:15 a.m., Iago Gin? V?zquez wrote:
+> Hi all, I am trying to debug an error of a function g defined and used inside another function f of a package.
+> So I have
+>
+> f <- function(whatever){
+>     ...
+>     g <- function(whatever2){
+>       ...
+>     }
+>     ...
+> }
+>
+> If I wanted to debug some thing directly inside f I would do debug(f). But this does not go inside g code. On the other hand, debug(g) does not work as g is not a defined function in the namespace of the package.
+>
+> Is there some way to debug errors inside g?
+
+The easiest case is if you have access to the source code.  Just put a
+browser() statement at the start of g, i.e. change it to
+
+      g <- function(whatever2){
+        browser()
+        ...
+      }
+
+and it will break very similarly to what happens if you have set debug(g).
+
+Another possibility if you have the source but don't want to edit it is
+to use trace.  Suppose that the definition of g is in source.R at lines
+100 to 120.  Then you can run
+
+   setBreakpoint("source.R#101")
+
+to set a breakpoint via trace() just before line 101 runs.  trace() has
+lots of options; it can just print things, or call browser(), etc.  They
+are available in setBreakpoint().
+
+If you are executing code from a package and you don't have the source
+handy it's a bit tedious, but you can still do the search that
+setBreakpoint() does to find the source.  For example, let's set a
+breakpoint just before the print statement in g in this example:
+
+  f <- function() {
+    g <- function() {
+      print("this is g")
+    }
+    print("this is f")
+    g()
+  }
+
+You need to find the location of that line in f.  Look at as.list(body(f)):
+
+ > as.list(body(f))
+[[1]]
+`{`
+
+[[2]]
+g <- function() {
+     print("this is g")
+}
+
+[[3]]
+print("this is f")
+
+[[4]]
+g()
+
+So we need to look within entry 2:
+
+ > as.list(body(f)[[2]])
+[[1]]
+`<-`
+
+[[2]]
+g
+
+[[3]]
+function() {
+     print("this is g")
+}
+
+Continue drilling down:
+
+ > as.list(body(f)[[c(2,3)]])
+[[1]]
+`function`
+
+[[2]]
+NULL
+
+[[3]]
+{
+     print("this is g")
+}
+
+[[4]]
+function() {
+      print("this is g")
+    }
+
+ > as.list(body(f)[[c(2,3, 3)]])
+[[1]]
+`{`
+
+[[2]]
+print("this is g")
+
+So now we know the print statement is at location c(2,3,3,2).  Set a
+browser call there:
+
+ > trace(f, at=list(c(2,3,3,2)), tracer = quote(browser()))
+[1] "f"
+ > body(f)
+{
+     g <- function() {
+         {
+             .doTrace(browser(), "step 2,3,3,2")
+             print("this is g")
+         }
+     }
+     print("this is f")
+     g()
+}
+
+Note that the "at" argument needs to be a list to drill down; if you
+just said at=c(2,3,3,2) it would set breakpoints at step 2 and 3.
+
+Duncan Murdoch
+
+	[[alternative HTML version deleted]]
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Fri Apr 12 21:52:28 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Fri, 12 Apr 2024 15:52:28 -0400
+Subject: [R] any and all
+Message-ID: <013601da8d12$f36a2b00$da3e8100$@gmail.com>
+
+Base R has generic functions called any() and all() that I am having trouble
+using.
+ 
+It works fine when I play with it in a base R context as in:
+ 
+> all(any(TRUE, TRUE), any(TRUE, FALSE))
+[1] TRUE
+> all(any(TRUE, TRUE), any(FALSE, FALSE))
+[1] FALSE
+ 
+But in a tidyverse/dplyr environment, it returns wrong answers.
+ 
+Consider this example. I have data I have joined together with pairs of
+columns representing a first generation and several other pairs representing
+additional generations. I want to consider any pair where at least one of
+the pair is not NA as a success. But in order to keep the entire row, I want
+all three pairs to have some valid data. This seems like a fairly common
+reasonable thing often needed when evaluating data.
+ 
+So to make it very general, I chose to do something a bit like this:
+ 
+result <- filter(mydata,
+                 all(
+                   any(!is.na(first.a), !is.na(first.b)),
+                   any(!is.na(second.a), !is.na(second.b)),
+                   any(!is.na(third.a), !is.na(third.b))))
+ 
+I apologize if the formatting is not seen properly. The above logically
+should work. And it should be extendable to scenarios where you want at
+least one of M columns to contain data as a group with N such groups of any
+size.
+ 
+But since it did not work, I tried a plan that did work and feels silly. I
+used mutate() to make new columns such as:
+ 
+result <-
+  mydata |>
+  mutate(
+    usable.1 = (!is.na(first.a) | !is.na(first.b)),
+    usable.2 = (!is.na(second.a) | !is.na(second.b)),
+    usable.3 = (!is.na(third.a) | !is.na(third.b)),
+    usable = (usable.1 & usable.2 & usable.3)
+  ) |>
+  filter(usable == TRUE)
+ 
+The above wastes time and effort making new columns so I can check the
+calculations then uses the combined columns to make a Boolean that can be
+used to filter the result.
+ 
+I know this is not the place to discuss dplyr. I want to check first if I am
+doing anything wrong in how I use any/all. One guess is that the generic is
+messed with by dplyr or other packages I libraried.
+ 
+And, of course, some aspects of delayed evaluation can interfere in subtle
+ways.
+ 
+I note I have had other problems with these base R functions before and
+generally solved them by not using them, as shown above. I would much rather
+use them, or something similar.
+ 
+ 
+Avi
+ 
+ 
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Apr 12 23:59:33 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Fri, 12 Apr 2024 17:59:33 -0400
+Subject: [R] any and all
+In-Reply-To: <013601da8d12$f36a2b00$da3e8100$@gmail.com>
+References: <013601da8d12$f36a2b00$da3e8100$@gmail.com>
+Message-ID: <a81ec2d7-817d-4b2c-ab66-e09a13c8dbc1@gmail.com>
+
+On 12/04/2024 3:52 p.m., avi.e.gross at gmail.com wrote:
+> Base R has generic functions called any() and all() that I am having trouble
+> using.
+>   
+> It works fine when I play with it in a base R context as in:
+>   
+>> all(any(TRUE, TRUE), any(TRUE, FALSE))
+> [1] TRUE
+>> all(any(TRUE, TRUE), any(FALSE, FALSE))
+> [1] FALSE
+>   
+> But in a tidyverse/dplyr environment, it returns wrong answers.
+>   
+> Consider this example. I have data I have joined together with pairs of
+> columns representing a first generation and several other pairs representing
+> additional generations. I want to consider any pair where at least one of
+> the pair is not NA as a success. But in order to keep the entire row, I want
+> all three pairs to have some valid data. This seems like a fairly common
+> reasonable thing often needed when evaluating data.
+>   
+> So to make it very general, I chose to do something a bit like this:
+
+We can't really help you without a reproducible example.  It's not 
+enough to show us something that doesn't run but is a bit like the real 
+code.
+
+Duncan Murdoch
+
+>   
+> result <- filter(mydata,
+>                   all(
+>                     any(!is.na(first.a), !is.na(first.b)),
+>                     any(!is.na(second.a), !is.na(second.b)),
+>                     any(!is.na(third.a), !is.na(third.b))))
+>   
+> I apologize if the formatting is not seen properly. The above logically
+> should work. And it should be extendable to scenarios where you want at
+> least one of M columns to contain data as a group with N such groups of any
+> size.
+>   
+> But since it did not work, I tried a plan that did work and feels silly. I
+> used mutate() to make new columns such as:
+>   
+> result <-
+>    mydata |>
+>    mutate(
+>      usable.1 = (!is.na(first.a) | !is.na(first.b)),
+>      usable.2 = (!is.na(second.a) | !is.na(second.b)),
+>      usable.3 = (!is.na(third.a) | !is.na(third.b)),
+>      usable = (usable.1 & usable.2 & usable.3)
+>    ) |>
+>    filter(usable == TRUE)
+>   
+> The above wastes time and effort making new columns so I can check the
+> calculations then uses the combined columns to make a Boolean that can be
+> used to filter the result.
+>   
+> I know this is not the place to discuss dplyr. I want to check first if I am
+> doing anything wrong in how I use any/all. One guess is that the generic is
+> messed with by dplyr or other packages I libraried.
+>   
+> And, of course, some aspects of delayed evaluation can interfere in subtle
+> ways.
+>   
+> I note I have had other problems with these base R functions before and
+> generally solved them by not using them, as shown above. I would much rather
+> use them, or something similar.
+>   
+>   
+> Avi
+>   
+>   
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From toth@dene@ @end|ng |rom kogentum@hu  Sat Apr 13 00:42:59 2024
+From: toth@dene@ @end|ng |rom kogentum@hu (=?UTF-8?B?RMOpbmVzIFTDs3Ro?=)
+Date: Sat, 13 Apr 2024 00:42:59 +0200
+Subject: [R] any and all
+In-Reply-To: <a81ec2d7-817d-4b2c-ab66-e09a13c8dbc1@gmail.com>
+References: <013601da8d12$f36a2b00$da3e8100$@gmail.com>
+ <a81ec2d7-817d-4b2c-ab66-e09a13c8dbc1@gmail.com>
+Message-ID: <8c941713-454b-a3c7-30db-2869f9af93eb@kogentum.hu>
+
+Hi Avi,
+
+As Duncan already mentioned, a reproducible example would be helpful to 
+assist you better. Having said that, I think you misunderstand how 
+`dplyr::filter` works: it performs row-wise filtering, so the filtering 
+expression shall return a logical vector of the same length as the 
+data.frame, or must be a single boolean value meaning "keep all" (TRUE) 
+or "drop all" (FALSE). If you use `any()` or `all()`, they return a 
+single boolean value, so you have an all-or-nothing filter in the end, 
+which is probably not what you want.
+
+Note also that you do not need to use `mutate` to use `filter` (read 
+?dpylr::filter carefully):
+```
+filter(
+   .data = mydata,
+   !is.na(first.a) | !is.na(first.b),
+   !is.na(second.a) | !is.na(second.b),
+   !is.na(third.a) | !is.na(third.b)
+)
+```
+
+Or you can use `base::subset()`:
+```
+subset(
+   mydata,
+   (!is.na(first.a) | !is.na(first.b))
+   & (!is.na(second.a) | !is.na(second.b))
+   & (!is.na(third.a) | !is.na(third.b))
+)
+```
+
+Regards,
+Denes
+
+On 4/12/24 23:59, Duncan Murdoch wrote:
+> On 12/04/2024 3:52 p.m., avi.e.gross at gmail.com wrote:
+>> Base R has generic functions called any() and all() that I am having 
+>> trouble
+>> using.
+>> It works fine when I play with it in a base R context as in:
+>>> all(any(TRUE, TRUE), any(TRUE, FALSE))
+>> [1] TRUE
+>>> all(any(TRUE, TRUE), any(FALSE, FALSE))
+>> [1] FALSE
+>> But in a tidyverse/dplyr environment, it returns wrong answers.
+>> Consider this example. I have data I have joined together with pairs of
+>> columns representing a first generation and several other pairs 
+>> representing
+>> additional generations. I want to consider any pair where at least one of
+>> the pair is not NA as a success. But in order to keep the entire row, 
+>> I want
+>> all three pairs to have some valid data. This seems like a fairly common
+>> reasonable thing often needed when evaluating data.
+>> So to make it very general, I chose to do something a bit like this:
+> 
+> We can't really help you without a reproducible example.? It's not 
+> enough to show us something that doesn't run but is a bit like the real 
+> code.
+> 
+> Duncan Murdoch
+> 
+>> result <- filter(mydata,
+>> ????????????????? all(
+>> ??????????????????? any(!is.na(first.a), !is.na(first.b)),
+>> ??????????????????? any(!is.na(second.a), !is.na(second.b)),
+>> ??????????????????? any(!is.na(third.a), !is.na(third.b))))
+>> I apologize if the formatting is not seen properly. The above logically
+>> should work. And it should be extendable to scenarios where you want at
+>> least one of M columns to contain data as a group with N such groups 
+>> of any
+>> size.
+>> But since it did not work, I tried a plan that did work and feels 
+>> silly. I
+>> used mutate() to make new columns such as:
+>> result <-
+>> ?? mydata |>
+>> ?? mutate(
+>> ???? usable.1 = (!is.na(first.a) | !is.na(first.b)),
+>> ???? usable.2 = (!is.na(second.a) | !is.na(second.b)),
+>> ???? usable.3 = (!is.na(third.a) | !is.na(third.b)),
+>> ???? usable = (usable.1 & usable.2 & usable.3)
+>> ?? ) |>
+>> ?? filter(usable == TRUE)
+>> The above wastes time and effort making new columns so I can check the
+>> calculations then uses the combined columns to make a Boolean that can be
+>> used to filter the result.
+>> I know this is not the place to discuss dplyr. I want to check first 
+>> if I am
+>> doing anything wrong in how I use any/all. One guess is that the 
+>> generic is
+>> messed with by dplyr or other packages I libraried.
+>> And, of course, some aspects of delayed evaluation can interfere in 
+>> subtle
+>> ways.
+>> I note I have had other problems with these base R functions before and
+>> generally solved them by not using them, as shown above. I would much 
+>> rather
+>> use them, or something similar.
+>> Avi
+>>
+>> ????[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat Apr 13 04:24:30 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Fri, 12 Apr 2024 22:24:30 -0400
+Subject: [R] any and all
+In-Reply-To: <8c941713-454b-a3c7-30db-2869f9af93eb@kogentum.hu>
+References: <013601da8d12$f36a2b00$da3e8100$@gmail.com>
+ <a81ec2d7-817d-4b2c-ab66-e09a13c8dbc1@gmail.com>
+ <8c941713-454b-a3c7-30db-2869f9af93eb@kogentum.hu>
+Message-ID: <001501da8d49$b79400b0$26bc0210$@gmail.com>
+
+Thanks everyone and any/all reading this. I think I got my answer. And, no, I suspected I did not need to provide a very specific example, at least not yet.
+
+The answer is that my experiment was not vectorized while using dplyr verbs like mutate do their work implicitly in a vectorized way. 
+
+This is in some ways similar to the difference between using an if/else type of statement or using the ifelse() function in base R that works on all elements of a vector at once. Some changes to R have been looking at not allowing a vector of length greater than 1 to be used in contexts where formerly only the first element was read and used and the rest ignored.
+
+D?nes asked some other questions about dplyr that I can reply to in private (and if he wishes in Hungarian or other languages we share) as this forum is mainly focused on base R and not on various packages and apparently especially not on the tidyverse that some see as being closely related to a company. Speaking for myself, I see no reason to be wedded to base R and use what I like.
+
+Thanks again. I knew it was simple. And, if anyone cares, I can now look more carefully for functions that do what any/all do but are vectorized because that is basically what I did in my example code where I primitively created new columns in vectorized fashion to impact all rows "at once" as that is one major style of doing things in R. 
+
+Having said that, it is indeed an issue to be cautious with in R as sometimes vectors being used may not be the same length and may even be automatically extended to be so. I also often program in Python and we had a discussion there of what exactly some modules should do if given multiple vectors (or lists or other data structures including generators) and zip the results into tuples when one or another runs out first.
+
+I note that using | versus || and similarly & and && often messes up programs if used wrong. A vectorized any/all and other such verbs as at_least_n() can be very useful but only when used carefully.
+
+
+
+-----Original Message-----
+From: D?nes T?th <toth.denes at kogentum.hu> 
+Sent: Friday, April 12, 2024 6:43 PM
+To: Duncan Murdoch <murdoch.duncan at gmail.com>; avi.e.gross at gmail.com; r-help at r-project.org
+Subject: Re: [R] any and all
+
+Hi Avi,
+
+As Duncan already mentioned, a reproducible example would be helpful to 
+assist you better. Having said that, I think you misunderstand how 
+`dplyr::filter` works: it performs row-wise filtering, so the filtering 
+expression shall return a logical vector of the same length as the 
+data.frame, or must be a single boolean value meaning "keep all" (TRUE) 
+or "drop all" (FALSE). If you use `any()` or `all()`, they return a 
+single boolean value, so you have an all-or-nothing filter in the end, 
+which is probably not what you want.
+
+Note also that you do not need to use `mutate` to use `filter` (read 
+?dpylr::filter carefully):
+```
+filter(
+   .data = mydata,
+   !is.na(first.a) | !is.na(first.b),
+   !is.na(second.a) | !is.na(second.b),
+   !is.na(third.a) | !is.na(third.b)
+)
+```
+
+Or you can use `base::subset()`:
+```
+subset(
+   mydata,
+   (!is.na(first.a) | !is.na(first.b))
+   & (!is.na(second.a) | !is.na(second.b))
+   & (!is.na(third.a) | !is.na(third.b))
+)
+```
+
+Regards,
+Denes
+
+On 4/12/24 23:59, Duncan Murdoch wrote:
+> On 12/04/2024 3:52 p.m., avi.e.gross at gmail.com wrote:
+>> Base R has generic functions called any() and all() that I am having 
+>> trouble
+>> using.
+>> It works fine when I play with it in a base R context as in:
+>>> all(any(TRUE, TRUE), any(TRUE, FALSE))
+>> [1] TRUE
+>>> all(any(TRUE, TRUE), any(FALSE, FALSE))
+>> [1] FALSE
+>> But in a tidyverse/dplyr environment, it returns wrong answers.
+>> Consider this example. I have data I have joined together with pairs of
+>> columns representing a first generation and several other pairs 
+>> representing
+>> additional generations. I want to consider any pair where at least one of
+>> the pair is not NA as a success. But in order to keep the entire row, 
+>> I want
+>> all three pairs to have some valid data. This seems like a fairly common
+>> reasonable thing often needed when evaluating data.
+>> So to make it very general, I chose to do something a bit like this:
+> 
+> We can't really help you without a reproducible example.  It's not 
+> enough to show us something that doesn't run but is a bit like the real 
+> code.
+> 
+> Duncan Murdoch
+> 
+>> result <- filter(mydata,
+>>                   all(
+>>                     any(!is.na(first.a), !is.na(first.b)),
+>>                     any(!is.na(second.a), !is.na(second.b)),
+>>                     any(!is.na(third.a), !is.na(third.b))))
+>> I apologize if the formatting is not seen properly. The above logically
+>> should work. And it should be extendable to scenarios where you want at
+>> least one of M columns to contain data as a group with N such groups 
+>> of any
+>> size.
+>> But since it did not work, I tried a plan that did work and feels 
+>> silly. I
+>> used mutate() to make new columns such as:
+>> result <-
+>>    mydata |>
+>>    mutate(
+>>      usable.1 = (!is.na(first.a) | !is.na(first.b)),
+>>      usable.2 = (!is.na(second.a) | !is.na(second.b)),
+>>      usable.3 = (!is.na(third.a) | !is.na(third.b)),
+>>      usable = (usable.1 & usable.2 & usable.3)
+>>    ) |>
+>>    filter(usable == TRUE)
+>> The above wastes time and effort making new columns so I can check the
+>> calculations then uses the combined columns to make a Boolean that can be
+>> used to filter the result.
+>> I know this is not the place to discuss dplyr. I want to check first 
+>> if I am
+>> doing anything wrong in how I use any/all. One guess is that the 
+>> generic is
+>> messed with by dplyr or other packages I libraried.
+>> And, of course, some aspects of delayed evaluation can interfere in 
+>> subtle
+>> ways.
+>> I note I have had other problems with these base R functions before and
+>> generally solved them by not using them, as shown above. I would much 
+>> rather
+>> use them, or something similar.
+>> Avi
+>>
+>>     [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+> 
+
+
+From r@oknz @end|ng |rom gm@||@com  Sat Apr 13 11:54:09 2024
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Sat, 13 Apr 2024 21:54:09 +1200
+Subject: [R] Just for your (a|be)musement.
+Message-ID: <CABcYAdKVc8NiAtKDwACiY6vhPNU41taqEP+Lm=Ur5qsAVH5qaQ@mail.gmail.com>
+
+I recently had the chance to read a book explaining how to use
+ChatGPT with a certain programming language.  (I'm not going
+to describe the book any more than that because I don't want to
+embarrass whoever wrote it.)
+
+They have appendix material showing three queries to ChatGPT
+and the answers.  Paraphrased, the queries are "if I throw 2 (3, 4)
+fair dice, what is the probability I get 7 or 11?  Show the reasoning."
+I thought those questions would make a nice little example,
+maybe something for Exercism or RosettaCode.  Here's the R version:
+
+> faces <- 1:6
+> sum(rowSums(expand.grid(faces, faces)) %in% c(7,11))/6^2
+[1] 0.2222222
+> sum(rowSums(expand.grid(faces, faces, faces)) %in% c(7,11))/6^3
+[1] 0.1944444
+> sum(rowSums(expand.grid(faces, faces, faces, faces)) %in% c(7,11))/6^4
+[1] 0.09567901
+
+Here's where it gets amusing.  ChatGPT explained its answers with
+great thoroughness.  But its answer to the 3 dice problem, with what
+was supposedly a list of success cases, was quite wrong.  ChatGPT
+claimed the answer was 33/216 instead of 42/216.
+
+Here's where it gets bemusing.  Whoever wrote the book included
+the interaction in the book WITHOUT CHECKING the results, or at
+least without commenting on the wrongness of one of them.
+
+I actually wrote the program in 6 other programming languages,
+and was startled at how simple and direct it was in base R.
+Well done, R.
+
+
+From |enn@rt@k@@@err@ @end|ng |rom gm@||@com  Sat Apr 13 09:17:11 2024
+From: |enn@rt@k@@@err@ @end|ng |rom gm@||@com (Lennart Kasserra)
+Date: Sat, 13 Apr 2024 09:17:11 +0200
+Subject: [R] any and all
+In-Reply-To: <013601da8d12$f36a2b00$da3e8100$@gmail.com>
+References: <013601da8d12$f36a2b00$da3e8100$@gmail.com>
+Message-ID: <58e33676-8c12-4a0e-9030-15bf4f7391c0@gmail.com>
+
+Hi Avi,
+
+
+As D?nes T?th has rightly diagnosed, you are building an "all or 
+nothing" filter. However, you do not need to explicitly spell out all 
+columns that you want to filter for; the "tidy" way would be to use a 
+helper function like `if_all()` or `if_any()`. Consider this example (I 
+hope I understand your intentions correctly):
+
+```
+
+library(dplyr)
+
+
+data <- tribble(
+ ? ~first.a, ~first.b, ~first.c,
+ ? 1L,????? ? 1L,?????? 0L,
+ ? NA,?????? 1L,?????? 0L,
+ ? 1L,??????? 0L,?????? NA,
+ ? NA,?????? NA,?????? 1L
+)
+
+```
+
+Let's say we only want to keep rows that have a non-missing value for 
+either `first.a` or `first.b` (or hypothetical later generations like 
+`second.a` and `second.b` etc.):
+
+```
+
+data |>
+ ? filter(if_any(ends_with(c(".a", ".b")), \(x) !is.na(x)))
+
+```
+
+So: `filter()` (keep observations) `if_any` of the columns ending with 
+.a or .b is not `NA` (we have to wrap `!is.na` into an anonymous 
+function for it to be a valid argument type). This would yield
+
+```
+
+# A tibble: 3 ? 3
+ ? first.a first.b first.c
+ ??? <int>?? <int>?? <int>
+1?????? 1?????? 1?????? 0
+2????? NA?????? 1?????? 0
+3?????? 1?????? 0????? NA
+
+```
+
+Discarding only the row where both of them are missing. Another way of 
+writing this would be
+
+```
+
+data |>
+ ? filter(!if_all(ends_with(c(".a", ".b")), is.na))
+
+```
+
+i.e. don't keep rows where all columns ending in .a or .b are `NA`, 
+which returns the same result. Hope this helps,
+
+Lennart Kasserra
+
+Am 12.04.24 um 21:52 schrieb avi.e.gross at gmail.com:
+> Base R has generic functions called any() and all() that I am having trouble
+> using.
+>   
+> It works fine when I play with it in a base R context as in:
+>   
+>> all(any(TRUE, TRUE), any(TRUE, FALSE))
+> [1] TRUE
+>> all(any(TRUE, TRUE), any(FALSE, FALSE))
+> [1] FALSE
+>   
+> But in a tidyverse/dplyr environment, it returns wrong answers.
+>   
+> Consider this example. I have data I have joined together with pairs of
+> columns representing a first generation and several other pairs representing
+> additional generations. I want to consider any pair where at least one of
+> the pair is not NA as a success. But in order to keep the entire row, I want
+> all three pairs to have some valid data. This seems like a fairly common
+> reasonable thing often needed when evaluating data.
+>   
+> So to make it very general, I chose to do something a bit like this:
+>   
+> result <- filter(mydata,
+>                   all(
+>                     any(!is.na(first.a), !is.na(first.b)),
+>                     any(!is.na(second.a), !is.na(second.b)),
+>                     any(!is.na(third.a), !is.na(third.b))))
+>   
+> I apologize if the formatting is not seen properly. The above logically
+> should work. And it should be extendable to scenarios where you want at
+> least one of M columns to contain data as a group with N such groups of any
+> size.
+>   
+> But since it did not work, I tried a plan that did work and feels silly. I
+> used mutate() to make new columns such as:
+>   
+> result <-
+>    mydata |>
+>    mutate(
+>      usable.1 = (!is.na(first.a) | !is.na(first.b)),
+>      usable.2 = (!is.na(second.a) | !is.na(second.b)),
+>      usable.3 = (!is.na(third.a) | !is.na(third.b)),
+>      usable = (usable.1 & usable.2 & usable.3)
+>    ) |>
+>    filter(usable == TRUE)
+>   
+> The above wastes time and effort making new columns so I can check the
+> calculations then uses the combined columns to make a Boolean that can be
+> used to filter the result.
+>   
+> I know this is not the place to discuss dplyr. I want to check first if I am
+> doing anything wrong in how I use any/all. One guess is that the generic is
+> messed with by dplyr or other packages I libraried.
+>   
+> And, of course, some aspects of delayed evaluation can interfere in subtle
+> ways.
+>   
+> I note I have had other problems with these base R functions before and
+> generally solved them by not using them, as shown above. I would much rather
+> use them, or something similar.
+>   
+>   
+> Avi
+>   
+>   
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat Apr 13 16:44:22 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 13 Apr 2024 10:44:22 -0400
+Subject: [R] Just for your (a|be)musement.
+In-Reply-To: <CABcYAdKVc8NiAtKDwACiY6vhPNU41taqEP+Lm=Ur5qsAVH5qaQ@mail.gmail.com>
+References: <CABcYAdKVc8NiAtKDwACiY6vhPNU41taqEP+Lm=Ur5qsAVH5qaQ@mail.gmail.com>
+Message-ID: <003801da8db1$134e0920$39ea1b60$@gmail.com>
+
+Richard,
+
+The code you show is correct and it does not include where you say ChatGTP
+explained it was 33/26 rather than the correct 42/216.
+
+I gather it have the proper fraction for the other two scenarios.
+
+So what would cause such a localized error?
+
+The method chosen is to try all possible combinations and count how many
+times they add up to a winning combo and then divide by the possible
+combinations. Why would that go wrong?
+
+As a human, at least most days, I would calculate using the first part of
+the formula it used to just get a numerator.
+
+> sum(rowSums(expand.grid(faces, faces, faces)) %in% c(7,11))
+[1] 42
+
+So is this perhaps a case where ChatGTP, instead, did some kind of reverse
+engineering and used something else to estimate what 0.1944444 might be as a
+fraction with an integral numerator and denominator? There are often many
+ways to do this including some that allow an approximation of 7/36 or 42/170
+or so. Include the fact that floating point representations are not exact
+and it may be it used an algorithm in which it neglected to say it should be
+a fraction with a denominator of 216.
+
+If my guess is correct, you could argue this is partially an issue of
+comprehension. Humans, to a limited extent, can look at a problem and see
+that a solution to a second issue is already almost visible in what they did
+to solve the first. A machine who searches data they were fed, may see your
+question as having several parts and solves them sequentially using advice
+from two places and has an imperfect understanding of what it read in the
+second place, or perhaps there was an error there.
+
+This reminds me a bit of the way some computer languages have a sort of
+in-line assignment operator in python that was added. The walrus operator
+allows parts of an expression to be evaluated and the result stored in a
+variable for use elsewhere in that expression or later.  So it you have an
+expression that effectively needs to do some calculation two or more times,
+such as the sum of some numbers or their average, you do it once and ask for
+the number to be saved and then just state you want it elsewhere in the
+expression.
+
+Or consider something like the quadratic formula where you calculate the
+square root part twice because the two answer are + or - the same thing.
+
+It is often easy for humans to see and extract such commonalities but
+programs written so far often are not really designed with examining things
+this way.
+
+I note that the above method can be a tad slow and expensive for very large
+cases like rolling a hundred dice as you end up making a huge data structure
+in which all the entries must sum above 11 if the minimum roll is 1. Again,
+a human may realize this and skip using the method. The chances of rolling
+100 die and getting a 7 or 11 or even a 99 are absolutely zero. For some
+other problems, such as rolling 8 die, there are only solutions for 11, not
+for 7. And, rather than generating all possible combinations in advance,
+there may be an algorithm that builds a tree with pruning so that a first
+toss of 6 or 5 or anything where having all remaining dice at 1 each makes
+it go too high (such as 12, makes it skip any further exploration in that
+direction. If the current sum is such that the only valid solution is all
+ones, again, you can declare that result and prune any further progress
+along the tree.
+
+But would chatGTP be flexible enough to suggest using such an algorithm or
+know to switch to it for dice above some level?
+
+Can anyone explain better what went wrong? I have heard statements before
+about how some of these pseudo-AI make simple mathematical errors and this
+sounds like one.
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Richard O'Keefe
+Sent: Saturday, April 13, 2024 5:54 AM
+To: R Project Help <r-help at r-project.org>
+Subject: [R] Just for your (a|be)musement.
+
+I recently had the chance to read a book explaining how to use
+ChatGPT with a certain programming language.  (I'm not going
+to describe the book any more than that because I don't want to
+embarrass whoever wrote it.)
+
+They have appendix material showing three queries to ChatGPT
+and the answers.  Paraphrased, the queries are "if I throw 2 (3, 4)
+fair dice, what is the probability I get 7 or 11?  Show the reasoning."
+I thought those questions would make a nice little example,
+maybe something for Exercism or RosettaCode.  Here's the R version:
+
+> faces <- 1:6
+> sum(rowSums(expand.grid(faces, faces)) %in% c(7,11))/6^2
+[1] 0.2222222
+> sum(rowSums(expand.grid(faces, faces, faces)) %in% c(7,11))/6^3
+[1] 0.1944444
+> sum(rowSums(expand.grid(faces, faces, faces, faces)) %in% c(7,11))/6^4
+[1] 0.09567901
+
+Here's where it gets amusing.  ChatGPT explained its answers with
+great thoroughness.  But its answer to the 3 dice problem, with what
+was supposedly a list of success cases, was quite wrong.  ChatGPT
+claimed the answer was 33/216 instead of 42/216.
+
+Here's where it gets bemusing.  Whoever wrote the book included
+the interaction in the book WITHOUT CHECKING the results, or at
+least without commenting on the wrongness of one of them.
+
+I actually wrote the program in 6 other programming languages,
+and was startled at how simple and direct it was in base R.
+Well done, R.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
