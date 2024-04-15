@@ -7434,3 +7434,176 @@ PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From @vi@e@gross m@iii@g oii gm@ii@com  Sun Apr 14 05:18:06 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 13 Apr 2024 23:18:06 -0400
+Subject: [R] any and all
+In-Reply-To: <58e33676-8c12-4a0e-9030-15bf4f7391c0@gmail.com>
+References: <013601da8d12$f36a2b00$da3e8100$@gmail.com>
+ <58e33676-8c12-4a0e-9030-15bf4f7391c0@gmail.com>
+Message-ID: <01a601da8e1a$5ee63510$1cb29f30$@gmail.com>
+
+Yes, Lennart, I have been looking at doing something like you say by using the vectorized ways the tidyverse is now offering. 
+
+For my application, if the naming was consistent, an approach like yours is good, albeit has to be typed carefully. When I cannot control the names  but have to lump them into multiple groups that each require at least one to not be NA, I would need to probably spell them out rather than checking what it ends with.
+
+Since the default for filter() is to do an AND when it sees a comma and another condition, I can simply repeat the if_any() with changes several times without using an if_all() but I have concerns over handing over fairly complex code to anyone who may modify it a bit later and have problems.
+
+So, I am tempted to just use things they already know such as one of the ifelse() variations that are vectorized.
+
+The tidyverse keeps evolving and regularly replacing old functionality that seemed to work fine with new and improved but extremely abstract functionality that is both very powerful and at the same time can be a pain to use or even explain when you just want to do something fairly simple. 
+
+And I notice how some packages have been trying to move away from using delayed interpretation features or removing functions people use (or deprecating them) as so many things in R were cobbled together and then constantly changed. Much of the tidyverse is an example of functionality which might have been designed into the base portion of a new language as compared to add-ons to a language they want to keep simpler and more stable. It took a long while just to add a native pipe to R but once done, I wonder if many other ideas and functions people use regularly through packages, might also enter the mainstream.
+
+Your code reminds me of the importance of choosing names, as in column names, that have patterns built-in to allow some abstract operations. In your example, applied to the kind of data I am being given, I can even imagine a step that re-arranges the order of the columns in such a way that the groupings I am talking about are adjacent. (I mean a group of columns where at least one is non-NA.) Such groups can use methods of specifying all at once as in first:last even when I have no control over the names.
+
+Thanks for the feedback.
+
+Avi
+
+-----Original Message-----
+From: Lennart Kasserra <lennart.kasserra at gmail.com> 
+Sent: Saturday, April 13, 2024 3:17 AM
+To: avi.e.gross at gmail.com; murdoch.duncan at gmail.com; toth.denes at kogentum.hu; r-help at r-project.org
+Subject: Re: [R] any and all
+
+Hi Avi,
+
+
+As D?nes T?th has rightly diagnosed, you are building an "all or 
+nothing" filter. However, you do not need to explicitly spell out all 
+columns that you want to filter for; the "tidy" way would be to use a 
+helper function like `if_all()` or `if_any()`. Consider this example (I 
+hope I understand your intentions correctly):
+
+```
+
+library(dplyr)
+
+
+data <- tribble(
+   ~first.a, ~first.b, ~first.c,
+   1L,        1L,       0L,
+   NA,       1L,       0L,
+   1L,        0L,       NA,
+   NA,       NA,       1L
+)
+
+```
+
+Let's say we only want to keep rows that have a non-missing value for 
+either `first.a` or `first.b` (or hypothetical later generations like 
+`second.a` and `second.b` etc.):
+
+```
+
+data |>
+   filter(if_any(ends_with(c(".a", ".b")), \(x) !is.na(x)))
+
+```
+
+So: `filter()` (keep observations) `if_any` of the columns ending with 
+.a or .b is not `NA` (we have to wrap `!is.na` into an anonymous 
+function for it to be a valid argument type). This would yield
+
+```
+
+# A tibble: 3 ? 3
+   first.a first.b first.c
+     <int>   <int>   <int>
+1       1       1       0
+2      NA       1       0
+3       1       0      NA
+
+```
+
+Discarding only the row where both of them are missing. Another way of 
+writing this would be
+
+```
+
+data |>
+   filter(!if_all(ends_with(c(".a", ".b")), is.na))
+
+```
+
+i.e. don't keep rows where all columns ending in .a or .b are `NA`, 
+which returns the same result. Hope this helps,
+
+Lennart Kasserra
+
+Am 12.04.24 um 21:52 schrieb avi.e.gross at gmail.com:
+> Base R has generic functions called any() and all() that I am having trouble
+> using.
+>   
+> It works fine when I play with it in a base R context as in:
+>   
+>> all(any(TRUE, TRUE), any(TRUE, FALSE))
+> [1] TRUE
+>> all(any(TRUE, TRUE), any(FALSE, FALSE))
+> [1] FALSE
+>   
+> But in a tidyverse/dplyr environment, it returns wrong answers.
+>   
+> Consider this example. I have data I have joined together with pairs of
+> columns representing a first generation and several other pairs representing
+> additional generations. I want to consider any pair where at least one of
+> the pair is not NA as a success. But in order to keep the entire row, I want
+> all three pairs to have some valid data. This seems like a fairly common
+> reasonable thing often needed when evaluating data.
+>   
+> So to make it very general, I chose to do something a bit like this:
+>   
+> result <- filter(mydata,
+>                   all(
+>                     any(!is.na(first.a), !is.na(first.b)),
+>                     any(!is.na(second.a), !is.na(second.b)),
+>                     any(!is.na(third.a), !is.na(third.b))))
+>   
+> I apologize if the formatting is not seen properly. The above logically
+> should work. And it should be extendable to scenarios where you want at
+> least one of M columns to contain data as a group with N such groups of any
+> size.
+>   
+> But since it did not work, I tried a plan that did work and feels silly. I
+> used mutate() to make new columns such as:
+>   
+> result <-
+>    mydata |>
+>    mutate(
+>      usable.1 = (!is.na(first.a) | !is.na(first.b)),
+>      usable.2 = (!is.na(second.a) | !is.na(second.b)),
+>      usable.3 = (!is.na(third.a) | !is.na(third.b)),
+>      usable = (usable.1 & usable.2 & usable.3)
+>    ) |>
+>    filter(usable == TRUE)
+>   
+> The above wastes time and effort making new columns so I can check the
+> calculations then uses the combined columns to make a Boolean that can be
+> used to filter the result.
+>   
+> I know this is not the place to discuss dplyr. I want to check first if I am
+> doing anything wrong in how I use any/all. One guess is that the generic is
+> messed with by dplyr or other packages I libraried.
+>   
+> And, of course, some aspects of delayed evaluation can interfere in subtle
+> ways.
+>   
+> I note I have had other problems with these base R functions before and
+> generally solved them by not using them, as shown above. I would much rather
+> use them, or something similar.
+>   
+>   
+> Avi
+>   
+>   
+>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
