@@ -9161,3 +9161,49 @@ Please note that this e-mail is not secure (encrypted).  If you do not wish to c
 	[[alternative HTML version deleted]]
 
 
+From |kry|ov @end|ng |rom d|@root@org  Fri Apr 19 09:16:13 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Fri, 19 Apr 2024 10:16:13 +0300
+Subject: [R] Tidyverse/dplyr solution for filling values of a
+ tibble/dataframe from a column with a nested list.
+In-Reply-To: <PH0PR04MB7493DC78511B915B46C558E0CB0E2@PH0PR04MB7493.namprd04.prod.outlook.com>
+References: <PH0PR04MB7493DC78511B915B46C558E0CB0E2@PH0PR04MB7493.namprd04.prod.outlook.com>
+Message-ID: <20240419101613.395cf3ce@Tarkus>
+
+? Thu, 18 Apr 2024 16:31:46 +0000
+"Deramus, Thomas Patrick" <tderamus at mgb.org> ?????:
+
+> Basically, each list contains a set of doubles, with the first
+> indicating a specific index (based on the 0 beginning python? index),
+> and a certain value (e.g. 0.5).
+> 
+> What I would like to do is generate set of columns based on the rang
+> of unique indexes of each nested list. e.g.: col_1, col_2, col_3,
+> col_4, col_5?
+
+It's possible to golf it down to something like the following:
+
+newcol <- t(sapply(tibble$nestedvals, \(x) {
+ x <- simplify2array(x)
+ ret <- numeric(5)
+ ret[x[1,]] <- x[2,]
+ ret
+}))
+
+...which you can then rename and cbind() to your tibble.
+
+But the problem remains that the desired data structure has to be
+generated row by row and then transformed back into a column-oriented
+data structure. Do you need a sparse matrix?
+
+spec <- do.call(cbind, Map(
+ \(row, cols) rbind(row, simplify2array(cols)),
+ seq_along(tibble$nestedvals), tibble$nestedvals
+))
+sparse <- Matrix::sparseMatrix(spec[1,], spec[2,], x = spec[3,])
+
+-- 
+Best regards,
+Ivan
+
+
