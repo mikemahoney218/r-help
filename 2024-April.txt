@@ -9207,3 +9207,504 @@ Best regards,
 Ivan
 
 
+From cr@n@r @end|ng |rom proton@me  Fri Apr 19 22:36:22 2024
+From: cr@n@r @end|ng |rom proton@me (CRAN.r)
+Date: Fri, 19 Apr 2024 20:36:22 +0000
+Subject: [R] passing a modified argument to an S3 method
+Message-ID: <4pRzEDv__NGDIT68Q6LBK0OcyD9iQs3g6SkZemots3x4noMUQIV8UAfjDEe2UOq6-D4FF6z0T-76bUG0UxqFccqyFKVKw31OB_Iyh0kbzFs=@proton.me>
+
+Is there a way to pass a modified argument from an S3 generic to a method?  Here's a non-working example that I want to return "abcd".
+
+  test <- function(x, y = NULL){
+    y <- "abcd"
+    UseMethod("test")
+  }
+  test.default <- function(x, y = NULL) y
+  test(x = 3)
+
+Is that possible? I've looked around a lot, but can't find any examples or discussion.
+
+Jay
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Apr 20 17:51:23 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 20 Apr 2024 08:51:23 -0700
+Subject: [R] passing a modified argument to an S3 method
+In-Reply-To: <4pRzEDv__NGDIT68Q6LBK0OcyD9iQs3g6SkZemots3x4noMUQIV8UAfjDEe2UOq6-D4FF6z0T-76bUG0UxqFccqyFKVKw31OB_Iyh0kbzFs=@proton.me>
+References: <4pRzEDv__NGDIT68Q6LBK0OcyD9iQs3g6SkZemots3x4noMUQIV8UAfjDEe2UOq6-D4FF6z0T-76bUG0UxqFccqyFKVKw31OB_Iyh0kbzFs=@proton.me>
+Message-ID: <CAGxFJbReoEwmW-6EPv9Notf_CyuFHa1bvk+1=yGmo6YyHqmn=A@mail.gmail.com>
+
+I do not understand what your goal is here (more context may be helpful,
+perhaps to others rather than me). So I doubt this is what you want, but
+here is a guess -- no need to respond if it is unhelpful:
+
+## test.default returns NULL if object "y" not found in **calling
+environment and enclosures**;
+## otherwise y.
+
+test <- function(x){
+   UseMethod("test")
+}
+test.default <- function(x){
+   tryCatch(y, error = function(e)NULL)
+}
+
+## y not found
+test(x=3)
+NULL
+
+## y found
+> y <- 'abcd'
+> test(x = 3)
+[1] "abcd"
+
+Cheers,
+Bert
+
+
+
+
+On Sat, Apr 20, 2024 at 4:23?AM CRAN.r via R-help <r-help at r-project.org>
+wrote:
+
+> Is there a way to pass a modified argument from an S3 generic to a
+> method?  Here's a non-working example that I want to return "abcd".
+>
+>   test <- function(x, y = NULL){
+>     y <- "abcd"
+>     UseMethod("test")
+>   }
+>   test.default <- function(x, y = NULL) y
+>   test(x = 3)
+>
+> Is that possible? I've looked around a lot, but can't find any examples or
+> discussion.
+>
+> Jay
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sat Apr 20 18:34:27 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sat, 20 Apr 2024 09:34:27 -0700
+Subject: [R] passing a modified argument to an S3 method
+In-Reply-To: <CAGxFJbReoEwmW-6EPv9Notf_CyuFHa1bvk+1=yGmo6YyHqmn=A@mail.gmail.com>
+References: <4pRzEDv__NGDIT68Q6LBK0OcyD9iQs3g6SkZemots3x4noMUQIV8UAfjDEe2UOq6-D4FF6z0T-76bUG0UxqFccqyFKVKw31OB_Iyh0kbzFs=@proton.me>
+ <CAGxFJbReoEwmW-6EPv9Notf_CyuFHa1bvk+1=yGmo6YyHqmn=A@mail.gmail.com>
+Message-ID: <619501FA-D211-4C5F-87B1-A4E02409AF39@dcn.davis.ca.us>
+
+The parameters in a specific call to a function are stored in a special list which is used to move/copy data from the calling environment into the environment created for a particular function call.
+
+UseMethod does not act like a normal function call... it does a kind of magic substitution of the implementation method `test.default` into the call stack where the generic function `test` was. The argument list remains, but the environment associated with the generic function `test` is discarded in the process. The argument list was never actually modified in `test`... just the environment.
+
+You are expected to think of `test` as a placeholder... a kind of abstract method that doesn't actually do anything other than map from a generic method to an implementation method. Your goal of adding shared behavior this way is not possible.
+
+I recommend reading Advanced R in book form or online to help you navigate R behavior like this.
+
+On April 20, 2024 8:51:23 AM PDT, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>I do not understand what your goal is here (more context may be helpful,
+>perhaps to others rather than me). So I doubt this is what you want, but
+>here is a guess -- no need to respond if it is unhelpful:
+>
+>## test.default returns NULL if object "y" not found in **calling
+>environment and enclosures**;
+>## otherwise y.
+>
+>test <- function(x){
+>   UseMethod("test")
+>}
+>test.default <- function(x){
+>   tryCatch(y, error = function(e)NULL)
+>}
+>
+>## y not found
+>test(x=3)
+>NULL
+>
+>## y found
+>> y <- 'abcd'
+>> test(x = 3)
+>[1] "abcd"
+>
+>Cheers,
+>Bert
+>
+>
+>
+>
+>On Sat, Apr 20, 2024 at 4:23?AM CRAN.r via R-help <r-help at r-project.org>
+>wrote:
+>
+>> Is there a way to pass a modified argument from an S3 generic to a
+>> method?  Here's a non-working example that I want to return "abcd".
+>>
+>>   test <- function(x, y = NULL){
+>>     y <- "abcd"
+>>     UseMethod("test")
+>>   }
+>>   test.default <- function(x, y = NULL) y
+>>   test(x = 3)
+>>
+>> Is that possible? I've looked around a lot, but can't find any examples or
+>> discussion.
+>>
+>> Jay
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From ccberry @end|ng |rom he@|th@uc@d@edu  Sat Apr 20 19:29:43 2024
+From: ccberry @end|ng |rom he@|th@uc@d@edu (Berry, Charles)
+Date: Sat, 20 Apr 2024 17:29:43 +0000
+Subject: [R] passing a modified argument to an S3 method
+In-Reply-To: <4pRzEDv__NGDIT68Q6LBK0OcyD9iQs3g6SkZemots3x4noMUQIV8UAfjDEe2UOq6-D4FF6z0T-76bUG0UxqFccqyFKVKw31OB_Iyh0kbzFs=@proton.me>
+References: <4pRzEDv__NGDIT68Q6LBK0OcyD9iQs3g6SkZemots3x4noMUQIV8UAfjDEe2UOq6-D4FF6z0T-76bUG0UxqFccqyFKVKw31OB_Iyh0kbzFs=@proton.me>
+Message-ID: <43DDF40E-A22A-4DAC-8067-CECA8652D405@health.ucsd.edu>
+
+
+
+> On Apr 19, 2024, at 1:36?PM, CRAN.r via R-help <r-help at r-project.org> wrote:
+> 
+> Is there a way to pass a modified argument from an S3 generic to a method?  Here's a non-working example that I want to return "abcd".
+> 
+
+grep-ing the source code is often a good way to answer a question like this.
+
+Particularly, with NextMethod there seem to be plenty of instances in which the original arguments are modified before a call to a method.
+
+One such is `t.data.frame` and there seem to be other methods for "data.frame" objects that modify the objects before calling NextMethod.
+
+HTH,
+
+Chuck
+
+
+>  test <- function(x, y = NULL){
+>    y <- "abcd"
+>    UseMethod("test")
+>  }
+>  test.default <- function(x, y = NULL) y
+>  test(x = 3)
+> 
+> Is that possible? I've looked around a lot, but can't find any examples or discussion.
+> 
+> Jay
+> 
+> From nobody Sat Apr 20 10:07:59 2024
+> Path: news.gmane.io!.POSTED.blaine.gmane.org!not-for-mail
+> From: "CRAN.r via R-help" <r-help at r-project.org>
+> Newsgroups: gmane.comp.lang.r.general
+> Subject: passing a modified argument to an S3 method
+> Date: Fri, 19 Apr 2024 20:36:22 +0000
+> Approved: news at gmane.org
+> Message-ID: <4pRzEDv__NGDIT68Q6LBK0OcyD9iQs3g6SkZemots3x4noMUQIV8UAfjDEe2UOq6-D4FF6z0T-76bUG0UxqFccqyFKVKw31OB_Iyh0kbzFs=@proton.me>
+> Reply-To: "CRAN.r" <cran.r at proton.me>
+> Mime-Version: 1.0
+> Content-Type: text/plain; charset="us-ascii"
+> Content-Transfer-Encoding: 7bit
+> Injection-Info: ciao.gmane.io; posting-host="blaine.gmane.org:116.202.254.214";
+> logging-data="8351"; mail-complaints-to="usenet at ciao.gmane.io"
+> To: "r-help at r-project.org" <r-help at r-project.org>
+> Original-X-From: r-help-bounces at r-project.org Sat Apr 20 13:23:27 2024
+> Return-path: <r-help-bounces at r-project.org>
+> Envelope-to: gclrg-r-help at m.gmane-mx.org
+> Original-Received: from hypatia.math.ethz.ch ([129.132.119.208])
+> by ciao.gmane.io with esmtps (TLS1.2:ECDHE_RSA_AES_256_GCM_SHA384:256)
+> (Exim 4.92)
+> (envelope-from <r-help-bounces at r-project.org>)
+> id 1ry8oY-0001sq-Bn
+> for gclrg-r-help at m.gmane-mx.org; Sat, 20 Apr 2024 13:23:26 +0200
+> Original-Received: from localhost (localhost [127.0.0.1])
+> by hypatia.math.ethz.ch (Postfix) with ESMTP id 439F319B4;
+> Sat, 20 Apr 2024 13:23:25 +0200 (CEST)
+> Authentication-Results: hypatia.math.ethz.ch (amavisd-new);
+> dkim=pass (1024-bit key) reason="pass (just generated, assumed good)"
+> header.d=r-project.org
+> DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/simple; d=r-project.org; h=
+> content-transfer-encoding:content-type:content-type:reply-to
+> :from:from:list-subscribe:list-help:list-post:list-archive
+> :list-unsubscribe:list-id:precedence:subject:subject
+> :mime-version:message-id:date:date:received:received:received
+> :received:received:received; s=dkim20211220; t=1713612201; x=
+> 1716204202; bh=Z6v15ZPk1rn+11Ef9rNBtKr6kCXFKaj/SGL/HXarBWc=; b=H
+> O9aWKsrJKBwRK33ySDQjcif0WL28cjIvg6O3iIC0c1aB+fihnMC/BTLjCyUGIorY
+> Yx7Um4sp4+sw0nnmvWWBKL1e1YVr5+QfUCkIyDU6NawYEeC8m3VjEQa7KMALgJN5
+> awIR6NsAbCK1ewPN2QPNWMxpIftLzbaQOWMWPCqOPU=
+> X-Virus-Scanned: amavisd-new at r-project.org
+> Original-Received: from hypatia.math.ethz.ch ([127.0.0.1])
+> by localhost (hypatia.math.ethz.ch [127.0.0.1]) (amavisd-new, port 10024)
+> with LMTP id O5euluMcNO0X; Sat, 20 Apr 2024 13:23:21 +0200 (CEST)
+> Original-Received: from hypatia.math.ethz.ch (localhost [127.0.0.1])
+> by hypatia.math.ethz.ch (Postfix) with ESMTP id 8C1D44D3;
+> Sat, 20 Apr 2024 13:23:21 +0200 (CEST)
+> Original-Received: from localhost (localhost [127.0.0.1])
+> by hypatia.math.ethz.ch (Postfix) with ESMTP id 1378F1C23
+> for <r-help at r-project.org>; Fri, 19 Apr 2024 22:36:39 +0200 (CEST)
+> X-Virus-Scanned: amavisd-new at r-project.org
+> Original-Received: from hypatia.math.ethz.ch ([127.0.0.1])
+> by localhost (hypatia.math.ethz.ch [127.0.0.1]) (amavisd-new, port 10024)
+> with LMTP id y-CERIWOjFBy for <r-help at r-project.org>;
+> Fri, 19 Apr 2024 22:36:34 +0200 (CEST)
+> Original-Received: from ethz.ch (mc3.ethz.ch [129.132.198.195])
+> (using TLSv1.2 with cipher ECDHE-RSA-AES256-GCM-SHA384 (256/256 bits))
+> (No client certificate requested)
+> by hypatia.math.ethz.ch (Postfix) with ESMTPS id 87F5E1B8C
+> for <r-help at r-project.org>; Fri, 19 Apr 2024 22:36:34 +0200 (CEST)
+> Original-Received: from mail-4322.protonmail.ch ([185.70.43.22])
+> by ethz.ch stage1 with esmtps (Exim MailCleaner) 
+> id 1rxv0v-000253-1n for <r-help at r-project.org> 
+> from <cran.r at proton.me>; Fri, 19 Apr 2024 22:39:17 +0200
+> X-MailCleaner-SPF: pass
+> Feedback-ID: 100000121:user:proton
+> X-Pm-Message-ID: 1d72f1b23cf9e2d0142aaa1edb9ef8ebccac926b
+> X-Newsl: is not newsletter (0.0/5.0) position : 0, not decisive
+> X-NiceBayes: is not spam (52.38%) position : 3, not decisive
+> X-Spamc: is not spam (0.0/5.0) position : 7, ham decisive
+> X-MailCleaner-Information: Please contact servicedesk at id.ethz.ch for more
+> information
+> X-MailCleaner-ID: 1rxv0v-000257-24
+> X-MailCleaner: Found to be clean
+> X-MailCleaner-SpamCheck: not spam, Newsl (score=0.0, required=5.0, NONE,
+> position : 0, not decisive), NiceBayes (52.38%, position : 3,
+> not decisive), Spamc (score=0.0, required=5.0,
+> RCVD_IN_MSPIKE_H4 -0.0, DKIM_VALID -0.3, RCVD_IN_MSPIKE_WL -0.0,
+> MC_SPF_PASS -0.0, BOTNET_IPINHOSTNAME 1.0,
+> MC_DKIM_OK_NO_FREEMAIL -1.0, DKIM_VALID_AU -0.3, DKIM_SIGNED 0.6,
+> position : 7, ham decisive)
+> X-MailCleaner-ReportURL: https://mailcleaner.ethz.ch/rs.php
+> X-Mailman-Approved-At: Sat, 20 Apr 2024 13:23:20 +0200
+> X-BeenThere: r-help at r-project.org
+> X-Mailman-Version: 2.1.25+j1
+> Precedence: list
+> List-Id: "Main R Mailing List: Primary help" <r-help.r-project.org>
+> List-Unsubscribe: <https://stat.ethz.ch/mailman/options/r-help>,
+> <mailto:r-help-request at r-project.org?subject=unsubscribe>
+> List-Archive: <https://stat.ethz.ch/pipermail/r-help/>
+> List-Post: <mailto:r-help at r-project.org>
+> List-Help: <mailto:r-help-request at r-project.org?subject=help>
+> List-Subscribe: <https://stat.ethz.ch/mailman/listinfo/r-help>,
+> <mailto:r-help-request at r-project.org?subject=subscribe>
+> Errors-To: r-help-bounces at r-project.org
+> Original-Sender: "R-help" <r-help-bounces at r-project.org>
+> Xref: news.gmane.io gmane.comp.lang.r.general:365491
+> Archived-At: <http://permalink.gmane.org/gmane.comp.lang.r.general/365491>
+> 
+> Is there a way to pass a modified argument from an S3 generic to a method?  Here's a non-working example that I want to return "abcd".
+> 
+>  test <- function(x, y = NULL){
+>    y <- "abcd"
+>    UseMethod("test")
+>  }
+>  test.default <- function(x, y = NULL) y
+>  test(x = 3)
+> 
+> Is that possible? I've looked around a lot, but can't find any examples or discussion.
+> 
+> Jay
+> 
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Apr 20 22:28:09 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 20 Apr 2024 13:28:09 -0700
+Subject: [R] Fwd:  passing a modified argument to an S3 method
+In-Reply-To: <CAGxFJbS+RAEBm3aN9bxsq4keCUvy1zUhxVs6H8=+Vv91jC2N6A@mail.gmail.com>
+References: <4pRzEDv__NGDIT68Q6LBK0OcyD9iQs3g6SkZemots3x4noMUQIV8UAfjDEe2UOq6-D4FF6z0T-76bUG0UxqFccqyFKVKw31OB_Iyh0kbzFs=@proton.me>
+ <CAGxFJbReoEwmW-6EPv9Notf_CyuFHa1bvk+1=yGmo6YyHqmn=A@mail.gmail.com>
+ <G1mjJBz66CgP-Rn963FoqLN-rnXzcikYCBdnH10lDCMaIFaxQjFdsk3BpMGird32hbjX0eUKAxs69PsWarHcqrok-_i-7XgB22Yp7D8OM68=@proton.me>
+ <CAGxFJbS+RAEBm3aN9bxsq4keCUvy1zUhxVs6H8=+Vv91jC2N6A@mail.gmail.com>
+Message-ID: <CAGxFJbScSsDN4c=erVDsUCc5LrEdS412F6-fqJvYUhVKicpD_g@mail.gmail.com>
+
+## Neglected to cc to list
+
+---------- Forwarded message ---------
+From: Bert Gunter <bgunter.4567 at gmail.com>
+Date: Sat, Apr 20, 2024 at 1:26?PM
+Subject: Re: [R] passing a modified argument to an S3 method
+To: CRAN.r <cran.r at proton.me>
+
+
+Well, my interpretation of your explanation is as follows:
+
+You have a long list of "control" values, named "control" in my
+example below with all fixed default values.  You also have an S3
+generic, named e.g. "test", with many methods. Your methods all use
+the control list and possibly other arguments that will vary from
+method to method. Also, some methods may want to change some of the
+fixed values of control but leave most of them unaltered. The altered
+list can change from method to method. Also, some of a method's
+altered values may have a default value that you do not wish to
+specify each time for the method.
+
+In my example below, I have shown how this can be done. I hope it
+approximates what you want to do. However, I second Jeff's
+recommendation that you do some reading on your own and **NOT** rely
+on my (probably flawed) interpretation, which just is meant to suggest
+what could be done (e.g. via ?modifyList) rather than point you to an
+exact or best solution. There are many good tutorials out there in
+addition to Jeff's suggestion that you can search for.
+----------------------------------
+
+control <- list (a=2, b=3, c= "hi there")
+## list of all control parameters with defaults
+
+## The generic
+test <- function(x,...){
+   UseMethod("test")
+}
+## So test will dispatch methods on the 'x' object
+##
+test.default <- function(x,
+                  control = control,
+                  ... ## any additional non control arguments
+                  )
+{
+   ## default code here such as:
+   cat(control$c, "\n default method result returned\n")
+   ..1 ## first argument in ... list
+}
+
+## An example:
+> test(x =3, control, y = 'abcd')
+hi there
+ default method result returned
+[1] "abcd"
+
+## Now a 'foo' method
+test.foo <- function(x, control = control, ## fixed list of defaults again
+                     change, ## list of changed default values
+                     ## with no defaults for this method
+                     special = list(c = "So long"),
+                     ## list of changes with defaults for this method
+                     ##  If the method does not use its default change it
+                     ##  must be given explicitly here.
+                     y = 0 ## additional parameter for this method
+                     ## with a default
+)
+   {
+   print(control$c)
+   cat("Using x = ", x, "\n")
+   before <- with(control, sum(a, b, y)) ## before modifying values
+   change <- c(change, special) ## get all the changes to the control list
+   control <- modifyList(control, val = change)
+   after <- with(control, sum(a, b, y))
+   cat("Results are: before = ",before, "  after = ", after, "\n\n")
+   print(control$c)
+   invisible(list(before, after)) ## return but don't print
+}
+
+## construct object of class 'foo'
+> x <- structure("method foo", class = "foo")
+
+## Now call the foo method on it.
+## Note that the 'special' argument can be omitted, since the default
+change to the
+## 'c' control parameter will be used
+## Note also that the 'a' parameter in the control list is used and so does not
+## have to be specified in the change list.
+
+> test(x, control, change = list( b = 100), y = 11)
+[1] "hi there"
+Using x =  method foo
+Results are: before =  16   after =  113
+
+[1] "So long"
+
+## Specify a different 'special' value
+> test(x, control, special = list( c="Au revoir"),  change = list( b = 100), y = 11)
+[1] "hi there"
+Using x =  method foo
+Results are: before =  16   after =  113
+
+[1] "Au revoir"
+
+
+Cheers,
+Bert
+
+
+On Sat, Apr 20, 2024 at 9:03?AM CRAN.r <cran.r at proton.me> wrote:
+>
+> I've got a complicated default value for an argument, basically a "control" argument that's a list with a lot of defaults, and I want to figure out its value before dispatching to a method so I don't need to have the same code repeated at the beginning of every method. None of the default values should be method-dependent, so I don't need or want each method to figure out the value separately. I hope that helps!
+>
+> Jay
+>
+>
+> On Saturday, April 20th, 2024 at 10:51 AM, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> > I do not understand what your goal is here (more context may be helpful, perhaps to others rather than me). So I doubt this is what you want, but here is a guess -- no need to respond if it is unhelpful:
+> >
+> > ## test.default returns NULL if object "y" not found in **calling environment and enclosures**;
+> > ## otherwise y.
+> >
+> > test <- function(x){
+> > UseMethod("test")
+> > }
+> > test.default <- function(x){
+> > tryCatch(y, error = function(e)NULL)
+> > }
+> >
+> > ## y not found
+> > test(x=3)
+> > NULL
+> >
+> > ## y found
+> > > y <- 'abcd'
+> > > test(x = 3)
+> > [1] "abcd"
+> >
+> > Cheers,
+> > Bert
+> >
+> >
+> >
+> >
+> > On Sat, Apr 20, 2024 at 4:23?AM CRAN.r via R-help <r-help at r-project.org> wrote:
+> >
+> > > Is there a way to pass a modified argument from an S3 generic to a method? Here's a non-working example that I want to return "abcd".
+> > >
+> > > test <- function(x, y = NULL){
+> > > y <- "abcd"
+> > > UseMethod("test")
+> > > }
+> > > test.default <- function(x, y = NULL) y
+> > > test(x = 3)
+> > >
+> > > Is that possible? I've looked around a lot, but can't find any examples or discussion.
+> > >
+> > > Jay
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+
+
