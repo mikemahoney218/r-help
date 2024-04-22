@@ -9708,3 +9708,411 @@ On Sat, Apr 20, 2024 at 9:03?AM CRAN.r <cran.r at proton.me> wrote:
 > > > and provide commented, minimal, self-contained, reproducible code.
 
 
+From hwborcher@ @end|ng |rom gm@||@com  Sun Apr 21 09:55:53 2024
+From: hwborcher@ @end|ng |rom gm@||@com (Hans W)
+Date: Sun, 21 Apr 2024 09:55:53 +0200
+Subject: [R] x[0]: Can '0' be made an allowed index in R?
+Message-ID: <CAML4n3NgT6uiiSAJYHduAx34ZLKfRQGYsNZkb_AJY9dtptN7Tw@mail.gmail.com>
+
+As we all know, in R indices for vectors start with 1, i.e, x[0] is not a
+correct expression. Some algorithms, e.g. in graph theory or combinatorics,
+are much easier to formulate and code if 0 is an allowed index pointing to
+the first element of the vector.
+
+Some programming languages, for instance Julia (where the index for normal
+vectors also starts with 1), provide libraries/packages that allow the user
+to define an index range for its vectors, say 0:9 or 10:20 or even negative
+indices.
+
+Of course, this notation would only be feasible for certain specially
+defined vectors. Is there a library that provides this functionality?
+Or is there a simple trick to do this in R? The expression 'x[0]' must
+be possible, does this mean the syntax of R has to be twisted somehow?
+
+Thanks, Hans W.
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sun Apr 21 10:08:08 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sun, 21 Apr 2024 09:08:08 +0100
+Subject: [R] x[0]: Can '0' be made an allowed index in R?
+In-Reply-To: <CAML4n3NgT6uiiSAJYHduAx34ZLKfRQGYsNZkb_AJY9dtptN7Tw@mail.gmail.com>
+References: <CAML4n3NgT6uiiSAJYHduAx34ZLKfRQGYsNZkb_AJY9dtptN7Tw@mail.gmail.com>
+Message-ID: <cd96eecc-52b8-44f4-bc2c-f1687e88110c@sapo.pt>
+
+?s 08:55 de 21/04/2024, Hans W escreveu:
+> As we all know, in R indices for vectors start with 1, i.e, x[0] is not a
+> correct expression. Some algorithms, e.g. in graph theory or combinatorics,
+> are much easier to formulate and code if 0 is an allowed index pointing to
+> the first element of the vector.
+> 
+> Some programming languages, for instance Julia (where the index for normal
+> vectors also starts with 1), provide libraries/packages that allow the user
+> to define an index range for its vectors, say 0:9 or 10:20 or even negative
+> indices.
+> 
+> Of course, this notation would only be feasible for certain specially
+> defined vectors. Is there a library that provides this functionality?
+> Or is there a simple trick to do this in R? The expression 'x[0]' must
+> be possible, does this mean the syntax of R has to be twisted somehow?
+> 
+> Thanks, Hans W.
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+I find what you are asking awkward but it can be done with S3 classes.
+Write an extraction method for the new class and in the use case below 
+it works. The method increments the ndex before calling NextMethod, the 
+usual extraction function.
+
+
+`[.zerobased` <- function(x, i, ...) {
+   i <- i + 1L
+   NextMethod()
+}
+as_zerobased <- function(x) {
+   class(x) <- c("zerobased", class(x))
+   x
+}
+
+x <- 1:10
+y <- as_zerobased(x)
+
+y[0]
+#> [1] 1
+y[1]
+#> [1] 2
+y[9]
+#> [1] 10
+y[10]
+#> [1] NA
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sun Apr 21 10:11:19 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sun, 21 Apr 2024 09:11:19 +0100
+Subject: [R] x[0]: Can '0' be made an allowed index in R?
+In-Reply-To: <cd96eecc-52b8-44f4-bc2c-f1687e88110c@sapo.pt>
+References: <CAML4n3NgT6uiiSAJYHduAx34ZLKfRQGYsNZkb_AJY9dtptN7Tw@mail.gmail.com>
+ <cd96eecc-52b8-44f4-bc2c-f1687e88110c@sapo.pt>
+Message-ID: <b3eb85fe-b1d5-459a-ae2b-300d8ec83180@sapo.pt>
+
+?s 09:08 de 21/04/2024, Rui Barradas escreveu:
+> ?s 08:55 de 21/04/2024, Hans W escreveu:
+>> As we all know, in R indices for vectors start with 1, i.e, x[0] is not a
+>> correct expression. Some algorithms, e.g. in graph theory or 
+>> combinatorics,
+>> are much easier to formulate and code if 0 is an allowed index 
+>> pointing to
+>> the first element of the vector.
+>>
+>> Some programming languages, for instance Julia (where the index for 
+>> normal
+>> vectors also starts with 1), provide libraries/packages that allow the 
+>> user
+>> to define an index range for its vectors, say 0:9 or 10:20 or even 
+>> negative
+>> indices.
+>>
+>> Of course, this notation would only be feasible for certain specially
+>> defined vectors. Is there a library that provides this functionality?
+>> Or is there a simple trick to do this in R? The expression 'x[0]' must
+>> be possible, does this mean the syntax of R has to be twisted somehow?
+>>
+>> Thanks, Hans W.
+>>
+>> ????[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+> 
+> I find what you are asking awkward but it can be done with S3 classes.
+> Write an extraction method for the new class and in the use case below 
+> it works. The method increments the ndex before calling NextMethod, the 
+> usual extraction function.
+> 
+> 
+> `[.zerobased` <- function(x, i, ...) {
+>  ? i <- i + 1L
+>  ? NextMethod()
+> }
+> as_zerobased <- function(x) {
+>  ? class(x) <- c("zerobased", class(x))
+>  ? x
+> }
+> 
+> x <- 1:10
+> y <- as_zerobased(x)
+> 
+> y[0]
+> #> [1] 1
+> y[1]
+> #> [1] 2
+> y[9]
+> #> [1] 10
+> y[10]
+> #> [1] NA
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> 
+Sorry, forgot to also define a `[[zerobased` method. It's probably safer.
+
+
+`[[.zerobased` <- function(x, i, ...) {
+   i <- i + 1L
+   NextMethod()
+}
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From cr@n@r @end|ng |rom proton@me  Sat Apr 20 18:02:53 2024
+From: cr@n@r @end|ng |rom proton@me (CRAN.r)
+Date: Sat, 20 Apr 2024 16:02:53 +0000
+Subject: [R] passing a modified argument to an S3 method
+In-Reply-To: <CAGxFJbReoEwmW-6EPv9Notf_CyuFHa1bvk+1=yGmo6YyHqmn=A@mail.gmail.com>
+References: <4pRzEDv__NGDIT68Q6LBK0OcyD9iQs3g6SkZemots3x4noMUQIV8UAfjDEe2UOq6-D4FF6z0T-76bUG0UxqFccqyFKVKw31OB_Iyh0kbzFs=@proton.me>
+ <CAGxFJbReoEwmW-6EPv9Notf_CyuFHa1bvk+1=yGmo6YyHqmn=A@mail.gmail.com>
+Message-ID: <G1mjJBz66CgP-Rn963FoqLN-rnXzcikYCBdnH10lDCMaIFaxQjFdsk3BpMGird32hbjX0eUKAxs69PsWarHcqrok-_i-7XgB22Yp7D8OM68=@proton.me>
+
+I've got a complicated default value for an argument, basically a "control" argument that's a list with a lot of defaults, and I want to figure out its value before dispatching to a method so I don't need to have the same code repeated at the beginning of every method. None of the default values should be method-dependent, so I don't need or want each method to figure out the value separately. I hope that helps!
+
+Jay
+
+
+On Saturday, April 20th, 2024 at 10:51 AM, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> I do not understand what your goal is here (more context may be helpful, perhaps to others rather than me). So I doubt this is what you want, but here is a guess -- no need to respond if it is unhelpful:
+> 
+> ## test.default returns NULL if object "y" not found in **calling environment and enclosures**;
+> ## otherwise y.
+> 
+> test <- function(x){
+> UseMethod("test")
+> }
+> test.default <- function(x){
+> tryCatch(y, error = function(e)NULL)
+> }
+> 
+> ## y not found
+> test(x=3)
+> NULL
+> 
+> ## y found
+> > y <- 'abcd'
+> > test(x = 3)
+> [1] "abcd"
+> 
+> Cheers,
+> Bert
+> 
+> 
+> 
+> 
+> On Sat, Apr 20, 2024 at 4:23?AM CRAN.r via R-help <r-help at r-project.org> wrote:
+> 
+> > Is there a way to pass a modified argument from an S3 generic to a method? Here's a non-working example that I want to return "abcd".
+> > 
+> > test <- function(x, y = NULL){
+> > y <- "abcd"
+> > UseMethod("test")
+> > }
+> > test.default <- function(x, y = NULL) y
+> > test(x = 3)
+> > 
+> > Is that possible? I've looked around a lot, but can't find any examples or discussion.
+> > 
+> > Jay
+> > 
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sun Apr 21 13:36:37 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sun, 21 Apr 2024 07:36:37 -0400
+Subject: [R] x[0]: Can '0' be made an allowed index in R?
+In-Reply-To: <CAML4n3NgT6uiiSAJYHduAx34ZLKfRQGYsNZkb_AJY9dtptN7Tw@mail.gmail.com>
+References: <CAML4n3NgT6uiiSAJYHduAx34ZLKfRQGYsNZkb_AJY9dtptN7Tw@mail.gmail.com>
+Message-ID: <CABghstSQnN22RWkwu63tdi=J5xDo8eBcKtUKy0mfhs1SOzNaQA@mail.gmail.com>
+
+https://cran.r-project.org/package=index0
+
+On Sun, Apr 21, 2024, 3:56 AM Hans W <hwborchers at gmail.com> wrote:
+
+> As we all know, in R indices for vectors start with 1, i.e, x[0] is not a
+> correct expression. Some algorithms, e.g. in graph theory or combinatorics,
+> are much easier to formulate and code if 0 is an allowed index pointing to
+> the first element of the vector.
+>
+> Some programming languages, for instance Julia (where the index for normal
+> vectors also starts with 1), provide libraries/packages that allow the user
+> to define an index range for its vectors, say 0:9 or 10:20 or even negative
+> indices.
+>
+> Of course, this notation would only be feasible for certain specially
+> defined vectors. Is there a library that provides this functionality?
+> Or is there a simple trick to do this in R? The expression 'x[0]' must
+> be possible, does this mean the syntax of R has to be twisted somehow?
+>
+> Thanks, Hans W.
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sun Apr 21 16:23:50 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sun, 21 Apr 2024 10:23:50 -0400
+Subject: [R] x[0]: Can '0' be made an allowed index in R?
+In-Reply-To: <CAML4n3NgT6uiiSAJYHduAx34ZLKfRQGYsNZkb_AJY9dtptN7Tw@mail.gmail.com>
+References: <CAML4n3NgT6uiiSAJYHduAx34ZLKfRQGYsNZkb_AJY9dtptN7Tw@mail.gmail.com>
+Message-ID: <9ccba434-7daa-48c8-8e20-f7395f14afa1@gmail.com>
+
+   Also https://cran.r-project.org/package=Oarray (which is older and 
+hence possibly more stable)
+
+On 2024-04-21 3:55 a.m., Hans W wrote:
+> As we all know, in R indices for vectors start with 1, i.e, x[0] is not a
+> correct expression. Some algorithms, e.g. in graph theory or combinatorics,
+> are much easier to formulate and code if 0 is an allowed index pointing to
+> the first element of the vector.
+> 
+> Some programming languages, for instance Julia (where the index for normal
+> vectors also starts with 1), provide libraries/packages that allow the user
+> to define an index range for its vectors, say 0:9 or 10:20 or even negative
+> indices.
+> 
+> Of course, this notation would only be feasible for certain specially
+> defined vectors. Is there a library that provides this functionality?
+> Or is there a simple trick to do this in R? The expression 'x[0]' must
+> be possible, does this mean the syntax of R has to be twisted somehow?
+> 
+> Thanks, Hans W.
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Mon Apr 22 03:05:39 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sun, 21 Apr 2024 21:05:39 -0400
+Subject: [R] x[0]: Can '0' be made an allowed index in R?
+In-Reply-To: <CAML4n3NgT6uiiSAJYHduAx34ZLKfRQGYsNZkb_AJY9dtptN7Tw@mail.gmail.com>
+References: <CAML4n3NgT6uiiSAJYHduAx34ZLKfRQGYsNZkb_AJY9dtptN7Tw@mail.gmail.com>
+Message-ID: <007101da9451$312e2320$938a6960$@gmail.com>
+
+Hans,
+
+It is a good question albeit R made a conscious decision to have indices
+that correspond to things like row numbers and thus start with 1. Some
+others have used a start of zero but often for reasons more related to
+making use of all combinations of the implementation of integers on many
+machines where starting with 1 would only allow use of the 255 of the 256
+combinations available in 8 bits and so on.
+
+My solution when I needed to start with zero is simply to do things like
+x[n+1] or have a small function that does an increment like x[inc(n)] that
+makes very clear what is happening.
+
+You have been given several possible ways closer to what you want and that
+may work for you but may confuse anyone else ever looking at your code so I
+would add some comments or documentation explaining your non-standard use.
+
+But do note the possibility of issues with any solution if you use other
+indexing methods like x[5:8] which might not be done consistently. 
+
+And if you were using a 2-D structure like a matrix or data.frame, would
+your columns also be starting with column 0 as in mydata[0,0] to get the
+first item in the first row, or are columns still 1-based while rows are
+not?
+
+Beware some solutions may be incomplete and may result in subtle errors.
+Just routinely adding 1 seems safer as you know what you will get.
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Hans W
+Sent: Sunday, April 21, 2024 3:56 AM
+To: R help project <r-help at r-project.org>
+Subject: [R] x[0]: Can '0' be made an allowed index in R?
+
+As we all know, in R indices for vectors start with 1, i.e, x[0] is not a
+correct expression. Some algorithms, e.g. in graph theory or combinatorics,
+are much easier to formulate and code if 0 is an allowed index pointing to
+the first element of the vector.
+
+Some programming languages, for instance Julia (where the index for normal
+vectors also starts with 1), provide libraries/packages that allow the user
+to define an index range for its vectors, say 0:9 or 10:20 or even negative
+indices.
+
+Of course, this notation would only be feasible for certain specially
+defined vectors. Is there a library that provides this functionality?
+Or is there a simple trick to do this in R? The expression 'x[0]' must
+be possible, does this mean the syntax of R has to be twisted somehow?
+
+Thanks, Hans W.
+
+	[[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
