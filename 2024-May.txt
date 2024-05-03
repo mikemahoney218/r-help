@@ -1,0 +1,338 @@
+From t|m@how@rd @end|ng |rom dec@ny@gov  Wed May  1 18:57:18 2024
+From: t|m@how@rd @end|ng |rom dec@ny@gov (Howard, Tim G (DEC))
+Date: Wed, 1 May 2024 16:57:18 +0000
+Subject: [R] De-serialization vulnerability?
+In-Reply-To: <mailman.371269.1.1714125601.27921.r-help@r-project.org>
+References: <mailman.371269.1.1714125601.27921.r-help@r-project.org>
+Message-ID: <PH8PR09MB97902D90C360E90A059B06B3A8192@PH8PR09MB9790.namprd09.prod.outlook.com>
+
+All, 
+There seems to be a hullaboo about a vulnerability in R when deserializing untrusted data:
+
+https://hiddenlayer.com/research/r-bitrary-code-execution
+
+https://nvd.nist.gov/vuln/detail/CVE-2024-27322
+
+https://www.kb.cert.org/vuls/id/238194
+
+
+Apparently a fix was made for R 4.4.0, but I see no mention of it in the changes report:
+
+https://cloud.r-project.org/bin/windows/base/NEWS.R-4.4.0.html
+
+Is this real?  Were there changes in R 4.4.0 that aren't reported?
+
+Of course, we should *always* update to the most recent version, but I was confused why it wasn't mentioned in the release info. 
+
+Thanks,
+Tim
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed May  1 19:19:59 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 1 May 2024 20:19:59 +0300
+Subject: [R] De-serialization vulnerability?
+In-Reply-To: <PH8PR09MB97902D90C360E90A059B06B3A8192@PH8PR09MB9790.namprd09.prod.outlook.com>
+References: <mailman.371269.1.1714125601.27921.r-help@r-project.org>
+ <PH8PR09MB97902D90C360E90A059B06B3A8192@PH8PR09MB9790.namprd09.prod.outlook.com>
+Message-ID: <20240501201959.0b1c65bc@Tarkus>
+
+? Wed, 1 May 2024 16:57:18 +0000
+"Howard, Tim G \(DEC\) via R-help" <r-help at r-project.org> ?????:
+
+> Is this real?
+
+Yes, but with a giant elephant in the room that many are overlooking.
+It has actually always been much worse.
+
+Until R-4.4.0, there used to be a way for readRDS() to return an
+unevaluated "promise object". When you access the returned value, the
+code attached to the promise object is evaluated. Starting with
+R-4.4.0, this particular ability is now forbidden. One particular
+attack is now prevented, but the whole class of attacks is still
+fundamentally impossible to avoid. The resulting increase in safety is
+very small.
+
+The R data files, both those produced by save() and opened by load(),
+and those produced by saveRDS() and readRDS(), contain _internal_
+object state. The code processing those objects trusts the internal
+object state, because it has no other alternative, no other source of
+state. This is true of all of base R, CRAN and BioConductor.
+
+Many R objects contain executable code. For example, many saved models
+contain -- as part of this internal state that gets stored inside *.rds
+and *.RData files -- executable expressions that produce model matrices
+from data frames. It is trivial for any aspiring attacker to take such
+an object and replace the model expression with one that would take over
+your system. When you perform ordinary R operations on the doctored
+object, the attacker-provided "model expression" instead does whatever
+the attacker wants.
+
+The above was just one example of "trusting the internal state". An
+attacker can come up with similar attacks for ALTREP objects, 'glue'
+strings and a lot of other features of R, without ever touching
+promises (the topic of CVE-2024-27322) or exploiting parser
+vulnerabilities.
+
+One safe way to move forward is to set aside a strict subset of R Data
+Serialization format that cannot be used to create any executable code
+or touch potentially vulnerable state (such as ALTREP, I think) and
+reject all other features of RDS. Yes, this abandons the ability to
+save model objects and many other great features of R serialization,
+including those that make 'parallel' clusters possible. (But we trust
+our clusters and should use regular serialize() with them.) I've been
+working on this today; it's very raw, not even a package yet, and it
+doesn't even read some of my data correctly, but I believe it's a
+secure way forward: https://codeberg.org/aitap/unserializeData
+
+-- 
+Best regards,
+Ivan
+
+
+From ce||ocgw @end|ng |rom gm@||@com  Wed May  1 17:32:32 2024
+From: ce||ocgw @end|ng |rom gm@||@com (Carl Witthoft)
+Date: Wed, 1 May 2024 11:32:32 -0400
+Subject: [R] strange behavior in base::as.double
+Message-ID: <CANkkNcijFELy3Ajagu6G5S+KzoKxRknFr0y+7=Xm3Up6MjbWmA@mail.gmail.com>
+
+Hello.
+I'm running R 4.4.0 on an iMac Venture 13.5.2 .   There appears to be a bug
+in as.double().
+
+Create a string with a numeric digits followed by a single letter a thru f
+(as tho' it's base 16).
+
+for  K  in (a,b,c,d, and f ) ,  as.double( '123K') returns NA
+but as.double('123e') returns 123 -- or whatever the first digit is.
+
+Please let me know if there are additional tests I can try .
+
+
+thanks
+Carl Witthoft
+
+	[[alternative HTML version deleted]]
+
+
+From @@r@h@go@|ee @end|ng |rom gm@||@com  Wed May  1 21:29:05 2024
+From: @@r@h@go@|ee @end|ng |rom gm@||@com (Sarah Goslee)
+Date: Wed, 1 May 2024 15:29:05 -0400
+Subject: [R] strange behavior in base::as.double
+In-Reply-To: <CANkkNcijFELy3Ajagu6G5S+KzoKxRknFr0y+7=Xm3Up6MjbWmA@mail.gmail.com>
+References: <CANkkNcijFELy3Ajagu6G5S+KzoKxRknFr0y+7=Xm3Up6MjbWmA@mail.gmail.com>
+Message-ID: <CAM_vjumHr=aKWTnjw2zN3z0d+00v7Xh5XgVxx6Fvx=FqasYozg@mail.gmail.com>
+
+Hi Carl,
+
+Not that strange: R thinks you're using scientific notation. Also not a Mac bug.
+
+> as.double('123e')
+[1] 123
+> as.double('123e+0')
+[1] 123
+> as.double('123e+1')
+[1] 1230
+> as.double('123e-1')
+[1] 12.3
+
+Can you explain what you're trying to accomplish?
+
+Sarah
+
+On Wed, May 1, 2024 at 3:24?PM Carl Witthoft <cellocgw at gmail.com> wrote:
+>
+> Hello.
+> I'm running R 4.4.0 on an iMac Venture 13.5.2 .   There appears to be a bug
+> in as.double().
+>
+> Create a string with a numeric digits followed by a single letter a thru f
+> (as tho' it's base 16).
+>
+> for  K  in (a,b,c,d, and f ) ,  as.double( '123K') returns NA
+> but as.double('123e') returns 123 -- or whatever the first digit is.
+>
+> Please let me know if there are additional tests I can try .
+>
+>
+> thanks
+> Carl Witthoft
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Sarah Goslee (she/her)
+http://www.numberwright.com
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Wed May  1 21:32:35 2024
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Wed, 1 May 2024 15:32:35 -0400
+Subject: [R] strange behavior in base::as.double
+In-Reply-To: <CANkkNcijFELy3Ajagu6G5S+KzoKxRknFr0y+7=Xm3Up6MjbWmA@mail.gmail.com>
+References: <CANkkNcijFELy3Ajagu6G5S+KzoKxRknFr0y+7=Xm3Up6MjbWmA@mail.gmail.com>
+Message-ID: <CADNULg9jX9oEdc4UYRAg_Qx_7A_PpnC5DsveT9TtwsfS3YT6_A@mail.gmail.com>
+
+This happens because "123e" looks like exponential form. This string has no
+exponent, so it gets treated as 0 exponent.
+
+If you're interested in converting hex numbers, append 0x:
+
+as.numeric("0x123a")
+
+or use strtoi:
+
+strtoi("123a", 16)
+
+On Wed, May 1, 2024, 15:24 Carl Witthoft <cellocgw at gmail.com> wrote:
+
+> Hello.
+> I'm running R 4.4.0 on an iMac Venture 13.5.2 .   There appears to be a bug
+> in as.double().
+>
+> Create a string with a numeric digits followed by a single letter a thru f
+> (as tho' it's base 16).
+>
+> for  K  in (a,b,c,d, and f ) ,  as.double( '123K') returns NA
+> but as.double('123e') returns 123 -- or whatever the first digit is.
+>
+> Please let me know if there are additional tests I can try .
+>
+>
+> thanks
+> Carl Witthoft
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed May  1 21:33:19 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 1 May 2024 15:33:19 -0400
+Subject: [R] strange behavior in base::as.double
+In-Reply-To: <CANkkNcijFELy3Ajagu6G5S+KzoKxRknFr0y+7=Xm3Up6MjbWmA@mail.gmail.com>
+References: <CANkkNcijFELy3Ajagu6G5S+KzoKxRknFr0y+7=Xm3Up6MjbWmA@mail.gmail.com>
+Message-ID: <311baecb-10ae-4ad4-9d86-b2e5ebd2707d@gmail.com>
+
+On 01/05/2024 11:32 a.m., Carl Witthoft wrote:
+> Hello.
+> I'm running R 4.4.0 on an iMac Venture 13.5.2 .   There appears to be a bug
+> in as.double().
+> 
+> Create a string with a numeric digits followed by a single letter a thru f
+> (as tho' it's base 16).
+> 
+> for  K  in (a,b,c,d, and f ) ,  as.double( '123K') returns NA
+> but as.double('123e') returns 123 -- or whatever the first digit is.
+> 
+> Please let me know if there are additional tests I can try .
+
+This has been mentioned in the news recently.  123e was taken as 
+scientific format, with an implied 0 at the end, i.e. 123e0.  That is no 
+longer true after the recent fix; I'm not sure if it is in R 
+4.4.0-patched yet.
+
+Duncan Murdoch
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed May  1 21:48:44 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 1 May 2024 22:48:44 +0300
+Subject: [R] strange behavior in base::as.double
+In-Reply-To: <CANkkNcijFELy3Ajagu6G5S+KzoKxRknFr0y+7=Xm3Up6MjbWmA@mail.gmail.com>
+References: <CANkkNcijFELy3Ajagu6G5S+KzoKxRknFr0y+7=Xm3Up6MjbWmA@mail.gmail.com>
+Message-ID: <20240501224844.14da6394@Tarkus>
+
+? Wed, 1 May 2024 11:32:32 -0400
+Carl Witthoft <cellocgw at gmail.com> ?????:
+
+> but as.double('123e') returns 123 -- or whatever the first digit is.
+
+Nicely spotted problem!
+
+Prof. Brian D. Ripley has fixed it in R-devel revision 86436 [*]. Now
+as.double('123e') will also return NA. I think that the fix will become
+part of R-4.4.1 when it's released.
+
+-- 
+Best regards,
+Ivan
+
+[*]
+https://github.com/r-devel/r-svn/commit/9069a729f5bf69de8250a4c91dd482fcf64e1154
+
+
+From pd@|gd @end|ng |rom gm@||@com  Thu May  2 11:31:43 2024
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Thu, 2 May 2024 11:31:43 +0200
+Subject: [R] De-serialization vulnerability?
+In-Reply-To: <PH8PR09MB97902D90C360E90A059B06B3A8192@PH8PR09MB9790.namprd09.prod.outlook.com>
+References: <mailman.371269.1.1714125601.27921.r-help@r-project.org>
+ <PH8PR09MB97902D90C360E90A059B06B3A8192@PH8PR09MB9790.namprd09.prod.outlook.com>
+Message-ID: <4E6EDAB7-070D-4F93-9C5D-4EDDF3F2823A@gmail.com>
+
+As a general matter, security holes are usually not advertised by detailing them in the NEWS file. 
+
+The disclosure of such things goes on a different schedule, typically _after_ binaries are out, at which point editing the NEWS file is too late. 
+
+There are other things that do not go into NEWS: Documentation fixups, etc. What does go in is end-user visible functional changes and items that have an explicit PR# against them. 
+
+- Peter D. 
+
+
+
+> On 1 May 2024, at 18:57 , Howard, Tim G (DEC) via R-help <r-help at r-project.org> wrote:
+> 
+> All, 
+> There seems to be a hullaboo about a vulnerability in R when deserializing untrusted data:
+> 
+> https://hiddenlayer.com/research/r-bitrary-code-execution
+> 
+> https://nvd.nist.gov/vuln/detail/CVE-2024-27322
+> 
+> https://www.kb.cert.org/vuls/id/238194
+> 
+> 
+> Apparently a fix was made for R 4.4.0, but I see no mention of it in the changes report:
+> 
+> https://cloud.r-project.org/bin/windows/base/NEWS.R-4.4.0.html
+> 
+> Is this real?  Were there changes in R 4.4.0 that aren't reported?
+> 
+> Of course, we should *always* update to the most recent version, but I was confused why it wasn't mentioned in the release info. 
+> 
+> Thanks,
+> Tim
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
