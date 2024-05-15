@@ -4370,3 +4370,291 @@ On Mon, May 13, 2024 at 1:57?PM Duncan Murdoch <murdoch.duncan at gmail.com> wro
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From |kry|ov @end|ng |rom d|@root@org  Tue May 14 07:08:58 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Tue, 14 May 2024 08:08:58 +0300
+Subject: [R] Description of error is untranslated when R_XLEN_T_MAX is
+ exceeded by only 1 element.
+In-Reply-To: <CAEUCyyW4QdEMRieLtGP_+eeaWfSOY2TEtaznKTQOCVNSZ0fKWA@mail.gmail.com>
+References: <CAEUCyyW4QdEMRieLtGP_+eeaWfSOY2TEtaznKTQOCVNSZ0fKWA@mail.gmail.com>
+Message-ID: <20240514080858.3c232a07@Tarkus>
+
+Dear Ricardo Villalba,
+
+Thank you for spotting this corner case!
+
+? Mon, 13 May 2024 11:37:57 -0300
+Ricardo Villalba <rikivillalba at gmail.com> ?????:
+
+> I track the messages to be coded here:
+> https://github.com/r-devel/r-svn/blob/abe625945c4402cd2bb97b5a64e7469db3e904f0/src/main/altclasses.c#L580
+> and here
+> https://github.com/r-devel/r-svn/blob/abe625945c4402cd2bb97b5a64e7469db3e904f0/src/main/seq.c#L102
+
+You may have noticed that one of these places lacks the underscore that
+R uses as the translation keyword: it's _(string) that looks up the
+translation of the string.
+
+Would you like to suggest a patch on R-devel at r-project.org or
+https://bugs.r-project.org ?
+
+-- 
+Best regards,
+Ivan
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Tue May 14 09:45:25 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Tue, 14 May 2024 09:45:25 +0200
+Subject: [R] Altrep and translations (was " Description of error is
+ untranslated when ....")
+In-Reply-To: <20240514080858.3c232a07@Tarkus>
+References: <CAEUCyyW4QdEMRieLtGP_+eeaWfSOY2TEtaznKTQOCVNSZ0fKWA@mail.gmail.com>
+ <20240514080858.3c232a07@Tarkus>
+Message-ID: <26179.5781.212922.250318@stat.math.ethz.ch>
+
+>>>>> Ivan Krylov via R-help 
+>>>>>     on Tue, 14 May 2024 08:08:58 +0300 writes:
+
+    > Dear Ricardo Villalba, Thank you for spotting this corner
+    > case!
+
+    > ? Mon, 13 May 2024 11:37:57 -0300 Ricardo Villalba
+    > <rikivillalba at gmail.com> ?????:
+
+    >> I track the messages to be coded here:
+    >> https://github.com/r-devel/r-svn/blob/abe625945c4402cd2bb97b5a64e7469db3e904f0/src/main/altclasses.c#L580
+    >> and here
+    >> https://github.com/r-devel/r-svn/blob/abe625945c4402cd2bb97b5a64e7469db3e904f0/src/main/seq.c#L102
+
+    > You may have noticed that one of these places lacks the
+    > underscore that R uses as the translation keyword: it's
+    > _(string) that looks up the translation of the string.
+
+    > Would you like to suggest a patch on R-devel at r-project.org
+    > or https://bugs.r-project.org ?
+
+    > -- 
+    > Best regards, Ivan
+
+Thank you, but, well... for such small changes -- that would be
+quite a bit of (human, i.e. R-core) overhead, but of course is
+generally a good possibility  (but here, wait! .. and read on : )
+
+Actually -- this now gets more  "R-devel" - appropriate --
+I notice that there are quite a few  error("..." .. )
+and also  warning("..." ..) calls in
+src/main/altclasses.c *and* in
+src/main/altrep.c        and *none* of them asks for translation;
+
+While this could be for historical reasons (code originally much
+by Gabe Becker from outside R-core *and* at first just in a
+separate branch before being merged in to the main (r-devel)
+branch.
+OTOH: There may be good reasons for translations lookup being
+brittle in case of altrep error messages .. and hence left off
+purposely?
+
+Martin
+
+--
+Martin Maechler
+ETH Zurich  and  R Core Team
+
+
+From n|ckmwr@y @end|ng |rom gm@||@com  Tue May 14 15:16:23 2024
+From: n|ckmwr@y @end|ng |rom gm@||@com (Nick Wray)
+Date: Tue, 14 May 2024 14:16:23 +0100
+Subject: [R] Removing polygons from shapefile of Scotland and Islands
+Message-ID: <CABxY9BPzecvEFh14nas3_dr5pbc7VpXV4OowY2Tuyp_YTaKNww@mail.gmail.com>
+
+Hello  I have a shapefile of Scotland, including the islands.  The river
+flow data I am using is only for the mainland and for a clearer and larger
+map I would like to not plot Orkney and Shetland to the north of the
+mainland, as I don't need them.
+
+The map I have I got from
+https://borders.ukdataservice.ac.uk/easy_download_data.html?data=infuse_ctry_2011
+
+then I put the uk shapefile onto my laptop with no problems (I have sf
+running)
+
+the_uk<-st_read(dsn="C:/Users/nickm/Desktop/Shapefiles/infuse_ctry_2011.shp")
+
+scotland<-the_uk[2,]
+
+plot(scotland$geometry)
+
+This gives me a nice map of Scotland  plus islands but obviously there are
+lots of separate polygons and if I go into the points with something like
+
+scot_pts<-unlist(as.data.frame(scotland$geometry))
+
+it's not at all clear how I can get rid of the points I don't want as they
+don't seem to be listed in any easy way to find where one polygon stops and
+another starts
+
+I am wondering whether this approach is right anyway or whether there is
+some sf function which would allow me to identify the polygons I want -
+essentially the big one which is the mainland without lots of elaborate
+conversions and manipulations
+
+Any pointers, thoughts etc much appreciated
+
+Thanks Nick Wray
+
+	[[alternative HTML version deleted]]
+
+
+From r|k|v|||@|b@ @end|ng |rom gm@||@com  Tue May 14 16:15:01 2024
+From: r|k|v|||@|b@ @end|ng |rom gm@||@com (Ricardo Villalba)
+Date: Tue, 14 May 2024 11:15:01 -0300
+Subject: [R] Altrep and translations (was " Description of error is
+ untranslated when ....")
+In-Reply-To: <26179.5781.212922.250318@stat.math.ethz.ch>
+References: <CAEUCyyW4QdEMRieLtGP_+eeaWfSOY2TEtaznKTQOCVNSZ0fKWA@mail.gmail.com>
+ <20240514080858.3c232a07@Tarkus> <26179.5781.212922.250318@stat.math.ethz.ch>
+Message-ID: <CAEUCyyWKAk1Ze=T4F2k0evGEUCRDG-DEtC0UDY+eJe0gOebyJg@mail.gmail.com>
+
+Hello
+On the other hand, i find that R_compact_intrange checks whether (r = n2 -
+n1 + 1) >= R_XLEN_T_MAX,  while seq_colon checks for (r = fabs(n2 - n1)) >=
+R_XLEN_T_MAX. And only then n is defined as r + 1 + epsilon. r is not used
+again
+That is why seq_colon does not reject that size at first and then altrep
+does.
+Should not line 101  be  " if (r + 1 + FLT_EPSILON >= R_XLEN_T_MAX) "
+instead of r >= R_XLEN_T_MAX?
+
+El mar, 14 may 2024 a las 4:45, Martin Maechler (<maechler at stat.math.ethz.ch>)
+escribi?:
+
+> >>>>> Ivan Krylov via R-help
+> >>>>>     on Tue, 14 May 2024 08:08:58 +0300 writes:
+>
+>     > Dear Ricardo Villalba, Thank you for spotting this corner
+>     > case!
+>
+>     > ? Mon, 13 May 2024 11:37:57 -0300 Ricardo Villalba
+>     > <rikivillalba at gmail.com> ?????:
+>
+>     >> I track the messages to be coded here:
+>     >>
+> https://github.com/r-devel/r-svn/blob/abe625945c4402cd2bb97b5a64e7469db3e904f0/src/main/altclasses.c#L580
+>     >> and here
+>     >>
+> https://github.com/r-devel/r-svn/blob/abe625945c4402cd2bb97b5a64e7469db3e904f0/src/main/seq.c#L102
+>
+>     > You may have noticed that one of these places lacks the
+>     > underscore that R uses as the translation keyword: it's
+>     > _(string) that looks up the translation of the string.
+>
+>     > Would you like to suggest a patch on R-devel at r-project.org
+>     > or https://bugs.r-project.org ?
+>
+>     > --
+>     > Best regards, Ivan
+>
+> Thank you, but, well... for such small changes -- that would be
+> quite a bit of (human, i.e. R-core) overhead, but of course is
+> generally a good possibility  (but here, wait! .. and read on : )
+>
+> Actually -- this now gets more  "R-devel" - appropriate --
+> I notice that there are quite a few  error("..." .. )
+> and also  warning("..." ..) calls in
+> src/main/altclasses.c *and* in
+> src/main/altrep.c        and *none* of them asks for translation;
+>
+> While this could be for historical reasons (code originally much
+> by Gabe Becker from outside R-core *and* at first just in a
+> separate branch before being merged in to the main (r-devel)
+> branch.
+> OTOH: There may be good reasons for translations lookup being
+> brittle in case of altrep error messages .. and hence left off
+> purposely?
+>
+> Martin
+>
+> --
+> Martin Maechler
+> ETH Zurich  and  R Core Team
+>
+>
+
+-- 
+?DV!
+
+	[[alternative HTML version deleted]]
+
+
+From rhe|p @end|ng |rom eoo@@dd@@n|  Tue May 14 17:39:37 2024
+From: rhe|p @end|ng |rom eoo@@dd@@n| (Jan van der Laan)
+Date: Tue, 14 May 2024 17:39:37 +0200
+Subject: [R] Removing polygons from shapefile of Scotland and Islands
+In-Reply-To: <CABxY9BPzecvEFh14nas3_dr5pbc7VpXV4OowY2Tuyp_YTaKNww@mail.gmail.com>
+References: <CABxY9BPzecvEFh14nas3_dr5pbc7VpXV4OowY2Tuyp_YTaKNww@mail.gmail.com>
+Message-ID: <91200c6e-2cab-4580-af5f-8ab4137e1cdb@eoos.dds.nl>
+
+I believe mapshaper has functionality for removing small 'islands'. 
+There is a webinterface for mapshaper, but I see there is also an 
+R-package (see 
+https://search.r-project.org/CRAN/refmans/rmapshaper/html/ms_filter_islands.html 
+for island removal).
+
+If you want to manually select which islands to keep and which to 
+remove, you can split multipolygons into single polygons. I believe that 
+is possible using st_cast.
+
+But if it is just getting the relevant portion of the map on screen. 
+With the plot-command and using st_viewport it is possible to set the 
+part of the map that is drawn.
+
+HTH,
+Jsn
+
+
+On 14-05-2024 15:16, Nick Wray wrote:
+> Hello  I have a shapefile of Scotland, including the islands.  The river
+> flow data I am using is only for the mainland and for a clearer and larger
+> map I would like to not plot Orkney and Shetland to the north of the
+> mainland, as I don't need them.
+> 
+> The map I have I got from
+> https://borders.ukdataservice.ac.uk/easy_download_data.html?data=infuse_ctry_2011
+> 
+> then I put the uk shapefile onto my laptop with no problems (I have sf
+> running)
+> 
+> the_uk<-st_read(dsn="C:/Users/nickm/Desktop/Shapefiles/infuse_ctry_2011.shp")
+> 
+> scotland<-the_uk[2,]
+> 
+> plot(scotland$geometry)
+> 
+> This gives me a nice map of Scotland  plus islands but obviously there are
+> lots of separate polygons and if I go into the points with something like
+> 
+> scot_pts<-unlist(as.data.frame(scotland$geometry))
+> 
+> it's not at all clear how I can get rid of the points I don't want as they
+> don't seem to be listed in any easy way to find where one polygon stops and
+> another starts
+> 
+> I am wondering whether this approach is right anyway or whether there is
+> some sf function which would allow me to identify the polygons I want -
+> essentially the big one which is the mainland without lots of elaborate
+> conversions and manipulations
+> 
+> Any pointers, thoughts etc much appreciated
+> 
+> Thanks Nick Wray
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
