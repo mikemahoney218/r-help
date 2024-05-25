@@ -6198,3 +6198,133 @@ Lucerne, Switzerland
 http://enricoschumann.net
 
 
+From |@urentRHe|p @end|ng |rom |ree@|r  Fri May 24 21:35:29 2024
+From: |@urentRHe|p @end|ng |rom |ree@|r (Laurent Rhelp)
+Date: Fri, 24 May 2024 21:35:29 +0200
+Subject: [R] dplyr, group_by and selective action according to each group
+Message-ID: <ad81e427-d196-43bb-9cb9-60c82ffb8b85@free.fr>
+
+Dear RHelp-list,
+
+ ?? Using dplyr and the group_by approach on a dataframe, I want to be 
+able to apply a specific action according to the group name. The code 
+bellow works, but I am not able to write it in a more esthetic way using 
+dplyr. Can somebody help me to find a better solution ?
+
+Thank you
+
+Best regards
+
+Laurent
+
+df_test <- data.frame( x1=1:9, x2=1:9, gr=rep(paste0("gr",1:3),each=3))
+df_test? <-? df_test %>% dplyr::group_by(gr) %>%
+ ? group_modify(.f=function(.x,.y){
+ ??? print(paste0("Nom du groupe : ",.y[["gr"]]))
+ ??? switch(as.character(.y[["gr"]])
+ ?????????? , gr1 = {.x[,"x1"] <- .x[,"x1"]+1}
+ ?????????? , gr2 = {.x[,"x1"] <- 0}
+ ?????????? , gr3 = {.x[,"x1"] <- .x[,"x1"]+2}
+ ?????????? , {stop(paste0('The group ',.y[["gr"]]," is not taken into 
+account"))}
+ ??? )
+ ??? return(.x) }) %>% ungroup()
+
+df_test
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat May 25 00:52:04 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Fri, 24 May 2024 15:52:04 -0700
+Subject: [R] 
+ dplyr, group_by and selective action according to each group
+In-Reply-To: <ad81e427-d196-43bb-9cb9-60c82ffb8b85@free.fr>
+References: <ad81e427-d196-43bb-9cb9-60c82ffb8b85@free.fr>
+Message-ID: <CAGxFJbQepUfBhmjOfr6S2wyRFVbNm7yMsgJ2CNGu0tERQ0tnRg@mail.gmail.com>
+
+Laurent:
+As I don't use dplyr, this won't help you, but I hope you and others may
+find it entertaining anyway.
+
+If I understand you correctly (and ignore this if I have not), there are a
+ton of ways to do this in base R, including using switch() along the lines
+you noted in your post. However, when the functions get sufficiently
+complicated or numerous, it may be useful to store them in a named list and
+use the names to call them in some sort of loop. Here I have just used your
+anonymous functions in the list, but of course you could have used already
+existing functions instead.
+
+## your example
+df_test <- data.frame( x1=1:9, x2=1:9, gr=rep(paste0("gr",1:3),each=3))
+
+## function list with the relevant names
+funcs <- list(gr1 = \(x)x+1, gr2 = \(x)0, gr3 = \(x)x+2)
+## Alternatively you could do this if you had many different functions:
+## funcs <- list(\(x)x+1, \(x)0,  \(x)x+2)
+## names(funcs) <- sort(unique(df_test$gr))
+## note that sort() is unnecessary in your example, but I think that it
+would
+## be helpful if you had a lot of different groups and corresponding
+functions
+## to track.
+
+##Now the little loop to call the functions
+df_test$x1 <- with(df_test,{
+   for(nm in names(funcs))
+      x1[gr == nm] <- funcs[[nm]](x1[gr == nm])
+   x1}
+)
+
+#################
+Note that the above uses one of the features that I really like about R --
+functions are full first class objects that can be thrown around and
+handled just like any other "variables" . So funcs[[nm]](whatever) seems to
+me to be a natural way to choose and call the function you want. You may
+disagree, of course.
+
+Caveat: I make no claims about the efficiency or lack thereof of the above.
+
+Cheers,
+Bert
+
+On Fri, May 24, 2024 at 12:35?PM Laurent Rhelp <laurentRHelp at free.fr> wrote:
+
+> Dear RHelp-list,
+>
+>     Using dplyr and the group_by approach on a dataframe, I want to be
+> able to apply a specific action according to the group name. The code
+> bellow works, but I am not able to write it in a more esthetic way using
+> dplyr. Can somebody help me to find a better solution ?
+>
+> Thank you
+>
+> Best regards
+>
+> Laurent
+>
+> df_test <- data.frame( x1=1:9, x2=1:9, gr=rep(paste0("gr",1:3),each=3))
+> df_test  <-  df_test %>% dplyr::group_by(gr) %>%
+>    group_modify(.f=function(.x,.y){
+>      print(paste0("Nom du groupe : ",.y[["gr"]]))
+>      switch(as.character(.y[["gr"]])
+>             , gr1 = {.x[,"x1"] <- .x[,"x1"]+1}
+>             , gr2 = {.x[,"x1"] <- 0}
+>             , gr3 = {.x[,"x1"] <- .x[,"x1"]+2}
+>             , {stop(paste0('The group ',.y[["gr"]]," is not taken into
+> account"))}
+>      )
+>      return(.x) }) %>% ungroup()
+>
+> df_test
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
