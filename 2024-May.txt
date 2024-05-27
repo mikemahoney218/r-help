@@ -6466,3 +6466,157 @@ PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From |@urentRHe|p @end|ng |rom |ree@|r  Sun May 26 17:14:37 2024
+From: |@urentRHe|p @end|ng |rom |ree@|r (Laurent Rhelp)
+Date: Sun, 26 May 2024 17:14:37 +0200
+Subject: [R] 
+ dplyr, group_by and selective action according to each group
+In-Reply-To: <009401daae4f$1920a470$4b61ed50$@gmail.com>
+References: <ad81e427-d196-43bb-9cb9-60c82ffb8b85@free.fr>
+ <CAGxFJbQepUfBhmjOfr6S2wyRFVbNm7yMsgJ2CNGu0tERQ0tnRg@mail.gmail.com>
+ <009401daae4f$1920a470$4b61ed50$@gmail.com>
+Message-ID: <f00d63fa-a75c-48c2-8406-0c94977e0aeb@free.fr>
+
+Thank you for your answers.
+
+Endeed, if I can do the treatment row by row, which is the case, I can 
+use a condition statement with mutate. Instead of ifelse I found the 
+case_when statement in order to take into account the three groups.
+
+And the list of functions? with the relevant names is a very good idea I 
+will use.
+
+Best regards
+
+Laurent
+
+
+Le 25/05/2024 ? 04:56, avi.e.gross at gmail.com a ?crit?:
+> Although there may well be many ways to do what is being asked for with the tidyverse, sometimes things are simple enough to do the old-fashioned way.
+>
+> The request seems to have been to do something to all rows in ONE specific group but was phrased in the sense of wanting to know which group your functionality is being called in.
+>
+> What grouping gains you is more worthwhile if you are interested in doing things groupwise across all groups such as getting a count of how many are in each group or some vectorized operation like getting the mean or SD of a column or whatever.
+>
+> But for the purposes mentioned here, consider a lower-tech alternative such as this.
+>
+> Instead of group_by(gr) which is a trivial group, consider using other dplyr predicates like "mutate" to trigger on all rows that meet a condition like gr having a value of 3 as in:
+>
+> mutate(DATAFRAME, result=ifelse(gr==3, f(), whatever)
+>
+> The above is not a full-blown example but something similar can be tailored to do quite a bit. As an example, if gr specified whether the measure in another column was in meters or feet, you could convert that other column to meters if gr was == "feet" and on a second line of code, convert the "gr" value in that row to now say "meters" so that in the end, they are all in meters.
+>
+> Of course if you have a more complex use case such as grouping by multiple variables, and having the same (or different) logic for multiple values, this can get more complex.  But if you want to get working code sooner, consider using methods you understand rather than seeing if someone in the tidyverse universe has already created exactly what you want.
+>
+> There are things you can access such as if you want to keep only the first record in each group, you can filter by row_number==1, or use the do() function.
+>
+> The dplyr (and related packages) keep evolving and functionality may be deprecated, but check this page for ideas:
+>
+> https://dplyr.tidyverse.org/reference/group_data.html
+>
+> Some of those may give you access to which rows are in each group and to other ways to approach the problem somewhat from outside after grouping so you can apply your function to the subset of the rows you want.
+>
+>
+>
+>
+>
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Bert Gunter
+> Sent: Friday, May 24, 2024 6:52 PM
+> To: Laurent Rhelp <laurentRHelp at free.fr>
+> Cc: r-help at r-project.org
+> Subject: Re: [R] dplyr, group_by and selective action according to each group
+>
+> Laurent:
+> As I don't use dplyr, this won't help you, but I hope you and others may
+> find it entertaining anyway.
+>
+> If I understand you correctly (and ignore this if I have not), there are a
+> ton of ways to do this in base R, including using switch() along the lines
+> you noted in your post. However, when the functions get sufficiently
+> complicated or numerous, it may be useful to store them in a named list and
+> use the names to call them in some sort of loop. Here I have just used your
+> anonymous functions in the list, but of course you could have used already
+> existing functions instead.
+>
+> ## your example
+> df_test <- data.frame( x1=1:9, x2=1:9, gr=rep(paste0("gr",1:3),each=3))
+>
+> ## function list with the relevant names
+> funcs <- list(gr1 = \(x)x+1, gr2 = \(x)0, gr3 = \(x)x+2)
+> ## Alternatively you could do this if you had many different functions:
+> ## funcs <- list(\(x)x+1, \(x)0,  \(x)x+2)
+> ## names(funcs) <- sort(unique(df_test$gr))
+> ## note that sort() is unnecessary in your example, but I think that it
+> would
+> ## be helpful if you had a lot of different groups and corresponding
+> functions
+> ## to track.
+>
+> ##Now the little loop to call the functions
+> df_test$x1 <- with(df_test,{
+>     for(nm in names(funcs))
+>        x1[gr == nm] <- funcs[[nm]](x1[gr == nm])
+>     x1}
+> )
+>
+> #################
+> Note that the above uses one of the features that I really like about R --
+> functions are full first class objects that can be thrown around and
+> handled just like any other "variables" . So funcs[[nm]](whatever) seems to
+> me to be a natural way to choose and call the function you want. You may
+> disagree, of course.
+>
+> Caveat: I make no claims about the efficiency or lack thereof of the above.
+>
+> Cheers,
+> Bert
+>
+> On Fri, May 24, 2024 at 12:35?PM Laurent Rhelp <laurentRHelp at free.fr> wrote:
+>
+>> Dear RHelp-list,
+>>
+>>      Using dplyr and the group_by approach on a dataframe, I want to be
+>> able to apply a specific action according to the group name. The code
+>> bellow works, but I am not able to write it in a more esthetic way using
+>> dplyr. Can somebody help me to find a better solution ?
+>>
+>> Thank you
+>>
+>> Best regards
+>>
+>> Laurent
+>>
+>> df_test <- data.frame( x1=1:9, x2=1:9, gr=rep(paste0("gr",1:3),each=3))
+>> df_test  <-  df_test %>% dplyr::group_by(gr) %>%
+>>     group_modify(.f=function(.x,.y){
+>>       print(paste0("Nom du groupe : ",.y[["gr"]]))
+>>       switch(as.character(.y[["gr"]])
+>>              , gr1 = {.x[,"x1"] <- .x[,"x1"]+1}
+>>              , gr2 = {.x[,"x1"] <- 0}
+>>              , gr3 = {.x[,"x1"] <- .x[,"x1"]+2}
+>>              , {stop(paste0('The group ',.y[["gr"]]," is not taken into
+>> account"))}
+>>       )
+>>       return(.x) }) %>% ungroup()
+>>
+>> df_test
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+> 	[[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
