@@ -1,0 +1,663 @@
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Sat Jun  1 18:16:23 2024
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leo Mada)
+Date: Sat, 1 Jun 2024 16:16:23 +0000
+Subject: [R] Tools to modify highlighted areas in pdf documents?
+Message-ID: <DBAP192MB095675B1E0FD76CD59E9155384FD2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+
+Dear R-Users,
+
+Are there any packages that enable the modifications of highlighted areas / annotations in pdf documents?
+
+It seems feasible - I have explored some R code (see below). However, I would rather avoid to reinvent the wheel.
+
+The problem:
+When highlighting pdf-documents with Microsoft Edge, the bounding box is sometimes misplaced, and quite ugly so. It also lacks the ability to draw lines or arrows.
+
+On the other hand, I did not get used to Acrobat Reader: it usually involves much more effort to add specific highlights. Lines can be drawn, but are NOT straight!
+
+Are there tools to change the size/position of highlights?
+Or to add highlights and underline words?
+ Changing position/size manually by editing the data in the pdf-document is possible. Changing the color is more trickier (somehow possible in Microsoft Edger; though the direct approach to rewrite the actual stream is better). Maybe there are some tools to do it?
+
+Some R code is below.
+
+Sincerely,
+
+Leonard
+#########
+
+library(zip)
+
+con = file("_some_pdf_.pdf", "rb")
+
+NL = 0
+# - very dirty hack;
+# - assumes Annotations are in the last fragment/chunk;
+while(TRUE) {
+    tmp = readBin(con, "raw", 1024*128 + 515);
+??????if(length(tmp) == 0) break;
+??????x = tmp;
+??????# isNL = (x == 10) | (x == 13);
+??????isNL = (x == 13);
+??????isNL = isNL & (x[which(isNL) + 1] == 10);
+    NL = NL + sum(isNL);
+}
+
+close(con)
+
+idP = which(isNL)
+
+idS = 935; # will vary with pdf and Annotations and ...;
+nLast = 4; # usually 2 chunks
+idx = idP[seq(idS, length.out = nLast)]
+
+# Check: Right position?
+# tmp = x[seq(idx[1] + 2, idx[1 + 2] - 1)]
+# intToUtf8(tmp)
+
+tmp = inflate(x[seq(idx[1] + 2, idx[nLast] - 1)])
+intToUtf8(tmp$output)
+
+# Output of inflate: an Example
+# "/GS gs .56078434 .87058824 .97647059 rg\n
+# 337.298 183.836 m 364.322 183.836 l 364.322 171.83 l 337.298 171.83 l h f\n"
+
+# Note: /BBox[ 337.298 171.83 364.322 183.836]
+
+The raw pdf data:
+
+1948 0 obj
+<</AP<</N 1949 0 R >>/C[ 0.560784 0.870588 0.976471]/CA 1/F 4/PDFIUM_HasGeneratedAP true/QuadPoints[ 337.298 186 364.322 186 337.298 174.6 364.322 174.6]/Rect[ 337.298 174.6 364.322 186]/Subtype/Highlight/Type/Annot>>
+endobj
+1949 0 obj
+<</BBox[ 337.298 171.83 364.322 183.836]/Filter/FlateDecode/FormType 1/Length 86/Matrix[ 1 0 0 1 0 0]/Resources<</ExtGState<</GS<</AIS false/BM/Multiply/CA 1/Type/ExtGState/ca 1>>>>>>/Subtype/Form/Type/XObject>>stream
+x?E??
+?0 ??)~??
+?????P@?K?"??t?????j?C???T#?B??z?
+W?H??9(A????
+K?????_i??mz dR?
+endstream
+endobj
+
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Jun  1 20:23:28 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 1 Jun 2024 11:23:28 -0700
+Subject: [R] Tools to modify highlighted areas in pdf documents?
+In-Reply-To: <DBAP192MB095675B1E0FD76CD59E9155384FD2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+References: <DBAP192MB095675B1E0FD76CD59E9155384FD2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <CAGxFJbTLa+NcvWd5eHzQCfxMrBU3pRnc=zQ33O8XhW9OzeKcUQ@mail.gmail.com>
+
+Search!
+
+on rseek.org, the query "modify pdf documents in R" brought up the staplr
+package. A quick web search with the same query brought up the pdftools
+package.
+
+These were cursory efforts, so you may well find more. You will have to
+determine whether and to what degree any meet your needs.
+
+-- Bert
+
+On Sat, Jun 1, 2024 at 9:16?AM Leo Mada via R-help <r-help at r-project.org>
+wrote:
+
+> Dear R-Users,
+>
+> Are there any packages that enable the modifications of highlighted areas
+> / annotations in pdf documents?
+>
+> It seems feasible - I have explored some R code (see below). However, I
+> would rather avoid to reinvent the wheel.
+>
+> The problem:
+> When highlighting pdf-documents with Microsoft Edge, the bounding box is
+> sometimes misplaced, and quite ugly so. It also lacks the ability to draw
+> lines or arrows.
+>
+> On the other hand, I did not get used to Acrobat Reader: it usually
+> involves much more effort to add specific highlights. Lines can be drawn,
+> but are NOT straight!
+>
+> Are there tools to change the size/position of highlights?
+> Or to add highlights and underline words?
+>  Changing position/size manually by editing the data in the pdf-document
+> is possible. Changing the color is more trickier (somehow possible in
+> Microsoft Edger; though the direct approach to rewrite the actual stream is
+> better). Maybe there are some tools to do it?
+>
+> Some R code is below.
+>
+> Sincerely,
+>
+> Leonard
+> #########
+>
+> library(zip)
+>
+> con = file("_some_pdf_.pdf", "rb")
+>
+> NL = 0
+> # - very dirty hack;
+> # - assumes Annotations are in the last fragment/chunk;
+> while(TRUE) {
+>     tmp = readBin(con, "raw", 1024*128 + 515);
+> if(length(tmp) == 0) break;
+> x = tmp;
+> # isNL = (x == 10) | (x == 13);
+> isNL = (x == 13);
+> isNL = isNL & (x[which(isNL) + 1] == 10);
+>     NL = NL + sum(isNL);
+> }
+>
+> close(con)
+>
+> idP = which(isNL)
+>
+> idS = 935; # will vary with pdf and Annotations and ...;
+> nLast = 4; # usually 2 chunks
+> idx = idP[seq(idS, length.out = nLast)]
+>
+> # Check: Right position?
+> # tmp = x[seq(idx[1] + 2, idx[1 + 2] - 1)]
+> # intToUtf8(tmp)
+>
+> tmp = inflate(x[seq(idx[1] + 2, idx[nLast] - 1)])
+> intToUtf8(tmp$output)
+>
+> # Output of inflate: an Example
+> # "/GS gs .56078434 .87058824 .97647059 rg\n
+> # 337.298 183.836 m 364.322 183.836 l 364.322 171.83 l 337.298 171.83 l h
+> f\n"
+>
+> # Note: /BBox[ 337.298 171.83 364.322 183.836]
+>
+> The raw pdf data:
+>
+> 1948 0 obj
+> <</AP<</N 1949 0 R >>/C[ 0.560784 0.870588 0.976471]/CA 1/F
+> 4/PDFIUM_HasGeneratedAP true/QuadPoints[ 337.298 186 364.322 186 337.298
+> 174.6 364.322 174.6]/Rect[ 337.298 174.6 364.322
+> 186]/Subtype/Highlight/Type/Annot>>
+> endobj
+> 1949 0 obj
+> <</BBox[ 337.298 171.83 364.322 183.836]/Filter/FlateDecode/FormType
+> 1/Length 86/Matrix[ 1 0 0 1 0 0]/Resources<</ExtGState<</GS<</AIS
+> false/BM/Multiply/CA 1/Type/ExtGState/ca
+> 1>>>>>>/Subtype/Form/Type/XObject>>stream
+> x?E??
+> ?0  ??)~ ?? ??? ? P@ ?K?"??t???? j?C? ?T#?B??z?
+> W?H?? 9(A? ?
+> K????? _ i??mz dR ?
+> endstream
+> endobj
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Sun Jun  2 01:19:56 2024
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leo Mada)
+Date: Sat, 1 Jun 2024 23:19:56 +0000
+Subject: [R] Tools to modify highlighted areas in pdf documents?
+In-Reply-To: <CAGxFJbTLa+NcvWd5eHzQCfxMrBU3pRnc=zQ33O8XhW9OzeKcUQ@mail.gmail.com>
+References: <DBAP192MB095675B1E0FD76CD59E9155384FD2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+ <CAGxFJbTLa+NcvWd5eHzQCfxMrBU3pRnc=zQ33O8XhW9OzeKcUQ@mail.gmail.com>
+Message-ID: <DBAP192MB09567BB9DA765EEB0649CDB784FD2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+
+Dear Bert,
+
+Thank you very much for the response.
+
+I was aware of pdftools - but did not recall any such functionality. I have checked again (both pdftools, qpdf and the 3rd one): unfortunately, they do not implement such functionality. There might be other packages, which I missed.
+
+However, the functionality is feasible. I will add a few more details - maybe someone picks up the task.
+
+It is possible to edit manually the pdf-file, though it is quite cumbersome to find the right annotation.
+
+1. One needs to edit the values both in the \QuadPoints and the \Rect in the \AP object.
+
+2. Modifying the color is trickier:
+\C() encodes the color and \CA the alpha channel (= 1): but neither Acrobat, nor MIcrosoft Edge update the color. The value of the color encoded in the stream is used instead.
+
+It is possible to "trick" Edge: modify the \C color and set "\ca 1" (in the stream block) to a lower value (e.g. "\ca 0.99"). MS Edge will then accept the modified color (but Acrobat ignores it). Changing the value in the stream is the actual solution.
+
+Note: non-rectangular shapes can be specified as well.
+
+I hope that some of the referenced packages pick up this task.
+
+Sincerely,
+
+Leonard
+
+________________________________
+From: Bert Gunter <bgunter.4567 at gmail.com>
+Sent: Saturday, June 1, 2024 9:23 PM
+To: Leo Mada <leo.mada at syonic.eu>
+Cc: r-help at r-project.org <r-help at r-project.org>
+Subject: Re: [R] Tools to modify highlighted areas in pdf documents?
+
+Search!
+
+on rseek.org<http://rseek.org>, the query "modify pdf documents in R" brought up the staplr package. A quick web search with the same query brought up the pdftools package.
+
+These were cursory efforts, so you may well find more. You will have to determine whether and to what degree any meet your needs.
+
+-- Bert
+
+On Sat, Jun 1, 2024 at 9:16?AM Leo Mada via R-help <r-help at r-project.org<mailto:r-help at r-project.org>> wrote:
+Dear R-Users,
+
+Are there any packages that enable the modifications of highlighted areas / annotations in pdf documents?
+
+It seems feasible - I have explored some R code (see below). However, I would rather avoid to reinvent the wheel.
+
+The problem:
+When highlighting pdf-documents with Microsoft Edge, the bounding box is sometimes misplaced, and quite ugly so. It also lacks the ability to draw lines or arrows.
+
+On the other hand, I did not get used to Acrobat Reader: it usually involves much more effort to add specific highlights. Lines can be drawn, but are NOT straight!
+
+Are there tools to change the size/position of highlights?
+Or to add highlights and underline words?
+ Changing position/size manually by editing the data in the pdf-document is possible. Changing the color is more trickier (somehow possible in Microsoft Edger; though the direct approach to rewrite the actual stream is better). Maybe there are some tools to do it?
+
+Some R code is below.
+
+Sincerely,
+
+Leonard
+#########
+
+library(zip)
+
+con = file("_some_pdf_.pdf", "rb")
+
+NL = 0
+# - very dirty hack;
+# - assumes Annotations are in the last fragment/chunk;
+while(TRUE) {
+    tmp = readBin(con, "raw", 1024*128 + 515);
+if(length(tmp) == 0) break;
+x = tmp;
+# isNL = (x == 10) | (x == 13);
+isNL = (x == 13);
+isNL = isNL & (x[which(isNL) + 1] == 10);
+    NL = NL + sum(isNL);
+}
+
+close(con)
+
+idP = which(isNL)
+
+idS = 935; # will vary with pdf and Annotations and ...;
+nLast = 4; # usually 2 chunks
+idx = idP[seq(idS, length.out = nLast)]
+
+# Check: Right position?
+# tmp = x[seq(idx[1] + 2, idx[1 + 2] - 1)]
+# intToUtf8(tmp)
+
+tmp = inflate(x[seq(idx[1] + 2, idx[nLast] - 1)])
+intToUtf8(tmp$output)
+
+# Output of inflate: an Example
+# "/GS gs .56078434 .87058824 .97647059 rg\n
+# 337.298 183.836 m 364.322 183.836 l 364.322 171.83 l 337.298 171.83 l h f\n"
+
+# Note: /BBox[ 337.298 171.83 364.322 183.836]
+
+The raw pdf data:
+
+1948 0 obj
+<</AP<</N 1949 0 R >>/C[ 0.560784 0.870588 0.976471]/CA 1/F 4/PDFIUM_HasGeneratedAP true/QuadPoints[ 337.298 186 364.322 186 337.298 174.6 364.322 174.6]/Rect[ 337.298 174.6 364.322 186]/Subtype/Highlight/Type/Annot>>
+endobj
+1949 0 obj
+<</BBox[ 337.298 171.83 364.322 183.836]/Filter/FlateDecode/FormType 1/Length 86/Matrix[ 1 0 0 1 0 0]/Resources<</ExtGState<</GS<</AIS false/BM/Multiply/CA 1/Type/ExtGState/ca 1>>>>>>/Subtype/Form/Type/XObject>>stream
+x?E??
+?0  ??)~ ?? ??? ? P@ ?K?"??t???? j?C? ?T#?B??z?
+W?H?? 9(A????
+K????? _ i??mz dR ?
+endstream
+endobj
+
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From @h@dee@@@ht@r| @end|ng |rom gm@||@com  Sun Jun  2 00:31:27 2024
+From: @h@dee@@@ht@r| @end|ng |rom gm@||@com (Shadee Ashtari)
+Date: Sat, 1 Jun 2024 15:31:27 -0700
+Subject: [R] R code for overlapping variables -- count
+Message-ID: <CAFMWFxDjNSAwB21ZyZ4JSJ_CT96t438v24smX_qSkb7TNBjhhg@mail.gmail.com>
+
+Hi!
+
+I am trying to find the code for how to get counts for intersectional
+variables. For example, I have three unique categorical variables --
+"Female," "USA," and "MidIncome" -- and I'm trying to see how many people I
+have at the intersection of the three.
+
+Thank you so much,
+Shadee
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sun Jun  2 11:55:28 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sun, 2 Jun 2024 05:55:28 -0400
+Subject: [R] R code for overlapping variables -- count
+In-Reply-To: <CAFMWFxDjNSAwB21ZyZ4JSJ_CT96t438v24smX_qSkb7TNBjhhg@mail.gmail.com>
+References: <CAFMWFxDjNSAwB21ZyZ4JSJ_CT96t438v24smX_qSkb7TNBjhhg@mail.gmail.com>
+Message-ID: <91c837fa-1c68-4766-888c-afda779f8b99@gmail.com>
+
+On 2024-06-01 6:31 p.m., Shadee Ashtari wrote:
+> Hi!
+> 
+> I am trying to find the code for how to get counts for intersectional
+> variables. For example, I have three unique categorical variables --
+> "Female," "USA," and "MidIncome" -- and I'm trying to see how many people I
+> have at the intersection of the three.
+
+It depends on how those are stored.  Could you put together a little 
+dataframe containing sample data, run `dput()` on it, and post the 
+result here?
+
+Duncan Murdoch
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sun Jun  2 19:02:38 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sun, 2 Jun 2024 20:02:38 +0300
+Subject: [R] Tools to modify highlighted areas in pdf documents?
+In-Reply-To: <DBAP192MB095675B1E0FD76CD59E9155384FD2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+References: <DBAP192MB095675B1E0FD76CD59E9155384FD2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <20240602200238.1f57909d@Tarkus>
+
+? Sat, 1 Jun 2024 16:16:23 +0000
+Leo Mada via R-help <r-help at r-project.org> ?????:
+
+> When highlighting pdf-documents with Microsoft Edge, the bounding box
+> is sometimes misplaced, and quite ugly so. It also lacks the ability
+> to draw lines or arrows.
+> 
+> On the other hand, I did not get used to Acrobat Reader: it usually
+> involves much more effort to add specific highlights. Lines can be
+> drawn, but are NOT straight!
+
+Sorry for answering a different question, but have you considered using
+a different PDF viewer + annotation application? Okular
+<https://okular.kde.org/> is free and available on Windows (including
+from outside Microsoft store). Its annotation features include all
+kinds of highlights, arrows and lines, both straight and
+arbitrarily-shaped, quickly available from the "annotations" panel.
+
+-- 
+Best regards,
+Ivan
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Sun Jun  2 19:34:35 2024
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leo Mada)
+Date: Sun, 2 Jun 2024 17:34:35 +0000
+Subject: [R] R code for overlapping variables -- count
+Message-ID: <DBAP192MB0956787CE5BE81D0A6FD4FA284FE2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+
+Dear Shadee,
+
+If you have a data.frame with the following columns:
+
+n = 100; # population size
+x = data.frame(
+??????Sex = sample(c("M","F"), n, T),
+??????Country = sample(c("AA", "BB", "US"), n, T),
+??????Income  = as.factor(sample(1:3, n, T))
+)
+
+# Dummy variable
+ONE = rep(1, nrow(x))
+
+r = aggregate(ONE ~ Sex + Income + Country, length, data = x)
+r = r[, c("Country", "Income", "Sex")]
+print(r)
+
+It is possible to write more simple code, if you need only the particular combination of variables (which you specified in your mail). But this is the more general approach.
+
+Note: you may want to use "sum" instead of "length", e.g. if you have a column specifying the number of individuals in that category.
+
+
+Hope this helps,
+
+Leonard
+
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sun Jun  2 19:40:51 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sun, 2 Jun 2024 18:40:51 +0100
+Subject: [R] R code for overlapping variables -- count
+In-Reply-To: <DBAP192MB0956787CE5BE81D0A6FD4FA284FE2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+References: <DBAP192MB0956787CE5BE81D0A6FD4FA284FE2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <6b70be1b-0688-443b-b6a8-4ff077734860@sapo.pt>
+
+?s 18:34 de 02/06/2024, Leo Mada via R-help escreveu:
+> Dear Shadee,
+> 
+> If you have a data.frame with the following columns:
+> 
+> n = 100; # population size
+> x = data.frame(
+> ??????Sex = sample(c("M","F"), n, T),
+> ??????Country = sample(c("AA", "BB", "US"), n, T),
+> ??????Income  = as.factor(sample(1:3, n, T))
+> )
+> 
+> # Dummy variable
+> ONE = rep(1, nrow(x))
+> 
+> r = aggregate(ONE ~ Sex + Income + Country, length, data = x)
+> r = r[, c("Country", "Income", "Sex")]
+> print(r)
+> 
+> It is possible to write more simple code, if you need only the particular combination of variables (which you specified in your mail). But this is the more general approach.
+> 
+> Note: you may want to use "sum" instead of "length", e.g. if you have a column specifying the number of individuals in that category.
+> 
+> 
+> Hope this helps,
+> 
+> Leonard
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+The following is simpler.
+
+
+r2 <- xtabs(~ ., x) |> as.data.frame()
+r2[-4L] # or r2[names(r2) != "Freq"]
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Sun Jun  2 19:41:00 2024
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leo Mada)
+Date: Sun, 2 Jun 2024 17:41:00 +0000
+Subject: [R] R code for overlapping variables -- count
+In-Reply-To: <DBAP192MB0956787CE5BE81D0A6FD4FA284FE2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+References: <DBAP192MB0956787CE5BE81D0A6FD4FA284FE2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <DBAP192MB09562DB092CFE2F72559116584FE2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+
+Correcting a small glitch - see new code.
+
+________________________________
+From: Leo Mada <leo.mada at syonic.eu>
+Sent: Sunday, June 2, 2024 8:34 PM
+To: Shadee Ashtari <shadee.ashtari at gmail.com>
+Cc: r-help at r-project.org <r-help at r-project.org>
+Subject: [R] R code for overlapping variables -- count
+
+Dear Shadee,
+
+If you have a data.frame with the following columns:
+
+n = 100; # population size
+x = data.frame(
+??????Sex = sample(c("M","F"), n, T),
+??????Country = sample(c("AA", "BB", "US"), n, T),
+??????Income  = as.factor(sample(1:3, n, T))
+)
+
+# Dummy variable
+ONE = rep(1, nrow(x))
+
+# corrected
+r = aggregate(ONE ~ Sex + Income + Country, length, data = x)
+r = r[, c("Country", "Income", "Sex", "ONE")]
+names(r)[4] = "Count"
+print(r)
+
+It is possible to write more simple code, if you need only the particular combination of variables (which you specified in your mail). But this is the more general approach.
+
+Note: you may want to use "sum" instead of "length", e.g. if you have a column specifying the number of individuals in that category.
+
+
+Hope this helps,
+
+Leonard
+
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sun Jun  2 19:47:18 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sun, 2 Jun 2024 18:47:18 +0100
+Subject: [R] R code for overlapping variables -- count
+In-Reply-To: <6b70be1b-0688-443b-b6a8-4ff077734860@sapo.pt>
+References: <DBAP192MB0956787CE5BE81D0A6FD4FA284FE2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+ <6b70be1b-0688-443b-b6a8-4ff077734860@sapo.pt>
+Message-ID: <21a5c8f3-d914-45d4-aa7e-2fb5e7ef2b5a@sapo.pt>
+
+?s 18:40 de 02/06/2024, Rui Barradas escreveu:
+> ?s 18:34 de 02/06/2024, Leo Mada via R-help escreveu:
+>> Dear Shadee,
+>>
+>> If you have a data.frame with the following columns:
+>>
+>> n = 100; # population size
+>> x = data.frame(
+>> ??????Sex = sample(c("M","F"), n, T),
+>> ??????Country = sample(c("AA", "BB", "US"), n, T),
+>> ??????Income? = as.factor(sample(1:3, n, T))
+>> )
+>>
+>> # Dummy variable
+>> ONE = rep(1, nrow(x))
+>>
+>> r = aggregate(ONE ~ Sex + Income + Country, length, data = x)
+>> r = r[, c("Country", "Income", "Sex")]
+>> print(r)
+>>
+>> It is possible to write more simple code, if you need only the 
+>> particular combination of variables (which you specified in your 
+>> mail). But this is the more general approach.
+>>
+>> Note: you may want to use "sum" instead of "length", e.g. if you have 
+>> a column specifying the number of individuals in that category.
+>>
+>>
+>> Hope this helps,
+>>
+>> Leonard
+>>
+>>
+>> ????[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+> 
+> The following is simpler.
+> 
+> 
+> r2 <- xtabs(~ ., x) |> as.data.frame()
+> r2[-4L] # or r2[names(r2) != "Freq"]
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> 
+Hello,
+
+This is the same solution but the code to keep only the columns in the 
+original data set is better. And it's a MRE.
+
+
+n <- 100; # population size
+x <- data.frame(
+   Sex = sample(c("M","F"), n, T),
+   Country = sample(c("AA", "BB", "US"), n, T),
+   Income  = as.factor(sample(1:3, n, T))
+)
+
+r2 <- xtabs(~ ., x) |> as.data.frame()
+# no need for constants, find the columns
+# to keep from the data
+r2[names(r2) %in% names(x)]
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
