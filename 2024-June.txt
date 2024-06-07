@@ -955,3 +955,929 @@ Norwegian School of Economics
 Postboks 3490 Ytre Sandviken, 5045 Bergen, Norway
 Roger.Bivand at nhh.no
 
+From |b@rnh@rt055 @end|ng |rom gm@||@com  Thu Jun  6 02:07:19 2024
+From: |b@rnh@rt055 @end|ng |rom gm@||@com (I B)
+Date: Wed, 5 Jun 2024 19:07:19 -0500
+Subject: [R] R Shiny Help - Trouble passing user input columns to emmeans
+ after ANOVA analysis
+Message-ID: <CAPJbgronjQqxC57TqRmWnd4VzmWtRs=qLdw1QxKRb1Boo-Zf=Q@mail.gmail.com>
+
+Hello everybody,
+
+I have experience coding with R, but am brand new to R Shiny. I am trying
+to produce an application that will allow users to upload their own
+dataset, select columns they want an ANOVA analysis run on, and generate
+graphs that will allow users to view their results. However, I am getting
+the following error: *"Argument is of length zero."*
+
+Being new to Shiny, I am having trouble passing the user input column to an
+emmeans argument in order to do a post hoc analysis, and using that
+information to produce a graph. Can somebody help me with this? *The code
+for my dataset and application are provided below; copying and pasting
+directly into R should generate the reproducible example.*
+
+In my application, the following columns should be selected after uploading
+the dataset:
+
+   - Select response variable: "ndvi"
+   - Select first independent variable: "genotype"
+   - Select second independent variable: "rate"
+   - Select random variable: "rep"
+
+For this example, the final two drop-down selections should be:
+
+   - "Which variable would you like to graph? "genotype"
+   - "Which ANOVA model do you want to graph? "Main effects model"
+
+Any help would be great. Thank you so much!
+
+Sincerely,
+Isaac Barnhart, PhD
+
+
+*Here is my dataset:*
+
+data <- data.frame(rep =
+c(1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3),
+                   genotype =
+c('a','a','a','a','b','b','b','b','c','c','c','c','a','a','a','a','b','b','b','b','c','c','c','c','a','a','a','a','b','b','b','b','c','c','c','c'),
+                   rate =
+c('1x','2x','4x','8x','1x','2x','4x','8x','1x','2x','4x','8x','1x','2x','4x','8x','1x','2x','4x','8x','1x','2x','4x','8x','1x','2x','4x','8x','1x','2x','4x','8x','1x','2x','4x','8x'),
+                   ndvi =
+c(0.584947811,0.642112121,0.654116902,0.785068313,0.79665163,0.674549249,0.958911611,0.547077528,0.613315552,0.768646411,0.97107949,0.680942649,0.520576242,0.723920266,0.868779972,0.834257732,0.554506685,0.520458208,0.617282262,0.80128067,0.875192693,0.572153151,0.850305042,0.500760522,0.796305833,0.643719779,0.590512435,0.522884966,0.905197544,0.663792758,0.690415735,0.975449466,0.621379163,0.734904647,0.812023395,0.928144532))
+
+
+*Here is my code:*
+
+library(shiny)
+library(ggplot2)
+library(tidyverse)
+library(emmeans)
+library(DHARMa)
+library(lme4)
+
+ui <- fluidPage(
+  fileInput("file1", "Choose .csv or .xlsx file",
+            accept = c("text/csv",
+                       "text/comma-separated-values",
+                       ".csv",
+                       ".xlsx")),
+  textOutput("data_info"),
+  verbatimTextOutput("data_head"),
+  uiOutput("column_selector_1"),
+  uiOutput("column_selector_2"),
+  uiOutput("column_selector_3"),
+  uiOutput("column_selector_4"),
+  textOutput("dist_info"),
+  plotOutput("dist"),
+  textOutput("str_info"),
+  verbatimTextOutput("selected_columns"),
+  textOutput("two_way_anova"),
+  verbatimTextOutput("model_summary"),
+  textOutput("main_effects"),
+  verbatimTextOutput("model_summary_ME"),
+  textOutput("mod_diagnostic"),
+  plotOutput("diagnostic_plot"),
+  uiOutput("graph"),
+  uiOutput("model_selection"),
+  plotOutput("graph_plot")
+)
+
+server <- function(input, output, session) {
+  # Open file
+  req(data <- reactive({
+    infile <- input$file1
+    if (is.null(infile)) {
+      return(NULL)
+    }
+    read.csv(infile$datapath, header = TRUE)
+  }))
+
+  # Preview data
+  output$data_info <- renderText({
+    req(data())
+    "Preview of the data uploaded:"
+  })
+
+  output$data_head <- renderPrint({
+    req(data())
+    head(data(), 20)
+  })
+
+  # Select response variable
+  output$column_selector_1 <- renderUI({
+    req(data())
+    selectInput("column1","Select response variable", choices =
+names(data()))
+    })
+
+  # Select first independent variable
+  output$column_selector_2 <- renderUI({
+    req(data())
+    selectInput("column2", "Select first independent variable", choices =
+names(data()))
+  })
+
+  # Select second independent variable
+  output$column_selector_3 <- renderUI({
+    req(data())
+    selectInput("column3", "Select second independent variable", choices =
+names(data()))
+  })
+
+  # Select random variable
+  output$column_selector_4 <- renderUI({
+    req(data())
+    selectInput("column4", "Select random variable", choices =
+names(data()))
+  })
+
+  # Assigning user inputs to correct variables
+  selected_columns <- reactive({
+    req(data(), input$column1, input$column2, input$column3, input$column4)
+    list(
+      dependent = data()[[input$column1]],
+      independent1 = as.factor(data()[[input$column2]]),
+      independent2 = as.factor(data()[[input$column3]]),
+      random = as.factor(data()[[input$column4]]),
+
+      # Define column names for later use
+      column1 <- input$column1,
+      column2 <- input$column2,
+      column3 <- input$column3,
+      column4 <- input$column4
+    )
+  })
+
+  # Instructional text
+  output$dist_info <- renderText({
+    req(data())
+    "The graph below shows the shape of response variable distribution"
+  })
+
+
+  # Distribution plot
+  output$dist <- renderPlot({
+    req(selected_columns())
+    cols <- selected_columns()
+    plot(density(cols$dependent), main = "Distribution Plot")
+  })
+
+  # Instructional text
+  output$str_info <- renderText({
+    req(data())
+    "The code below verifies that our data are in the correct structure for
+ANOVA analyses. All independent variables should be changed to 'Factor'. "
+  })
+
+  # Verifies that columns are in the correct structure
+  output$selected_columns <- renderPrint({
+    cols <- selected_columns()
+    str(cols)
+  })
+
+  # Instructional text
+  output$two_way_anova <- renderText({
+    req(data())
+    "Two-way ANOVA with interaction"
+  })
+
+  # Build ANOVA model with two-way interaction
+  interaction_model <- reactive({
+    cols <- selected_columns()
+    req(cols)
+    data <- data()
+    data$dep <- cols$dependent
+    data$indep1 <- cols$independent1
+    data$indep2 <- cols$independent2
+    data$rand <- cols$random
+    lmer(dep ~ indep1 * indep2 + (1|rand), data = data)
+  })
+
+  # Run two-way ANOVA model with interaction
+  output$model_summary <- renderPrint({
+    req(interaction_model())
+    Anova(interaction_model(), type = c("III"))
+  })
+
+  # Build main effects ANOVA model
+  main_effects_model <- reactive({
+    cols <- selected_columns()
+    req(cols)
+    data <- data()
+    data$dep <- cols$dependent
+    data$indep1 <- cols$independent1
+    data$indep2 <- cols$independent2
+    data$rand <- cols$random
+    lmer(dep ~ indep1 + indep2 + (1|rand), data = data)
+  })
+
+  # Instructional text
+  output$main_effects <- renderText({
+    req(data())
+    "Two-way ANOVA, main effects"
+  })
+
+  # Run two-way main effects model
+  output$model_summary_ME <- renderPrint({
+    req(main_effects_model())
+    Anova(main_effects_model(), type = c("III"))
+  })
+
+
+  output$mod_diagnostic <- renderText({
+    req(main_effects_model())
+    "Below, the `DHARMa` package is used to check model assumptions. If
+assumptions are not met, then data transformations may be needed before
+proceeding."
+  })
+
+  output$diagnostic_plot <- renderPlot({
+    req(interaction_model())
+    plotQQunif(interaction_model())
+  })
+
+  output$graph <- renderUI({
+    req(data(), input$column2, input$column3)
+    selectInput("graph", "Which variable would you like to graph?", choices
+= c(input$column2, input$column3, "interaction"))
+  })
+
+  output$model_selection <- renderUI({
+    req(main_effects_model(), interaction_model())
+    selectInput("model_selection", "Which ANOVA model do you want to
+graph?", choices = c("Main effects model", "Interaction model"))
+  })
+
+  # Create a reactive expression to store the selected graph variable
+  selected_graph <- reactive({
+    input$graph
+  })
+
+  # Create a reactive expression to store the selected model
+  selected_model <- reactive({
+    input$model_selection
+  })
+
+  # Render the plot based on the selected variables
+  output$graph_plot <- renderPlot({
+    req(data(), selected_graph(), selected_model())
+    cols <- selected_columns()
+
+    if (selected_graph() == cols$column2 | selected_model() == "Main
+effects model") {
+
+      # Mean separation: First column
+      mod_means_cotr1 <- emmeans(main_effects_model(), pairwise ~
+cols$column2,
+                                adjust = 'tukey',
+                                type = 'response')
+
+      mod_means1 <- multcomp::cld(object = mod_means_cotr1$emmeans,
+                                 LETTERS = "letters")
+
+      # Graph: First column
+      ggplot(mod_means1, aes_string(x = cols$column2, y = cols_column1))+
+        geom_bar(stat="identity", width = 0.6, position = "dodge", col =
+"black", fill = "purple3")+
+        geom_errorbar(aes(ymin = emmean, ymax = emmean + SE), width = 0.3,
+position = position_dodge(0.6))+
+        xlab(cols$column2)+
+        ylab(cols$column1)+
+        theme(plot.title=element_text(hjust=0.5, size = 20),
+              plot.subtitle = element_text(hjust = 0.5, size = 15),
+              axis.text = element_text(size = 17),
+              axis.title = element_text(size = 20))+
+        geom_text(aes(label=.group, y=emmean + SE), vjust = -0.9, size = 8)
++
+        #ylim(0, 105)+
+        scale_x_discrete(labels = function(x) str_wrap(x, width = 7))
+
+
+    }
+  })
+
+}
+shinyApp(ui, server)
+
+	[[alternative HTML version deleted]]
+
+
+From ju||en@jo|y @end|ng |rom |n@erm@|r  Thu Jun  6 10:45:20 2024
+From: ju||en@jo|y @end|ng |rom |n@erm@|r (Julien JOLY)
+Date: Thu, 6 Jun 2024 08:45:20 +0000
+Subject: [R] Bug report for package foreign anf functon write.foreign
+Message-ID: <faf69f4017b64e84aa6fa75f399c8e5d@inserm.fr>
+
+Dear all,
+
+First of all, I thank you for the creation of the package.
+
+I write this message concerning the write.foreign() function from the foreign package and a bug that I discovered.
+When we want to save our dataset as a .sas file, the limit of variable names character is 8 by default. In SAS this limit is 32 character and an argument in the function, validvarname, can theorically switch the default from 8 to 32 by selecting validvarname = "V7".
+
+However, it did not work and show the error "Cannot uniquely abbreviate format names to conform to eight-character limit and not ending in a digit" that show the limit is still 8 characters.
+
+By looking at the script at https://github.com/cran/foreign/blob/master/R/writeForeignSAS.R , I realized that the line 39, in the function make.SAS.formats, can be the reason of the nonfunctioning argument :
+"if(any(nchar(x) > 8L) || any(duplicated(x)))" which is correct if the length of the variable has a limit of 8, but it does not take in consideration when the limit is at 32 defined by validvarnames = "V7".
+
+A solution can be to add the argument validvarname in the definition of the function and add these few lines :
+  validvarname <- match.arg(validvarname)
+  nmax <- if(validvarname == "V7") 32L else 8L
+  if(any(nchar(x) > nmax) || any(duplicated(x)))
+
+
+I hope I send the message to the good place and that it will help you improve the package.
+
+Kind regards,
+
+
+
+Julien Joly
+
+Biostatisticien et Data manager
+
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From kev|n@thorpe @end|ng |rom utoronto@c@  Thu Jun  6 16:35:44 2024
+From: kev|n@thorpe @end|ng |rom utoronto@c@ (Kevin Thorpe)
+Date: Thu, 6 Jun 2024 14:35:44 +0000
+Subject: [R] Bug report for package foreign anf functon write.foreign
+In-Reply-To: <faf69f4017b64e84aa6fa75f399c8e5d@inserm.fr>
+References: <faf69f4017b64e84aa6fa75f399c8e5d@inserm.fr>
+Message-ID: <E299C946-CB74-4598-9FF3-0C2C03AA3191@utoronto.ca>
+
+I haven?t used this function in a long time, but it sounds like the issue is the format names for the formats catalog, not the variable names.
+
+You might try the haven package as it can create SAS datasets directly, although there are limitations (I think).
+
+> On Jun 6, 2024, at 4:45?AM, Julien JOLY <julien.joly at inserm.fr> wrote:
+> 
+> [Vous ne recevez pas souvent de courriers de julien.joly at inserm.fr. D?couvrez pourquoi ceci est important ? https://aka.ms/LearnAboutSenderIdentification ]
+> 
+> Dear all,
+> 
+> First of all, I thank you for the creation of the package.
+> 
+> I write this message concerning the write.foreign() function from the foreign package and a bug that I discovered.
+> When we want to save our dataset as a .sas file, the limit of variable names character is 8 by default. In SAS this limit is 32 character and an argument in the function, validvarname, can theorically switch the default from 8 to 32 by selecting validvarname = "V7".
+> 
+> However, it did not work and show the error "Cannot uniquely abbreviate format names to conform to eight-character limit and not ending in a digit" that show the limit is still 8 characters.
+> 
+> By looking at the script at https://github.com/cran/foreign/blob/master/R/writeForeignSAS.R , I realized that the line 39, in the function make.SAS.formats, can be the reason of the nonfunctioning argument :
+> "if(any(nchar(x) > 8L) || any(duplicated(x)))" which is correct if the length of the variable has a limit of 8, but it does not take in consideration when the limit is at 32 defined by validvarnames = "V7".
+> 
+> A solution can be to add the argument validvarname in the definition of the function and add these few lines :
+>  validvarname <- match.arg(validvarname)
+>  nmax <- if(validvarname == "V7") 32L else 8L
+>  if(any(nchar(x) > nmax) || any(duplicated(x)))
+> 
+> 
+> I hope I send the message to the good place and that it will help you improve the package.
+> 
+> Kind regards,
+> 
+> 
+> 
+> Julien Joly
+> 
+> Biostatisticien et Data manager
+> 
+> 
+> 
+> 
+> 
+>        [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+-- 
+Kevin E. Thorpe
+Assistant Professor, Dalla Lana School of Public Health
+University of Toronto
+email: kevin.thorpe at utoronto.ca  Tel: 416-946-8083
+
+
+
+From yo@u@yurr@mend| @end|ng |rom gm@||@com  Thu Jun  6 10:37:38 2024
+From: yo@u@yurr@mend| @end|ng |rom gm@||@com (Yosu Yurramendi)
+Date: Thu, 6 Jun 2024 10:37:38 +0200
+Subject: [R] What is the HEX code for "transparent" color?
+Message-ID: <CADg5kN3dTkDWj6buW5FV2ujpu3JLF4YUFSbzj7_Rw=y2EkMoqA@mail.gmail.com>
+
+What is the HEX code for "transparent" color?
+I've tried "00000000" "FFFFFF00" "FFFFFFFF", but they don't work.
+Thanks
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Thu Jun  6 16:49:19 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 6 Jun 2024 07:49:19 -0700
+Subject: [R] 
+ R Shiny Help - Trouble passing user input columns to emmeans
+ after ANOVA analysis
+In-Reply-To: <CAPJbgronjQqxC57TqRmWnd4VzmWtRs=qLdw1QxKRb1Boo-Zf=Q@mail.gmail.com>
+References: <CAPJbgronjQqxC57TqRmWnd4VzmWtRs=qLdw1QxKRb1Boo-Zf=Q@mail.gmail.com>
+Message-ID: <CAGxFJbQnyNGAO5pQikOzNLC5OfsgkdL3d=Z-rxka35St_O==rA@mail.gmail.com>
+
+Wrong list. Shiny is software from an external provider, POSIT (formerly
+RStudio) and not part of R, itself. They have a community support site at:
+
+https://forum.posit.co/?_gl=1*bh848i*_ga*MTY2NjcwNzQ4LjE3MTYyMzkzODQ.*_ga_2C0WZ1JHG0*MTcxNzY4NTExNi4yLjAuMTcxNzY4NTExNi4wLjAuMA
+..
+
+Cheers,
+Bert
+
+On Thu, Jun 6, 2024 at 12:09?AM I B <ibarnhart055 at gmail.com> wrote:
+
+> Hello everybody,
+>
+> I have experience coding with R, but am brand new to R Shiny. I am trying
+> to produce an application that will allow users to upload their own
+> dataset, select columns they want an ANOVA analysis run on, and generate
+> graphs that will allow users to view their results. However, I am getting
+> the following error: *"Argument is of length zero."*
+>
+> Being new to Shiny, I am having trouble passing the user input column to an
+> emmeans argument in order to do a post hoc analysis, and using that
+> information to produce a graph. Can somebody help me with this? *The code
+> for my dataset and application are provided below; copying and pasting
+> directly into R should generate the reproducible example.*
+>
+> In my application, the following columns should be selected after uploading
+> the dataset:
+>
+>    - Select response variable: "ndvi"
+>    - Select first independent variable: "genotype"
+>    - Select second independent variable: "rate"
+>    - Select random variable: "rep"
+>
+> For this example, the final two drop-down selections should be:
+>
+>    - "Which variable would you like to graph? "genotype"
+>    - "Which ANOVA model do you want to graph? "Main effects model"
+>
+> Any help would be great. Thank you so much!
+>
+> Sincerely,
+> Isaac Barnhart, PhD
+>
+>
+> *Here is my dataset:*
+>
+> data <- data.frame(rep =
+> c(1,1,1,1,1,1,1,1,1,1,1,1,2,2,2,2,2,2,2,2,2,2,2,2,3,3,3,3,3,3,3,3,3,3,3,3),
+>                    genotype =
+>
+> c('a','a','a','a','b','b','b','b','c','c','c','c','a','a','a','a','b','b','b','b','c','c','c','c','a','a','a','a','b','b','b','b','c','c','c','c'),
+>                    rate =
+>
+> c('1x','2x','4x','8x','1x','2x','4x','8x','1x','2x','4x','8x','1x','2x','4x','8x','1x','2x','4x','8x','1x','2x','4x','8x','1x','2x','4x','8x','1x','2x','4x','8x','1x','2x','4x','8x'),
+>                    ndvi =
+>
+> c(0.584947811,0.642112121,0.654116902,0.785068313,0.79665163,0.674549249,0.958911611,0.547077528,0.613315552,0.768646411,0.97107949,0.680942649,0.520576242,0.723920266,0.868779972,0.834257732,0.554506685,0.520458208,0.617282262,0.80128067,0.875192693,0.572153151,0.850305042,0.500760522,0.796305833,0.643719779,0.590512435,0.522884966,0.905197544,0.663792758,0.690415735,0.975449466,0.621379163,0.734904647,0.812023395,0.928144532))
+>
+>
+> *Here is my code:*
+>
+> library(shiny)
+> library(ggplot2)
+> library(tidyverse)
+> library(emmeans)
+> library(DHARMa)
+> library(lme4)
+>
+> ui <- fluidPage(
+>   fileInput("file1", "Choose .csv or .xlsx file",
+>             accept = c("text/csv",
+>                        "text/comma-separated-values",
+>                        ".csv",
+>                        ".xlsx")),
+>   textOutput("data_info"),
+>   verbatimTextOutput("data_head"),
+>   uiOutput("column_selector_1"),
+>   uiOutput("column_selector_2"),
+>   uiOutput("column_selector_3"),
+>   uiOutput("column_selector_4"),
+>   textOutput("dist_info"),
+>   plotOutput("dist"),
+>   textOutput("str_info"),
+>   verbatimTextOutput("selected_columns"),
+>   textOutput("two_way_anova"),
+>   verbatimTextOutput("model_summary"),
+>   textOutput("main_effects"),
+>   verbatimTextOutput("model_summary_ME"),
+>   textOutput("mod_diagnostic"),
+>   plotOutput("diagnostic_plot"),
+>   uiOutput("graph"),
+>   uiOutput("model_selection"),
+>   plotOutput("graph_plot")
+> )
+>
+> server <- function(input, output, session) {
+>   # Open file
+>   req(data <- reactive({
+>     infile <- input$file1
+>     if (is.null(infile)) {
+>       return(NULL)
+>     }
+>     read.csv(infile$datapath, header = TRUE)
+>   }))
+>
+>   # Preview data
+>   output$data_info <- renderText({
+>     req(data())
+>     "Preview of the data uploaded:"
+>   })
+>
+>   output$data_head <- renderPrint({
+>     req(data())
+>     head(data(), 20)
+>   })
+>
+>   # Select response variable
+>   output$column_selector_1 <- renderUI({
+>     req(data())
+>     selectInput("column1","Select response variable", choices =
+> names(data()))
+>     })
+>
+>   # Select first independent variable
+>   output$column_selector_2 <- renderUI({
+>     req(data())
+>     selectInput("column2", "Select first independent variable", choices =
+> names(data()))
+>   })
+>
+>   # Select second independent variable
+>   output$column_selector_3 <- renderUI({
+>     req(data())
+>     selectInput("column3", "Select second independent variable", choices =
+> names(data()))
+>   })
+>
+>   # Select random variable
+>   output$column_selector_4 <- renderUI({
+>     req(data())
+>     selectInput("column4", "Select random variable", choices =
+> names(data()))
+>   })
+>
+>   # Assigning user inputs to correct variables
+>   selected_columns <- reactive({
+>     req(data(), input$column1, input$column2, input$column3, input$column4)
+>     list(
+>       dependent = data()[[input$column1]],
+>       independent1 = as.factor(data()[[input$column2]]),
+>       independent2 = as.factor(data()[[input$column3]]),
+>       random = as.factor(data()[[input$column4]]),
+>
+>       # Define column names for later use
+>       column1 <- input$column1,
+>       column2 <- input$column2,
+>       column3 <- input$column3,
+>       column4 <- input$column4
+>     )
+>   })
+>
+>   # Instructional text
+>   output$dist_info <- renderText({
+>     req(data())
+>     "The graph below shows the shape of response variable distribution"
+>   })
+>
+>
+>   # Distribution plot
+>   output$dist <- renderPlot({
+>     req(selected_columns())
+>     cols <- selected_columns()
+>     plot(density(cols$dependent), main = "Distribution Plot")
+>   })
+>
+>   # Instructional text
+>   output$str_info <- renderText({
+>     req(data())
+>     "The code below verifies that our data are in the correct structure for
+> ANOVA analyses. All independent variables should be changed to 'Factor'. "
+>   })
+>
+>   # Verifies that columns are in the correct structure
+>   output$selected_columns <- renderPrint({
+>     cols <- selected_columns()
+>     str(cols)
+>   })
+>
+>   # Instructional text
+>   output$two_way_anova <- renderText({
+>     req(data())
+>     "Two-way ANOVA with interaction"
+>   })
+>
+>   # Build ANOVA model with two-way interaction
+>   interaction_model <- reactive({
+>     cols <- selected_columns()
+>     req(cols)
+>     data <- data()
+>     data$dep <- cols$dependent
+>     data$indep1 <- cols$independent1
+>     data$indep2 <- cols$independent2
+>     data$rand <- cols$random
+>     lmer(dep ~ indep1 * indep2 + (1|rand), data = data)
+>   })
+>
+>   # Run two-way ANOVA model with interaction
+>   output$model_summary <- renderPrint({
+>     req(interaction_model())
+>     Anova(interaction_model(), type = c("III"))
+>   })
+>
+>   # Build main effects ANOVA model
+>   main_effects_model <- reactive({
+>     cols <- selected_columns()
+>     req(cols)
+>     data <- data()
+>     data$dep <- cols$dependent
+>     data$indep1 <- cols$independent1
+>     data$indep2 <- cols$independent2
+>     data$rand <- cols$random
+>     lmer(dep ~ indep1 + indep2 + (1|rand), data = data)
+>   })
+>
+>   # Instructional text
+>   output$main_effects <- renderText({
+>     req(data())
+>     "Two-way ANOVA, main effects"
+>   })
+>
+>   # Run two-way main effects model
+>   output$model_summary_ME <- renderPrint({
+>     req(main_effects_model())
+>     Anova(main_effects_model(), type = c("III"))
+>   })
+>
+>
+>   output$mod_diagnostic <- renderText({
+>     req(main_effects_model())
+>     "Below, the `DHARMa` package is used to check model assumptions. If
+> assumptions are not met, then data transformations may be needed before
+> proceeding."
+>   })
+>
+>   output$diagnostic_plot <- renderPlot({
+>     req(interaction_model())
+>     plotQQunif(interaction_model())
+>   })
+>
+>   output$graph <- renderUI({
+>     req(data(), input$column2, input$column3)
+>     selectInput("graph", "Which variable would you like to graph?", choices
+> = c(input$column2, input$column3, "interaction"))
+>   })
+>
+>   output$model_selection <- renderUI({
+>     req(main_effects_model(), interaction_model())
+>     selectInput("model_selection", "Which ANOVA model do you want to
+> graph?", choices = c("Main effects model", "Interaction model"))
+>   })
+>
+>   # Create a reactive expression to store the selected graph variable
+>   selected_graph <- reactive({
+>     input$graph
+>   })
+>
+>   # Create a reactive expression to store the selected model
+>   selected_model <- reactive({
+>     input$model_selection
+>   })
+>
+>   # Render the plot based on the selected variables
+>   output$graph_plot <- renderPlot({
+>     req(data(), selected_graph(), selected_model())
+>     cols <- selected_columns()
+>
+>     if (selected_graph() == cols$column2 | selected_model() == "Main
+> effects model") {
+>
+>       # Mean separation: First column
+>       mod_means_cotr1 <- emmeans(main_effects_model(), pairwise ~
+> cols$column2,
+>                                 adjust = 'tukey',
+>                                 type = 'response')
+>
+>       mod_means1 <- multcomp::cld(object = mod_means_cotr1$emmeans,
+>                                  LETTERS = "letters")
+>
+>       # Graph: First column
+>       ggplot(mod_means1, aes_string(x = cols$column2, y = cols_column1))+
+>         geom_bar(stat="identity", width = 0.6, position = "dodge", col =
+> "black", fill = "purple3")+
+>         geom_errorbar(aes(ymin = emmean, ymax = emmean + SE), width = 0.3,
+> position = position_dodge(0.6))+
+>         xlab(cols$column2)+
+>         ylab(cols$column1)+
+>         theme(plot.title=element_text(hjust=0.5, size = 20),
+>               plot.subtitle = element_text(hjust = 0.5, size = 15),
+>               axis.text = element_text(size = 17),
+>               axis.title = element_text(size = 20))+
+>         geom_text(aes(label=.group, y=emmean + SE), vjust = -0.9, size = 8)
+> +
+>         #ylim(0, 105)+
+>         scale_x_discrete(labels = function(x) str_wrap(x, width = 7))
+>
+>
+>     }
+>   })
+>
+> }
+> shinyApp(ui, server)
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Jun  6 17:05:33 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 6 Jun 2024 18:05:33 +0300
+Subject: [R] 
+ R Shiny Help - Trouble passing user input columns to emmeans
+ after ANOVA analysis
+In-Reply-To: <CAPJbgronjQqxC57TqRmWnd4VzmWtRs=qLdw1QxKRb1Boo-Zf=Q@mail.gmail.com>
+References: <CAPJbgronjQqxC57TqRmWnd4VzmWtRs=qLdw1QxKRb1Boo-Zf=Q@mail.gmail.com>
+Message-ID: <20240606180533.17593520@arachnoid>
+
+? Wed, 5 Jun 2024 19:07:19 -0500
+I B <ibarnhart055 at gmail.com> ?????:
+
+> However, I am getting the following error: *"Argument is of length
+> zero."*
+
+>     if (selected_graph() == cols$column2 | selected_model() == "Main
+> effects model") {
+
+The error must be coming from here.
+
+At least one of selected_graph(), cols$column2, selected_model() is a
+zero-length object (maybe NULL) at this point, which makes the result
+of the whole expression zero-length too. if (...) only accepts logical
+scalars, hence the error.
+
+-- 
+Best regards,
+Ivan
+
+
+From 538280 @end|ng |rom gm@||@com  Thu Jun  6 17:08:06 2024
+From: 538280 @end|ng |rom gm@||@com (Greg Snow)
+Date: Thu, 6 Jun 2024 09:08:06 -0600
+Subject: [R] What is the HEX code for "transparent" color?
+In-Reply-To: <CADg5kN3dTkDWj6buW5FV2ujpu3JLF4YUFSbzj7_Rw=y2EkMoqA@mail.gmail.com>
+References: <CADg5kN3dTkDWj6buW5FV2ujpu3JLF4YUFSbzj7_Rw=y2EkMoqA@mail.gmail.com>
+Message-ID: <CAFEqCdwvCV3ky2JxiXpuXnX6uokMOinkLzi7PZPjcBK2oeYKwQ@mail.gmail.com>
+
+You need a "#" at the beginning of the string to specify that it is a
+hex code for the color.  Try "#00000000".
+
+On Thu, Jun 6, 2024 at 9:07?AM Yosu Yurramendi
+<yosu.yurramendi at gmail.com> wrote:
+>
+> What is the HEX code for "transparent" color?
+> I've tried "00000000" "FFFFFF00" "FFFFFFFF", but they don't work.
+> Thanks
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Gregory (Greg) L. Snow Ph.D.
+538280 at gmail.com
+
+
+From bobby@kn|ght @end|ng |rom gm@||@com  Thu Jun  6 17:34:43 2024
+From: bobby@kn|ght @end|ng |rom gm@||@com (Robert Knight)
+Date: Thu, 6 Jun 2024 11:34:43 -0400
+Subject: [R] What is the HEX code for "transparent" color?
+In-Reply-To: <CADg5kN3dTkDWj6buW5FV2ujpu3JLF4YUFSbzj7_Rw=y2EkMoqA@mail.gmail.com>
+References: <CADg5kN3dTkDWj6buW5FV2ujpu3JLF4YUFSbzj7_Rw=y2EkMoqA@mail.gmail.com>
+Message-ID: <CAKBFG3YutD714tUtt5nUFw96p368fLXWyve3nL_LO7iVvRUfyw@mail.gmail.com>
+
+You would give an existing color a new name and modify the new name's
+alpha.  Then refer to the color by the new name instead of using HEX.
+
+On Thu, Jun 6, 2024, 11:07?AM Yosu Yurramendi <yosu.yurramendi at gmail.com>
+wrote:
+
+> What is the HEX code for "transparent" color?
+> I've tried "00000000" "FFFFFF00" "FFFFFFFF", but they don't work.
+> Thanks
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Jun  6 18:41:55 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 6 Jun 2024 12:41:55 -0400
+Subject: [R] What is the HEX code for "transparent" color?
+In-Reply-To: <CADg5kN3dTkDWj6buW5FV2ujpu3JLF4YUFSbzj7_Rw=y2EkMoqA@mail.gmail.com>
+References: <CADg5kN3dTkDWj6buW5FV2ujpu3JLF4YUFSbzj7_Rw=y2EkMoqA@mail.gmail.com>
+Message-ID: <dc5818fe-ca44-4d24-903f-16a6cd96b9f4@gmail.com>
+
+On 2024-06-06 4:37 a.m., Yosu Yurramendi wrote:
+> What is the HEX code for "transparent" color?
+> I've tried "00000000" "FFFFFF00" "FFFFFFFF", but they don't work.
+
+If the other answers don't solve your problem, you should give us some 
+context.  Not all graphics functions in R can handle transparency, so 
+please show us some reproducible code for what you are trying.
+
+Duncan Murdoch
+
+
+From rk @end|ng |rom rk@|y|  Thu Jun  6 17:24:21 2024
+From: rk @end|ng |rom rk@|y| (Robert Knight)
+Date: Thu, 06 Jun 2024 11:24:21 -0400
+Subject: [R] What is the HEX code for "transparent" color?
+In-Reply-To: <CAFEqCdwvCV3ky2JxiXpuXnX6uokMOinkLzi7PZPjcBK2oeYKwQ@mail.gmail.com>
+References: <CADg5kN3dTkDWj6buW5FV2ujpu3JLF4YUFSbzj7_Rw=y2EkMoqA@mail.gmail.com>
+ <CAFEqCdwvCV3ky2JxiXpuXnX6uokMOinkLzi7PZPjcBK2oeYKwQ@mail.gmail.com>
+Message-ID: <C419D04D-D029-4D77-9679-A0066202800A@rk.fyi>
+
+You would set the alpha of an existing color and give it a new name and then refer to it by name rather than using HEX codes. 
+
+On June 6, 2024 11:08:06 AM EDT, Greg Snow <538280 at gmail.com> wrote:
+>You need a "#" at the beginning of the string to specify that it is a
+>hex code for the color.  Try "#00000000".
+>
+>On Thu, Jun 6, 2024 at 9:07?AM Yosu Yurramendi
+><yosu.yurramendi at gmail.com> wrote:
+>>
+>> What is the HEX code for "transparent" color?
+>> I've tried "00000000" "FFFFFF00" "FFFFFFFF", but they don't work.
+>> Thanks
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+>
+>
+>-- 
+>Gregory (Greg) L. Snow Ph.D.
+>538280 at gmail.com
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Robert Knight
+tel 270-306-1658
+fax (270) 288-0474
+rk at rk.fyi
+	[[alternative HTML version deleted]]
+
+
