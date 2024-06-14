@@ -4131,3 +4131,449 @@ Hope this helps,
 Rui Barradas
 
 
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Jun 12 12:14:23 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Wed, 12 Jun 2024 03:14:23 -0700
+Subject: [R] Integration of functions with a vector argument
+In-Reply-To: <PH0PR22MB2860E3ABD206953D15F31EFAC5C72@PH0PR22MB2860.namprd22.prod.outlook.com>
+References: <PH0PR22MB2860E3ABD206953D15F31EFAC5C72@PH0PR22MB2860.namprd22.prod.outlook.com>
+Message-ID: <483F442F-5229-4645-883D-15A796F83FC6@dcn.davis.ca.us>
+
+How do you integrate perpendicular to a plane if you don't have a concept of 3d? In that direction the plane is just a point.
+
+Vectors in R do not have any concept of "n by 1"... they are like a string of beads. When you take a column out of a matrix `a` using indexing b <- a[,j] the resulting vector can only be indexed along its length as b[i]. Such a vector is indistinguishable in structure from a[i,] which originated from a row.
+
+So I would say you are tilting at windmills. If you want you can write a[, j, drop=FALSE] to end up with an n by 1 matrix... but that is not a vector, it is a matrix. I have reservations about the value of "integrating out" along a row in an n by 1 matrix... seems like a degenerate case and you would be better off not creating the n by 1 matrix in the first place. But then I left Matlab behind a long time ago.
+
+
+On June 11, 2024 11:44:08 AM PDT, "Levine, Michael" <mlevins at purdue.edu> wrote:
+>Hello all,
+>
+>I have a question concerning integration of a function of a multivariate argument with respect to one or more variables in r.  Let us say we have a function
+>
+>F <- function(x){ body of the function}
+>
+>Where x is, in general, a d by 1 vector with d>1.  Now I want to integrate out some of the coordinates of x, e.g. x[1] or x[2] or both of them etc. I'm well aware of how to integrate out e.g. y if a function is defined as f <- function (x,y) {body of the function} where y is a scalar.
+>However, it seems to be quite difficult to do the same if the function is defined with a vector argument x. At the very least, I haven't seen any good examples of this being done.
+>Any suggestions?
+>
+>Yours sincerely,
+>Michael
+>
+>Michael Levine
+>Associate Professor, Statistics
+>
+>Department of Statistics
+>Purdue University
+>250 North University Street
+>West Lafayette, IN 47907 USA
+>
+>email: mlevins at purdue.edu
+>Phone: +1-765-496-7571
+>Fax:   +1-765-494-0558
+>URL:   www.stat.purdue.edu/~mlevins
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From |kry|ov @end|ng |rom d|@root@org  Thu Jun 13 12:21:21 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 13 Jun 2024 13:21:21 +0300
+Subject: [R] Integration of functions with a vector argument
+In-Reply-To: <PH0PR22MB28605CCF2898AD2EC336DCCBC5C02@PH0PR22MB2860.namprd22.prod.outlook.com>
+References: <PH0PR22MB2860E3ABD206953D15F31EFAC5C72@PH0PR22MB2860.namprd22.prod.outlook.com>
+ <20240612134119.72e4cab6@Tarkus>
+ <PH0PR22MB28605CCF2898AD2EC336DCCBC5C02@PH0PR22MB2860.namprd22.prod.outlook.com>
+Message-ID: <20240613132121.1847edee@arachnoid>
+
+? Wed, 12 Jun 2024 23:42:18 +0000
+"Levine, Michael" <mlevins at purdue.edu> ?????:
+
+> f.int1 <- function(x,y) {Vectorize (function(y) f(c(x,y),H=H,j=j))}
+
+Vectorize returns a callable function(y), so wrapping it in a
+function(x,y) will not work. Since you'd like to integrate over y, we
+can perform the same transformation manually using vapply:
+
+# A version of f(...) that can be integrated over y
+f.int1 <- function(y, x, H, j)
+ vapply(y, function(y) f(c(x,y), H = H, j = j), numeric(1))
+
+The same transformation can be performed using Vectorize as follows:
+
+f.int1 <- Vectorize(
+ function(y, x, H, j) f(c(x,y), H = H, j = j),
+ vectorize.args = 'y'
+)
+
+>     mrg.d1 <- function(x){
+>     integrate(f.int1,lower=-3,upper=3)$value
+>     }
+
+We can then integrate f.int1 over y, making sure to pass the remaining
+scalar parameters to the function:
+
+# mrg.d1(x, H, j) = ? f(y,x,H,j) dy from -3 to 3
+mrg.d1 <- function(x, H, j)
+ integrate(f.int1, lower=-3, upper=3, x = x, H = H, j = j)$value
+
+> mrg.cdf1 <- function(x){
+>     integrate(mrg.d1,lower=-Inf,upper=x)$value
+>     }
+
+Unfortunately, mrg.d1 is once again not vectorised and may give wrong
+answers or raise exceptions with non-scalar x. We can now perform the
+same transformation so that the function would work with integrate():
+
+# Version of mrg.d1 integratable over x
+mrg.d1.int <- function(x, H, j)
+ vapply(x, mrg.d1, numeric(1), H = H, j = j)
+
+Here, instead of having to combine arguments like in f.int1, we can
+just use vapply() to call the original mrg.d1 for every scalar element
+inside the vector x given to mrg.d1.int. Alternatively,
+
+mrg.d1.int <- Vectorize(mrg.d1, 'x')
+
+A vectorised function can then be integrated:
+
+# mrg.cdf1(x, H, j) = ? mrg.d1(x', H, j) dx' from -? to x
+mrg.cdf1 <- function(x, H, j)
+ integrate(mrg.d1.int, lower=-Inf, upper=x, H = H, j = j)$value
+
+This double nested loop (produced by Vectorize() and mapply() or
+manually with vapply()) may be not very fast. If you rewrite your
+function f to accept matrices containing values of (x, y) for many
+evaluations of the function and to return vectors of the resulting
+values, you'll be able to use the CRAN package 'cubature'
+<https://CRAN.R-project.org/package=cubature> to integrate it over
+multiple variables at once.
+
+-- 
+Best regards,
+Ivan
+
+
+From m|ev|n@ @end|ng |rom purdue@edu  Thu Jun 13 01:42:18 2024
+From: m|ev|n@ @end|ng |rom purdue@edu (Levine, Michael)
+Date: Wed, 12 Jun 2024 23:42:18 +0000
+Subject: [R] Integration of functions with a vector argument
+In-Reply-To: <20240612134119.72e4cab6@Tarkus>
+References: <PH0PR22MB2860E3ABD206953D15F31EFAC5C72@PH0PR22MB2860.namprd22.prod.outlook.com>
+ <20240612134119.72e4cab6@Tarkus>
+Message-ID: <PH0PR22MB28605CCF2898AD2EC336DCCBC5C02@PH0PR22MB2860.namprd22.prod.outlook.com>
+
+Dear Ivan,
+
+Thank you very much for your suggestions. I understand what you are saying. I am afraid I didn't explain well enough what was needed, however.  Let us again restrict ourselves to the case of two dimensions. Then, what I have is a bivariate density function f(x,y) and my intention is to obtain f(x) by integrating out y. However, I don't only need to know the value of the marginal density f(x) at one point - I need to integrate it again to obtain the marginal cumulative density function F(x) as a next step. Thus, I also need to pass x as an additional parameter before integration, and this is what makes the problem more difficult.
+
+I tried to do the following (here H and j are additional arguments needed to obtain the estimated bivariate density function):
+
+f.int1 <- function(x,y) {Vectorize (function(y) f(c(x,y),H=H,j=j))}
+    mrg.d1 <- function(x){
+    integrate(f.int1,lower=-3,upper=3)$value
+    }
+mrg.cdf1 <- function(x){
+    integrate(mrg.d1,lower=-Inf,upper=x)$value
+    }
+
+I received the following error message:
+
+
+Error in integrate(f.int1, lower = -3, upper = 3) :
+  evaluation of function gave a result of wrong length
+
+
+How would you go about performing this task?
+
+Yours sincerely,
+Michael
+
+Michael Levine
+Associate Professor, Statistics
+
+Department of Statistics
+Purdue University
+250 North University Street
+West Lafayette, IN 47907 USA
+
+email: mlevins at purdue.edu
+Phone: +1-765-496-7571
+Fax:   +1-765-494-0558
+URL:   www.stat.purdue.edu/~mlevins
+________________________________
+From: Ivan Krylov <ikrylov at disroot.org>
+Sent: Wednesday, June 12, 2024 6:41 AM
+To: Levine, Michael <mlevins at purdue.edu>
+Cc: r-help at r-project.org <r-help at r-project.org>
+Subject: Re: [R] Integration of functions with a vector argument
+
+[You don't often get email from ikrylov at disroot.org. Learn why this is important at https://aka.ms/LearnAboutSenderIdentification ]
+
+---- External Email: Use caution with attachments, links, or sharing data ----
+
+
+? Tue, 11 Jun 2024 18:44:08 +0000
+"Levine, Michael" <mlevins at purdue.edu> ?????:
+
+> Let us say we have a function
+>
+> F <- function(x){ body of the function}
+>
+> Where x is, in general, a d by 1 vector with d>1.  Now I want to
+> integrate out some of the coordinates of x, e.g. x[1] or x[2] or both
+> of them etc. I'm well aware of how to integrate out e.g. y if a
+> function is defined as f <- function (x,y) {body of the function}
+> where y is a scalar.
+
+The reason integrate() wants a separate function argument for the
+integration coordinate is so that it could give the function a vector
+of different values of the variable and receive a vector of the same
+length containing the corresponding values of the function.
+
+If the problem is small enough to make performance considerations
+irrelevant, you can use Vectorize to make a function compatible with
+integrate() from your function F:
+
+x <- x0
+z <- z0
+Fiy <- Vectorize(function(y) F(c(x, y, z)))
+integrate(Fiy, ymin, ymax)
+
+The resulting function Fiy will accept a vector of values for y and
+translate it into multiple calls to F with a three-element vector
+argument as it expects.
+
+Achieving better performance will require rewriting the function F to
+be "vectorised", i.e. to accept vectors for arguments and return a
+vector of the same length.
+
+--
+Best regards,
+Ivan
+
+	[[alternative HTML version deleted]]
+
+
+From |r@nce@c@@p@ncotto @end|ng |rom un|more@|t  Thu Jun 13 16:42:19 2024
+From: |r@nce@c@@p@ncotto @end|ng |rom un|more@|t (Francesca PANCOTTO)
+Date: Thu, 13 Jun 2024 16:42:19 +0200
+Subject: [R] Create a numeric series in an efficient way
+Message-ID: <CAMXoJ=+0go0uA1NKJ+0HaW5v7HcxsmGBJ8o0v=7RNJX_uHv3bA@mail.gmail.com>
+
+Dear Contributors
+I am trying to create a numeric series with repeated numbers, not difficult
+task, but I do not seem to find an efficient way.
+
+This is my solution
+
+blocB <- c(rep(x = 1, times = 84), rep(x = 2, times = 84), rep(x = 3, times
+= 84), rep(x = 4, times = 84), rep(x = 5, times = 84), rep(x = 6, times =
+84), rep(x = 7, times = 84), rep(x = 8, times = 84), rep(x = 9, times =
+84), rep(x = 10, times = 84), rep(x = 11, times = 84), rep(x = 12, times =
+84), rep(x = 13, times = 84))
+
+which works but it is super silly and I need to create different variables
+similar to this, changing the value of the repetition, 84 in this case.
+Thanks for any help.
+
+
+F.
+
+	[[alternative HTML version deleted]]
+
+
+From |r@nce@c@@p@ncotto @end|ng |rom un|more@|t  Thu Jun 13 20:21:58 2024
+From: |r@nce@c@@p@ncotto @end|ng |rom un|more@|t (Francesca PANCOTTO)
+Date: Thu, 13 Jun 2024 20:21:58 +0200
+Subject: [R] Create a numeric series in an efficient way
+In-Reply-To: <CAMXoJ=+0go0uA1NKJ+0HaW5v7HcxsmGBJ8o0v=7RNJX_uHv3bA@mail.gmail.com>
+References: <CAMXoJ=+0go0uA1NKJ+0HaW5v7HcxsmGBJ8o0v=7RNJX_uHv3bA@mail.gmail.com>
+Message-ID: <CAMXoJ=JhO4gg900tNxcCVas7uWA7q3JZa2+rVJLv+kq-XavHYg@mail.gmail.com>
+
+I apologize, I solved the problem, sorry for that.
+f.
+
+
+
+Il giorno gio 13 giu 2024 alle ore 16:42 Francesca PANCOTTO <
+francesca.pancotto at unimore.it> ha scritto:
+
+> Dear Contributors
+> I am trying to create a numeric series with repeated numbers, not
+> difficult task, but I do not seem to find an efficient way.
+>
+> This is my solution
+>
+> blocB <- c(rep(x = 1, times = 84), rep(x = 2, times = 84), rep(x = 3,
+> times = 84), rep(x = 4, times = 84), rep(x = 5, times = 84), rep(x = 6,
+> times = 84), rep(x = 7, times = 84), rep(x = 8, times = 84), rep(x = 9,
+> times = 84), rep(x = 10, times = 84), rep(x = 11, times = 84), rep(x = 12,
+> times = 84), rep(x = 13, times = 84))
+>
+> which works but it is super silly and I need to create different variables
+> similar to this, changing the value of the repetition, 84 in this case.
+> Thanks for any help.
+>
+>
+> F.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From tebert @end|ng |rom u||@edu  Fri Jun 14 00:54:37 2024
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Thu, 13 Jun 2024 22:54:37 +0000
+Subject: [R] Create a numeric series in an efficient way
+In-Reply-To: <CAMXoJ=JhO4gg900tNxcCVas7uWA7q3JZa2+rVJLv+kq-XavHYg@mail.gmail.com>
+References: <CAMXoJ=+0go0uA1NKJ+0HaW5v7HcxsmGBJ8o0v=7RNJX_uHv3bA@mail.gmail.com>
+ <CAMXoJ=JhO4gg900tNxcCVas7uWA7q3JZa2+rVJLv+kq-XavHYg@mail.gmail.com>
+Message-ID: <CH3PR22MB451402988381A3792FAD5073CFC12@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+Maybe this was your solution?
+
+blocC <- c(rep(x=c(1:13), times=84))
+blocC <- arrange(.data = data.frame(blocC), blocC)
+
+The second line sorts, but that may not be needed depending on application. The object class is also different in the sorted solution.
+
+Tim
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Francesca PANCOTTO via R-help
+Sent: Thursday, June 13, 2024 2:22 PM
+To: r-help at r-project.org
+Subject: Re: [R] Create a numeric series in an efficient way
+
+[External Email]
+
+I apologize, I solved the problem, sorry for that.
+f.
+
+
+
+Il giorno gio 13 giu 2024 alle ore 16:42 Francesca PANCOTTO < francesca.pancotto at unimore.it> ha scritto:
+
+> Dear Contributors
+> I am trying to create a numeric series with repeated numbers, not
+> difficult task, but I do not seem to find an efficient way.
+>
+> This is my solution
+>
+> blocB <- c(rep(x = 1, times = 84), rep(x = 2, times = 84), rep(x = 3,
+> times = 84), rep(x = 4, times = 84), rep(x = 5, times = 84), rep(x =
+> 6, times = 84), rep(x = 7, times = 84), rep(x = 8, times = 84), rep(x
+> = 9, times = 84), rep(x = 10, times = 84), rep(x = 11, times = 84),
+> rep(x = 12, times = 84), rep(x = 13, times = 84))
+>
+> which works but it is super silly and I need to create different
+> variables similar to this, changing the value of the repetition, 84 in this case.
+> Thanks for any help.
+>
+>
+> F.
+>
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Fri Jun 14 03:13:00 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 13 Jun 2024 18:13:00 -0700
+Subject: [R] Create a numeric series in an efficient way
+In-Reply-To: <CH3PR22MB451402988381A3792FAD5073CFC12@CH3PR22MB4514.namprd22.prod.outlook.com>
+References: <CAMXoJ=+0go0uA1NKJ+0HaW5v7HcxsmGBJ8o0v=7RNJX_uHv3bA@mail.gmail.com>
+ <CAMXoJ=JhO4gg900tNxcCVas7uWA7q3JZa2+rVJLv+kq-XavHYg@mail.gmail.com>
+ <CH3PR22MB451402988381A3792FAD5073CFC12@CH3PR22MB4514.namprd22.prod.outlook.com>
+Message-ID: <CAGxFJbTnA0n=s+YAwmQs1zcDRPJHqCRaEN0rgkt5WoXLb5-3wg@mail.gmail.com>
+
+Nope. She would have wanted the 'each' argument = 84. See ?rep.
+
+-- Bert
+
+
+
+On Thu, Jun 13, 2024 at 3:54?PM Ebert,Timothy Aaron <tebert at ufl.edu> wrote:
+
+> Maybe this was your solution?
+>
+> blocC <- c(rep(x=c(1:13), times=84))
+> blocC <- arrange(.data = data.frame(blocC), blocC)
+>
+> The second line sorts, but that may not be needed depending on
+> application. The object class is also different in the sorted solution.
+>
+> Tim
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Francesca
+> PANCOTTO via R-help
+> Sent: Thursday, June 13, 2024 2:22 PM
+> To: r-help at r-project.org
+> Subject: Re: [R] Create a numeric series in an efficient way
+>
+> [External Email]
+>
+> I apologize, I solved the problem, sorry for that.
+> f.
+>
+>
+>
+> Il giorno gio 13 giu 2024 alle ore 16:42 Francesca PANCOTTO <
+> francesca.pancotto at unimore.it> ha scritto:
+>
+> > Dear Contributors
+> > I am trying to create a numeric series with repeated numbers, not
+> > difficult task, but I do not seem to find an efficient way.
+> >
+> > This is my solution
+> >
+> > blocB <- c(rep(x = 1, times = 84), rep(x = 2, times = 84), rep(x = 3,
+> > times = 84), rep(x = 4, times = 84), rep(x = 5, times = 84), rep(x =
+> > 6, times = 84), rep(x = 7, times = 84), rep(x = 8, times = 84), rep(x
+> > = 9, times = 84), rep(x = 10, times = 84), rep(x = 11, times = 84),
+> > rep(x = 12, times = 84), rep(x = 13, times = 84))
+> >
+> > which works but it is super silly and I need to create different
+> > variables similar to this, changing the value of the repetition, 84 in
+> this case.
+> > Thanks for any help.
+> >
+> >
+> > F.
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.r-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
