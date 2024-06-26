@@ -22411,3 +22411,857 @@ On Mon, 24 Jun 2024 at 23:41, Steven Yen <styen at ntu.edu.tw> wrote:
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From @vi@e@gross m@iii@g oii gm@ii@com  Tue Jun 25 04:59:29 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Mon, 24 Jun 2024 22:59:29 -0400
+Subject: [R] Naming output file
+References: <77836dc7-0680-42e6-b26f-2ba2e743b83f@ntu.edu.tw>
+ <CABcYAdJKbZcZc8jW=01R4NSeDQGetqUZ=zOZguc3HgwogcGMHg@mail.gmail.com> 
+Message-ID: <009701dac6ab$b29e0a60$17da1f20$@gmail.com>
+
+I had the same FIRST impression which could have made sense as in writing
+the data back out to a file with a similar name and that would have been
+trivial. I mean if you had exactly three, a loop would not even be
+particularly useful versus writing two lines, copying them and editing the
+latter two sets.
+
+But the OP could have done a better job explaining what they wanted it all
+FOR. Just writing out the same file contents would be nonsensical unless
+some change was made such as writing in a different format. But I noted the
+output names were not something like NAME.csv and although the code looked
+wrong, it soon became clear they wanted to create not files but clearly a
+data.frame as that is produced by read.csv. The language usage was simply
+sloppy.
+
+The names chosen made it easier as all you needed to do was replace
+"2010midata" with "bop" and easy enough to do in a loop or several other
+ways but what the OP missed was how to do something that is doable in an
+interpreted language like R but possibly not in many compiled languages.
+
+So, as others pointed out, sometimes the person doing this has become wedded
+to ONE WAY of doing something rather than considering if some other way is a
+better choice. In this case, a consensus is that a data structure such as a
+list of data.frames would be a better choice and even that it could be done
+without an explicit loop such as this version where you can set N to any
+value, and it will get files with a suffix ranging from 1 to N, albeit this
+does not allow you to find something like 007 without modification:
+
+N <- 3
+list_of_df <- lapply(paste0("2010midata", 1:N, ".csv"), read.csv)
+
+An individual data.frame can be accessed using [[]] notation as in:
+
+> class(list_of_df[[1]])
+[1] "data.frame"
+
+Of course if you have additional values to pass in to read.csv, add them in
+the ... after the first args and so on. 
+
+The next part, badly written as:
+
+paste0("bop",im)<-boprobit(eqs,mydata,wt=weight,method="BHHH",tol=0,reltol=0
+,gradtol=1e-5,Fisher=TRUE)
+
+Not can use a similar construction in which the 1:N is replaced by
+list_of_df and the function by boprobit and then the remaining arguments in
+the ...
+
+But that is not the way many initially think. Let alone thinking in nested
+fashion as in:
+
+Results <- lapply(X=lapply(X=paste0("2010midata", 1:N, ".csv"),
+FUN=read.csv), FUN=boprobit,
+,wt=weight,method="BHHH",tol=0,reltol=0,gradtol=1e-5,Fisher=TRUE))
+
+Unfortunately, the latter is WRONG as boprobit seems to take a second
+argument of the data.frame with whatever "eqs" is as the first argument.
+This slightly nonstandard version would require some gimmick such as an
+accessory function that rearranges what it gets as arguments and then calls
+boprobit.
+
+But, as noted, this is one of many examples where the user comes up with a
+"solution" that is fairly rarely needed even if it can be done, rather than
+one that is a bit more abstract and yet powerful. 
+
+Yet, as noted, R can do things we often have no need for and this is an
+example. Never mind how it can be a tad dangerous to assign to extra
+variable names that might step on existing names as compared to creating
+anonymous data structures with few or no names as everything is largely
+positional.
+
+I will end with a slight variant. Imagine making a named list, perhaps
+extended in each part of the loop used, so that you it looks like
+
+Mylist <- list(name1=value, name2=value, name3=value)
+
+This could then be addressed using Mylist[[1]] or Mylist$name1
+interchangeably. But as all names would be internal to the list, it is
+name-safe.
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Richard O'Keefe
+Sent: Monday, June 24, 2024 9:05 PM
+To: Steven Yen <styen at ntu.edu.tw>
+Cc: R-help Mailing List <r-help at r-project.org>; Steven Yen
+<syen04 at gmail.com>
+Subject: Re: [R] Naming output file
+
+The subject line says (capitalisation changed) "name output FILE"
+but I see no attempt in the sample code to create an output FILE.
+I was expecting to see something like
+  write(<whatever>, file = paste0("bop",im))
+
+On Mon, 24 Jun 2024 at 23:41, Steven Yen <styen at ntu.edu.tw> wrote:
+>
+> I would like a loop to
+>
+> (1) read data files 2010midata1,2010midata2,2010midata3; and
+>
+> (2)  name OUTPUT bop1,bop2,bop3.
+>
+> I succeeded in line 3 of the code below,
+>
+> BUT not line 4. The error message says:
+>
+> Error in paste0("bop", im) <- boprobit(eqs, mydata, wt = weight, method
+> = "NR", : target of assignment expands to non-language object Please
+> help. Thanks.
+>
+> m<-3
+> for (im in 1:m) {
+> mydata<-read.csv(paste0("2010midata",im,".csv"))
+>
+paste0("bop",im)<-boprobit(eqs,mydata,wt=weight,method="BHHH",tol=0,reltol=0
+,gradtol=1e-5,Fisher=TRUE)
+> }
+>
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From du@@@@dr|@n @end|ng |rom un|buc@ro  Tue Jun 25 09:56:07 2024
+From: du@@@@dr|@n @end|ng |rom un|buc@ro (Adrian Dusa)
+Date: Tue, 25 Jun 2024 10:56:07 +0300
+Subject: [R] "--" < 0
+Message-ID: <CAA1TD3oNyp+PTGu-mFJJ=HauB4iAd3z7OTLAKL3Y9MvUic0tpw@mail.gmail.com>
+
+Dear R fellows,
+
+>From time to time, just when I thought I knew my R, I get bitten by some
+small things that reminds one to constantly return to the basics.
+
+I knew for instance that "-1" < 0 is TRUE, presumably because R first
+coerces to numeric before comparing with 0.
+
+But I did not expect that "--" < 0 is a TRUE statement.
+(and the same holds for any string prepended by a minus sign, e.g. "-a" < 0)
+
+I would be grateful for an explanation, I'm sure that something very
+obvious escapes me but it sure does seem counter intuitive to me.
+
+Best wishes,
+Adrian
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Tue Jun 25 10:02:10 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Tue, 25 Jun 2024 10:02:10 +0200
+Subject: [R] "--" < 0
+In-Reply-To: <CAA1TD3oNyp+PTGu-mFJJ=HauB4iAd3z7OTLAKL3Y9MvUic0tpw@mail.gmail.com>
+References: <CAA1TD3oNyp+PTGu-mFJJ=HauB4iAd3z7OTLAKL3Y9MvUic0tpw@mail.gmail.com>
+Message-ID: <26234.31106.206576.399864@stat.math.ethz.ch>
+
+>>>>> Adrian Dusa 
+>>>>>     on Tue, 25 Jun 2024 10:56:07 +0300 writes:
+
+    > Dear R fellows,
+
+    >> From time to time, just when I thought I knew my R, I get
+    >> bitten by some
+    > small things that reminds one to constantly return to the
+    > basics.
+
+    > I knew for instance that "-1" < 0 is TRUE, presumably
+    > because R first coerces to numeric before comparing with
+    > 0.
+
+    > But I did not expect that "--" < 0 is a TRUE statement.
+    > (and the same holds for any string prepended by a minus
+    > sign, e.g. "-a" < 0)
+
+    > I would be grateful for an explanation, I'm sure that
+    > something very obvious escapes me but it sure does seem
+    > counter intuitive to me.
+
+    > Best wishes, Adrian
+
+    > 	[[alternative HTML version deleted]]
+
+Nice, quiz, yes.
+
+You must have forgotten that all Op's (+,-, <= , &, | ..)
+must coerce to common type.
+
+... and so does  c()  where coercion is defined a bit more.
+
+-->  does  c("--", 0)   give you a clue, now ?
+
+
+From j@b@y@t194 @end|ng |rom gm@||@com  Mon Jun 24 13:55:20 2024
+From: j@b@y@t194 @end|ng |rom gm@||@com (javad bayat)
+Date: Mon, 24 Jun 2024 15:25:20 +0330
+Subject: [R] Converting .grib to excel file
+Message-ID: <CANTxAm+JMF-z9T6X-Ra5dF6OMRfcYfzWUX43XB=w=X3iftcR5g@mail.gmail.com>
+
+Dear all;
+I have downloaded meteorology data from "
+https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=form"
+as .grib format. It has hourly data of a complete year (every hour of every
+day of 12 months) and has 6 meteorology parameters. The file has been
+attached.
+I am trying to convert it to an excel file that puts every parameter in a
+separated column. For instance, the first col represents Date, 2nd
+represents Temperature and so on.
+Is there any way to do it?
+I used these codes but did not work:
+# install.packages("rNOMADS")
+
+library(rNOMADS)
+
+# Read GRIB data
+grib_data <- ReadGrib("C:/Users/admin/Downloads/Met.grib")
+
+# Convert to a data frame
+grib_df <- as.data.frame(grib_data)
+
+# Write the data frame to a CSV file
+write.csv(grib_df, file = "output.csv")
+
+
+I would be more than happy if anyone could help me.
+Sincerely
+
+-- 
+Best Regards
+Javad Bayat
+M.Sc. Environment Engineering
+Alternative Mail: bayat194 at yahoo.com
+
+From pd@|gd @end|ng |rom gm@||@com  Tue Jun 25 10:36:20 2024
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Tue, 25 Jun 2024 10:36:20 +0200
+Subject: [R] "--" < 0
+In-Reply-To: <26234.31106.206576.399864@stat.math.ethz.ch>
+References: <CAA1TD3oNyp+PTGu-mFJJ=HauB4iAd3z7OTLAKL3Y9MvUic0tpw@mail.gmail.com>
+ <26234.31106.206576.399864@stat.math.ethz.ch>
+Message-ID: <AB74C7D9-89B1-4536-B961-FEF5803DF75A@gmail.com>
+
+Also notice that
+
+> "+5" < 0
+[1] TRUE
+
+> as.numeric("+5") < 0
+[1] FALSE
+
+So the presumption is wrong. It is really about
+
+> sort(c(0:3, "+", "-"))
+[1] "-" "+" "0" "1" "2" "3"
+
+-pd
+
+> On 25 Jun 2024, at 10:02 , Martin Maechler <maechler at stat.math.ethz.ch> wrote:
+> 
+>>>>>> Adrian Dusa 
+>>>>>>    on Tue, 25 Jun 2024 10:56:07 +0300 writes:
+> 
+>> Dear R fellows,
+> 
+>>> From time to time, just when I thought I knew my R, I get
+>>> bitten by some
+>> small things that reminds one to constantly return to the
+>> basics.
+> 
+>> I knew for instance that "-1" < 0 is TRUE, presumably
+>> because R first coerces to numeric before comparing with
+>> 0.
+> 
+>> But I did not expect that "--" < 0 is a TRUE statement.
+>> (and the same holds for any string prepended by a minus
+>> sign, e.g. "-a" < 0)
+> 
+>> I would be grateful for an explanation, I'm sure that
+>> something very obvious escapes me but it sure does seem
+>> counter intuitive to me.
+> 
+>> Best wishes, Adrian
+> 
+>> 	[[alternative HTML version deleted]]
+> 
+> Nice, quiz, yes.
+> 
+> You must have forgotten that all Op's (+,-, <= , &, | ..)
+> must coerce to common type.
+> 
+> ... and so does  c()  where coercion is defined a bit more.
+> 
+> -->  does  c("--", 0)   give you a clue, now ?
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From du@@@@dr|@n @end|ng |rom un|buc@ro  Tue Jun 25 10:58:32 2024
+From: du@@@@dr|@n @end|ng |rom un|buc@ro (Adrian Dusa)
+Date: Tue, 25 Jun 2024 11:58:32 +0300
+Subject: [R] "--" < 0
+In-Reply-To: <26234.31106.206576.399864@stat.math.ethz.ch>
+References: <CAA1TD3oNyp+PTGu-mFJJ=HauB4iAd3z7OTLAKL3Y9MvUic0tpw@mail.gmail.com>
+ <26234.31106.206576.399864@stat.math.ethz.ch>
+Message-ID: <CAA1TD3oQK0LJTh12DueG446ZO+bggSPVBPVFEqRFjdfGXy5kdg@mail.gmail.com>
+
+Oh I see...
+It's not that "-7" gets coerced to numeric, but 0 gets coerced to "0".
+Of course...
+
+On Tue, Jun 25, 2024 at 11:02?AM Martin Maechler <maechler at stat.math.ethz.ch>
+wrote:
+
+> >>>>> Adrian Dusa
+> >>>>>     on Tue, 25 Jun 2024 10:56:07 +0300 writes:
+>
+>     > Dear R fellows,
+>
+>     >> From time to time, just when I thought I knew my R, I get
+>     >> bitten by some
+>     > small things that reminds one to constantly return to the
+>     > basics.
+>
+>     > I knew for instance that "-1" < 0 is TRUE, presumably
+>     > because R first coerces to numeric before comparing with
+>     > 0.
+>
+>     > But I did not expect that "--" < 0 is a TRUE statement.
+>     > (and the same holds for any string prepended by a minus
+>     > sign, e.g. "-a" < 0)
+>
+>     > I would be grateful for an explanation, I'm sure that
+>     > something very obvious escapes me but it sure does seem
+>     > counter intuitive to me.
+>
+>     > Best wishes, Adrian
+>
+>     >   [[alternative HTML version deleted]]
+>
+> Nice, quiz, yes.
+>
+> You must have forgotten that all Op's (+,-, <= , &, | ..)
+> must coerce to common type.
+>
+> ... and so does  c()  where coercion is defined a bit more.
+>
+> -->  does  c("--", 0)   give you a clue, now ?
+>
+
+	[[alternative HTML version deleted]]
+
+
+From r@oknz @end|ng |rom gm@||@com  Tue Jun 25 13:23:55 2024
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Tue, 25 Jun 2024 23:23:55 +1200
+Subject: [R] Converting .grib to excel file
+In-Reply-To: <CANTxAm+JMF-z9T6X-Ra5dF6OMRfcYfzWUX43XB=w=X3iftcR5g@mail.gmail.com>
+References: <CANTxAm+JMF-z9T6X-Ra5dF6OMRfcYfzWUX43XB=w=X3iftcR5g@mail.gmail.com>
+Message-ID: <CABcYAdLq4i3GoF2d2mVGdMDg2fd7=is_HOzF5evvKaWzGQfcfg@mail.gmail.com>
+
+Your message referred to an attached file but there was no attachment,
+I have no account at that service, so could not download a sample for
+myself.  Does the licence for the data even allow you to send some of
+it in a message?  Which parameters are you extracting?  When you say
+"it didn't work", what actually happened?  Which step went wrong and how?
+
+
+On Tue, 25 Jun 2024 at 20:33, javad bayat <j.bayat194 at gmail.com> wrote:
+>
+> Dear all;
+> I have downloaded meteorology data from "
+> https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=form"
+> as .grib format. It has hourly data of a complete year (every hour of every
+> day of 12 months) and has 6 meteorology parameters. The file has been
+> attached.
+> I am trying to convert it to an excel file that puts every parameter in a
+> separated column. For instance, the first col represents Date, 2nd
+> represents Temperature and so on.
+> Is there any way to do it?
+> I used these codes but did not work:
+> # install.packages("rNOMADS")
+>
+> library(rNOMADS)
+>
+> # Read GRIB data
+> grib_data <- ReadGrib("C:/Users/admin/Downloads/Met.grib")
+>
+> # Convert to a data frame
+> grib_df <- as.data.frame(grib_data)
+>
+> # Write the data frame to a CSV file
+> write.csv(grib_df, file = "output.csv")
+>
+>
+> I would be more than happy if anyone could help me.
+> Sincerely
+>
+> --
+> Best Regards
+> Javad Bayat
+> M.Sc. Environment Engineering
+> Alternative Mail: bayat194 at yahoo.com
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue Jun 25 16:17:34 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 25 Jun 2024 07:17:34 -0700
+Subject: [R] Converting .grib to excel file
+In-Reply-To: <CANTxAm+JMF-z9T6X-Ra5dF6OMRfcYfzWUX43XB=w=X3iftcR5g@mail.gmail.com>
+References: <CANTxAm+JMF-z9T6X-Ra5dF6OMRfcYfzWUX43XB=w=X3iftcR5g@mail.gmail.com>
+Message-ID: <CAGxFJbR5azhJbQ4Q2v-pSAF4WvMmH2ny=S2Wkcu-uRd3n3C7tg@mail.gmail.com>
+
+Do a web search on "convert grib data to csv".  You will get many hits. You
+probably don't need R to do this.
+
+-- Bert
+
+On Tue, Jun 25, 2024 at 1:33?AM javad bayat <j.bayat194 at gmail.com> wrote:
+
+> Dear all;
+> I have downloaded meteorology data from "
+>
+> https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=form
+> "
+> as .grib format. It has hourly data of a complete year (every hour of every
+> day of 12 months) and has 6 meteorology parameters. The file has been
+> attached.
+> I am trying to convert it to an excel file that puts every parameter in a
+> separated column. For instance, the first col represents Date, 2nd
+> represents Temperature and so on.
+> Is there any way to do it?
+> I used these codes but did not work:
+> # install.packages("rNOMADS")
+>
+> library(rNOMADS)
+>
+> # Read GRIB data
+> grib_data <- ReadGrib("C:/Users/admin/Downloads/Met.grib")
+>
+> # Convert to a data frame
+> grib_df <- as.data.frame(grib_data)
+>
+> # Write the data frame to a CSV file
+> write.csv(grib_df, file = "output.csv")
+>
+>
+> I would be more than happy if anyone could help me.
+> Sincerely
+>
+> --
+> Best Regards
+> Javad Bayat
+> M.Sc. Environment Engineering
+> Alternative Mail: bayat194 at yahoo.com
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Tue Jun 25 16:42:42 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Tue, 25 Jun 2024 10:42:42 -0400
+Subject: [R] "--" < 0
+In-Reply-To: <CAA1TD3oQK0LJTh12DueG446ZO+bggSPVBPVFEqRFjdfGXy5kdg@mail.gmail.com>
+References: <CAA1TD3oNyp+PTGu-mFJJ=HauB4iAd3z7OTLAKL3Y9MvUic0tpw@mail.gmail.com>
+ <26234.31106.206576.399864@stat.math.ethz.ch>
+ <CAA1TD3oQK0LJTh12DueG446ZO+bggSPVBPVFEqRFjdfGXy5kdg@mail.gmail.com>
+Message-ID: <004301dac70d$ef6e81b0$ce4b8510$@gmail.com>
+
+Unfortunately, Adrian, even trying to coerce a string like "--" to numeric just produces an NA and comparison fails:
+
+> as.numeric("--") < 0 
+[1] NA
+Warning message:
+NAs introduced by coercion
+
+The same is true of anything that is character as it cannot be coerced.
+
+> as.numeric("anything") < 0 
+[1] NA
+Warning message:
+NAs introduced by coercion
+
+So, the only rational thing R can do is convert the zero to a character string and that has the usual problem as in:
+
+> as.character(20) < as.character(9)
+[1] TRUE
+
+Can you suggest if there is any valid result in some cases like these? I mean, if we wrote a function like greater(first, second) and set it up so it analyzed the types of the arguments and tried various combinations of converting things to one of several possible types such as integer/numeric/character/logical/raw and examined the results of each while catching errors, what would be a right answer it could get?
+
+My guess is that it may not be possible in some cases to give an answer other than that the two being compared are incompatible. The result of greater() could be neither TRUE, nor FALSE but something like one of the NA family or maybe a NaN or maybe the function would simply throw an error and fail.
+
+I can picture many other scenarios such as asking it to compare two objects, perhaps the same type or different types, such as a list versus a matrix. Realistically, the ">" operator and other such operators are not designed to do deep analyses and be able to compare complex-objects component by component and recursively. 
+
+So the result you show, is in some sense nonsense. It is so wrong that it is not even wrong. My intuition is that it is similar to this:
+
+> NA + 5
+[1] NA
+
+Any computation containing a crucial NA, typically ends up with an NA result because once you introduce uncertainty, it propagates. So the result of comparing things that cannot be compared may well also be polluted and should come back as an NA, probably the default logical form, not something like NA_integer_ 
+
+Since comparisons between random objects are something that can happen, I suspect there are functions already part of the R distribution or in some packages that behave better and can safely be used to ask if things can even be compared. But there may yet remain edge cases because of things like character strings that can be evaluated as numeric but may not be evaluated correctly if they are written in some way as in hexadecimal notation or scientific notation.
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Adrian Dusa
+Sent: Tuesday, June 25, 2024 4:59 AM
+To: Martin Maechler <maechler at stat.math.ethz.ch>
+Cc: r-help at r-project.org
+Subject: Re: [R] "--" < 0
+
+Oh I see...
+It's not that "-7" gets coerced to numeric, but 0 gets coerced to "0".
+Of course...
+
+On Tue, Jun 25, 2024 at 11:02?AM Martin Maechler <maechler at stat.math.ethz.ch>
+wrote:
+
+> >>>>> Adrian Dusa
+> >>>>>     on Tue, 25 Jun 2024 10:56:07 +0300 writes:
+>
+>     > Dear R fellows,
+>
+>     >> From time to time, just when I thought I knew my R, I get
+>     >> bitten by some
+>     > small things that reminds one to constantly return to the
+>     > basics.
+>
+>     > I knew for instance that "-1" < 0 is TRUE, presumably
+>     > because R first coerces to numeric before comparing with
+>     > 0.
+>
+>     > But I did not expect that "--" < 0 is a TRUE statement.
+>     > (and the same holds for any string prepended by a minus
+>     > sign, e.g. "-a" < 0)
+>
+>     > I would be grateful for an explanation, I'm sure that
+>     > something very obvious escapes me but it sure does seem
+>     > counter intuitive to me.
+>
+>     > Best wishes, Adrian
+>
+>     >   [[alternative HTML version deleted]]
+>
+> Nice, quiz, yes.
+>
+> You must have forgotten that all Op's (+,-, <= , &, | ..)
+> must coerce to common type.
+>
+> ... and so does  c()  where coercion is defined a bit more.
+>
+> -->  does  c("--", 0)   give you a clue, now ?
+>
+
+	[[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From @@r@h@go@|ee @end|ng |rom gm@||@com  Tue Jun 25 18:17:14 2024
+From: @@r@h@go@|ee @end|ng |rom gm@||@com (Sarah Goslee)
+Date: Tue, 25 Jun 2024 12:17:14 -0400
+Subject: [R] Converting .grib to excel file
+In-Reply-To: <CANTxAm+JMF-z9T6X-Ra5dF6OMRfcYfzWUX43XB=w=X3iftcR5g@mail.gmail.com>
+References: <CANTxAm+JMF-z9T6X-Ra5dF6OMRfcYfzWUX43XB=w=X3iftcR5g@mail.gmail.com>
+Message-ID: <CAM_vjukFAAmYQ-0ctC=4Qm9DzPknzPqjEV_dN+d9rbT74kypSA@mail.gmail.com>
+
+Hi,
+
+While Bert is correct that there are plenty of tools, my preferred approach
+is to use the terra package to load a grib as a raster stack.
+
+From there, it's straightforward to use all the spatial tools with the
+data, or to extract it in whatever form and with whatever dimensions you
+wish.
+
+GIven the multidimensional nature of the data, "straightforward" may
+require some fiddling to get the format and variables you want in the way
+you want them.
+
+Sarah
+
+On Tue, Jun 25, 2024 at 4:33?AM javad bayat <j.bayat194 at gmail.com> wrote:
+
+> Dear all;
+> I have downloaded meteorology data from "
+>
+> https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=form
+> "
+> as .grib format. It has hourly data of a complete year (every hour of every
+> day of 12 months) and has 6 meteorology parameters. The file has been
+> attached.
+> I am trying to convert it to an excel file that puts every parameter in a
+> separated column. For instance, the first col represents Date, 2nd
+> represents Temperature and so on.
+> Is there any way to do it?
+> I used these codes but did not work:
+> # install.packages("rNOMADS")
+>
+> library(rNOMADS)
+>
+> # Read GRIB data
+> grib_data <- ReadGrib("C:/Users/admin/Downloads/Met.grib")
+>
+> # Convert to a data frame
+> grib_df <- as.data.frame(grib_data)
+>
+> # Write the data frame to a CSV file
+> write.csv(grib_df, file = "output.csv")
+>
+>
+> I would be more than happy if anyone could help me.
+> Sincerely
+>
+> --
+> Best Regards
+> Javad Bayat
+> M.Sc. Environment Engineering
+> Alternative Mail: bayat194 at yahoo.com
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+-- 
+Sarah Goslee (she/her)
+http://www.sarahgoslee.com
+
+	[[alternative HTML version deleted]]
+
+
+From j@b@y@t194 @end|ng |rom gm@||@com  Tue Jun 25 12:45:15 2024
+From: j@b@y@t194 @end|ng |rom gm@||@com (javad bayat)
+Date: Tue, 25 Jun 2024 14:15:15 +0330
+Subject: [R] Converting .grib to excel file
+In-Reply-To: <CABcYAdLq4i3GoF2d2mVGdMDg2fd7=is_HOzF5evvKaWzGQfcfg@mail.gmail.com>
+References: <CANTxAm+JMF-z9T6X-Ra5dF6OMRfcYfzWUX43XB=w=X3iftcR5g@mail.gmail.com>
+ <CABcYAdLq4i3GoF2d2mVGdMDg2fd7=is_HOzF5evvKaWzGQfcfg@mail.gmail.com>
+Message-ID: <CANTxAmK1DrHTNaUD74+uNN2YNMUQj8xeFC2Pk8v+Lq9P5W=YTA@mail.gmail.com>
+
+Richard,
+Many thanks for your email.
+I had attached the grib file to the original email to R help team but it
+seems you did not receive it.
+Unfortunately, I do not know how to reduce the volume or extract some of
+the grib file data to send it for you. The file has the volume of 6
+Megabyte.
+I can send it by email.
+The file has 6 met parameters and Date (day/month/year hour:minute).
+I want the exported file as excel contains 7 columns (Date + 6 met
+parameters).
+
+
+On Tue, 25 Jun 2024, 15:54 Richard O'Keefe, <raoknz at gmail.com> wrote:
+
+> Your message referred to an attached file but there was no attachment,
+> I have no account at that service, so could not download a sample for
+> myself.  Does the licence for the data even allow you to send some of
+> it in a message?  Which parameters are you extracting?  When you say
+> "it didn't work", what actually happened?  Which step went wrong and how?
+>
+>
+> On Tue, 25 Jun 2024 at 20:33, javad bayat <j.bayat194 at gmail.com> wrote:
+> >
+> > Dear all;
+> > I have downloaded meteorology data from "
+> >
+> https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=form
+> "
+> > as .grib format. It has hourly data of a complete year (every hour of
+> every
+> > day of 12 months) and has 6 meteorology parameters. The file has been
+> > attached.
+> > I am trying to convert it to an excel file that puts every parameter in a
+> > separated column. For instance, the first col represents Date, 2nd
+> > represents Temperature and so on.
+> > Is there any way to do it?
+> > I used these codes but did not work:
+> > # install.packages("rNOMADS")
+> >
+> > library(rNOMADS)
+> >
+> > # Read GRIB data
+> > grib_data <- ReadGrib("C:/Users/admin/Downloads/Met.grib")
+> >
+> > # Convert to a data frame
+> > grib_df <- as.data.frame(grib_data)
+> >
+> > # Write the data frame to a CSV file
+> > write.csv(grib_df, file = "output.csv")
+> >
+> >
+> > I would be more than happy if anyone could help me.
+> > Sincerely
+> >
+> > --
+> > Best Regards
+> > Javad Bayat
+> > M.Sc. Environment Engineering
+> > Alternative Mail: bayat194 at yahoo.com
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From j@b@y@t194 @end|ng |rom gm@||@com  Tue Jun 25 19:08:15 2024
+From: j@b@y@t194 @end|ng |rom gm@||@com (javad bayat)
+Date: Tue, 25 Jun 2024 20:38:15 +0330
+Subject: [R] Converting .grib to excel file
+In-Reply-To: <CANTxAmK1DrHTNaUD74+uNN2YNMUQj8xeFC2Pk8v+Lq9P5W=YTA@mail.gmail.com>
+References: <CANTxAm+JMF-z9T6X-Ra5dF6OMRfcYfzWUX43XB=w=X3iftcR5g@mail.gmail.com>
+ <CABcYAdLq4i3GoF2d2mVGdMDg2fd7=is_HOzF5evvKaWzGQfcfg@mail.gmail.com>
+ <CANTxAmK1DrHTNaUD74+uNN2YNMUQj8xeFC2Pk8v+Lq9P5W=YTA@mail.gmail.com>
+Message-ID: <CANTxAmJ1_o61Oasp9mfoDZ2LGXmyKWfr_0iACwrYhz+f7P+4Gw@mail.gmail.com>
+
+Dear Bert and Sara;
+I have searched on the internet and found some way to do this like python.
+But python is so complicated to me as it needs many steps to be done for
+reading and converting it.
+I will try terra package to convert it.
+
+
+On Tue, 25 Jun 2024, 15:15 javad bayat, <j.bayat194 at gmail.com> wrote:
+
+> Richard,
+> Many thanks for your email.
+> I had attached the grib file to the original email to R help team but it
+> seems you did not receive it.
+> Unfortunately, I do not know how to reduce the volume or extract some of
+> the grib file data to send it for you. The file has the volume of 6
+> Megabyte.
+> I can send it by email.
+> The file has 6 met parameters and Date (day/month/year hour:minute).
+> I want the exported file as excel contains 7 columns (Date + 6 met
+> parameters).
+>
+>
+> On Tue, 25 Jun 2024, 15:54 Richard O'Keefe, <raoknz at gmail.com> wrote:
+>
+>> Your message referred to an attached file but there was no attachment,
+>> I have no account at that service, so could not download a sample for
+>> myself.  Does the licence for the data even allow you to send some of
+>> it in a message?  Which parameters are you extracting?  When you say
+>> "it didn't work", what actually happened?  Which step went wrong and how?
+>>
+>>
+>> On Tue, 25 Jun 2024 at 20:33, javad bayat <j.bayat194 at gmail.com> wrote:
+>> >
+>> > Dear all;
+>> > I have downloaded meteorology data from "
+>> >
+>> https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-single-levels?tab=form
+>> "
+>> > as .grib format. It has hourly data of a complete year (every hour of
+>> every
+>> > day of 12 months) and has 6 meteorology parameters. The file has been
+>> > attached.
+>> > I am trying to convert it to an excel file that puts every parameter in
+>> a
+>> > separated column. For instance, the first col represents Date, 2nd
+>> > represents Temperature and so on.
+>> > Is there any way to do it?
+>> > I used these codes but did not work:
+>> > # install.packages("rNOMADS")
+>> >
+>> > library(rNOMADS)
+>> >
+>> > # Read GRIB data
+>> > grib_data <- ReadGrib("C:/Users/admin/Downloads/Met.grib")
+>> >
+>> > # Convert to a data frame
+>> > grib_df <- as.data.frame(grib_data)
+>> >
+>> > # Write the data frame to a CSV file
+>> > write.csv(grib_df, file = "output.csv")
+>> >
+>> >
+>> > I would be more than happy if anyone could help me.
+>> > Sincerely
+>> >
+>> > --
+>> > Best Regards
+>> > Javad Bayat
+>> > M.Sc. Environment Engineering
+>> > Alternative Mail: bayat194 at yahoo.com
+>> > ______________________________________________
+>> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > https://stat.ethz.ch/mailman/listinfo/r-help
+>> > PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> > and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
