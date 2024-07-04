@@ -586,3 +586,214 @@ On July 1, 2024 6:33:43 AM PDT, "Sauer, Lukas Daniel" <sauer at imbi.uni-heidelb
 Sent from my phone. Please excuse my brevity.
 
 
+From tr|ng @end|ng |rom gvdnet@dk  Wed Jul  3 10:13:59 2024
+From: tr|ng @end|ng |rom gvdnet@dk (Troels Ring)
+Date: Wed, 3 Jul 2024 10:13:59 +0200
+Subject: [R] simple problem with unquoting argument
+Message-ID: <5bd7164c-315e-458b-913a-164dfd336d4b@gvdnet.dk>
+
+Hi? friends - I'm in problems finding out how to unquote - I have a 
+series of vectors named adds1....adds11 and need to e.g. find the sum of 
+each of them
+
+So I try
+
+SS <- c()
+
+for (i in 1:11) {
+
+e <- paste("adds",i,sep="")
+
+SS[i]? <- sum(xx(e)) }
+
+Now e looks right - but I have been unable to find out how to get the 
+string e converted to the proper argument for sum()? - i.e. what? is 
+function xx?
+
+All best wishes
+Troels Ring, Aalborg, Denmark
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Wed Jul  3 10:24:21 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Wed, 3 Jul 2024 09:24:21 +0100
+Subject: [R] simple problem with unquoting argument
+In-Reply-To: <5bd7164c-315e-458b-913a-164dfd336d4b@gvdnet.dk>
+References: <5bd7164c-315e-458b-913a-164dfd336d4b@gvdnet.dk>
+Message-ID: <26ef9ed0-e712-4847-8c09-c6fbd17a31c6@sapo.pt>
+
+?s 09:13 de 03/07/2024, Troels Ring escreveu:
+> Hi? friends - I'm in problems finding out how to unquote - I have a 
+> series of vectors named adds1....adds11 and need to e.g. find the sum of 
+> each of them
+> 
+> So I try
+> 
+> SS <- c()
+> 
+> for (i in 1:11) {
+> 
+> e <- paste("adds",i,sep="")
+> 
+> SS[i]? <- sum(xx(e)) }
+> 
+> Now e looks right - but I have been unable to find out how to get the 
+> string e converted to the proper argument for sum()? - i.e. what? is 
+> function xx?
+> 
+> All best wishes
+> Troels Ring, Aalborg, Denmark
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Function xx is ?get or mget (same help page).
+You can get the vectors adds all in one instruction with mget or one at 
+a time with get.
+
+
+adds1 <- 1:10
+adds2 <- 2:10
+adds3 <- 3:10
+adds4 <- 4:10
+adds5 <- 5:10
+
+# create SS with the required length beforehand
+SS <- numeric(5L)
+for (i in 1:5) {
+   e <- paste("adds",i,sep="")
+   SS[i]  <- sum(get(e))
+}
+SS
+#> [1] 55 54 52 49 45
+
+
+Or all in one instruction with the assistance of ?ls.
+
+
+
+# ls(pattern = "^adds") |> mget() |> lapply(sum)
+ls(pattern = "^adds") |> mget() |> sapply(sum)
+#> adds1 adds2 adds3 adds4 adds5
+#>    55    54    52    49    45
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Jul  3 10:25:02 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 3 Jul 2024 11:25:02 +0300
+Subject: [R] simple problem with unquoting argument
+In-Reply-To: <5bd7164c-315e-458b-913a-164dfd336d4b@gvdnet.dk>
+References: <5bd7164c-315e-458b-913a-164dfd336d4b@gvdnet.dk>
+Message-ID: <20240703112502.2fd088f3@Tarkus>
+
+? Wed, 3 Jul 2024 10:13:59 +0200
+Troels Ring <tring at gvdnet.dk> ?????:
+
+> Now e looks right - but I have been unable to find out how to get the 
+> string e converted to the proper argument for sum()? - i.e. what? is 
+> function xx?
+
+get(e) will return the value of the variable with the name stored in
+the variable e.
+
+A more idiomatic variant will require more changes:
+
+1. Create the "adds" variable as a list, so that it could contain other
+arbitrary R values:
+
+adds <- list()
+
+2. Instead of assigning adds1 <- something(), adds2 <-
+something_else(), ..., assign to the elements of the list:
+
+adds[[1]] <- something()
+adds[[2]] <- something_else()
+...
+
+3. Now you can use the same syntax to access the elements of the list:
+
+SS[i] <- sum(adds[[i]])
+
+As a bonus, you can use the "apply" family of R functions that will
+perform the loop for you: instead of SS <- c(); for (i in 1:11) SS[i]
+<- sum(adds[[i]]) you can write
+
+SS <- vapply(adds, sum, numeric(1))
+
+...and it will perform the same loop inside it, verifying each time
+that sum(adds[[i]]) returns a single number.
+
+-- 
+Best regards,
+Ivan
+
+P.S. I'm sorry for letting our project lapse.
+
+
+From tr|ng @end|ng |rom gvdnet@dk  Wed Jul  3 16:16:23 2024
+From: tr|ng @end|ng |rom gvdnet@dk (Troels Ring)
+Date: Wed, 3 Jul 2024 16:16:23 +0200
+Subject: [R] simple problem with unquoting argument
+In-Reply-To: <20240703112502.2fd088f3@Tarkus>
+References: <5bd7164c-315e-458b-913a-164dfd336d4b@gvdnet.dk>
+ <20240703112502.2fd088f3@Tarkus>
+Message-ID: <8364b241-9166-4b5a-bf9a-499a412e0e9e@gvdnet.dk>
+
+Dear Ivan and Rui - thanks a lot for the effective help.
+
+All best wishes Troels
+
+Den 03-07-2024 kl. 10:25 skrev Ivan Krylov:
+> ? Wed, 3 Jul 2024 10:13:59 +0200
+> Troels Ring <tring at gvdnet.dk> ?????:
+>
+>> Now e looks right - but I have been unable to find out how to get the
+>> string e converted to the proper argument for sum()? - i.e. what? is
+>> function xx?
+> get(e) will return the value of the variable with the name stored in
+> the variable e.
+>
+> A more idiomatic variant will require more changes:
+>
+> 1. Create the "adds" variable as a list, so that it could contain other
+> arbitrary R values:
+>
+> adds <- list()
+>
+> 2. Instead of assigning adds1 <- something(), adds2 <-
+> something_else(), ..., assign to the elements of the list:
+>
+> adds[[1]] <- something()
+> adds[[2]] <- something_else()
+> ...
+>
+> 3. Now you can use the same syntax to access the elements of the list:
+>
+> SS[i] <- sum(adds[[i]])
+>
+> As a bonus, you can use the "apply" family of R functions that will
+> perform the loop for you: instead of SS <- c(); for (i in 1:11) SS[i]
+> <- sum(adds[[i]]) you can write
+>
+> SS <- vapply(adds, sum, numeric(1))
+>
+> ...and it will perform the same loop inside it, verifying each time
+> that sum(adds[[i]]) returns a single number.
+>
+
+
