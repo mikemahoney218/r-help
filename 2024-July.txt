@@ -932,3 +932,273 @@ On 2024-07-05 7:35 a.m., Erez Shomron wrote:
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From r-m@||@ @end|ng |rom erez@h@org  Sat Jul  6 08:15:56 2024
+From: r-m@||@ @end|ng |rom erez@h@org (Erez Shomron)
+Date: Sat, 06 Jul 2024 09:15:56 +0300
+Subject: [R] Bug? plot.formula does need support plot.first / plot.last
+ param in plot.default
+In-Reply-To: <83c5f0f0-8193-436b-94b5-d4570d1db03f@gmail.com>
+References: <a9dd2c4c-953d-4d3b-9480-06bc3454df7f@app.fastmail.com>
+ <83c5f0f0-8193-436b-94b5-d4570d1db03f@gmail.com>
+Message-ID: <453eb9fd-0a17-4b94-80c2-f679c0807dcc@app.fastmail.com>
+
+Thanks for your answer.
+
+Should I report in Bugzilla at least so it's tracked?
+
+I can point that the issue is with line 6 of the function body:
+```
+    dots <- lapply(m$..., eval, md, eframe)
+```
+
+I assume the intention was to evaluate the arguments with the context of data passed to the function.
+But the expression in panel.first / panel.last gets evaluated before plot.new is called (as the error indicates).
+
+I believe the fix would be to somehow not evaluate line 6, or replace with `dots <- m$...`, and when `plot` is later called, to somehow evaluate it with the data passed to the function. I tried to add `envir` argument to `do.call` but it does not work as I expected.
+
+I would've liked to contribute a patch but my R knowledge is limited and and this `plot.formula` code is a bit of my head frankly.
+
+Kindly,
+Erez
+
+
+On Sat, Jul 6, 2024, at 1:05 AM, Duncan Murdoch wrote:
+> That definitely looks like a bug, but not one that anyone will be eager 
+> to fix.  It's very old code that tried to be clever, and that's the 
+> hardest kind of code to fix.
+> 
+> Remember Kernighan's Law:  "Everyone knows that debugging is twice as 
+> hard as writing a program in the first place. So if you?re as clever as 
+> you can be when you write it, how will you ever debug it?"
+> 
+> Duncan Murdoch
+> 
+> On 2024-07-05 7:35 a.m., Erez Shomron wrote:
+> > Is the following a bug in your opinion? I think so.
+> > 
+> > This works as expected:
+> > 
+> > ```
+> > with(mtcars, plot(wt, mpg, plot.first = {
+> >      plot.window(range(wt), range(mpg))
+> >      arrows(3, 15, 4, 30)
+> > }))
+> > ```
+> > 
+> > This does not.
+> > 
+> > ```
+> > plot(mpg ~ wt, data = mtcars, plot.first = {
+> >      plot.window(range(wt), range(mpg))
+> >      arrows(3, 15, 4, 30)
+> > })
+> > ```
+> > 
+> > With error:
+> > ```
+> > Error in arrows(3, 15, 4, 30) : plot.new has not been called yet
+> > ```
+> > 
+> > The second example should work.
+> > 
+> >  From the docs:
+> > 
+> > ?plot.formula
+> > "     For the ?plot? method the formula can be of the form ?~ z + y +
+> >       z?: the variables specified on the right-hand side are collected
+> >       into a data frame, subsetted if specified, and displayed by
+> >       ?plot.data.frame?.
+> > "
+> > 
+> > ?plot.data.frame
+> > "     ...: further arguments to ?stripchart?, ?plot.default? or ?pairs?.
+> > "
+> > 
+> > And plot.default has both plot.first and plot.last
+> > 
+> > It seems very arbitrary you can't use these parameters with the plot.formula method specifically.
+> > 
+> >> sessionInfo()
+> > R version 4.4.1 (2024-06-14)
+> > Platform: x86_64-suse-linux-gnu
+> > Running under: openSUSE Tumbleweed
+> > [...]
+> > 
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> 
+> 
+
+
+From @te|@no@@o||@ @end|ng |rom reg|one@m@rche@|t  Sat Jul  6 15:02:48 2024
+From: @te|@no@@o||@ @end|ng |rom reg|one@m@rche@|t (Stefano Sofia)
+Date: Sat, 6 Jul 2024 13:02:48 +0000
+Subject: [R] add only the 1st of May with POSIXct
+In-Reply-To: <878qztdtz9.fsf@enricoschumann.net>
+References: <e558a289b0ee415e83939fc5e9bfdb41@regione.marche.it>,
+ <878qztdtz9.fsf@enricoschumann.net>
+Message-ID: <e566396a3e7649c8a71a20c2558afff5@regione.marche.it>
+
+Sorry for the delay of my answer.
+
+Enrico and Rui, thank you for your help.
+
+Both solutions worked well, in particular Enrico's hint is very easy to implement.
+
+
+Thank you
+
+Stefano
+
+
+         (oo)
+--oOO--( )--OOo--------------------------------------
+Stefano Sofia PhD
+Civil Protection - Marche Region - Italy
+Meteo Section
+Snow Section
+Via del Colle Ameno 5
+60126 Torrette di Ancona, Ancona (AN)
+Uff: +39 071 806 7743
+E-mail: stefano.sofia at regione.marche.it
+---Oo---------oO----------------------------------------
+
+
+________________________________
+Da: Enrico Schumann <es at enricoschumann.net>
+Inviato: mercoled? 29 maggio 2024 08:15
+A: Stefano Sofia
+Cc: r-help at R-project.org
+Oggetto: Re: [R] add only the 1st of May with POSIXct
+
+[Non ricevi spesso messaggi di posta elettronica da es at enricoschumann.net. Per informazioni sull'importanza di questo fatto, visita https://aka.ms/LearnAboutSenderIdentification.]
+
+On Tue, 28 May 2024, Stefano Sofia writes:
+
+> Dear R-list users,
+>
+> From an initial and a final date I create a sequence of days using POSIXct.
+>
+> If this interval covers all or only in part the months from May to October, I need to get rid of the days from the 2nd of May to the 31st of October:
+>
+>
+> a <- as.POSIXct("2002-11-01", format = "%Y-%m-%d", tz="Etc/GMT-1")
+>
+> b <- as.POSIXct("2004-06-01", format = "%Y-%m-%d", tz="Etc/GMT-1")
+>
+> mydf <- data.frame(data_POSIX=seq(as.POSIXct(paste(format(a, "%Y-%m-%d"), "09:00:00", sep=""), format="%Y-%m-%d %H:%M:%S", tz="Etc/GMT-1"), as.POSIXct(paste(format(b, "%Y-%m-%d"), "09:00:00", sep=""), format="%Y-%m-%d %H:%M:%S", tz="Etc/GMT-1"), by="1 day"))
+>
+>
+> If I execute
+>
+> as.data.frame(mydf[format(mydf$data_POSIX,"%m") %in% c("11", "12", "01", "02", "03", "04"), ])
+>
+> the interval will be
+>
+> from 2002-11-01 09:00:00 to 2003-04-30 09:00:00
+>
+> and from 2003-11-01 09:00:00 to 2004-04-30 09:00:00
+>
+>
+> but I need also 2003-05-01 09:00:00 and 2004-05-01 09:00:00
+>
+>
+> How can I solve this problem?
+>
+>
+> Thank you for your attention and your help
+>
+> Stefano
+>
+
+I think this could be simplified a bit:
+
+    a <- as.POSIXct("2002-11-01 09", format = "%Y-%m-%d %H", tz="Etc/GMT-1")
+    b <- as.POSIXct("2004-06-01 09", format = "%Y-%m-%d %H", tz="Etc/GMT-1")
+
+Create your sequence:
+
+    S <- seq(a, b , by = "1 day")
+    month.day <- format(S, "%m-%d")
+
+Now subset S for those days that you want:
+
+    S[month.day <= "05-01" | month.day > "10-31"]
+
+
+--
+Enrico Schumann
+Lucerne, Switzerland
+https://eur02.safelinks.protection.outlook.com/?url=http%3A%2F%2Fenricoschumann.net%2F&data=05%7C02%7Cstefano.sofia%40regione.marche.it%7Cfb03eb5bf2e24b4b76b408dc7fa6b98e%7C295eaa1431a14b09bfe65a338b679f60%7C0%7C0%7C638525601265102204%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=46TUwFWwpLcdtZGARpDkhnuHhgZ546khJI%2FONPeYXe4%3D&reserved=0
+
+________________________________
+
+AVVISO IMPORTANTE: Questo messaggio di posta elettronica pu? contenere informazioni confidenziali, pertanto ? destinato solo a persone autorizzate alla ricezione. I messaggi di posta elettronica per i client di Regione Marche possono contenere informazioni confidenziali e con privilegi legali. Se non si ? il destinatario specificato, non leggere, copiare, inoltrare o archiviare questo messaggio. Se si ? ricevuto questo messaggio per errore, inoltrarlo al mittente ed eliminarlo completamente dal sistema del proprio computer. Ai sensi dell'art. 6 della DGR n. 1394/2008 si segnala che, in caso di necessit? ed urgenza, la risposta al presente messaggio di posta elettronica pu? essere visionata da persone estranee al destinatario.
+IMPORTANT NOTICE: This e-mail message is intended to be received only by persons entitled to receive the confidential information it may contain. E-mail messages to clients of Regione Marche may contain information that is confidential and legally privileged. Please do not read, copy, forward, or store this message unless you are an intended recipient of it. If you have received this message in error, please forward it to the sender and delete it completely from your computer system.
+
+	[[alternative HTML version deleted]]
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sat Jul  6 16:24:38 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sat, 6 Jul 2024 17:24:38 +0300
+Subject: [R] Bug? plot.formula does need support plot.first / plot.last
+ param in plot.default
+In-Reply-To: <a9dd2c4c-953d-4d3b-9480-06bc3454df7f@app.fastmail.com>
+References: <a9dd2c4c-953d-4d3b-9480-06bc3454df7f@app.fastmail.com>
+Message-ID: <20240706172438.2b4340c5@parabola>
+
+? Fri, 05 Jul 2024 14:35:40 +0300
+"Erez Shomron" <r-mails at erezsh.org> ?????:
+
+> This works as expected:
+
+> with(mtcars, plot(wt, mpg, plot.first = {
+>     plot.window(range(wt), range(mpg))
+>     arrows(3, 15, 4, 30)
+> }))
+
+I think you meant panel.first, not plot.first. At least I cannot find
+any mention of plot.first in the R source code. In this example,
+plot.first ends up being an argument of an internal call from
+plot.default() to plot.window(), which evaluates its ellipsis
+arguments. If your plot.first expression returned a non-NULL value, you
+would also have received a warning:
+
+plot.window(0:1, 0:1, plot.first = message('hello'))
+# hello
+plot.window(0:1, 0:1, plot.first = 123)
+# Warning message:
+# In plot.window(0:1, 0:1, plot.first = 123) :
+#   "plot.first" is not a graphical parameter
+
+It is indeed documented that "passing [panel.first] from other ?plot?
+methods may well not work since it may be evaluated too early". The
+plot.formula method deliberately evaluates the arguments in the
+ellipsis, and the workaround suggested in
+https://bugs.r-project.org/show_bug.cgi?id=14591 doesn't help because
+the expression is then evaluated in an undesired environment (parent
+frame, not data).
+
+You are correct that plot.formula tries to evaluate all its remaining
+arguments in the context of the data passed to the method. In order for
+the lazy evaluation to work, plot.formula would have to (1) know and
+skip all such arguments by name on line 6, minding partial matching, (2)
+rewrite them into the form evalq(original_argument_expression,
+model_frame, parent_frame) so that they would be able to access both
+the data and the variables visible in the frame of the caller, and (3)
+give these expressions to do.call() in place of the original ones.
+
+(1) sounds especially brittle since plot.formula() may dispatch to
+other plot.* methods. Additionally, great care will need to be taken
+not to break existing code that calls plot.formula, even if it's
+already full of workarounds for plot.formula's behaviour.
+
+-- 
+Best regards,
+Ivan
+
+
