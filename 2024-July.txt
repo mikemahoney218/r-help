@@ -1202,3 +1202,94 @@ Best regards,
 Ivan
 
 
+From r-m@||@ @end|ng |rom erez@h@org  Sat Jul  6 16:55:34 2024
+From: r-m@||@ @end|ng |rom erez@h@org (Erez Shomron)
+Date: Sat, 06 Jul 2024 17:55:34 +0300
+Subject: [R] Bug? plot.formula does need support plot.first / plot.last
+ param in plot.default
+In-Reply-To: <20240706172438.2b4340c5@parabola>
+References: <a9dd2c4c-953d-4d3b-9480-06bc3454df7f@app.fastmail.com>
+ <20240706172438.2b4340c5@parabola>
+Message-ID: <308fc620-a977-4c0d-a305-64ac660b32cf@app.fastmail.com>
+
+Thank you Ivan,
+
+Yes I meant `panel.first`.
+I fumbled the title and the examples, but the end result is the same:
+
+```
+# Works
+with(mtcars, plot(wt, mpg, panel.first = {
+    arrows(3, 15, 4, 30)
+}))
+
+# Doesn't work
+plot(mpg ~ wt, data = mtcars, panel.first = {
+    arrows(3, 15, 4, 30)
+})
+
+```
+
+I saw the bug reported 13 years ago after-the-fact, and the paragraph I missed for the manual entry.
+Thanks for clarifying both.
+
+I do think making these arguments lazy evaluate would be a welcome change. It's especially confusing for new R users trying to use base graphics to plot their linear model. But I also understand this would be low priority as user workaround is simple (don't use the formula method), and because of the testing effort that would be required.
+
+Maybe a warning would be nice, telling users that `panel.first` and `panel.last` are evaluated before plotting. I think users would check `?plot` before `?plot.formula` and would not see any reason not to try and pass these arguments.
+
+Kind Regards,
+Erez
+
+On Sat, Jul 6, 2024, at 5:24 PM, Ivan Krylov wrote:
+> ? Fri, 05 Jul 2024 14:35:40 +0300
+> "Erez Shomron" <r-mails at erezsh.org> ?????:
+> 
+> > This works as expected:
+> 
+> > with(mtcars, plot(wt, mpg, plot.first = {
+> >     plot.window(range(wt), range(mpg))
+> >     arrows(3, 15, 4, 30)
+> > }))
+> 
+> I think you meant panel.first, not plot.first. At least I cannot find
+> any mention of plot.first in the R source code. In this example,
+> plot.first ends up being an argument of an internal call from
+> plot.default() to plot.window(), which evaluates its ellipsis
+> arguments. If your plot.first expression returned a non-NULL value, you
+> would also have received a warning:
+> 
+> plot.window(0:1, 0:1, plot.first = message('hello'))
+> # hello
+> plot.window(0:1, 0:1, plot.first = 123)
+> # Warning message:
+> # In plot.window(0:1, 0:1, plot.first = 123) :
+> #   "plot.first" is not a graphical parameter
+> 
+> It is indeed documented that "passing [panel.first] from other ?plot?
+> methods may well not work since it may be evaluated too early". The
+> plot.formula method deliberately evaluates the arguments in the
+> ellipsis, and the workaround suggested in
+> https://bugs.r-project.org/show_bug.cgi?id=14591 doesn't help because
+> the expression is then evaluated in an undesired environment (parent
+> frame, not data).
+> 
+> You are correct that plot.formula tries to evaluate all its remaining
+> arguments in the context of the data passed to the method. In order for
+> the lazy evaluation to work, plot.formula would have to (1) know and
+> skip all such arguments by name on line 6, minding partial matching, (2)
+> rewrite them into the form evalq(original_argument_expression,
+> model_frame, parent_frame) so that they would be able to access both
+> the data and the variables visible in the frame of the caller, and (3)
+> give these expressions to do.call() in place of the original ones.
+> 
+> (1) sounds especially brittle since plot.formula() may dispatch to
+> other plot.* methods. Additionally, great care will need to be taken
+> not to break existing code that calls plot.formula, even if it's
+> already full of workarounds for plot.formula's behaviour.
+> 
+> -- 
+> Best regards,
+> Ivan
+> 
+
+
