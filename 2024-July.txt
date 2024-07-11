@@ -1663,3 +1663,175 @@ Best regards,
 Ivan
 
 
+From @@h|mk@poor @end|ng |rom gm@||@com  Wed Jul 10 10:58:28 2024
+From: @@h|mk@poor @end|ng |rom gm@||@com (Ashim Kapoor)
+Date: Wed, 10 Jul 2024 14:28:28 +0530
+Subject: [R] Implementation for selecting lag of a lag window spectral
+ estimator using generalized cross validation (using deviance)
+Message-ID: <CAC8=1epK=D7NBzfw3NiEWovQ9vbQUQvnsSUiq_-GbiOD0WKjpw@mail.gmail.com>
+
+Dear All,
+
+I am looking for:
+
+A software to select the lag length for a lag window spectral estimator.
+Also, I have a small query in the reprex given below.
+
+Background for the above, from the book by Percival and Walden:
+
+1. We are given X_1,...,X_n which is one realization of a stochastic process.
+2. We may compute the periodogram using FFT, for example by the
+function spectrum in R.
+3. The above is badly biased so we taper X_1,...,X_n to reduce the
+bias in the periodogram.
+4. Now that the bias in under control, we focus on reducing the
+variance. So we take a window like for eg. the Parzen window, and
+choose
+a lag length m which controls the amount of smoothing across frequencies.
+5. One way of choosing m is mentioned in :
+https://web.archive.org/web/20080221221221id_/http://www.stat.uiuc.edu/~ombao/PAPERS.dir/gcvbmka.pdf
+
+I am looking for an R package which implements 5.
+
+Here is a reprex:
+
+# 1.  Periodogram which may be biased
+plot(spectrum(lh,taper= 0, method="pgram"),log="dB")
+
+# 2. Using the default in built cosine taper
+plot(spectrum(lh,taper = .3, method="pgram"),log="dB")
+
+# 2. Again, using slepian taper
+library(multitaper)
+# I choose: n = length(lh), k =1, nw=2
+mytaper = dpss(n=length(lh), k=1 , nw=2, returnEigenvalues=TRUE)
+# Tapered series
+lh * mytaper$v
+# I may compute the spectrum with reduced bias as:
+plot(spectrum(lh*mytaper$v,method="pgram"),log="dB")
+
+# We now focus on the variance
+# For a fixed m = 10, using a Parzen window.
+library(gsignal)
+parzenwin(10)
+
+# The following 2 lines of code, where I try to do the same thing in 2
+different ways, did not work for me:
+
+kernapply( spectrum(lh*mytaper$v,method="pgram")$spec,parzenwin(10),circular=TRUE)
+spectrum(lh*mytaper$v,kernel  = parzenwin(10),method="pgram")
+
+# ?spec.pgram says
+kernel: alternatively, a kernel smoother of class ?"tskernel"?.
+
+How can I see all available kernels of class tskernel ?
+
+The important question here is how to choose m which implies a bias -
+variance tradeoff. Ombao et al, have a generalized cross validation
+method to choose m.
+Please see point 5 above. Does that exist in R ?
+
+Many thanks,
+Ashim
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Wed Jul 10 15:39:41 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Wed, 10 Jul 2024 06:39:41 -0700
+Subject: [R] Implementation for selecting lag of a lag window spectral
+ estimator using generalized cross validation (using deviance)
+In-Reply-To: <CAC8=1epK=D7NBzfw3NiEWovQ9vbQUQvnsSUiq_-GbiOD0WKjpw@mail.gmail.com>
+References: <CAC8=1epK=D7NBzfw3NiEWovQ9vbQUQvnsSUiq_-GbiOD0WKjpw@mail.gmail.com>
+Message-ID: <CAGxFJbQL1v2KpOhjoZH+JeZQ-4MSLQb3LTKbBwyxBDXo9WAn7w@mail.gmail.com>
+
+Have a look at the CRAN Time Series Task View:
+
+https://cran.r-project.org/web/views/TimeSeries.html
+
+Generally speaking, R-help is for help on R programming, not detailed
+statistical questions, so it is less likely that your query would receive a
+useful answer here.
+
+Cheers,
+Bert
+
+On Wed, Jul 10, 2024 at 1:59?AM Ashim Kapoor <ashimkapoor at gmail.com> wrote:
+
+> Dear All,
+>
+> I am looking for:
+>
+> A software to select the lag length for a lag window spectral estimator.
+> Also, I have a small query in the reprex given below.
+>
+> Background for the above, from the book by Percival and Walden:
+>
+> 1. We are given X_1,...,X_n which is one realization of a stochastic
+> process.
+> 2. We may compute the periodogram using FFT, for example by the
+> function spectrum in R.
+> 3. The above is badly biased so we taper X_1,...,X_n to reduce the
+> bias in the periodogram.
+> 4. Now that the bias in under control, we focus on reducing the
+> variance. So we take a window like for eg. the Parzen window, and
+> choose
+> a lag length m which controls the amount of smoothing across frequencies.
+> 5. One way of choosing m is mentioned in :
+>
+> https://web.archive.org/web/20080221221221id_/http://www.stat.uiuc.edu/~ombao/PAPERS.dir/gcvbmka.pdf
+>
+> I am looking for an R package which implements 5.
+>
+> Here is a reprex:
+>
+> # 1.  Periodogram which may be biased
+> plot(spectrum(lh,taper= 0, method="pgram"),log="dB")
+>
+> # 2. Using the default in built cosine taper
+> plot(spectrum(lh,taper = .3, method="pgram"),log="dB")
+>
+> # 2. Again, using slepian taper
+> library(multitaper)
+> # I choose: n = length(lh), k =1, nw=2
+> mytaper = dpss(n=length(lh), k=1 , nw=2, returnEigenvalues=TRUE)
+> # Tapered series
+> lh * mytaper$v
+> # I may compute the spectrum with reduced bias as:
+> plot(spectrum(lh*mytaper$v,method="pgram"),log="dB")
+>
+> # We now focus on the variance
+> # For a fixed m = 10, using a Parzen window.
+> library(gsignal)
+> parzenwin(10)
+>
+> # The following 2 lines of code, where I try to do the same thing in 2
+> different ways, did not work for me:
+>
+> kernapply(
+> spectrum(lh*mytaper$v,method="pgram")$spec,parzenwin(10),circular=TRUE)
+> spectrum(lh*mytaper$v,kernel  = parzenwin(10),method="pgram")
+>
+> # ?spec.pgram says
+> kernel: alternatively, a kernel smoother of class ?"tskernel"?.
+>
+> How can I see all available kernels of class tskernel ?
+>
+> The important question here is how to choose m which implies a bias -
+> variance tradeoff. Ombao et al, have a generalized cross validation
+> method to choose m.
+> Please see point 5 above. Does that exist in R ?
+>
+> Many thanks,
+> Ashim
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
