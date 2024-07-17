@@ -3163,3 +3163,297 @@ Best regards,
 Ivan
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Tue Jul 16 11:22:46 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Tue, 16 Jul 2024 11:22:46 +0200
+Subject: [R] Automatic Knot selection in Piecewise linear splines
+In-Reply-To: <CAFL9eukUVQzjkmY2fXiLH5LFbySusU6qZqrCd1dMxRHOFZBgFg@mail.gmail.com>
+References: <CAFL9eukUVQzjkmY2fXiLH5LFbySusU6qZqrCd1dMxRHOFZBgFg@mail.gmail.com>
+Message-ID: <26262.15334.396036.478147@stat.math.ethz.ch>
+
+>>>>> Anupam Tyagi 
+>>>>>     on Tue, 9 Jul 2024 16:16:43 +0530 writes:
+
+    > How can I do automatic knot selection while fitting piecewise linear
+    > splines to two variables x and y? Which package to use to do it simply? I
+    > also want to visualize the splines (and the scatter plot) with a graph.
+
+    > Anupam
+
+NB: linear splines, i.e. piecewise linear continuous functions.
+Given the knots, use  approx() or approxfun() however, the
+automatic knots selection does not happen in the base R packages.
+
+I'm sure there are several R packages doing this.
+The best such package in my opinion is "earth" which does a
+re-implementation (and extensive  *generalization*) of the
+famous  MARS algorithm of Friedman.
+==> https://en.wikipedia.org/wiki/Multivariate_adaptive_regression_splines
+
+Note that their strengths and power is that  they do their work
+for multivariate x (MARS := Multivariate Adaptive Regression
+Splines), but indeed do work for the simple 1D case.
+
+In the following example, we always get 11 final knots,
+but I'm sure one can tweak the many tuning paramters of earth()
+to get more:
+
+## Can we do  knot-selection  for simple (x,y) splines?  === Yes, via  earth() {using MARS}!
+
+x <- (0:800)/8
+
+f <- function(x) 7 * sin(pi/8*x) * abs((x-50)/20)^1.25 - (x-40)*(12-x)/64
+curve(f(x), 0, 100, n = 1000, col=2, lwd=2)
+
+set.seed(11)
+y <- f(x) + 10*rnorm(x)
+
+m.sspl <- smooth.spline(x,y) # base line "standard smoother"
+
+require(earth)
+fm1 <- earth(x, y) # default settings
+summary(fm1, style = "pmax") #-- got  10 knots (x = 44 "used twice") below
+## Call: earth(x=x, y=y)
+
+## y =
+##   175.9612
+##   -   10.6744 * pmax(0,      x -  4.625)
+##   +  9.928496 * pmax(0,      x - 10.875)
+##   -  5.940857 * pmax(0,      x -  20.25)
+##   +  3.438948 * pmax(0,      x - 27.125)
+##   -  3.828159 * pmax(0,     44 -      x)
+##   +  4.207046 * pmax(0,      x -     44)
+##   +  2.573822 * pmax(0,      x -   76.5)
+##   -  10.99073 * pmax(0,      x - 87.125)
+##   +  10.97592 * pmax(0,      x - 90.875)
+##   +  9.331949 * pmax(0,      x -     94)
+##   -   8.48575 * pmax(0,      x -   96.5)
+
+## Selected 12 of 12 terms, and 1 of 1 predictors
+## Termination condition: Reached nk 21
+## Importance: x
+## Number of terms at each degree of interaction: 1 11 (additive model)
+## GCV 108.6592    RSS 82109.44    GRSq 0.861423    RSq 0.86894
+
+
+fm2 <- earth(x, y, fast.k = 0) # (more extensive forward pass)
+summary(fm2)
+all.equal(fm1, fm2)# they are identical (apart from 'call'):
+fm3 <- earth(x, y, fast.k = 0, pmethod = "none", trace = 3) # extensive forward pass; *no* pruning
+## still no change: fm3 "==" fm1
+all.equal(predict(fm1, xx), predict(fm3, xx))
+
+## BTW: The chosen knots and coefficients are
+mat <- with(fm1, cbind(dirs, cuts=c(cuts), coef = c(coefficients)))
+
+## Plots : fine grid for visualization: instead of   xx <- seq(x[1], x[length(x)], length.out = 1024)
+rnx <- extendrange(x) ## to extrapolate a bit
+xx <- do.call(seq.int, c(rnx, list(length.out = 1200)))
+
+cbind(f = f(xx),
+      sspl = predict(m.sspl, xx)$y,
+      mars = predict(fm1, xx)) -> fits
+
+plot(x,y, xlim=rnx, cex = 1/4, col = adjustcolor(1, 1/2))
+cols <- c(adjustcolor(2, 1/3),
+          adjustcolor(4, 2/3),
+          adjustcolor("orange4", 2/3))
+lwds <- c(3, 2, 2)
+matlines(xx, fits, col = cols, lwd = lwds, lty=1)
+legend("topleft", c("true f(x)", "smooth.spline()", "earth()"),
+       col=cols, lwd=lwds, bty = "n")
+title(paste("earth() linear spline vs. smooth.spline();  n =", length(x)))
+mtext(substitute(f(x) == FDEF, list(FDEF = body(f))))
+
+
+From @nupty@g| @end|ng |rom gm@||@com  Tue Jul 16 12:43:26 2024
+From: @nupty@g| @end|ng |rom gm@||@com (Anupam Tyagi)
+Date: Tue, 16 Jul 2024 16:13:26 +0530
+Subject: [R] Automatic Knot selection in Piecewise linear splines
+In-Reply-To: <26262.15334.396036.478147@stat.math.ethz.ch>
+References: <CAFL9eukUVQzjkmY2fXiLH5LFbySusU6qZqrCd1dMxRHOFZBgFg@mail.gmail.com>
+ <26262.15334.396036.478147@stat.math.ethz.ch>
+Message-ID: <CAFL9eukrEguE_gz_Fa-9Ofvy8Uga2yxyAOLW44hhuPMeoe3_PA@mail.gmail.com>
+
+Thanks, Martin. This is very helpful.
+
+
+
+On Tue, 16 Jul 2024 at 14:52, Martin Maechler <maechler at stat.math.ethz.ch>
+wrote:
+
+> >>>>> Anupam Tyagi
+> >>>>>     on Tue, 9 Jul 2024 16:16:43 +0530 writes:
+>
+>     > How can I do automatic knot selection while fitting piecewise linear
+>     > splines to two variables x and y? Which package to use to do it
+> simply? I
+>     > also want to visualize the splines (and the scatter plot) with a
+> graph.
+>
+>     > Anupam
+>
+> NB: linear splines, i.e. piecewise linear continuous functions.
+> Given the knots, use  approx() or approxfun() however, the
+> automatic knots selection does not happen in the base R packages.
+>
+> I'm sure there are several R packages doing this.
+> The best such package in my opinion is "earth" which does a
+> re-implementation (and extensive  *generalization*) of the
+> famous  MARS algorithm of Friedman.
+> ==> https://en.wikipedia.org/wiki/Multivariate_adaptive_regression_splines
+>
+> Note that their strengths and power is that  they do their work
+> for multivariate x (MARS := Multivariate Adaptive Regression
+> Splines), but indeed do work for the simple 1D case.
+>
+> In the following example, we always get 11 final knots,
+> but I'm sure one can tweak the many tuning paramters of earth()
+> to get more:
+>
+> ## Can we do  knot-selection  for simple (x,y) splines?  === Yes, via
+> earth() {using MARS}!
+>
+> x <- (0:800)/8
+>
+> f <- function(x) 7 * sin(pi/8*x) * abs((x-50)/20)^1.25 - (x-40)*(12-x)/64
+> curve(f(x), 0, 100, n = 1000, col=2, lwd=2)
+>
+> set.seed(11)
+> y <- f(x) + 10*rnorm(x)
+>
+> m.sspl <- smooth.spline(x,y) # base line "standard smoother"
+>
+> require(earth)
+> fm1 <- earth(x, y) # default settings
+> summary(fm1, style = "pmax") #-- got  10 knots (x = 44 "used twice") below
+> ## Call: earth(x=x, y=y)
+>
+> ## y =
+> ##   175.9612
+> ##   -   10.6744 * pmax(0,      x -  4.625)
+> ##   +  9.928496 * pmax(0,      x - 10.875)
+> ##   -  5.940857 * pmax(0,      x -  20.25)
+> ##   +  3.438948 * pmax(0,      x - 27.125)
+> ##   -  3.828159 * pmax(0,     44 -      x)
+> ##   +  4.207046 * pmax(0,      x -     44)
+> ##   +  2.573822 * pmax(0,      x -   76.5)
+> ##   -  10.99073 * pmax(0,      x - 87.125)
+> ##   +  10.97592 * pmax(0,      x - 90.875)
+> ##   +  9.331949 * pmax(0,      x -     94)
+> ##   -   8.48575 * pmax(0,      x -   96.5)
+>
+> ## Selected 12 of 12 terms, and 1 of 1 predictors
+> ## Termination condition: Reached nk 21
+> ## Importance: x
+> ## Number of terms at each degree of interaction: 1 11 (additive model)
+> ## GCV 108.6592    RSS 82109.44    GRSq 0.861423    RSq 0.86894
+>
+>
+> fm2 <- earth(x, y, fast.k = 0) # (more extensive forward pass)
+> summary(fm2)
+> all.equal(fm1, fm2)# they are identical (apart from 'call'):
+> fm3 <- earth(x, y, fast.k = 0, pmethod = "none", trace = 3) # extensive
+> forward pass; *no* pruning
+> ## still no change: fm3 "==" fm1
+> all.equal(predict(fm1, xx), predict(fm3, xx))
+>
+> ## BTW: The chosen knots and coefficients are
+> mat <- with(fm1, cbind(dirs, cuts=c(cuts), coef = c(coefficients)))
+>
+> ## Plots : fine grid for visualization: instead of   xx <- seq(x[1],
+> x[length(x)], length.out = 1024)
+> rnx <- extendrange(x) ## to extrapolate a bit
+> xx <- do.call(seq.int, c(rnx, list(length.out = 1200)))
+>
+> cbind(f = f(xx),
+>       sspl = predict(m.sspl, xx)$y,
+>       mars = predict(fm1, xx)) -> fits
+>
+> plot(x,y, xlim=rnx, cex = 1/4, col = adjustcolor(1, 1/2))
+> cols <- c(adjustcolor(2, 1/3),
+>           adjustcolor(4, 2/3),
+>           adjustcolor("orange4", 2/3))
+> lwds <- c(3, 2, 2)
+> matlines(xx, fits, col = cols, lwd = lwds, lty=1)
+> legend("topleft", c("true f(x)", "smooth.spline()", "earth()"),
+>        col=cols, lwd=lwds, bty = "n")
+> title(paste("earth() linear spline vs. smooth.spline();  n =", length(x)))
+> mtext(substitute(f(x) == FDEF, list(FDEF = body(f))))
+>
+
+
+-- 
+Anupam.
+
+	[[alternative HTML version deleted]]
+
+
+From r@@ook|@@ @end|ng |rom gm@||@com  Tue Jul 16 18:07:31 2024
+From: r@@ook|@@ @end|ng |rom gm@||@com (Roland Sookias)
+Date: Tue, 16 Jul 2024 18:07:31 +0200
+Subject: [R] Interpreting p values of gls in nlme
+Message-ID: <CA+PBJbnBtDe0uLrgdbyrBQfWVaC-d0P8fCH=Xn9s_rQ_aRqupA@mail.gmail.com>
+
+Dear all
+
+I have undertaken some phylogenetic and non-phylogenetic regressions with
+gls() in nlme with single preictor variables. A p value is associated with
+the intercept (upper p value) and another with the predictor variable
+(lower). Which p value is important? What does it mean if the intercept p
+value is insignificant but the predictor is still significant?
+
+Thanks a lot, and sorry for my ignorance,
+
+Roland
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Wed Jul 17 00:41:28 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 16 Jul 2024 15:41:28 -0700
+Subject: [R] Interpreting p values of gls in nlme
+In-Reply-To: <CA+PBJbnBtDe0uLrgdbyrBQfWVaC-d0P8fCH=Xn9s_rQ_aRqupA@mail.gmail.com>
+References: <CA+PBJbnBtDe0uLrgdbyrBQfWVaC-d0P8fCH=Xn9s_rQ_aRqupA@mail.gmail.com>
+Message-ID: <CAGxFJbQO-=7=ZW3WHxrp8JaWaXSJycRJKo1sPuQL=BP-quCong@mail.gmail.com>
+
+Yikes!
+
+This list is for help on R *programming*, not statistics per se,
+although these do sometimes intersect. However, your query strikes me
+as a request for a kind of statistical tutorial, which is OT here.
+Just so you are aware...
+
+R has a special interest group (SIG) for phylgenetics at
+https://stat.ethz.ch/mailman/listinfo/r-sig-phylo  . I think this
+would be a better place for you to post, as relevant expertise should
+be found there. However, I do not know how active that list is, so
+maybe not. Good luck.
+
+Cheers,
+Bert
+
+On Tue, Jul 16, 2024 at 3:10?PM Roland Sookias <r.sookias at gmail.com> wrote:
+>
+> Dear all
+>
+> I have undertaken some phylogenetic and non-phylogenetic regressions with
+> gls() in nlme with single preictor variables. A p value is associated with
+> the intercept (upper p value) and another with the predictor variable
+> (lower). Which p value is important? What does it mean if the intercept p
+> value is insignificant but the predictor is still significant?
+>
+> Thanks a lot, and sorry for my ignorance,
+>
+> Roland
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
