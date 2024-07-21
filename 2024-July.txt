@@ -4663,3 +4663,1048 @@ On Fri, Jul 19, 2024 at 2:10?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
 > > and provide commented, minimal, self-contained, reproducible code.
 
 
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Jul 20 22:06:52 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 20 Jul 2024 13:06:52 -0700
+Subject: [R] Using the pipe, |>, syntax with "names<-"
+Message-ID: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+
+This post is likely pretty useless;  it is motivated by a recent post
+from "Val" that was elegantly answered using Tidyverse constructs, but
+I wondered how to do it using base R only. Along the way, I ran into
+the following question to which I think my answer (below) is pretty
+awful. I would be interested in more elegant base R approaches. So...
+
+z <- data.frame(a = 1:3, b = letters[1:3])
+> z
+  a h
+1 1 a
+2 2 b
+3 3 c
+
+Suppose I want to change the name of the second column of z from 'b'
+to 'foo' . This is very easy using nested function syntax by:
+
+names(z)[2] <- "foo"
+> z
+  a foo
+1 1   a
+2 2   b
+3 3   c
+
+Now suppose I wanted to do this using |> syntax, along the lines of:
+
+z |> names()[2] <- "foo"  ## throws an error
+
+Slightly fancier is:
+
+z |> (\(x)names(x)[2] <- "b")()
+## does nothing, but does not throw an error.
+
+However, the following, which resulted from a more careful read of
+?names works (after changing the name of the second column back to "b"
+of course):
+
+z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+>z
+  a foo
+1 1   a
+2 2   b
+3 3   c
+
+This qualifies to me as "pretty awful." I'm sure there are better ways
+to do this using pipe syntax, so I would appreciate any better
+approaches.
+
+Best,
+Bert
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Jul 20 22:14:58 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 20 Jul 2024 13:14:58 -0700
+Subject: [R] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+Message-ID: <CAGxFJbRRZ1cbwWKX71qLSDXAWveOP5ywPtxEXH6CtZ26cYWpZA@mail.gmail.com>
+
+Nope, I still got it wrong: None of my approaches work.  :(
+
+So my query remains: how to do it via piping with |> ?
+
+Bert
+
+
+On Sat, Jul 20, 2024 at 1:06?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> This post is likely pretty useless;  it is motivated by a recent post
+> from "Val" that was elegantly answered using Tidyverse constructs, but
+> I wondered how to do it using base R only. Along the way, I ran into
+> the following question to which I think my answer (below) is pretty
+> awful. I would be interested in more elegant base R approaches. So...
+>
+> z <- data.frame(a = 1:3, b = letters[1:3])
+> > z
+>   a h
+> 1 1 a
+> 2 2 b
+> 3 3 c
+>
+> Suppose I want to change the name of the second column of z from 'b'
+> to 'foo' . This is very easy using nested function syntax by:
+>
+> names(z)[2] <- "foo"
+> > z
+>   a foo
+> 1 1   a
+> 2 2   b
+> 3 3   c
+>
+> Now suppose I wanted to do this using |> syntax, along the lines of:
+>
+> z |> names()[2] <- "foo"  ## throws an error
+>
+> Slightly fancier is:
+>
+> z |> (\(x)names(x)[2] <- "b")()
+> ## does nothing, but does not throw an error.
+>
+> However, the following, which resulted from a more careful read of
+> ?names works (after changing the name of the second column back to "b"
+> of course):
+>
+> z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+> >z
+>   a foo
+> 1 1   a
+> 2 2   b
+> 3 3   c
+>
+> This qualifies to me as "pretty awful." I'm sure there are better ways
+> to do this using pipe syntax, so I would appreciate any better
+> approaches.
+>
+> Best,
+> Bert
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Jul 20 22:46:42 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 20 Jul 2024 13:46:42 -0700
+Subject: [R] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CAGxFJbRRZ1cbwWKX71qLSDXAWveOP5ywPtxEXH6CtZ26cYWpZA@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAGxFJbRRZ1cbwWKX71qLSDXAWveOP5ywPtxEXH6CtZ26cYWpZA@mail.gmail.com>
+Message-ID: <CAGxFJbTQ+zzKB2iubbQmiC2yc4jLSodC4D_q1xWi1NeyQT_qaw@mail.gmail.com>
+
+With further fooling around, I realized that explicitly assigning my
+last "solution" 'works'; i.e.
+
+names(z)[2] <- "foo"
+
+can be piped as:
+
+ z <- z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+> z
+  a foo
+1 1   a
+2 2   b
+3 3   c
+
+This is even awfuller than before. So my query still stands.
+
+-- Bert
+
+On Sat, Jul 20, 2024 at 1:14?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> Nope, I still got it wrong: None of my approaches work.  :(
+>
+> So my query remains: how to do it via piping with |> ?
+>
+> Bert
+>
+>
+> On Sat, Jul 20, 2024 at 1:06?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> > This post is likely pretty useless;  it is motivated by a recent post
+> > from "Val" that was elegantly answered using Tidyverse constructs, but
+> > I wondered how to do it using base R only. Along the way, I ran into
+> > the following question to which I think my answer (below) is pretty
+> > awful. I would be interested in more elegant base R approaches. So...
+> >
+> > z <- data.frame(a = 1:3, b = letters[1:3])
+> > > z
+> >   a h
+> > 1 1 a
+> > 2 2 b
+> > 3 3 c
+> >
+> > Suppose I want to change the name of the second column of z from 'b'
+> > to 'foo' . This is very easy using nested function syntax by:
+> >
+> > names(z)[2] <- "foo"
+> > > z
+> >   a foo
+> > 1 1   a
+> > 2 2   b
+> > 3 3   c
+> >
+> > Now suppose I wanted to do this using |> syntax, along the lines of:
+> >
+> > z |> names()[2] <- "foo"  ## throws an error
+> >
+> > Slightly fancier is:
+> >
+> > z |> (\(x)names(x)[2] <- "b")()
+> > ## does nothing, but does not throw an error.
+> >
+> > However, the following, which resulted from a more careful read of
+> > ?names works (after changing the name of the second column back to "b"
+> > of course):
+> >
+> > z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+> > >z
+> >   a foo
+> > 1 1   a
+> > 2 2   b
+> > 3 3   c
+> >
+> > This qualifies to me as "pretty awful." I'm sure there are better ways
+> > to do this using pipe syntax, so I would appreciate any better
+> > approaches.
+> >
+> > Best,
+> > Bert
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sat Jul 20 23:55:30 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sat, 20 Jul 2024 22:55:30 +0100
+Subject: [R] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CAGxFJbTQ+zzKB2iubbQmiC2yc4jLSodC4D_q1xWi1NeyQT_qaw@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAGxFJbRRZ1cbwWKX71qLSDXAWveOP5ywPtxEXH6CtZ26cYWpZA@mail.gmail.com>
+ <CAGxFJbTQ+zzKB2iubbQmiC2yc4jLSodC4D_q1xWi1NeyQT_qaw@mail.gmail.com>
+Message-ID: <4945bfbf-c149-445b-9156-21f848854074@sapo.pt>
+
+?s 21:46 de 20/07/2024, Bert Gunter escreveu:
+> With further fooling around, I realized that explicitly assigning my
+> last "solution" 'works'; i.e.
+> 
+> names(z)[2] <- "foo"
+> 
+> can be piped as:
+> 
+>   z <- z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+>> z
+>    a foo
+> 1 1   a
+> 2 2   b
+> 3 3   c
+> 
+> This is even awfuller than before. So my query still stands.
+> 
+> -- Bert
+> 
+> On Sat, Jul 20, 2024 at 1:14?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>>
+>> Nope, I still got it wrong: None of my approaches work.  :(
+>>
+>> So my query remains: how to do it via piping with |> ?
+>>
+>> Bert
+>>
+>>
+>> On Sat, Jul 20, 2024 at 1:06?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>>>
+>>> This post is likely pretty useless;  it is motivated by a recent post
+>>> from "Val" that was elegantly answered using Tidyverse constructs, but
+>>> I wondered how to do it using base R only. Along the way, I ran into
+>>> the following question to which I think my answer (below) is pretty
+>>> awful. I would be interested in more elegant base R approaches. So...
+>>>
+>>> z <- data.frame(a = 1:3, b = letters[1:3])
+>>>> z
+>>>    a h
+>>> 1 1 a
+>>> 2 2 b
+>>> 3 3 c
+>>>
+>>> Suppose I want to change the name of the second column of z from 'b'
+>>> to 'foo' . This is very easy using nested function syntax by:
+>>>
+>>> names(z)[2] <- "foo"
+>>>> z
+>>>    a foo
+>>> 1 1   a
+>>> 2 2   b
+>>> 3 3   c
+>>>
+>>> Now suppose I wanted to do this using |> syntax, along the lines of:
+>>>
+>>> z |> names()[2] <- "foo"  ## throws an error
+>>>
+>>> Slightly fancier is:
+>>>
+>>> z |> (\(x)names(x)[2] <- "b")()
+>>> ## does nothing, but does not throw an error.
+>>>
+>>> However, the following, which resulted from a more careful read of
+>>> ?names works (after changing the name of the second column back to "b"
+>>> of course):
+>>>
+>>> z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+>>>> z
+>>>    a foo
+>>> 1 1   a
+>>> 2 2   b
+>>> 3 3   c
+>>>
+>>> This qualifies to me as "pretty awful." I'm sure there are better ways
+>>> to do this using pipe syntax, so I would appreciate any better
+>>> approaches.
+>>>
+>>> Best,
+>>> Bert
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+This is not exactly the same but in one of your attempts all you have to 
+do is to return x.
+The following works and does something.
+
+
+z |> (\(x){names(x)[2] <- "foo";x})()
+#   a foo
+# 1 1   a
+# 2 2   b
+# 3 3   c
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Jul 20 23:59:43 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 20 Jul 2024 17:59:43 -0400
+Subject: [R] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CAGxFJbTQ+zzKB2iubbQmiC2yc4jLSodC4D_q1xWi1NeyQT_qaw@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAGxFJbRRZ1cbwWKX71qLSDXAWveOP5ywPtxEXH6CtZ26cYWpZA@mail.gmail.com>
+ <CAGxFJbTQ+zzKB2iubbQmiC2yc4jLSodC4D_q1xWi1NeyQT_qaw@mail.gmail.com>
+Message-ID: <2f3df8c7-d1a7-4004-a636-d862d80a93c6@gmail.com>
+
+I suspect that you would want to define a function which was aware of 
+the limitations of piping to handle this.  For example:
+
+rename <- function(x, col, newname) {
+   names(x)[col] <- newname
+   x
+}
+
+Then
+
+z |> rename(2, "foo")
+
+would be fine.
+
+Duncan Murdoch
+
+On 2024-07-20 4:46 p.m., Bert Gunter wrote:
+> With further fooling around, I realized that explicitly assigning my
+> last "solution" 'works'; i.e.
+> 
+> names(z)[2] <- "foo"
+> 
+> can be piped as:
+> 
+>   z <- z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+>> z
+>    a foo
+> 1 1   a
+> 2 2   b
+> 3 3   c
+> 
+> This is even awfuller than before. So my query still stands.
+> 
+> -- Bert
+> 
+> On Sat, Jul 20, 2024 at 1:14?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>>
+>> Nope, I still got it wrong: None of my approaches work.  :(
+>>
+>> So my query remains: how to do it via piping with |> ?
+>>
+>> Bert
+>>
+>>
+>> On Sat, Jul 20, 2024 at 1:06?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>>>
+>>> This post is likely pretty useless;  it is motivated by a recent post
+>>> from "Val" that was elegantly answered using Tidyverse constructs, but
+>>> I wondered how to do it using base R only. Along the way, I ran into
+>>> the following question to which I think my answer (below) is pretty
+>>> awful. I would be interested in more elegant base R approaches. So...
+>>>
+>>> z <- data.frame(a = 1:3, b = letters[1:3])
+>>>> z
+>>>    a h
+>>> 1 1 a
+>>> 2 2 b
+>>> 3 3 c
+>>>
+>>> Suppose I want to change the name of the second column of z from 'b'
+>>> to 'foo' . This is very easy using nested function syntax by:
+>>>
+>>> names(z)[2] <- "foo"
+>>>> z
+>>>    a foo
+>>> 1 1   a
+>>> 2 2   b
+>>> 3 3   c
+>>>
+>>> Now suppose I wanted to do this using |> syntax, along the lines of:
+>>>
+>>> z |> names()[2] <- "foo"  ## throws an error
+>>>
+>>> Slightly fancier is:
+>>>
+>>> z |> (\(x)names(x)[2] <- "b")()
+>>> ## does nothing, but does not throw an error.
+>>>
+>>> However, the following, which resulted from a more careful read of
+>>> ?names works (after changing the name of the second column back to "b"
+>>> of course):
+>>>
+>>> z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+>>>> z
+>>>    a foo
+>>> 1 1   a
+>>> 2 2   b
+>>> 3 3   c
+>>>
+>>> This qualifies to me as "pretty awful." I'm sure there are better ways
+>>> to do this using pipe syntax, so I would appreciate any better
+>>> approaches.
+>>>
+>>> Best,
+>>> Bert
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sun Jul 21 00:07:12 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 20 Jul 2024 18:07:12 -0400
+Subject: [R] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CAGxFJbTQ+zzKB2iubbQmiC2yc4jLSodC4D_q1xWi1NeyQT_qaw@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAGxFJbRRZ1cbwWKX71qLSDXAWveOP5ywPtxEXH6CtZ26cYWpZA@mail.gmail.com>
+ <CAGxFJbTQ+zzKB2iubbQmiC2yc4jLSodC4D_q1xWi1NeyQT_qaw@mail.gmail.com>
+Message-ID: <005301dadaf1$2c8777e0$859667a0$@gmail.com>
+
+Bert,
+
+You need to consider LHS vs RHS functionality.
+
+Before I start, I would have done your example setup lie this:
+
+trio <- 1:3
+z <- data.frame(a = trio, b = letters[trio])
+
+Just kidding!
+
+Syntactic sugar means you are calling this function:
+
+> `names<-`
+function (x, value)  .Primitive("names<-")
+
+Not particularly documented is a gimmick I just tried of supplying a second argument to the more routine function version:
+
+> `names<-`(z, c("one","two"))
+  one two
+1   1   a
+2   2   b
+3   3   c
+
+The above does not change z, but returns a new DF with new names.
+
+In a pipeline, try this:
+
+z <-
+  z |>
+  `names<-`( c("one","two"))
+
+> z
+  a b
+1 1 a
+2 2 b
+3 3 c
+> z <-
++   z |>
++   `names<-`( c("one","two"))
+> z
+  one two
+1   1   a
+2   2   b
+3   3   c
+
+
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Bert Gunter
+Sent: Saturday, July 20, 2024 4:47 PM
+To: R-help <R-help at r-project.org>
+Subject: Re: [R] Using the pipe, |>, syntax with "names<-"
+
+With further fooling around, I realized that explicitly assigning my
+last "solution" 'works'; i.e.
+
+names(z)[2] <- "foo"
+
+can be piped as:
+
+ z <- z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+> z
+  a foo
+1 1   a
+2 2   b
+3 3   c
+
+This is even awfuller than before. So my query still stands.
+
+-- Bert
+
+On Sat, Jul 20, 2024 at 1:14?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> Nope, I still got it wrong: None of my approaches work.  :(
+>
+> So my query remains: how to do it via piping with |> ?
+>
+> Bert
+>
+>
+> On Sat, Jul 20, 2024 at 1:06?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> > This post is likely pretty useless;  it is motivated by a recent post
+> > from "Val" that was elegantly answered using Tidyverse constructs, but
+> > I wondered how to do it using base R only. Along the way, I ran into
+> > the following question to which I think my answer (below) is pretty
+> > awful. I would be interested in more elegant base R approaches. So...
+> >
+> > z <- data.frame(a = 1:3, b = letters[1:3])
+> > > z
+> >   a h
+> > 1 1 a
+> > 2 2 b
+> > 3 3 c
+> >
+> > Suppose I want to change the name of the second column of z from 'b'
+> > to 'foo' . This is very easy using nested function syntax by:
+> >
+> > names(z)[2] <- "foo"
+> > > z
+> >   a foo
+> > 1 1   a
+> > 2 2   b
+> > 3 3   c
+> >
+> > Now suppose I wanted to do this using |> syntax, along the lines of:
+> >
+> > z |> names()[2] <- "foo"  ## throws an error
+> >
+> > Slightly fancier is:
+> >
+> > z |> (\(x)names(x)[2] <- "b")()
+> > ## does nothing, but does not throw an error.
+> >
+> > However, the following, which resulted from a more careful read of
+> > ?names works (after changing the name of the second column back to "b"
+> > of course):
+> >
+> > z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+> > >z
+> >   a foo
+> > 1 1   a
+> > 2 2   b
+> > 3 3   c
+> >
+> > This qualifies to me as "pretty awful." I'm sure there are better ways
+> > to do this using pipe syntax, so I would appreciate any better
+> > approaches.
+> >
+> > Best,
+> > Bert
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Sun Jul 21 00:02:45 2024
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Sat, 20 Jul 2024 18:02:45 -0400
+Subject: [R] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CAGxFJbTQ+zzKB2iubbQmiC2yc4jLSodC4D_q1xWi1NeyQT_qaw@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAGxFJbRRZ1cbwWKX71qLSDXAWveOP5ywPtxEXH6CtZ26cYWpZA@mail.gmail.com>
+ <CAGxFJbTQ+zzKB2iubbQmiC2yc4jLSodC4D_q1xWi1NeyQT_qaw@mail.gmail.com>
+Message-ID: <CADNULg_dz7c3DeyO036faxw+oypH_T=PTRWR4285gBRktkgW9g@mail.gmail.com>
+
+It should be written more like this:
+
+```R
+z <- data.frame(a = 1:3, b = letters[1:3])
+z |> names() |> _[2] <- "foo"
+z
+```
+
+Regards,
+    Iris
+
+On Sat, Jul 20, 2024 at 4:47?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> With further fooling around, I realized that explicitly assigning my
+> last "solution" 'works'; i.e.
+>
+> names(z)[2] <- "foo"
+>
+> can be piped as:
+>
+>  z <- z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+> > z
+>   a foo
+> 1 1   a
+> 2 2   b
+> 3 3   c
+>
+> This is even awfuller than before. So my query still stands.
+>
+> -- Bert
+>
+> On Sat, Jul 20, 2024 at 1:14?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> > Nope, I still got it wrong: None of my approaches work.  :(
+> >
+> > So my query remains: how to do it via piping with |> ?
+> >
+> > Bert
+> >
+> >
+> > On Sat, Jul 20, 2024 at 1:06?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> > >
+> > > This post is likely pretty useless;  it is motivated by a recent post
+> > > from "Val" that was elegantly answered using Tidyverse constructs, but
+> > > I wondered how to do it using base R only. Along the way, I ran into
+> > > the following question to which I think my answer (below) is pretty
+> > > awful. I would be interested in more elegant base R approaches. So...
+> > >
+> > > z <- data.frame(a = 1:3, b = letters[1:3])
+> > > > z
+> > >   a h
+> > > 1 1 a
+> > > 2 2 b
+> > > 3 3 c
+> > >
+> > > Suppose I want to change the name of the second column of z from 'b'
+> > > to 'foo' . This is very easy using nested function syntax by:
+> > >
+> > > names(z)[2] <- "foo"
+> > > > z
+> > >   a foo
+> > > 1 1   a
+> > > 2 2   b
+> > > 3 3   c
+> > >
+> > > Now suppose I wanted to do this using |> syntax, along the lines of:
+> > >
+> > > z |> names()[2] <- "foo"  ## throws an error
+> > >
+> > > Slightly fancier is:
+> > >
+> > > z |> (\(x)names(x)[2] <- "b")()
+> > > ## does nothing, but does not throw an error.
+> > >
+> > > However, the following, which resulted from a more careful read of
+> > > ?names works (after changing the name of the second column back to "b"
+> > > of course):
+> > >
+> > > z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+> > > >z
+> > >   a foo
+> > > 1 1   a
+> > > 2 2   b
+> > > 3 3   c
+> > >
+> > > This qualifies to me as "pretty awful." I'm sure there are better ways
+> > > to do this using pipe syntax, so I would appreciate any better
+> > > approaches.
+> > >
+> > > Best,
+> > > Bert
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Jul 21 00:14:34 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 20 Jul 2024 15:14:34 -0700
+Subject: [R] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CADNULg_dz7c3DeyO036faxw+oypH_T=PTRWR4285gBRktkgW9g@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAGxFJbRRZ1cbwWKX71qLSDXAWveOP5ywPtxEXH6CtZ26cYWpZA@mail.gmail.com>
+ <CAGxFJbTQ+zzKB2iubbQmiC2yc4jLSodC4D_q1xWi1NeyQT_qaw@mail.gmail.com>
+ <CADNULg_dz7c3DeyO036faxw+oypH_T=PTRWR4285gBRktkgW9g@mail.gmail.com>
+Message-ID: <CAGxFJbQW26-TnPHTyRPTJwCunZnpg-qfL8B+xFw8pCuF5dBPKw@mail.gmail.com>
+
+Iris's reply is what I was looking for.  Many thanks -- I can now sleep tonight!
+
+Both Rui's and Duncan's responses merely hid what I wanted to avoid. I
+hope that I did not occupy much of your times on my useless question
+and rather pathetic attempts at an answer.
+
+Cheers,
+Bert
+
+
+
+On Sat, Jul 20, 2024 at 3:02?PM Iris Simmons <ikwsimmo at gmail.com> wrote:
+>
+> It should be written more like this:
+>
+> ```R
+> z <- data.frame(a = 1:3, b = letters[1:3])
+> z |> names() |> _[2] <- "foo"
+> z
+> ```
+>
+> Regards,
+>     Iris
+>
+> On Sat, Jul 20, 2024 at 4:47?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> > With further fooling around, I realized that explicitly assigning my
+> > last "solution" 'works'; i.e.
+> >
+> > names(z)[2] <- "foo"
+> >
+> > can be piped as:
+> >
+> >  z <- z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+> > > z
+> >   a foo
+> > 1 1   a
+> > 2 2   b
+> > 3 3   c
+> >
+> > This is even awfuller than before. So my query still stands.
+> >
+> > -- Bert
+> >
+> > On Sat, Jul 20, 2024 at 1:14?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> > >
+> > > Nope, I still got it wrong: None of my approaches work.  :(
+> > >
+> > > So my query remains: how to do it via piping with |> ?
+> > >
+> > > Bert
+> > >
+> > >
+> > > On Sat, Jul 20, 2024 at 1:06?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> > > >
+> > > > This post is likely pretty useless;  it is motivated by a recent post
+> > > > from "Val" that was elegantly answered using Tidyverse constructs, but
+> > > > I wondered how to do it using base R only. Along the way, I ran into
+> > > > the following question to which I think my answer (below) is pretty
+> > > > awful. I would be interested in more elegant base R approaches. So...
+> > > >
+> > > > z <- data.frame(a = 1:3, b = letters[1:3])
+> > > > > z
+> > > >   a h
+> > > > 1 1 a
+> > > > 2 2 b
+> > > > 3 3 c
+> > > >
+> > > > Suppose I want to change the name of the second column of z from 'b'
+> > > > to 'foo' . This is very easy using nested function syntax by:
+> > > >
+> > > > names(z)[2] <- "foo"
+> > > > > z
+> > > >   a foo
+> > > > 1 1   a
+> > > > 2 2   b
+> > > > 3 3   c
+> > > >
+> > > > Now suppose I wanted to do this using |> syntax, along the lines of:
+> > > >
+> > > > z |> names()[2] <- "foo"  ## throws an error
+> > > >
+> > > > Slightly fancier is:
+> > > >
+> > > > z |> (\(x)names(x)[2] <- "b")()
+> > > > ## does nothing, but does not throw an error.
+> > > >
+> > > > However, the following, which resulted from a more careful read of
+> > > > ?names works (after changing the name of the second column back to "b"
+> > > > of course):
+> > > >
+> > > > z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+> > > > >z
+> > > >   a foo
+> > > > 1 1   a
+> > > > 2 2   b
+> > > > 3 3   c
+> > > >
+> > > > This qualifies to me as "pretty awful." I'm sure there are better ways
+> > > > to do this using pipe syntax, so I would appreciate any better
+> > > > approaches.
+> > > >
+> > > > Best,
+> > > > Bert
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sun Jul 21 00:21:01 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 20 Jul 2024 18:21:01 -0400
+Subject: [R] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CADNULg_dz7c3DeyO036faxw+oypH_T=PTRWR4285gBRktkgW9g@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAGxFJbRRZ1cbwWKX71qLSDXAWveOP5ywPtxEXH6CtZ26cYWpZA@mail.gmail.com>
+ <CAGxFJbTQ+zzKB2iubbQmiC2yc4jLSodC4D_q1xWi1NeyQT_qaw@mail.gmail.com>
+ <CADNULg_dz7c3DeyO036faxw+oypH_T=PTRWR4285gBRktkgW9g@mail.gmail.com>
+Message-ID: <7be52826-1922-4e11-bcb5-57c9dc721ebd@gmail.com>
+
+On 2024-07-20 6:02 p.m., Iris Simmons wrote:
+> z <- data.frame(a = 1:3, b = letters[1:3])
+> z |> names() |> _[2] <- "foo"
+> z
+
+That's a great suggestion!
+
+Duncan Murdoch
+
+
+From rmh @end|ng |rom temp|e@edu  Sun Jul 21 00:35:20 2024
+From: rmh @end|ng |rom temp|e@edu (Richard M. Heiberger)
+Date: Sat, 20 Jul 2024 22:35:20 +0000
+Subject: [R] [External]  Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <7be52826-1922-4e11-bcb5-57c9dc721ebd@gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAGxFJbRRZ1cbwWKX71qLSDXAWveOP5ywPtxEXH6CtZ26cYWpZA@mail.gmail.com>
+ <CAGxFJbTQ+zzKB2iubbQmiC2yc4jLSodC4D_q1xWi1NeyQT_qaw@mail.gmail.com>
+ <CADNULg_dz7c3DeyO036faxw+oypH_T=PTRWR4285gBRktkgW9g@mail.gmail.com>
+ <7be52826-1922-4e11-bcb5-57c9dc721ebd@gmail.com>
+Message-ID: <64B21EB8-28D4-43A3-96FA-497F8DBBEB76@temple.edu>
+
+I think Iris's solution should be added to the help file: ?|>
+there are no examples there now that show assignment or replacement using the "_"
+
+> On Jul 20, 2024, at 18:21, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>
+> On 2024-07-20 6:02 p.m., Iris Simmons wrote:
+>> z <- data.frame(a = 1:3, b = letters[1:3])
+>> z |> names() |> _[2] <- "foo"
+>> z
+>
+> That's a great suggestion!
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Jul 21 01:02:28 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 20 Jul 2024 16:02:28 -0700
+Subject: [R] [External]  Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <64B21EB8-28D4-43A3-96FA-497F8DBBEB76@temple.edu>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAGxFJbRRZ1cbwWKX71qLSDXAWveOP5ywPtxEXH6CtZ26cYWpZA@mail.gmail.com>
+ <CAGxFJbTQ+zzKB2iubbQmiC2yc4jLSodC4D_q1xWi1NeyQT_qaw@mail.gmail.com>
+ <CADNULg_dz7c3DeyO036faxw+oypH_T=PTRWR4285gBRktkgW9g@mail.gmail.com>
+ <7be52826-1922-4e11-bcb5-57c9dc721ebd@gmail.com>
+ <64B21EB8-28D4-43A3-96FA-497F8DBBEB76@temple.edu>
+Message-ID: <CAGxFJbR9ZG3n_QL8S51phVD0wAbj4Cko0xc1c0S6EqUtiJ4-KA@mail.gmail.com>
+
+I second Rich's excellent suggestion.
+
+As with all elegant solutions, Iris's clicked on the wee light bulb in
+my brain, and I realized that a slightly more verbose, but perhaps
+more enlightening, alternative may be:
+
+z |>  attr("names") |> _[2] <- "foo"
+
+However, I would add this as an example *only with* Iris's solution.
+Hers should be shown whether or not the above is.
+
+Cheers,
+Bert
+
+On Sat, Jul 20, 2024 at 3:35?PM Richard M. Heiberger <rmh at temple.edu> wrote:
+>
+> I think Iris's solution should be added to the help file: ?|>
+> there are no examples there now that show assignment or replacement using the "_"
+>
+> > On Jul 20, 2024, at 18:21, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+> >
+> > On 2024-07-20 6:02 p.m., Iris Simmons wrote:
+> >> z <- data.frame(a = 1:3, b = letters[1:3])
+> >> z |> names() |> _[2] <- "foo"
+> >> z
+> >
+> > That's a great suggestion!
+> >
+> > Duncan Murdoch
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Jul 21 02:41:06 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 20 Jul 2024 17:41:06 -0700
+Subject: [R] Extract
+In-Reply-To: <CAJOiR6Z=MC=14K-jCEx4W98btKPOnCmVH6CxWkVyO45=JKOrNw@mail.gmail.com>
+References: <CAJOiR6YNtC41Htw+4gO9poiH_Qn9o96dh7j74Jpuf1jDdFFiyQ@mail.gmail.com>
+ <CAGxFJbSSruMcDyQFwXE1qzyP+7_PpP+4j5cmpCJUHyacnCeHqQ@mail.gmail.com>
+ <CAJOiR6Z=MC=14K-jCEx4W98btKPOnCmVH6CxWkVyO45=JKOrNw@mail.gmail.com>
+Message-ID: <CAGxFJbRfrB4FvAsbssmDWGkZR9duZtW1pmt_qPCUFzurg-yWJg@mail.gmail.com>
+
+Val:
+I wanted to add here a base R solution to your problem that I realize
+you can happily ignore. However, in the course of puzzling over how to
+do it using the R native pipe syntax ("|>") , I learned some new stuff
+that I thought others might find useful, and it seemed sensible to
+keep the code with this thread for comparison.
+
+ I want to acknowledge that in the course of my labor, I posted a
+query to R-Help to which Iris Simmons posted a very clever answer that
+I would never have figured out myself and that is used below at the
+end to change a subset of the names of the modified data frame via a
+pipe.
+
+Here's the whole solution starting from your (excellent!) example dat:
+
+   dat <- dat$string |>
+      strsplit(" ") |>
+      sapply(FUN = \(x)c(x, rep(NA, 5 - length(x)))) |>
+      t() |> cbind(dat, ..2 = _)
+
+   ## And Iris's trick for changing a subset of attributes, i.e. the
+"names", in a pipe
+   dat |> names() |> _[4:8] <- paste0("s", 1:5)
+
+## and here's the result:
+> dat
+  Year Sex          string s1   s2   s3   s4   s5
+1 2002   F        15 xc Ab 15   xc   Ab <NA> <NA>
+2 2003   F              14 14 <NA> <NA> <NA> <NA>
+3 2004   M  18 xb 25 35 21 18   xb   25   35   21
+4 2005   M           13 25 13   25 <NA> <NA> <NA>
+5 2006   M 14 ac 256 AV 35 14   ac  256   AV   35
+6 2007   F              11 11 <NA> <NA> <NA> <NA>
+
+As I noted previously, all columns beyond Sex are character
+
+Cheers,
+Bert
+
+
+On Fri, Jul 19, 2024 at 12:26?PM Val <valkremk at gmail.com> wrote:
+>
+> Thank you Jeff and Bert for your help!
+> The components of the string  could be nixed (i.e,  numeric, character
+> or date). Once that is splitted it would be easy for me to format it
+> accordingly.
+>
+> On Fri, Jul 19, 2024 at 2:10?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> > I did not look closely at the solutions that you were offered, but
+> > note that you did not specify in your post whether the numbers in your
+> > string were to be character or numeric variables after they are broken
+> > out into their own columns. I believe that they are character in the
+> > solutions, but you should check this. If you want them as numeric,
+> > e.g., for further processing, you will need to convert them. Or
+> > vice-versa.
+> >
+> > Bert
+> >
+> >
+> > On Fri, Jul 19, 2024 at 9:52?AM Val <valkremk at gmail.com> wrote:
+> > >
+> > > Hi All,
+> > >
+> > > I want to extract new variables from a string and add it to the dataframe.
+> > > Sample data is csv file.
+> > >
+> > > dat<-read.csv(text="Year, Sex,string
+> > > 2002,F,15 xc Ab
+> > > 2003,F,14
+> > > 2004,M,18 xb 25 35 21
+> > > 2005,M,13 25
+> > > 2006,M,14 ac 256 AV 35
+> > > 2007,F,11",header=TRUE)
+> > >
+> > > The string column has  a maximum of five variables. Some rows have all
+> > > and others may not have all the five variables. If missing then  fill
+> > > it with NA,
+> > > Desired result is shown below,
+> > >
+> > >
+> > > Year,Sex,string, S1, S2, S3 S4,S5
+> > > 2002,F,15 xc Ab, 15,xc,Ab, NA, NA
+> > > 2003,F,14, 14,NA,NA,NA,NA
+> > > 2004,M,18 xb 25 35 21,18, xb, 25, 35, 21
+> > > 2005,M,13 25,13, 25,NA,NA,NA
+> > > 2006,M,14 ac 256 AV 35, 14, ac, 256, AV, 35
+> > > 2007,F,11, 11,NA,NA,NA,NA
+> > >
+> > > Any help?
+> > > Thank you in advance.
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+
+
