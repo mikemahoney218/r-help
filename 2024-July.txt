@@ -5708,3 +5708,1923 @@ On Fri, Jul 19, 2024 at 12:26?PM Val <valkremk at gmail.com> wrote:
 > > > and provide commented, minimal, self-contained, reproducible code.
 
 
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Sun Jul 21 07:07:57 2024
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Sun, 21 Jul 2024 10:37:57 +0530
+Subject: [R] [External] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CAGxFJbR9ZG3n_QL8S51phVD0wAbj4Cko0xc1c0S6EqUtiJ4-KA@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAGxFJbRRZ1cbwWKX71qLSDXAWveOP5ywPtxEXH6CtZ26cYWpZA@mail.gmail.com>
+ <CAGxFJbTQ+zzKB2iubbQmiC2yc4jLSodC4D_q1xWi1NeyQT_qaw@mail.gmail.com>
+ <CADNULg_dz7c3DeyO036faxw+oypH_T=PTRWR4285gBRktkgW9g@mail.gmail.com>
+ <7be52826-1922-4e11-bcb5-57c9dc721ebd@gmail.com>
+ <64B21EB8-28D4-43A3-96FA-497F8DBBEB76@temple.edu>
+ <CAGxFJbR9ZG3n_QL8S51phVD0wAbj4Cko0xc1c0S6EqUtiJ4-KA@mail.gmail.com>
+Message-ID: <CADfFDC7khmCsd=8AcpnKQ=JwwJfEnJxwHJ=F3QQ=CZ=ruJ0Cyw@mail.gmail.com>
+
+The main challenge in Bert's original problem is that `[` and `[<-` cannot
+be called in a pipeline. The obvious solution is to define named versions,
+e.g.:
+
+elt <- `[`
+`elt<-` <- `[<-`
+
+Then,
+
+> z <- data.frame(a = 1:3, b = letters[1:3])
+> z |> names() |> elt(2)
+[1] "b"
+> z |> names() |> elt(2) <- "foo"
+> z
+  a foo
+1 1   a
+2 2   b
+3 3   c
+
+You could actually also do (using a similar function already defined in
+methods)
+
+z |> names() |> el(2) <- "bar"
+
+Iris's _ trick is of course a nice alternative; and this example in ?pipeOp
+already covers it:
+
+# using the placeholder as the head of an extraction chain:
+mtcars |> subset(cyl == 4) |> lm(formula = mpg ~ disp) |> _$coef[[2]]
+
+While the replacement question is a nice exercise, I am not sure about the
+value of emphasizing that you can use pipes to do complex assignments.
+Doesn't that defeat the whole purpose of piping? For one thing, it will
+necessarily terminate the pipe. Also, it will not work if the starting
+value is not a variable. E.g.,
+
+> data.frame(a = 1:3, b = letters[1:3]) |> names() |> _[2] <- "bar"
+Error in names(data.frame(a = 1:3, b = letters[1:3]))[2] <- "bar" :
+  target of assignment expands to non-language object
+
+Duncan's rename() approach, which will just change the column name and
+return the modified object, seems more useful as part of a pipeline.
+
+Best,
+-Deepayan
+
+On Sun, 21 Jul 2024 at 04:46, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> I second Rich's excellent suggestion.
+>
+> As with all elegant solutions, Iris's clicked on the wee light bulb in
+> my brain, and I realized that a slightly more verbose, but perhaps
+> more enlightening, alternative may be:
+>
+> z |>  attr("names") |> _[2] <- "foo"
+>
+> However, I would add this as an example *only with* Iris's solution.
+> Hers should be shown whether or not the above is.
+>
+> Cheers,
+> Bert
+>
+> On Sat, Jul 20, 2024 at 3:35?PM Richard M. Heiberger <rmh at temple.edu>
+> wrote:
+> >
+> > I think Iris's solution should be added to the help file: ?|>
+> > there are no examples there now that show assignment or replacement
+> using the "_"
+> >
+> > > On Jul 20, 2024, at 18:21, Duncan Murdoch <murdoch.duncan at gmail.com>
+> wrote:
+> > >
+> > > On 2024-07-20 6:02 p.m., Iris Simmons wrote:
+> > >> z <- data.frame(a = 1:3, b = letters[1:3])
+> > >> z |> names() |> _[2] <- "foo"
+> > >> z
+> > >
+> > > That's a great suggestion!
+> > >
+> > > Duncan Murdoch
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide
+> http://www.r-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sun Jul 21 08:49:55 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sat, 20 Jul 2024 23:49:55 -0700
+Subject: [R] [External] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CADfFDC7khmCsd=8AcpnKQ=JwwJfEnJxwHJ=F3QQ=CZ=ruJ0Cyw@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAGxFJbRRZ1cbwWKX71qLSDXAWveOP5ywPtxEXH6CtZ26cYWpZA@mail.gmail.com>
+ <CAGxFJbTQ+zzKB2iubbQmiC2yc4jLSodC4D_q1xWi1NeyQT_qaw@mail.gmail.com>
+ <CADNULg_dz7c3DeyO036faxw+oypH_T=PTRWR4285gBRktkgW9g@mail.gmail.com>
+ <7be52826-1922-4e11-bcb5-57c9dc721ebd@gmail.com>
+ <64B21EB8-28D4-43A3-96FA-497F8DBBEB76@temple.edu>
+ <CAGxFJbR9ZG3n_QL8S51phVD0wAbj4Cko0xc1c0S6EqUtiJ4-KA@mail.gmail.com>
+ <CADfFDC7khmCsd=8AcpnKQ=JwwJfEnJxwHJ=F3QQ=CZ=ruJ0Cyw@mail.gmail.com>
+Message-ID: <A7075229-A89F-40B4-99C2-C5F0CFD3BA8B@dcn.davis.ca.us>
+
+I think that the simplicity of setNames is hard to beat:
+
+z |> setNames( c( "a", "foo" ) )
+
+and if you are determined not to load dplyr then
+
+column_rename <- function( DF, map ) {
+  on <- names( DF )
+  on[ match( map, on ) ] <- names( map )
+  names( DF ) <- on
+  DF
+}
+
+is more robust to column reorganization than replace():
+
+z |> column_rename( c( foo = "b" ) )
+
+
+On July 20, 2024 10:07:57 PM PDT, Deepayan Sarkar <deepayan.sarkar at gmail.com> wrote:
+>The main challenge in Bert's original problem is that `[` and `[<-` cannot
+>be called in a pipeline. The obvious solution is to define named versions,
+>e.g.:
+>
+>elt <- `[`
+>`elt<-` <- `[<-`
+>
+>Then,
+>
+>> z <- data.frame(a = 1:3, b = letters[1:3])
+>> z |> names() |> elt(2)
+>[1] "b"
+>> z |> names() |> elt(2) <- "foo"
+>> z
+>  a foo
+>1 1   a
+>2 2   b
+>3 3   c
+>
+>You could actually also do (using a similar function already defined in
+>methods)
+>
+>z |> names() |> el(2) <- "bar"
+>
+>Iris's _ trick is of course a nice alternative; and this example in ?pipeOp
+>already covers it:
+>
+># using the placeholder as the head of an extraction chain:
+>mtcars |> subset(cyl == 4) |> lm(formula = mpg ~ disp) |> _$coef[[2]]
+>
+>While the replacement question is a nice exercise, I am not sure about the
+>value of emphasizing that you can use pipes to do complex assignments.
+>Doesn't that defeat the whole purpose of piping? For one thing, it will
+>necessarily terminate the pipe. Also, it will not work if the starting
+>value is not a variable. E.g.,
+>
+>> data.frame(a = 1:3, b = letters[1:3]) |> names() |> _[2] <- "bar"
+>Error in names(data.frame(a = 1:3, b = letters[1:3]))[2] <- "bar" :
+>  target of assignment expands to non-language object
+>
+>Duncan's rename() approach, which will just change the column name and
+>return the modified object, seems more useful as part of a pipeline.
+>
+>Best,
+>-Deepayan
+>
+>On Sun, 21 Jul 2024 at 04:46, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+>> I second Rich's excellent suggestion.
+>>
+>> As with all elegant solutions, Iris's clicked on the wee light bulb in
+>> my brain, and I realized that a slightly more verbose, but perhaps
+>> more enlightening, alternative may be:
+>>
+>> z |>  attr("names") |> _[2] <- "foo"
+>>
+>> However, I would add this as an example *only with* Iris's solution.
+>> Hers should be shown whether or not the above is.
+>>
+>> Cheers,
+>> Bert
+>>
+>> On Sat, Jul 20, 2024 at 3:35?PM Richard M. Heiberger <rmh at temple.edu>
+>> wrote:
+>> >
+>> > I think Iris's solution should be added to the help file: ?|>
+>> > there are no examples there now that show assignment or replacement
+>> using the "_"
+>> >
+>> > > On Jul 20, 2024, at 18:21, Duncan Murdoch <murdoch.duncan at gmail.com>
+>> wrote:
+>> > >
+>> > > On 2024-07-20 6:02 p.m., Iris Simmons wrote:
+>> > >> z <- data.frame(a = 1:3, b = letters[1:3])
+>> > >> z |> names() |> _[2] <- "foo"
+>> > >> z
+>> > >
+>> > > That's a great suggestion!
+>> > >
+>> > > Duncan Murdoch
+>> > >
+>> > > ______________________________________________
+>> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > > https://stat.ethz.ch/mailman/listinfo/r-help
+>> > > PLEASE do read the posting guide
+>> http://www.r-project.org/posting-guide.html
+>> > > and provide commented, minimal, self-contained, reproducible code.
+>> >
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sun Jul 21 14:45:44 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sun, 21 Jul 2024 08:45:44 -0400
+Subject: [R] [External] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CADfFDC7khmCsd=8AcpnKQ=JwwJfEnJxwHJ=F3QQ=CZ=ruJ0Cyw@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAGxFJbRRZ1cbwWKX71qLSDXAWveOP5ywPtxEXH6CtZ26cYWpZA@mail.gmail.com>
+ <CAGxFJbTQ+zzKB2iubbQmiC2yc4jLSodC4D_q1xWi1NeyQT_qaw@mail.gmail.com>
+ <CADNULg_dz7c3DeyO036faxw+oypH_T=PTRWR4285gBRktkgW9g@mail.gmail.com>
+ <7be52826-1922-4e11-bcb5-57c9dc721ebd@gmail.com>
+ <64B21EB8-28D4-43A3-96FA-497F8DBBEB76@temple.edu>
+ <CAGxFJbR9ZG3n_QL8S51phVD0wAbj4Cko0xc1c0S6EqUtiJ4-KA@mail.gmail.com>
+ <CADfFDC7khmCsd=8AcpnKQ=JwwJfEnJxwHJ=F3QQ=CZ=ruJ0Cyw@mail.gmail.com>
+Message-ID: <004501dadb6b$e7579030$b606b090$@gmail.com>
+
+As an intellectual exercise it can be reasonable to discuss these ways to use a pipe even in places where it may not have been seen as something anyone would even try to use it.
+
+In actual code, it is often better to not make overly cute constructions that others (or yourself a month later) will not understand.
+
+Pipes were not part of R originally and the versions created over the years have included many kinds of functionality that is not in the new official pipe and that might allow functionality such as this. In some ways, the tidyverse evolved so that they did not require this game as their normal method of changing the names of columns works inline by using verbs such as rename(). Other things you can often do in-line is to reorder the columns or apply changes selectively to columns whose names or contents match your patterns. 
+
+If you now wanted to use base R to make similar changes in a pipeline, the result may be that you end up reinventing extensions such as functions that do what you want in a pipeline, OR you realize that many things done in just base R should continue being done in more discrete lumps rather than one huge pipeline.
+
+There may well already be one or more packages outside the tidyverse that provide such extensions but I am not so sure that using them will be as easy or convenient or readable until and unless they are as well-known. I note that even in the tidyverse, many things are often better done, especially while testing the code, without really long pipes so that it is easier to modify and rearrange things or see intermediate values. Similar arguments apply to something like using ggplot() with its own sort-of piping where it may make sense to use repeated invocations of "p <- p + function(args)" so each can clearly be documented with comments and sometimes steps can selectively be commented out or moved later in the "pipeline" if it seems the changes by one step are interfering with a later step by re-setting internal variables. Of course, if the code is completely done and not expected to change, you can always switch to piping if that is what you want.
+
+Programming languages can have many purposes including things like efficiency or compact representations or making it harder to make mistakes but a major advantage of some is that the programs be READ easily without having to consult gurus or try to debug. Pipes can both be helpful in this regard or be absolutely mysterious. Using "_" in any way imaginable as a placeholder is convenient and allowing a default of it being a replacement for a first argument without specifying it is nice. But you can imagine an implementation where you constantly put in ".placeHolder." as clearer.
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Deepayan Sarkar
+Sent: Sunday, July 21, 2024 1:08 AM
+To: Bert Gunter <bgunter.4567 at gmail.com>
+Cc: R-help <R-help at r-project.org>
+Subject: Re: [R] [External] Using the pipe, |>, syntax with "names<-"
+
+The main challenge in Bert's original problem is that `[` and `[<-` cannot
+be called in a pipeline. The obvious solution is to define named versions,
+e.g.:
+
+elt <- `[`
+`elt<-` <- `[<-`
+
+Then,
+
+> z <- data.frame(a = 1:3, b = letters[1:3])
+> z |> names() |> elt(2)
+[1] "b"
+> z |> names() |> elt(2) <- "foo"
+> z
+  a foo
+1 1   a
+2 2   b
+3 3   c
+
+You could actually also do (using a similar function already defined in
+methods)
+
+z |> names() |> el(2) <- "bar"
+
+Iris's _ trick is of course a nice alternative; and this example in ?pipeOp
+already covers it:
+
+# using the placeholder as the head of an extraction chain:
+mtcars |> subset(cyl == 4) |> lm(formula = mpg ~ disp) |> _$coef[[2]]
+
+While the replacement question is a nice exercise, I am not sure about the
+value of emphasizing that you can use pipes to do complex assignments.
+Doesn't that defeat the whole purpose of piping? For one thing, it will
+necessarily terminate the pipe. Also, it will not work if the starting
+value is not a variable. E.g.,
+
+> data.frame(a = 1:3, b = letters[1:3]) |> names() |> _[2] <- "bar"
+Error in names(data.frame(a = 1:3, b = letters[1:3]))[2] <- "bar" :
+  target of assignment expands to non-language object
+
+Duncan's rename() approach, which will just change the column name and
+return the modified object, seems more useful as part of a pipeline.
+
+Best,
+-Deepayan
+
+On Sun, 21 Jul 2024 at 04:46, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> I second Rich's excellent suggestion.
+>
+> As with all elegant solutions, Iris's clicked on the wee light bulb in
+> my brain, and I realized that a slightly more verbose, but perhaps
+> more enlightening, alternative may be:
+>
+> z |>  attr("names") |> _[2] <- "foo"
+>
+> However, I would add this as an example *only with* Iris's solution.
+> Hers should be shown whether or not the above is.
+>
+> Cheers,
+> Bert
+>
+> On Sat, Jul 20, 2024 at 3:35?PM Richard M. Heiberger <rmh at temple.edu>
+> wrote:
+> >
+> > I think Iris's solution should be added to the help file: ?|>
+> > there are no examples there now that show assignment or replacement
+> using the "_"
+> >
+> > > On Jul 20, 2024, at 18:21, Duncan Murdoch <murdoch.duncan at gmail.com>
+> wrote:
+> > >
+> > > On 2024-07-20 6:02 p.m., Iris Simmons wrote:
+> > >> z <- data.frame(a = 1:3, b = letters[1:3])
+> > >> z |> names() |> _[2] <- "foo"
+> > >> z
+> > >
+> > > That's a great suggestion!
+> > >
+> > > Duncan Murdoch
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide
+> http://www.r-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From ggrothend|eck @end|ng |rom gm@||@com  Sun Jul 21 16:47:28 2024
+From: ggrothend|eck @end|ng |rom gm@||@com (Gabor Grothendieck)
+Date: Sun, 21 Jul 2024 10:47:28 -0400
+Subject: [R] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+Message-ID: <CAP01uRkNn-VnYn1MSaGk7L3EQ4chx+DBa7=TANUnCvY+mYQcoQ@mail.gmail.com>
+
+This
+- is non-destructive (does not change z)
+- passes the renamed z onto further pipe legs
+- does not use \(x)...
+
+It works by boxing z, operating on the boxed version and then unboxing it.
+
+  z <- data.frame(a = 1:3, b = letters[1:3])
+  z |> list(x = _) |> within(names(x)[2] <- "foo") |> _$x
+  ##   a foo
+  ## 1 1   a
+  ## 2 2   b
+  ## 3 3   c
+
+On Sat, Jul 20, 2024 at 4:07?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> This post is likely pretty useless;  it is motivated by a recent post
+> from "Val" that was elegantly answered using Tidyverse constructs, but
+> I wondered how to do it using base R only. Along the way, I ran into
+> the following question to which I think my answer (below) is pretty
+> awful. I would be interested in more elegant base R approaches. So...
+>
+> z <- data.frame(a = 1:3, b = letters[1:3])
+> > z
+>   a h
+> 1 1 a
+> 2 2 b
+> 3 3 c
+>
+> Suppose I want to change the name of the second column of z from 'b'
+> to 'foo' . This is very easy using nested function syntax by:
+>
+> names(z)[2] <- "foo"
+> > z
+>   a foo
+> 1 1   a
+> 2 2   b
+> 3 3   c
+>
+> Now suppose I wanted to do this using |> syntax, along the lines of:
+>
+> z |> names()[2] <- "foo"  ## throws an error
+>
+> Slightly fancier is:
+>
+> z |> (\(x)names(x)[2] <- "b")()
+> ## does nothing, but does not throw an error.
+>
+> However, the following, which resulted from a more careful read of
+> ?names works (after changing the name of the second column back to "b"
+> of course):
+>
+> z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+> >z
+>   a foo
+> 1 1   a
+> 2 2   b
+> 3 3   c
+>
+> This qualifies to me as "pretty awful." I'm sure there are better ways
+> to do this using pipe syntax, so I would appreciate any better
+> approaches.
+>
+> Best,
+> Bert
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Statistics & Software Consulting
+GKX Group, GKX Associates Inc.
+tel: 1-877-GKX-GROUP
+email: ggrothendieck at gmail.com
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Jul 21 17:01:23 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 21 Jul 2024 08:01:23 -0700
+Subject: [R] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CAP01uRkNn-VnYn1MSaGk7L3EQ4chx+DBa7=TANUnCvY+mYQcoQ@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAP01uRkNn-VnYn1MSaGk7L3EQ4chx+DBa7=TANUnCvY+mYQcoQ@mail.gmail.com>
+Message-ID: <CAGxFJbQSQh=zECXJkLJaQy7Abxpzmb8x2ARrRgfCwpBTFYf-0A@mail.gmail.com>
+
+Wow!
+Yes, this is very clever -- way too clever for me -- and meets my
+criteria for a solution.
+
+I think it's also another piece of evidence of why piping in base R is
+not suited for complex/nested assignments, as discussed in Deepayan's
+response.
+
+Maybe someone could offer a better Tidydata piping solution just for
+completeness?
+
+Best,
+Bert
+
+On Sun, Jul 21, 2024 at 7:48?AM Gabor Grothendieck
+<ggrothendieck at gmail.com> wrote:
+>
+> This
+> - is non-destructive (does not change z)
+> - passes the renamed z onto further pipe legs
+> - does not use \(x)...
+>
+> It works by boxing z, operating on the boxed version and then unboxing it.
+>
+>   z <- data.frame(a = 1:3, b = letters[1:3])
+>   z |> list(x = _) |> within(names(x)[2] <- "foo") |> _$x
+>   ##   a foo
+>   ## 1 1   a
+>   ## 2 2   b
+>   ## 3 3   c
+>
+> On Sat, Jul 20, 2024 at 4:07?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> > This post is likely pretty useless;  it is motivated by a recent post
+> > from "Val" that was elegantly answered using Tidyverse constructs, but
+> > I wondered how to do it using base R only. Along the way, I ran into
+> > the following question to which I think my answer (below) is pretty
+> > awful. I would be interested in more elegant base R approaches. So...
+> >
+> > z <- data.frame(a = 1:3, b = letters[1:3])
+> > > z
+> >   a h
+> > 1 1 a
+> > 2 2 b
+> > 3 3 c
+> >
+> > Suppose I want to change the name of the second column of z from 'b'
+> > to 'foo' . This is very easy using nested function syntax by:
+> >
+> > names(z)[2] <- "foo"
+> > > z
+> >   a foo
+> > 1 1   a
+> > 2 2   b
+> > 3 3   c
+> >
+> > Now suppose I wanted to do this using |> syntax, along the lines of:
+> >
+> > z |> names()[2] <- "foo"  ## throws an error
+> >
+> > Slightly fancier is:
+> >
+> > z |> (\(x)names(x)[2] <- "b")()
+> > ## does nothing, but does not throw an error.
+> >
+> > However, the following, which resulted from a more careful read of
+> > ?names works (after changing the name of the second column back to "b"
+> > of course):
+> >
+> > z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+> > >z
+> >   a foo
+> > 1 1   a
+> > 2 2   b
+> > 3 3   c
+> >
+> > This qualifies to me as "pretty awful." I'm sure there are better ways
+> > to do this using pipe syntax, so I would appreciate any better
+> > approaches.
+> >
+> > Best,
+> > Bert
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+>
+>
+> --
+> Statistics & Software Consulting
+> GKX Group, GKX Associates Inc.
+> tel: 1-877-GKX-GROUP
+> email: ggrothendieck at gmail.com
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Jul 21 17:10:45 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 21 Jul 2024 08:10:45 -0700
+Subject: [R] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CAGxFJbQSQh=zECXJkLJaQy7Abxpzmb8x2ARrRgfCwpBTFYf-0A@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAP01uRkNn-VnYn1MSaGk7L3EQ4chx+DBa7=TANUnCvY+mYQcoQ@mail.gmail.com>
+ <CAGxFJbQSQh=zECXJkLJaQy7Abxpzmb8x2ARrRgfCwpBTFYf-0A@mail.gmail.com>
+Message-ID: <CAGxFJbR7fyaGPCR7YfyK7GZXEuiwkMGf5bB6FmLnyC2_WQWLDg@mail.gmail.com>
+
+hmmm...
+But note that you still used the nested assignment, names()[2] <-
+"foo", to circumvent R's pipe limitations, which is exactly what
+Iris's solution avoids. So I think I was overawed by your cleverness
+;-)
+
+Best,
+Bert
+
+
+On Sun, Jul 21, 2024 at 8:01?AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> Wow!
+> Yes, this is very clever -- way too clever for me -- and meets my
+> criteria for a solution.
+>
+> I think it's also another piece of evidence of why piping in base R is
+> not suited for complex/nested assignments, as discussed in Deepayan's
+> response.
+>
+> Maybe someone could offer a better Tidydata piping solution just for
+> completeness?
+>
+> Best,
+> Bert
+>
+> On Sun, Jul 21, 2024 at 7:48?AM Gabor Grothendieck
+> <ggrothendieck at gmail.com> wrote:
+> >
+> > This
+> > - is non-destructive (does not change z)
+> > - passes the renamed z onto further pipe legs
+> > - does not use \(x)...
+> >
+> > It works by boxing z, operating on the boxed version and then unboxing it.
+> >
+> >   z <- data.frame(a = 1:3, b = letters[1:3])
+> >   z |> list(x = _) |> within(names(x)[2] <- "foo") |> _$x
+> >   ##   a foo
+> >   ## 1 1   a
+> >   ## 2 2   b
+> >   ## 3 3   c
+> >
+> > On Sat, Jul 20, 2024 at 4:07?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> > >
+> > > This post is likely pretty useless;  it is motivated by a recent post
+> > > from "Val" that was elegantly answered using Tidyverse constructs, but
+> > > I wondered how to do it using base R only. Along the way, I ran into
+> > > the following question to which I think my answer (below) is pretty
+> > > awful. I would be interested in more elegant base R approaches. So...
+> > >
+> > > z <- data.frame(a = 1:3, b = letters[1:3])
+> > > > z
+> > >   a h
+> > > 1 1 a
+> > > 2 2 b
+> > > 3 3 c
+> > >
+> > > Suppose I want to change the name of the second column of z from 'b'
+> > > to 'foo' . This is very easy using nested function syntax by:
+> > >
+> > > names(z)[2] <- "foo"
+> > > > z
+> > >   a foo
+> > > 1 1   a
+> > > 2 2   b
+> > > 3 3   c
+> > >
+> > > Now suppose I wanted to do this using |> syntax, along the lines of:
+> > >
+> > > z |> names()[2] <- "foo"  ## throws an error
+> > >
+> > > Slightly fancier is:
+> > >
+> > > z |> (\(x)names(x)[2] <- "b")()
+> > > ## does nothing, but does not throw an error.
+> > >
+> > > However, the following, which resulted from a more careful read of
+> > > ?names works (after changing the name of the second column back to "b"
+> > > of course):
+> > >
+> > > z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+> > > >z
+> > >   a foo
+> > > 1 1   a
+> > > 2 2   b
+> > > 3 3   c
+> > >
+> > > This qualifies to me as "pretty awful." I'm sure there are better ways
+> > > to do this using pipe syntax, so I would appreciate any better
+> > > approaches.
+> > >
+> > > Best,
+> > > Bert
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+> >
+> >
+> >
+> > --
+> > Statistics & Software Consulting
+> > GKX Group, GKX Associates Inc.
+> > tel: 1-877-GKX-GROUP
+> > email: ggrothendieck at gmail.com
+
+
+From ggrothend|eck @end|ng |rom gm@||@com  Sun Jul 21 17:17:47 2024
+From: ggrothend|eck @end|ng |rom gm@||@com (Gabor Grothendieck)
+Date: Sun, 21 Jul 2024 11:17:47 -0400
+Subject: [R] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CAGxFJbR7fyaGPCR7YfyK7GZXEuiwkMGf5bB6FmLnyC2_WQWLDg@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAP01uRkNn-VnYn1MSaGk7L3EQ4chx+DBa7=TANUnCvY+mYQcoQ@mail.gmail.com>
+ <CAGxFJbQSQh=zECXJkLJaQy7Abxpzmb8x2ARrRgfCwpBTFYf-0A@mail.gmail.com>
+ <CAGxFJbR7fyaGPCR7YfyK7GZXEuiwkMGf5bB6FmLnyC2_WQWLDg@mail.gmail.com>
+Message-ID: <CAP01uRn9_eRhDCOPGBKJA+wqPEuR92GJuU-HkqEXQXvyrOersA@mail.gmail.com>
+
+If you object to names(x)[2]<- ... then use replace:
+
+  z |> list(x = _) |> within(replace(names(x), 2, "foo")) |> _$x
+
+On Sun, Jul 21, 2024 at 11:10?AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> hmmm...
+> But note that you still used the nested assignment, names()[2] <-
+> "foo", to circumvent R's pipe limitations, which is exactly what
+> Iris's solution avoids. So I think I was overawed by your cleverness
+> ;-)
+>
+> Best,
+> Bert
+>
+>
+> On Sun, Jul 21, 2024 at 8:01?AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> > Wow!
+> > Yes, this is very clever -- way too clever for me -- and meets my
+> > criteria for a solution.
+> >
+> > I think it's also another piece of evidence of why piping in base R is
+> > not suited for complex/nested assignments, as discussed in Deepayan's
+> > response.
+> >
+> > Maybe someone could offer a better Tidydata piping solution just for
+> > completeness?
+> >
+> > Best,
+> > Bert
+> >
+> > On Sun, Jul 21, 2024 at 7:48?AM Gabor Grothendieck
+> > <ggrothendieck at gmail.com> wrote:
+> > >
+> > > This
+> > > - is non-destructive (does not change z)
+> > > - passes the renamed z onto further pipe legs
+> > > - does not use \(x)...
+> > >
+> > > It works by boxing z, operating on the boxed version and then unboxing it.
+> > >
+> > >   z <- data.frame(a = 1:3, b = letters[1:3])
+> > >   z |> list(x = _) |> within(names(x)[2] <- "foo") |> _$x
+> > >   ##   a foo
+> > >   ## 1 1   a
+> > >   ## 2 2   b
+> > >   ## 3 3   c
+> > >
+> > > On Sat, Jul 20, 2024 at 4:07?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> > > >
+> > > > This post is likely pretty useless;  it is motivated by a recent post
+> > > > from "Val" that was elegantly answered using Tidyverse constructs, but
+> > > > I wondered how to do it using base R only. Along the way, I ran into
+> > > > the following question to which I think my answer (below) is pretty
+> > > > awful. I would be interested in more elegant base R approaches. So...
+> > > >
+> > > > z <- data.frame(a = 1:3, b = letters[1:3])
+> > > > > z
+> > > >   a h
+> > > > 1 1 a
+> > > > 2 2 b
+> > > > 3 3 c
+> > > >
+> > > > Suppose I want to change the name of the second column of z from 'b'
+> > > > to 'foo' . This is very easy using nested function syntax by:
+> > > >
+> > > > names(z)[2] <- "foo"
+> > > > > z
+> > > >   a foo
+> > > > 1 1   a
+> > > > 2 2   b
+> > > > 3 3   c
+> > > >
+> > > > Now suppose I wanted to do this using |> syntax, along the lines of:
+> > > >
+> > > > z |> names()[2] <- "foo"  ## throws an error
+> > > >
+> > > > Slightly fancier is:
+> > > >
+> > > > z |> (\(x)names(x)[2] <- "b")()
+> > > > ## does nothing, but does not throw an error.
+> > > >
+> > > > However, the following, which resulted from a more careful read of
+> > > > ?names works (after changing the name of the second column back to "b"
+> > > > of course):
+> > > >
+> > > > z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+> > > > >z
+> > > >   a foo
+> > > > 1 1   a
+> > > > 2 2   b
+> > > > 3 3   c
+> > > >
+> > > > This qualifies to me as "pretty awful." I'm sure there are better ways
+> > > > to do this using pipe syntax, so I would appreciate any better
+> > > > approaches.
+> > > >
+> > > > Best,
+> > > > Bert
+> > > >
+> > > > ______________________________________________
+> > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > > and provide commented, minimal, self-contained, reproducible code.
+> > >
+> > >
+> > >
+> > > --
+> > > Statistics & Software Consulting
+> > > GKX Group, GKX Associates Inc.
+> > > tel: 1-877-GKX-GROUP
+> > > email: ggrothendieck at gmail.com
+
+
+
+-- 
+Statistics & Software Consulting
+GKX Group, GKX Associates Inc.
+tel: 1-877-GKX-GROUP
+email: ggrothendieck at gmail.com
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Jul 21 17:19:28 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 21 Jul 2024 08:19:28 -0700
+Subject: [R] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CA+etgPko5n2s7i42t-ZUNhiPfVL+et5dHvSFviZmD+ODBgb4OA@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAP01uRkNn-VnYn1MSaGk7L3EQ4chx+DBa7=TANUnCvY+mYQcoQ@mail.gmail.com>
+ <CAGxFJbQSQh=zECXJkLJaQy7Abxpzmb8x2ARrRgfCwpBTFYf-0A@mail.gmail.com>
+ <CA+etgPko5n2s7i42t-ZUNhiPfVL+et5dHvSFviZmD+ODBgb4OA@mail.gmail.com>
+Message-ID: <CAGxFJbR2dVv4jR8Bc1CtRr987W8ucq0igK-=UC=UzOemnkz0uA@mail.gmail.com>
+
+Thanks, Calum.
+
+That was exactly what Duncan Murdoch proposed earlier in this thread,
+except, of course, he had to explicitly write the function first.
+
+-- Bert
+
+On Sun, Jul 21, 2024 at 8:12?AM CALUM POLWART <polc1410 at gmail.com> wrote:
+>
+> The tidy solution is rename
+>
+> literally:
+>
+> z |> rename(foo = 2)
+>
+> Or you could do it with other functions
+>
+> z |> select ( 1, foo = 2)
+>
+> Or
+>
+> z |> mutate( foo = 2 ) |> # untested (always worry that makes the whole column 2)
+> select (-2)
+>
+> But that's akin to
+>
+> z$foo <- z[2]
+> z[2] <- null
+>
+>
+> On Sun, 21 Jul 2024, 16:01 Bert Gunter, <bgunter.4567 at gmail.com> wrote:
+>>
+>> Wow!
+>> Yes, this is very clever -- way too clever for me -- and meets my
+>> criteria for a solution.
+>>
+>> I think it's also another piece of evidence of why piping in base R is
+>> not suited for complex/nested assignments, as discussed in Deepayan's
+>> response.
+>>
+>> Maybe someone could offer a better Tidydata piping solution just for
+>> completeness?
+>>
+>> Best,
+>> Bert
+>>
+>> On Sun, Jul 21, 2024 at 7:48?AM Gabor Grothendieck
+>> <ggrothendieck at gmail.com> wrote:
+>> >
+>> > This
+>> > - is non-destructive (does not change z)
+>> > - passes the renamed z onto further pipe legs
+>> > - does not use \(x)...
+>> >
+>> > It works by boxing z, operating on the boxed version and then unboxing it.
+>> >
+>> >   z <- data.frame(a = 1:3, b = letters[1:3])
+>> >   z |> list(x = _) |> within(names(x)[2] <- "foo") |> _$x
+>> >   ##   a foo
+>> >   ## 1 1   a
+>> >   ## 2 2   b
+>> >   ## 3 3   c
+>> >
+>> > On Sat, Jul 20, 2024 at 4:07?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>> > >
+>> > > This post is likely pretty useless;  it is motivated by a recent post
+>> > > from "Val" that was elegantly answered using Tidyverse constructs, but
+>> > > I wondered how to do it using base R only. Along the way, I ran into
+>> > > the following question to which I think my answer (below) is pretty
+>> > > awful. I would be interested in more elegant base R approaches. So...
+>> > >
+>> > > z <- data.frame(a = 1:3, b = letters[1:3])
+>> > > > z
+>> > >   a h
+>> > > 1 1 a
+>> > > 2 2 b
+>> > > 3 3 c
+>> > >
+>> > > Suppose I want to change the name of the second column of z from 'b'
+>> > > to 'foo' . This is very easy using nested function syntax by:
+>> > >
+>> > > names(z)[2] <- "foo"
+>> > > > z
+>> > >   a foo
+>> > > 1 1   a
+>> > > 2 2   b
+>> > > 3 3   c
+>> > >
+>> > > Now suppose I wanted to do this using |> syntax, along the lines of:
+>> > >
+>> > > z |> names()[2] <- "foo"  ## throws an error
+>> > >
+>> > > Slightly fancier is:
+>> > >
+>> > > z |> (\(x)names(x)[2] <- "b")()
+>> > > ## does nothing, but does not throw an error.
+>> > >
+>> > > However, the following, which resulted from a more careful read of
+>> > > ?names works (after changing the name of the second column back to "b"
+>> > > of course):
+>> > >
+>> > > z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+>> > > >z
+>> > >   a foo
+>> > > 1 1   a
+>> > > 2 2   b
+>> > > 3 3   c
+>> > >
+>> > > This qualifies to me as "pretty awful." I'm sure there are better ways
+>> > > to do this using pipe syntax, so I would appreciate any better
+>> > > approaches.
+>> > >
+>> > > Best,
+>> > > Bert
+>> > >
+>> > > ______________________________________________
+>> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > > https://stat.ethz.ch/mailman/listinfo/r-help
+>> > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> > > and provide commented, minimal, self-contained, reproducible code.
+>> >
+>> >
+>> >
+>> > --
+>> > Statistics & Software Consulting
+>> > GKX Group, GKX Associates Inc.
+>> > tel: 1-877-GKX-GROUP
+>> > email: ggrothendieck at gmail.com
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From po|c1410 @end|ng |rom gm@||@com  Sun Jul 21 17:12:22 2024
+From: po|c1410 @end|ng |rom gm@||@com (CALUM POLWART)
+Date: Sun, 21 Jul 2024 16:12:22 +0100
+Subject: [R] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CAGxFJbQSQh=zECXJkLJaQy7Abxpzmb8x2ARrRgfCwpBTFYf-0A@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAP01uRkNn-VnYn1MSaGk7L3EQ4chx+DBa7=TANUnCvY+mYQcoQ@mail.gmail.com>
+ <CAGxFJbQSQh=zECXJkLJaQy7Abxpzmb8x2ARrRgfCwpBTFYf-0A@mail.gmail.com>
+Message-ID: <CA+etgPko5n2s7i42t-ZUNhiPfVL+et5dHvSFviZmD+ODBgb4OA@mail.gmail.com>
+
+The tidy solution is rename
+
+literally:
+
+z |> rename(foo = 2)
+
+Or you could do it with other functions
+
+z |> select ( 1, foo = 2)
+
+Or
+
+z |> mutate( foo = 2 ) |> # untested (always worry that makes the whole
+column 2)
+select (-2)
+
+But that's akin to
+
+z$foo <- z[2]
+z[2] <- null
+
+On Sun, 21 Jul 2024, 16:01 Bert Gunter, <bgunter.4567 at gmail.com> wrote:
+
+> Wow!
+> Yes, this is very clever -- way too clever for me -- and meets my
+> criteria for a solution.
+>
+> I think it's also another piece of evidence of why piping in base R is
+> not suited for complex/nested assignments, as discussed in Deepayan's
+> response.
+>
+> Maybe someone could offer a better Tidydata piping solution just for
+> completeness?
+>
+> Best,
+> Bert
+>
+> On Sun, Jul 21, 2024 at 7:48?AM Gabor Grothendieck
+> <ggrothendieck at gmail.com> wrote:
+> >
+> > This
+> > - is non-destructive (does not change z)
+> > - passes the renamed z onto further pipe legs
+> > - does not use \(x)...
+> >
+> > It works by boxing z, operating on the boxed version and then unboxing
+> it.
+> >
+> >   z <- data.frame(a = 1:3, b = letters[1:3])
+> >   z |> list(x = _) |> within(names(x)[2] <- "foo") |> _$x
+> >   ##   a foo
+> >   ## 1 1   a
+> >   ## 2 2   b
+> >   ## 3 3   c
+> >
+> > On Sat, Jul 20, 2024 at 4:07?PM Bert Gunter <bgunter.4567 at gmail.com>
+> wrote:
+> > >
+> > > This post is likely pretty useless;  it is motivated by a recent post
+> > > from "Val" that was elegantly answered using Tidyverse constructs, but
+> > > I wondered how to do it using base R only. Along the way, I ran into
+> > > the following question to which I think my answer (below) is pretty
+> > > awful. I would be interested in more elegant base R approaches. So...
+> > >
+> > > z <- data.frame(a = 1:3, b = letters[1:3])
+> > > > z
+> > >   a h
+> > > 1 1 a
+> > > 2 2 b
+> > > 3 3 c
+> > >
+> > > Suppose I want to change the name of the second column of z from 'b'
+> > > to 'foo' . This is very easy using nested function syntax by:
+> > >
+> > > names(z)[2] <- "foo"
+> > > > z
+> > >   a foo
+> > > 1 1   a
+> > > 2 2   b
+> > > 3 3   c
+> > >
+> > > Now suppose I wanted to do this using |> syntax, along the lines of:
+> > >
+> > > z |> names()[2] <- "foo"  ## throws an error
+> > >
+> > > Slightly fancier is:
+> > >
+> > > z |> (\(x)names(x)[2] <- "b")()
+> > > ## does nothing, but does not throw an error.
+> > >
+> > > However, the following, which resulted from a more careful read of
+> > > ?names works (after changing the name of the second column back to "b"
+> > > of course):
+> > >
+> > > z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+> > > >z
+> > >   a foo
+> > > 1 1   a
+> > > 2 2   b
+> > > 3 3   c
+> > >
+> > > This qualifies to me as "pretty awful." I'm sure there are better ways
+> > > to do this using pipe syntax, so I would appreciate any better
+> > > approaches.
+> > >
+> > > Best,
+> > > Bert
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+> >
+> >
+> >
+> > --
+> > Statistics & Software Consulting
+> > GKX Group, GKX Associates Inc.
+> > tel: 1-877-GKX-GROUP
+> > email: ggrothendieck at gmail.com
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From v@|kremk @end|ng |rom gm@||@com  Sun Jul 21 18:36:03 2024
+From: v@|kremk @end|ng |rom gm@||@com (Val)
+Date: Sun, 21 Jul 2024 11:36:03 -0500
+Subject: [R] Extract
+In-Reply-To: <CAGxFJbRfrB4FvAsbssmDWGkZR9duZtW1pmt_qPCUFzurg-yWJg@mail.gmail.com>
+References: <CAJOiR6YNtC41Htw+4gO9poiH_Qn9o96dh7j74Jpuf1jDdFFiyQ@mail.gmail.com>
+ <CAGxFJbSSruMcDyQFwXE1qzyP+7_PpP+4j5cmpCJUHyacnCeHqQ@mail.gmail.com>
+ <CAJOiR6Z=MC=14K-jCEx4W98btKPOnCmVH6CxWkVyO45=JKOrNw@mail.gmail.com>
+ <CAGxFJbRfrB4FvAsbssmDWGkZR9duZtW1pmt_qPCUFzurg-yWJg@mail.gmail.com>
+Message-ID: <CAJOiR6YvHHFX1iZ7LBVCi8RcQe=HE8Zo6HGji4ahL86SwL4GYg@mail.gmail.com>
+
+Thank   you Bert!
+However, the last line of the script.
+
+dat |> names() |> _[4:8] <- paste0("s", 1:5)
+
+is giving me an error as shown below
+Error: pipe placeholder can only be used as a named argument
+
+Thank you!
+
+On Sat, Jul 20, 2024 at 7:41?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> Val:
+> I wanted to add here a base R solution to your problem that I realize
+> you can happily ignore. However, in the course of puzzling over how to
+> do it using the R native pipe syntax ("|>") , I learned some new stuff
+> that I thought others might find useful, and it seemed sensible to
+> keep the code with this thread for comparison.
+>
+>  I want to acknowledge that in the course of my labor, I posted a
+> query to R-Help to which Iris Simmons posted a very clever answer that
+> I would never have figured out myself and that is used below at the
+> end to change a subset of the names of the modified data frame via a
+> pipe.
+>
+> Here's the whole solution starting from your (excellent!) example dat:
+>
+>    dat <- dat$string |>
+>       strsplit(" ") |>
+>       sapply(FUN = \(x)c(x, rep(NA, 5 - length(x)))) |>
+>       t() |> cbind(dat, ..2 = _)
+>
+>    ## And Iris's trick for changing a subset of attributes, i.e. the
+> "names", in a pipe
+>    dat |> names() |> _[4:8] <- paste0("s", 1:5)
+>
+> ## and here's the result:
+> > dat
+>   Year Sex          string s1   s2   s3   s4   s5
+> 1 2002   F        15 xc Ab 15   xc   Ab <NA> <NA>
+> 2 2003   F              14 14 <NA> <NA> <NA> <NA>
+> 3 2004   M  18 xb 25 35 21 18   xb   25   35   21
+> 4 2005   M           13 25 13   25 <NA> <NA> <NA>
+> 5 2006   M 14 ac 256 AV 35 14   ac  256   AV   35
+> 6 2007   F              11 11 <NA> <NA> <NA> <NA>
+>
+> As I noted previously, all columns beyond Sex are character
+>
+> Cheers,
+> Bert
+>
+>
+> On Fri, Jul 19, 2024 at 12:26?PM Val <valkremk at gmail.com> wrote:
+> >
+> > Thank you Jeff and Bert for your help!
+> > The components of the string  could be nixed (i.e,  numeric, character
+> > or date). Once that is splitted it would be easy for me to format it
+> > accordingly.
+> >
+> > On Fri, Jul 19, 2024 at 2:10?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> > >
+> > > I did not look closely at the solutions that you were offered, but
+> > > note that you did not specify in your post whether the numbers in your
+> > > string were to be character or numeric variables after they are broken
+> > > out into their own columns. I believe that they are character in the
+> > > solutions, but you should check this. If you want them as numeric,
+> > > e.g., for further processing, you will need to convert them. Or
+> > > vice-versa.
+> > >
+> > > Bert
+> > >
+> > >
+> > > On Fri, Jul 19, 2024 at 9:52?AM Val <valkremk at gmail.com> wrote:
+> > > >
+> > > > Hi All,
+> > > >
+> > > > I want to extract new variables from a string and add it to the dataframe.
+> > > > Sample data is csv file.
+> > > >
+> > > > dat<-read.csv(text="Year, Sex,string
+> > > > 2002,F,15 xc Ab
+> > > > 2003,F,14
+> > > > 2004,M,18 xb 25 35 21
+> > > > 2005,M,13 25
+> > > > 2006,M,14 ac 256 AV 35
+> > > > 2007,F,11",header=TRUE)
+> > > >
+> > > > The string column has  a maximum of five variables. Some rows have all
+> > > > and others may not have all the five variables. If missing then  fill
+> > > > it with NA,
+> > > > Desired result is shown below,
+> > > >
+> > > >
+> > > > Year,Sex,string, S1, S2, S3 S4,S5
+> > > > 2002,F,15 xc Ab, 15,xc,Ab, NA, NA
+> > > > 2003,F,14, 14,NA,NA,NA,NA
+> > > > 2004,M,18 xb 25 35 21,18, xb, 25, 35, 21
+> > > > 2005,M,13 25,13, 25,NA,NA,NA
+> > > > 2006,M,14 ac 256 AV 35, 14, ac, 256, AV, 35
+> > > > 2007,F,11, 11,NA,NA,NA,NA
+> > > >
+> > > > Any help?
+> > > > Thank you in advance.
+> > > >
+> > > > ______________________________________________
+> > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > > and provide commented, minimal, self-contained, reproducible code.
+
+
+From ggrothend|eck @end|ng |rom gm@||@com  Sun Jul 21 18:48:06 2024
+From: ggrothend|eck @end|ng |rom gm@||@com (Gabor Grothendieck)
+Date: Sun, 21 Jul 2024 12:48:06 -0400
+Subject: [R] Using the pipe, |>, syntax with "names<-"
+In-Reply-To: <CAP01uRn9_eRhDCOPGBKJA+wqPEuR92GJuU-HkqEXQXvyrOersA@mail.gmail.com>
+References: <CAGxFJbRLA-k6VJNQVdrj-yChyxc2WjQUtxsiQ0nr_SpS_MJnfA@mail.gmail.com>
+ <CAP01uRkNn-VnYn1MSaGk7L3EQ4chx+DBa7=TANUnCvY+mYQcoQ@mail.gmail.com>
+ <CAGxFJbQSQh=zECXJkLJaQy7Abxpzmb8x2ARrRgfCwpBTFYf-0A@mail.gmail.com>
+ <CAGxFJbR7fyaGPCR7YfyK7GZXEuiwkMGf5bB6FmLnyC2_WQWLDg@mail.gmail.com>
+ <CAP01uRn9_eRhDCOPGBKJA+wqPEuR92GJuU-HkqEXQXvyrOersA@mail.gmail.com>
+Message-ID: <CAP01uR=9QUwJ6=7cH4=7ZG4eo0kSAtrQcEqUgN=DRBOz4kedMQ@mail.gmail.com>
+
+That was supposed to be
+
+  z |> list(x = _) |> within(names(x) <- replace(names(x), 2, "foo")) |> _$x
+
+but I really see no advantage over
+
+  z |> list(x = _) |> within(names(x)[2] <- "foo") |> _$x
+
+Regarding the z |> names() |> _[2] <- "foo" idiom, while it is clever,
+and well illustrates
+what is possible with base R pipes that might not be initially expected,
+I think it should be discouraged as not in the spirit of pipes which is a more
+functional approach to programming.  Such an approach ought to be
+non-destructive and should pass on the result to the next
+step in the pipeline.  These criteria are not satisfied by it.
+
+On Sun, Jul 21, 2024 at 11:17?AM Gabor Grothendieck
+<ggrothendieck at gmail.com> wrote:
+>
+> If you object to names(x)[2]<- ... then use replace:
+>
+>   z |> list(x = _) |> within(replace(names(x), 2, "foo")) |> _$x
+>
+> On Sun, Jul 21, 2024 at 11:10?AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> > hmmm...
+> > But note that you still used the nested assignment, names()[2] <-
+> > "foo", to circumvent R's pipe limitations, which is exactly what
+> > Iris's solution avoids. So I think I was overawed by your cleverness
+> > ;-)
+> >
+> > Best,
+> > Bert
+> >
+> >
+> > On Sun, Jul 21, 2024 at 8:01?AM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> > >
+> > > Wow!
+> > > Yes, this is very clever -- way too clever for me -- and meets my
+> > > criteria for a solution.
+> > >
+> > > I think it's also another piece of evidence of why piping in base R is
+> > > not suited for complex/nested assignments, as discussed in Deepayan's
+> > > response.
+> > >
+> > > Maybe someone could offer a better Tidydata piping solution just for
+> > > completeness?
+> > >
+> > > Best,
+> > > Bert
+> > >
+> > > On Sun, Jul 21, 2024 at 7:48?AM Gabor Grothendieck
+> > > <ggrothendieck at gmail.com> wrote:
+> > > >
+> > > > This
+> > > > - is non-destructive (does not change z)
+> > > > - passes the renamed z onto further pipe legs
+> > > > - does not use \(x)...
+> > > >
+> > > > It works by boxing z, operating on the boxed version and then unboxing it.
+> > > >
+> > > >   z <- data.frame(a = 1:3, b = letters[1:3])
+> > > >   z |> list(x = _) |> within(names(x)[2] <- "foo") |> _$x
+> > > >   ##   a foo
+> > > >   ## 1 1   a
+> > > >   ## 2 2   b
+> > > >   ## 3 3   c
+> > > >
+> > > > On Sat, Jul 20, 2024 at 4:07?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> > > > >
+> > > > > This post is likely pretty useless;  it is motivated by a recent post
+> > > > > from "Val" that was elegantly answered using Tidyverse constructs, but
+> > > > > I wondered how to do it using base R only. Along the way, I ran into
+> > > > > the following question to which I think my answer (below) is pretty
+> > > > > awful. I would be interested in more elegant base R approaches. So...
+> > > > >
+> > > > > z <- data.frame(a = 1:3, b = letters[1:3])
+> > > > > > z
+> > > > >   a h
+> > > > > 1 1 a
+> > > > > 2 2 b
+> > > > > 3 3 c
+> > > > >
+> > > > > Suppose I want to change the name of the second column of z from 'b'
+> > > > > to 'foo' . This is very easy using nested function syntax by:
+> > > > >
+> > > > > names(z)[2] <- "foo"
+> > > > > > z
+> > > > >   a foo
+> > > > > 1 1   a
+> > > > > 2 2   b
+> > > > > 3 3   c
+> > > > >
+> > > > > Now suppose I wanted to do this using |> syntax, along the lines of:
+> > > > >
+> > > > > z |> names()[2] <- "foo"  ## throws an error
+> > > > >
+> > > > > Slightly fancier is:
+> > > > >
+> > > > > z |> (\(x)names(x)[2] <- "b")()
+> > > > > ## does nothing, but does not throw an error.
+> > > > >
+> > > > > However, the following, which resulted from a more careful read of
+> > > > > ?names works (after changing the name of the second column back to "b"
+> > > > > of course):
+> > > > >
+> > > > > z |>(\(x) "names<-"(x,value = "[<-"(names(x),2,'foo')))()
+> > > > > >z
+> > > > >   a foo
+> > > > > 1 1   a
+> > > > > 2 2   b
+> > > > > 3 3   c
+> > > > >
+> > > > > This qualifies to me as "pretty awful." I'm sure there are better ways
+> > > > > to do this using pipe syntax, so I would appreciate any better
+> > > > > approaches.
+> > > > >
+> > > > > Best,
+> > > > > Bert
+> > > > >
+> > > > > ______________________________________________
+> > > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > > > and provide commented, minimal, self-contained, reproducible code.
+> > > >
+> > > >
+> > > >
+> > > > --
+> > > > Statistics & Software Consulting
+> > > > GKX Group, GKX Associates Inc.
+> > > > tel: 1-877-GKX-GROUP
+> > > > email: ggrothendieck at gmail.com
+>
+>
+>
+> --
+> Statistics & Software Consulting
+> GKX Group, GKX Associates Inc.
+> tel: 1-877-GKX-GROUP
+> email: ggrothendieck at gmail.com
+
+
+
+-- 
+Statistics & Software Consulting
+GKX Group, GKX Associates Inc.
+tel: 1-877-GKX-GROUP
+email: ggrothendieck at gmail.com
+
+
+From ggrothend|eck @end|ng |rom gm@||@com  Sun Jul 21 19:15:14 2024
+From: ggrothend|eck @end|ng |rom gm@||@com (Gabor Grothendieck)
+Date: Sun, 21 Jul 2024 13:15:14 -0400
+Subject: [R] Extract
+In-Reply-To: <CAJOiR6YNtC41Htw+4gO9poiH_Qn9o96dh7j74Jpuf1jDdFFiyQ@mail.gmail.com>
+References: <CAJOiR6YNtC41Htw+4gO9poiH_Qn9o96dh7j74Jpuf1jDdFFiyQ@mail.gmail.com>
+Message-ID: <CAP01uR=FZ2m+TbgtQxP9QCE8ufabPZ0Cv2XE=pYuNhaaHA0t5A@mail.gmail.com>
+
+We can use read.table for a base R solution
+
+string <- read.table(text = dat$string, fill = TRUE, header = FALSE,
+na.strings = "")
+names(string) <- paste0("S", seq_along(string))
+cbind(dat[-3], string)
+
+On Fri, Jul 19, 2024 at 12:52?PM Val <valkremk at gmail.com> wrote:
+>
+> Hi All,
+>
+> I want to extract new variables from a string and add it to the dataframe.
+> Sample data is csv file.
+>
+> dat<-read.csv(text="Year, Sex,string
+> 2002,F,15 xc Ab
+> 2003,F,14
+> 2004,M,18 xb 25 35 21
+> 2005,M,13 25
+> 2006,M,14 ac 256 AV 35
+> 2007,F,11",header=TRUE)
+>
+> The string column has  a maximum of five variables. Some rows have all
+> and others may not have all the five variables. If missing then  fill
+> it with NA,
+> Desired result is shown below,
+>
+>
+> Year,Sex,string, S1, S2, S3 S4,S5
+> 2002,F,15 xc Ab, 15,xc,Ab, NA, NA
+> 2003,F,14, 14,NA,NA,NA,NA
+> 2004,M,18 xb 25 35 21,18, xb, 25, 35, 21
+> 2005,M,13 25,13, 25,NA,NA,NA
+> 2006,M,14 ac 256 AV 35, 14, ac, 256, AV, 35
+> 2007,F,11, 11,NA,NA,NA,NA
+>
+> Any help?
+> Thank you in advance.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Statistics & Software Consulting
+GKX Group, GKX Associates Inc.
+tel: 1-877-GKX-GROUP
+email: ggrothendieck at gmail.com
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Jul 21 19:59:49 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 21 Jul 2024 10:59:49 -0700
+Subject: [R] Extract
+In-Reply-To: <CAJOiR6YvHHFX1iZ7LBVCi8RcQe=HE8Zo6HGji4ahL86SwL4GYg@mail.gmail.com>
+References: <CAJOiR6YNtC41Htw+4gO9poiH_Qn9o96dh7j74Jpuf1jDdFFiyQ@mail.gmail.com>
+ <CAGxFJbSSruMcDyQFwXE1qzyP+7_PpP+4j5cmpCJUHyacnCeHqQ@mail.gmail.com>
+ <CAJOiR6Z=MC=14K-jCEx4W98btKPOnCmVH6CxWkVyO45=JKOrNw@mail.gmail.com>
+ <CAGxFJbRfrB4FvAsbssmDWGkZR9duZtW1pmt_qPCUFzurg-yWJg@mail.gmail.com>
+ <CAJOiR6YvHHFX1iZ7LBVCi8RcQe=HE8Zo6HGji4ahL86SwL4GYg@mail.gmail.com>
+Message-ID: <CAGxFJbT0hc2TnsApVe49gOXMo=p5E6E8wbjEbujcEGh0FYQg5w@mail.gmail.com>
+
+I get no error. Please show the entirety of the code you used that
+produced the error. Also, are you using a current R version? I am, and
+if you are not, there might have been changes from your version to
+mine that caused the error.
+
+However, as you were already given satisfactory solutions before, and
+Gabor has provided you a simple non-piped base R version that is
+probably better anyway, feel free to ignore my request as a waste of
+your time.
+
+-- Bert
+
+On Sun, Jul 21, 2024 at 9:36?AM Val <valkremk at gmail.com> wrote:
+>
+> Thank   you Bert!
+> However, the last line of the script.
+>
+> dat |> names() |> _[4:8] <- paste0("s", 1:5)
+>
+> is giving me an error as shown below
+> Error: pipe placeholder can only be used as a named argument
+>
+> Thank you!
+>
+> On Sat, Jul 20, 2024 at 7:41?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> > Val:
+> > I wanted to add here a base R solution to your problem that I realize
+> > you can happily ignore. However, in the course of puzzling over how to
+> > do it using the R native pipe syntax ("|>") , I learned some new stuff
+> > that I thought others might find useful, and it seemed sensible to
+> > keep the code with this thread for comparison.
+> >
+> >  I want to acknowledge that in the course of my labor, I posted a
+> > query to R-Help to which Iris Simmons posted a very clever answer that
+> > I would never have figured out myself and that is used below at the
+> > end to change a subset of the names of the modified data frame via a
+> > pipe.
+> >
+> > Here's the whole solution starting from your (excellent!) example dat:
+> >
+> >    dat <- dat$string |>
+> >       strsplit(" ") |>
+> >       sapply(FUN = \(x)c(x, rep(NA, 5 - length(x)))) |>
+> >       t() |> cbind(dat, ..2 = _)
+> >
+> >    ## And Iris's trick for changing a subset of attributes, i.e. the
+> > "names", in a pipe
+> >    dat |> names() |> _[4:8] <- paste0("s", 1:5)
+> >
+> > ## and here's the result:
+> > > dat
+> >   Year Sex          string s1   s2   s3   s4   s5
+> > 1 2002   F        15 xc Ab 15   xc   Ab <NA> <NA>
+> > 2 2003   F              14 14 <NA> <NA> <NA> <NA>
+> > 3 2004   M  18 xb 25 35 21 18   xb   25   35   21
+> > 4 2005   M           13 25 13   25 <NA> <NA> <NA>
+> > 5 2006   M 14 ac 256 AV 35 14   ac  256   AV   35
+> > 6 2007   F              11 11 <NA> <NA> <NA> <NA>
+> >
+> > As I noted previously, all columns beyond Sex are character
+> >
+> > Cheers,
+> > Bert
+> >
+> >
+> > On Fri, Jul 19, 2024 at 12:26?PM Val <valkremk at gmail.com> wrote:
+> > >
+> > > Thank you Jeff and Bert for your help!
+> > > The components of the string  could be nixed (i.e,  numeric, character
+> > > or date). Once that is splitted it would be easy for me to format it
+> > > accordingly.
+> > >
+> > > On Fri, Jul 19, 2024 at 2:10?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> > > >
+> > > > I did not look closely at the solutions that you were offered, but
+> > > > note that you did not specify in your post whether the numbers in your
+> > > > string were to be character or numeric variables after they are broken
+> > > > out into their own columns. I believe that they are character in the
+> > > > solutions, but you should check this. If you want them as numeric,
+> > > > e.g., for further processing, you will need to convert them. Or
+> > > > vice-versa.
+> > > >
+> > > > Bert
+> > > >
+> > > >
+> > > > On Fri, Jul 19, 2024 at 9:52?AM Val <valkremk at gmail.com> wrote:
+> > > > >
+> > > > > Hi All,
+> > > > >
+> > > > > I want to extract new variables from a string and add it to the dataframe.
+> > > > > Sample data is csv file.
+> > > > >
+> > > > > dat<-read.csv(text="Year, Sex,string
+> > > > > 2002,F,15 xc Ab
+> > > > > 2003,F,14
+> > > > > 2004,M,18 xb 25 35 21
+> > > > > 2005,M,13 25
+> > > > > 2006,M,14 ac 256 AV 35
+> > > > > 2007,F,11",header=TRUE)
+> > > > >
+> > > > > The string column has  a maximum of five variables. Some rows have all
+> > > > > and others may not have all the five variables. If missing then  fill
+> > > > > it with NA,
+> > > > > Desired result is shown below,
+> > > > >
+> > > > >
+> > > > > Year,Sex,string, S1, S2, S3 S4,S5
+> > > > > 2002,F,15 xc Ab, 15,xc,Ab, NA, NA
+> > > > > 2003,F,14, 14,NA,NA,NA,NA
+> > > > > 2004,M,18 xb 25 35 21,18, xb, 25, 35, 21
+> > > > > 2005,M,13 25,13, 25,NA,NA,NA
+> > > > > 2006,M,14 ac 256 AV 35, 14, ac, 256, AV, 35
+> > > > > 2007,F,11, 11,NA,NA,NA,NA
+> > > > >
+> > > > > Any help?
+> > > > > Thank you in advance.
+> > > > >
+> > > > > ______________________________________________
+> > > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > > > and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Jul 21 20:19:48 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 21 Jul 2024 11:19:48 -0700
+Subject: [R] Extract
+In-Reply-To: <CAP01uR=FZ2m+TbgtQxP9QCE8ufabPZ0Cv2XE=pYuNhaaHA0t5A@mail.gmail.com>
+References: <CAJOiR6YNtC41Htw+4gO9poiH_Qn9o96dh7j74Jpuf1jDdFFiyQ@mail.gmail.com>
+ <CAP01uR=FZ2m+TbgtQxP9QCE8ufabPZ0Cv2XE=pYuNhaaHA0t5A@mail.gmail.com>
+Message-ID: <CAGxFJbR86GgM0MFicCxA2t7Wr_45zPMyfdbhY8-J9g-UuyJS5w@mail.gmail.com>
+
+Nice! -- Let read.table do the work of handling the NA's.
+However, even simpler is to use the 'colnames' argument of
+read.table() for the column names no?
+
+      string <- read.table(text = dat$string, fill = TRUE, header =
+FALSE, na.strings = "",
+col.names = paste0("s", 1:5))
+      dat <- cbind(dat, string)
+
+-- Bert
+
+On Sun, Jul 21, 2024 at 10:16?AM Gabor Grothendieck
+<ggrothendieck at gmail.com> wrote:
+>
+> We can use read.table for a base R solution
+>
+> string <- read.table(text = dat$string, fill = TRUE, header = FALSE,
+> na.strings = "")
+> names(string) <- paste0("S", seq_along(string))
+> cbind(dat[-3], string)
+>
+> On Fri, Jul 19, 2024 at 12:52?PM Val <valkremk at gmail.com> wrote:
+> >
+> > Hi All,
+> >
+> > I want to extract new variables from a string and add it to the dataframe.
+> > Sample data is csv file.
+> >
+> > dat<-read.csv(text="Year, Sex,string
+> > 2002,F,15 xc Ab
+> > 2003,F,14
+> > 2004,M,18 xb 25 35 21
+> > 2005,M,13 25
+> > 2006,M,14 ac 256 AV 35
+> > 2007,F,11",header=TRUE)
+> >
+> > The string column has  a maximum of five variables. Some rows have all
+> > and others may not have all the five variables. If missing then  fill
+> > it with NA,
+> > Desired result is shown below,
+> >
+> >
+> > Year,Sex,string, S1, S2, S3 S4,S5
+> > 2002,F,15 xc Ab, 15,xc,Ab, NA, NA
+> > 2003,F,14, 14,NA,NA,NA,NA
+> > 2004,M,18 xb 25 35 21,18, xb, 25, 35, 21
+> > 2005,M,13 25,13, 25,NA,NA,NA
+> > 2006,M,14 ac 256 AV 35, 14, ac, 256, AV, 35
+> > 2007,F,11, 11,NA,NA,NA,NA
+> >
+> > Any help?
+> > Thank you in advance.
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+>
+>
+> --
+> Statistics & Software Consulting
+> GKX Group, GKX Associates Inc.
+> tel: 1-877-GKX-GROUP
+> email: ggrothendieck at gmail.com
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ggrothend|eck @end|ng |rom gm@||@com  Sun Jul 21 20:29:55 2024
+From: ggrothend|eck @end|ng |rom gm@||@com (Gabor Grothendieck)
+Date: Sun, 21 Jul 2024 14:29:55 -0400
+Subject: [R] Extract
+In-Reply-To: <CAGxFJbR86GgM0MFicCxA2t7Wr_45zPMyfdbhY8-J9g-UuyJS5w@mail.gmail.com>
+References: <CAJOiR6YNtC41Htw+4gO9poiH_Qn9o96dh7j74Jpuf1jDdFFiyQ@mail.gmail.com>
+ <CAP01uR=FZ2m+TbgtQxP9QCE8ufabPZ0Cv2XE=pYuNhaaHA0t5A@mail.gmail.com>
+ <CAGxFJbR86GgM0MFicCxA2t7Wr_45zPMyfdbhY8-J9g-UuyJS5w@mail.gmail.com>
+Message-ID: <CAP01uRn21n2q5BV=+5pZfnGbJKyu6-Z9noYBP2_=Fz1WzZRB6w@mail.gmail.com>
+
+Fixing col.names=paste0("S", 1:5) assumes that there will be 5 columns and
+we may not want to do that.  If there are only 3 fields in string, at the most,
+we may wish to generate only 3 columns.
+
+On Sun, Jul 21, 2024 at 2:20?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> Nice! -- Let read.table do the work of handling the NA's.
+> However, even simpler is to use the 'colnames' argument of
+> read.table() for the column names no?
+>
+>       string <- read.table(text = dat$string, fill = TRUE, header =
+> FALSE, na.strings = "",
+> col.names = paste0("s", 1:5))
+>       dat <- cbind(dat, string)
+>
+> -- Bert
+>
+> On Sun, Jul 21, 2024 at 10:16?AM Gabor Grothendieck
+> <ggrothendieck at gmail.com> wrote:
+> >
+> > We can use read.table for a base R solution
+> >
+> > string <- read.table(text = dat$string, fill = TRUE, header = FALSE,
+> > na.strings = "")
+> > names(string) <- paste0("S", seq_along(string))
+> > cbind(dat[-3], string)
+> >
+> > On Fri, Jul 19, 2024 at 12:52?PM Val <valkremk at gmail.com> wrote:
+> > >
+> > > Hi All,
+> > >
+> > > I want to extract new variables from a string and add it to the dataframe.
+> > > Sample data is csv file.
+> > >
+> > > dat<-read.csv(text="Year, Sex,string
+> > > 2002,F,15 xc Ab
+> > > 2003,F,14
+> > > 2004,M,18 xb 25 35 21
+> > > 2005,M,13 25
+> > > 2006,M,14 ac 256 AV 35
+> > > 2007,F,11",header=TRUE)
+> > >
+> > > The string column has  a maximum of five variables. Some rows have all
+> > > and others may not have all the five variables. If missing then  fill
+> > > it with NA,
+> > > Desired result is shown below,
+> > >
+> > >
+> > > Year,Sex,string, S1, S2, S3 S4,S5
+> > > 2002,F,15 xc Ab, 15,xc,Ab, NA, NA
+> > > 2003,F,14, 14,NA,NA,NA,NA
+> > > 2004,M,18 xb 25 35 21,18, xb, 25, 35, 21
+> > > 2005,M,13 25,13, 25,NA,NA,NA
+> > > 2006,M,14 ac 256 AV 35, 14, ac, 256, AV, 35
+> > > 2007,F,11, 11,NA,NA,NA,NA
+> > >
+> > > Any help?
+> > > Thank you in advance.
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+> >
+> >
+> >
+> > --
+> > Statistics & Software Consulting
+> > GKX Group, GKX Associates Inc.
+> > tel: 1-877-GKX-GROUP
+> > email: ggrothendieck at gmail.com
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Statistics & Software Consulting
+GKX Group, GKX Associates Inc.
+tel: 1-877-GKX-GROUP
+email: ggrothendieck at gmail.com
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Jul 21 21:08:35 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 21 Jul 2024 12:08:35 -0700
+Subject: [R] Extract
+In-Reply-To: <CAP01uRn21n2q5BV=+5pZfnGbJKyu6-Z9noYBP2_=Fz1WzZRB6w@mail.gmail.com>
+References: <CAJOiR6YNtC41Htw+4gO9poiH_Qn9o96dh7j74Jpuf1jDdFFiyQ@mail.gmail.com>
+ <CAP01uR=FZ2m+TbgtQxP9QCE8ufabPZ0Cv2XE=pYuNhaaHA0t5A@mail.gmail.com>
+ <CAGxFJbR86GgM0MFicCxA2t7Wr_45zPMyfdbhY8-J9g-UuyJS5w@mail.gmail.com>
+ <CAP01uRn21n2q5BV=+5pZfnGbJKyu6-Z9noYBP2_=Fz1WzZRB6w@mail.gmail.com>
+Message-ID: <CAGxFJbRSaUO+X=6u2uDptwAawv_bxTM6-7282s2gyH0Dn980Hg@mail.gmail.com>
+
+As always, good point.
+Here's a piped version of your code for those who are pipe
+afficianados. As I'm not very skilled with pipes, it might certainly
+be improved.
+dat <-
+      dat$string |>
+         read.table( text = _, fill = TRUE, header = FALSE, na.strings = "")  |>
+         (\(x)'names<-'(x,paste0("s", seq_along(x))))() |>
+         (\(x)cbind(dat, x))()
+
+-- Bert
+
+
+On Sun, Jul 21, 2024 at 11:30?AM Gabor Grothendieck
+<ggrothendieck at gmail.com> wrote:
+>
+> Fixing col.names=paste0("S", 1:5) assumes that there will be 5 columns and
+> we may not want to do that.  If there are only 3 fields in string, at the most,
+> we may wish to generate only 3 columns.
+>
+> On Sun, Jul 21, 2024 at 2:20?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> > Nice! -- Let read.table do the work of handling the NA's.
+> > However, even simpler is to use the 'colnames' argument of
+> > read.table() for the column names no?
+> >
+> >       string <- read.table(text = dat$string, fill = TRUE, header =
+> > FALSE, na.strings = "",
+> > col.names = paste0("s", 1:5))
+> >       dat <- cbind(dat, string)
+> >
+> > -- Bert
+> >
+> > On Sun, Jul 21, 2024 at 10:16?AM Gabor Grothendieck
+> > <ggrothendieck at gmail.com> wrote:
+> > >
+> > > We can use read.table for a base R solution
+> > >
+> > > string <- read.table(text = dat$string, fill = TRUE, header = FALSE,
+> > > na.strings = "")
+> > > names(string) <- paste0("S", seq_along(string))
+> > > cbind(dat[-3], string)
+> > >
+> > > On Fri, Jul 19, 2024 at 12:52?PM Val <valkremk at gmail.com> wrote:
+> > > >
+> > > > Hi All,
+> > > >
+> > > > I want to extract new variables from a string and add it to the dataframe.
+> > > > Sample data is csv file.
+> > > >
+> > > > dat<-read.csv(text="Year, Sex,string
+> > > > 2002,F,15 xc Ab
+> > > > 2003,F,14
+> > > > 2004,M,18 xb 25 35 21
+> > > > 2005,M,13 25
+> > > > 2006,M,14 ac 256 AV 35
+> > > > 2007,F,11",header=TRUE)
+> > > >
+> > > > The string column has  a maximum of five variables. Some rows have all
+> > > > and others may not have all the five variables. If missing then  fill
+> > > > it with NA,
+> > > > Desired result is shown below,
+> > > >
+> > > >
+> > > > Year,Sex,string, S1, S2, S3 S4,S5
+> > > > 2002,F,15 xc Ab, 15,xc,Ab, NA, NA
+> > > > 2003,F,14, 14,NA,NA,NA,NA
+> > > > 2004,M,18 xb 25 35 21,18, xb, 25, 35, 21
+> > > > 2005,M,13 25,13, 25,NA,NA,NA
+> > > > 2006,M,14 ac 256 AV 35, 14, ac, 256, AV, 35
+> > > > 2007,F,11, 11,NA,NA,NA,NA
+> > > >
+> > > > Any help?
+> > > > Thank you in advance.
+> > > >
+> > > > ______________________________________________
+> > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > > and provide commented, minimal, self-contained, reproducible code.
+> > >
+> > >
+> > >
+> > > --
+> > > Statistics & Software Consulting
+> > > GKX Group, GKX Associates Inc.
+> > > tel: 1-877-GKX-GROUP
+> > > email: ggrothendieck at gmail.com
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+>
+>
+>
+> --
+> Statistics & Software Consulting
+> GKX Group, GKX Associates Inc.
+> tel: 1-877-GKX-GROUP
+> email: ggrothendieck at gmail.com
+
+
