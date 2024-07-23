@@ -7628,3 +7628,1048 @@ On Sun, Jul 21, 2024 at 11:30?AM Gabor Grothendieck
 > email: ggrothendieck at gmail.com
 
 
+From ggrothend|eck @end|ng |rom gm@||@com  Mon Jul 22 13:49:23 2024
+From: ggrothend|eck @end|ng |rom gm@||@com (Gabor Grothendieck)
+Date: Mon, 22 Jul 2024 07:49:23 -0400
+Subject: [R] Extract
+In-Reply-To: <CAGxFJbRSaUO+X=6u2uDptwAawv_bxTM6-7282s2gyH0Dn980Hg@mail.gmail.com>
+References: <CAJOiR6YNtC41Htw+4gO9poiH_Qn9o96dh7j74Jpuf1jDdFFiyQ@mail.gmail.com>
+ <CAP01uR=FZ2m+TbgtQxP9QCE8ufabPZ0Cv2XE=pYuNhaaHA0t5A@mail.gmail.com>
+ <CAGxFJbR86GgM0MFicCxA2t7Wr_45zPMyfdbhY8-J9g-UuyJS5w@mail.gmail.com>
+ <CAP01uRn21n2q5BV=+5pZfnGbJKyu6-Z9noYBP2_=Fz1WzZRB6w@mail.gmail.com>
+ <CAGxFJbRSaUO+X=6u2uDptwAawv_bxTM6-7282s2gyH0Dn980Hg@mail.gmail.com>
+Message-ID: <CAP01uRkU4G86Ee_A0oD4cxVst3rZ12k0Zw-qS8gQmS=hNo5T3w@mail.gmail.com>
+
+Base R. Regarding code improvements:
+
+1. Personally I find (\(...) ...)() notation hard to read (although by
+placing (\(x), the body and )() on 3 separate lines it can be improved
+somewhat). Instead let us use a named function. The name of the
+function can also serve to self document the code.
+
+2. The use of dat both at the start of the pipeline and then again
+within a later step of the pipeline goes against a strict left to
+right flow. In general if this occurs it is either a sign that we need
+to break the pipeline into two or that we need to find another
+approach which is what we do here.
+
+We can use the base R code below. Note that the column names produced
+by transform(S = read.table(...)) are S.V1, S.V2, etc. so to fix the
+column names remove .V from all column names as in the fix_colnames
+function shown. It does no harm to apply that to all column names
+since the remaining column names will not match.
+
+  fix_colnames <- function(x) {
+    setNames(x, sub("\\.V", "", names(x)))
+  }
+
+  dat |>
+     transform(S = read.table(text = string,
+       header = FALSE, fill = TRUE, na.strings = "")) |>
+       fix_colnames()
+
+Another way to write this which does not use a separate defined
+function nor the anonymous function notation is to box the output of
+transform:
+
+  dat |>
+     transform(S = read.table(text = string,
+       header = FALSE, fill = TRUE, na.strings = "")) |>
+       list(x = _) |>
+       with( setNames(x, sub("\\.V", "", names(x))) )
+
+dplyr. Alternately use dplyr in which case we can make use of
+rename_with . In this case read.table(...) creates column names V1,
+V2, etc. and mutate does not change them so simply replacing V with S
+at the start of each column name in the output of read.table will do.
+Also we can pipe the read.table output directly to rename_with using a
+nested pipeline, i.e. the second pipe is entirely within mutate rather
+than after it) since mutate won't change the column names. The win
+here is because, unlike transform, mutate does not require the S= that
+is needed with transform (although it allows it had we wanted it).
+
+  library(dplyr)
+
+  dat |>
+     mutate(read.table(text = string,
+       header = FALSE, fill = TRUE, na.strings = "")  |>
+      rename_with(~ sub("^V", "S", .x))
+    )
+
+
+On Sun, Jul 21, 2024 at 3:08?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> As always, good point.
+> Here's a piped version of your code for those who are pipe
+> afficianados. As I'm not very skilled with pipes, it might certainly
+> be improved.
+> dat <-
+>       dat$string |>
+>          read.table( text = _, fill = TRUE, header = FALSE, na.strings = "")  |>
+>          (\(x)'names<-'(x,paste0("s", seq_along(x))))() |>
+>          (\(x)cbind(dat, x))()
+>
+> -- Bert
+>
+>
+> On Sun, Jul 21, 2024 at 11:30?AM Gabor Grothendieck
+> <ggrothendieck at gmail.com> wrote:
+> >
+> > Fixing col.names=paste0("S", 1:5) assumes that there will be 5 columns and
+> > we may not want to do that.  If there are only 3 fields in string, at the most,
+> > we may wish to generate only 3 columns.
+> >
+> > On Sun, Jul 21, 2024 at 2:20?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> > >
+> > > Nice! -- Let read.table do the work of handling the NA's.
+> > > However, even simpler is to use the 'colnames' argument of
+> > > read.table() for the column names no?
+> > >
+> > >       string <- read.table(text = dat$string, fill = TRUE, header =
+> > > FALSE, na.strings = "",
+> > > col.names = paste0("s", 1:5))
+> > >       dat <- cbind(dat, string)
+> > >
+> > > -- Bert
+> > >
+> > > On Sun, Jul 21, 2024 at 10:16?AM Gabor Grothendieck
+> > > <ggrothendieck at gmail.com> wrote:
+> > > >
+> > > > We can use read.table for a base R solution
+> > > >
+> > > > string <- read.table(text = dat$string, fill = TRUE, header = FALSE,
+> > > > na.strings = "")
+> > > > names(string) <- paste0("S", seq_along(string))
+> > > > cbind(dat[-3], string)
+> > > >
+> > > > On Fri, Jul 19, 2024 at 12:52?PM Val <valkremk at gmail.com> wrote:
+> > > > >
+> > > > > Hi All,
+> > > > >
+> > > > > I want to extract new variables from a string and add it to the dataframe.
+> > > > > Sample data is csv file.
+> > > > >
+> > > > > dat<-read.csv(text="Year, Sex,string
+> > > > > 2002,F,15 xc Ab
+> > > > > 2003,F,14
+> > > > > 2004,M,18 xb 25 35 21
+> > > > > 2005,M,13 25
+> > > > > 2006,M,14 ac 256 AV 35
+> > > > > 2007,F,11",header=TRUE)
+> > > > >
+> > > > > The string column has  a maximum of five variables. Some rows have all
+> > > > > and others may not have all the five variables. If missing then  fill
+> > > > > it with NA,
+> > > > > Desired result is shown below,
+> > > > >
+> > > > >
+> > > > > Year,Sex,string, S1, S2, S3 S4,S5
+> > > > > 2002,F,15 xc Ab, 15,xc,Ab, NA, NA
+> > > > > 2003,F,14, 14,NA,NA,NA,NA
+> > > > > 2004,M,18 xb 25 35 21,18, xb, 25, 35, 21
+> > > > > 2005,M,13 25,13, 25,NA,NA,NA
+> > > > > 2006,M,14 ac 256 AV 35, 14, ac, 256, AV, 35
+> > > > > 2007,F,11, 11,NA,NA,NA,NA
+> > > > >
+> > > > > Any help?
+> > > > > Thank you in advance.
+> > > > >
+> > > > > ______________________________________________
+> > > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > > > and provide commented, minimal, self-contained, reproducible code.
+> > > >
+> > > >
+> > > >
+> > > > --
+> > > > Statistics & Software Consulting
+> > > > GKX Group, GKX Associates Inc.
+> > > > tel: 1-877-GKX-GROUP
+> > > > email: ggrothendieck at gmail.com
+> > > >
+> > > > ______________________________________________
+> > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > > and provide commented, minimal, self-contained, reproducible code.
+> >
+> >
+> >
+> > --
+> > Statistics & Software Consulting
+> > GKX Group, GKX Associates Inc.
+> > tel: 1-877-GKX-GROUP
+> > email: ggrothendieck at gmail.com
+
+
+
+-- 
+Statistics & Software Consulting
+GKX Group, GKX Associates Inc.
+tel: 1-877-GKX-GROUP
+email: ggrothendieck at gmail.com
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Mon Jul 22 15:29:35 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Mon, 22 Jul 2024 09:29:35 -0400
+Subject: [R] Extract
+In-Reply-To: <CAP01uRkU4G86Ee_A0oD4cxVst3rZ12k0Zw-qS8gQmS=hNo5T3w@mail.gmail.com>
+References: <CAJOiR6YNtC41Htw+4gO9poiH_Qn9o96dh7j74Jpuf1jDdFFiyQ@mail.gmail.com>
+ <CAP01uR=FZ2m+TbgtQxP9QCE8ufabPZ0Cv2XE=pYuNhaaHA0t5A@mail.gmail.com>
+ <CAGxFJbR86GgM0MFicCxA2t7Wr_45zPMyfdbhY8-J9g-UuyJS5w@mail.gmail.com>
+ <CAP01uRn21n2q5BV=+5pZfnGbJKyu6-Z9noYBP2_=Fz1WzZRB6w@mail.gmail.com>
+ <CAGxFJbRSaUO+X=6u2uDptwAawv_bxTM6-7282s2gyH0Dn980Hg@mail.gmail.com>
+ <CAP01uRkU4G86Ee_A0oD4cxVst3rZ12k0Zw-qS8gQmS=hNo5T3w@mail.gmail.com>
+Message-ID: <012801dadc3b$31ca3e90$955ebbb0$@gmail.com>
+
+Excellent message, Gabor.
+
+Many tools we use are quite flexible and I just want to mention dplyr does have ways to use something like mutate to rename a column, albeit rename(0 is more specifically designed to do the job.
+
+Here is an example of how mutate() can rename by making a new column and removing the old by using a sort of pipeline within mutate():
+
+mydata <- data.frame(a=1, b=2)
+mutate(mydata, 
+       c=a, 
+       a=NULL, 
+       d=b, 
+       b=NULL)
+
+The result:
+
+> mutate(mydata, c=a, a=NULL, d=b, b=NULL)
+  c d
+1 1 2
+
+It is effectively the same as following up with a select as an alternative:
+
+mydata |>
+  mutate(c=a,
+         d=b) |>
+  select(c,d)
+
+What people may not quite have grasped is that pipes are not a panacea and can be used alongside all kinds of other methods. Much of dplyr, such as shown above, but also in things like the filter() verb, does a sort of internal pipelining and can apply successive transformations before returning a result suitable for another part of a pipeline. Part of the philosophy was to make more functions where the first argument was something like a data.frame object (but it could be other things) that could be passed along in a pipeline. Trying to shoehorn in other functions that want the item in other positions makes for less intuitive code using place markers like period or underscore.
+
+Pipelines are seen by many as a linear construct but as you point out, with careful design, you can make bigger pipelines that are more like graphs with some regions being a sub-pipeline and do fairly complex things, albeit hard for people to read and understand.
+
+Maybe later, we can discuss again why some people insist on some kind of purity of using the base of languages that are not really expected to stay still but to evolve.
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Gabor Grothendieck
+Sent: Monday, July 22, 2024 7:49 AM
+To: Bert Gunter <bgunter.4567 at gmail.com>
+Cc: r-help at R-project.org (r-help at r-project.org) <r-help at r-project.org>
+Subject: Re: [R] Extract
+
+Base R. Regarding code improvements:
+
+1. Personally I find (\(...) ...)() notation hard to read (although by
+placing (\(x), the body and )() on 3 separate lines it can be improved
+somewhat). Instead let us use a named function. The name of the
+function can also serve to self document the code.
+
+2. The use of dat both at the start of the pipeline and then again
+within a later step of the pipeline goes against a strict left to
+right flow. In general if this occurs it is either a sign that we need
+to break the pipeline into two or that we need to find another
+approach which is what we do here.
+
+We can use the base R code below. Note that the column names produced
+by transform(S = read.table(...)) are S.V1, S.V2, etc. so to fix the
+column names remove .V from all column names as in the fix_colnames
+function shown. It does no harm to apply that to all column names
+since the remaining column names will not match.
+
+  fix_colnames <- function(x) {
+    setNames(x, sub("\\.V", "", names(x)))
+  }
+
+  dat |>
+     transform(S = read.table(text = string,
+       header = FALSE, fill = TRUE, na.strings = "")) |>
+       fix_colnames()
+
+Another way to write this which does not use a separate defined
+function nor the anonymous function notation is to box the output of
+transform:
+
+  dat |>
+     transform(S = read.table(text = string,
+       header = FALSE, fill = TRUE, na.strings = "")) |>
+       list(x = _) |>
+       with( setNames(x, sub("\\.V", "", names(x))) )
+
+dplyr. Alternately use dplyr in which case we can make use of
+rename_with . In this case read.table(...) creates column names V1,
+V2, etc. and mutate does not change them so simply replacing V with S
+at the start of each column name in the output of read.table will do.
+Also we can pipe the read.table output directly to rename_with using a
+nested pipeline, i.e. the second pipe is entirely within mutate rather
+than after it) since mutate won't change the column names. The win
+here is because, unlike transform, mutate does not require the S= that
+is needed with transform (although it allows it had we wanted it).
+
+  library(dplyr)
+
+  dat |>
+     mutate(read.table(text = string,
+       header = FALSE, fill = TRUE, na.strings = "")  |>
+      rename_with(~ sub("^V", "S", .x))
+    )
+
+
+On Sun, Jul 21, 2024 at 3:08?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> As always, good point.
+> Here's a piped version of your code for those who are pipe
+> afficianados. As I'm not very skilled with pipes, it might certainly
+> be improved.
+> dat <-
+>       dat$string |>
+>          read.table( text = _, fill = TRUE, header = FALSE, na.strings = "")  |>
+>          (\(x)'names<-'(x,paste0("s", seq_along(x))))() |>
+>          (\(x)cbind(dat, x))()
+>
+> -- Bert
+>
+>
+> On Sun, Jul 21, 2024 at 11:30?AM Gabor Grothendieck
+> <ggrothendieck at gmail.com> wrote:
+> >
+> > Fixing col.names=paste0("S", 1:5) assumes that there will be 5 columns and
+> > we may not want to do that.  If there are only 3 fields in string, at the most,
+> > we may wish to generate only 3 columns.
+> >
+> > On Sun, Jul 21, 2024 at 2:20?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> > >
+> > > Nice! -- Let read.table do the work of handling the NA's.
+> > > However, even simpler is to use the 'colnames' argument of
+> > > read.table() for the column names no?
+> > >
+> > >       string <- read.table(text = dat$string, fill = TRUE, header =
+> > > FALSE, na.strings = "",
+> > > col.names = paste0("s", 1:5))
+> > >       dat <- cbind(dat, string)
+> > >
+> > > -- Bert
+> > >
+> > > On Sun, Jul 21, 2024 at 10:16?AM Gabor Grothendieck
+> > > <ggrothendieck at gmail.com> wrote:
+> > > >
+> > > > We can use read.table for a base R solution
+> > > >
+> > > > string <- read.table(text = dat$string, fill = TRUE, header = FALSE,
+> > > > na.strings = "")
+> > > > names(string) <- paste0("S", seq_along(string))
+> > > > cbind(dat[-3], string)
+> > > >
+> > > > On Fri, Jul 19, 2024 at 12:52?PM Val <valkremk at gmail.com> wrote:
+> > > > >
+> > > > > Hi All,
+> > > > >
+> > > > > I want to extract new variables from a string and add it to the dataframe.
+> > > > > Sample data is csv file.
+> > > > >
+> > > > > dat<-read.csv(text="Year, Sex,string
+> > > > > 2002,F,15 xc Ab
+> > > > > 2003,F,14
+> > > > > 2004,M,18 xb 25 35 21
+> > > > > 2005,M,13 25
+> > > > > 2006,M,14 ac 256 AV 35
+> > > > > 2007,F,11",header=TRUE)
+> > > > >
+> > > > > The string column has  a maximum of five variables. Some rows have all
+> > > > > and others may not have all the five variables. If missing then  fill
+> > > > > it with NA,
+> > > > > Desired result is shown below,
+> > > > >
+> > > > >
+> > > > > Year,Sex,string, S1, S2, S3 S4,S5
+> > > > > 2002,F,15 xc Ab, 15,xc,Ab, NA, NA
+> > > > > 2003,F,14, 14,NA,NA,NA,NA
+> > > > > 2004,M,18 xb 25 35 21,18, xb, 25, 35, 21
+> > > > > 2005,M,13 25,13, 25,NA,NA,NA
+> > > > > 2006,M,14 ac 256 AV 35, 14, ac, 256, AV, 35
+> > > > > 2007,F,11, 11,NA,NA,NA,NA
+> > > > >
+> > > > > Any help?
+> > > > > Thank you in advance.
+> > > > >
+> > > > > ______________________________________________
+> > > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > > > and provide commented, minimal, self-contained, reproducible code.
+> > > >
+> > > >
+> > > >
+> > > > --
+> > > > Statistics & Software Consulting
+> > > > GKX Group, GKX Associates Inc.
+> > > > tel: 1-877-GKX-GROUP
+> > > > email: ggrothendieck at gmail.com
+> > > >
+> > > > ______________________________________________
+> > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > > and provide commented, minimal, self-contained, reproducible code.
+> >
+> >
+> >
+> > --
+> > Statistics & Software Consulting
+> > GKX Group, GKX Associates Inc.
+> > tel: 1-877-GKX-GROUP
+> > email: ggrothendieck at gmail.com
+
+
+
+-- 
+Statistics & Software Consulting
+GKX Group, GKX Associates Inc.
+tel: 1-877-GKX-GROUP
+email: ggrothendieck at gmail.com
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Mon Jul 22 16:22:08 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Mon, 22 Jul 2024 07:22:08 -0700
+Subject: [R] Extract
+In-Reply-To: <CAP01uRkU4G86Ee_A0oD4cxVst3rZ12k0Zw-qS8gQmS=hNo5T3w@mail.gmail.com>
+References: <CAJOiR6YNtC41Htw+4gO9poiH_Qn9o96dh7j74Jpuf1jDdFFiyQ@mail.gmail.com>
+ <CAP01uR=FZ2m+TbgtQxP9QCE8ufabPZ0Cv2XE=pYuNhaaHA0t5A@mail.gmail.com>
+ <CAGxFJbR86GgM0MFicCxA2t7Wr_45zPMyfdbhY8-J9g-UuyJS5w@mail.gmail.com>
+ <CAP01uRn21n2q5BV=+5pZfnGbJKyu6-Z9noYBP2_=Fz1WzZRB6w@mail.gmail.com>
+ <CAGxFJbRSaUO+X=6u2uDptwAawv_bxTM6-7282s2gyH0Dn980Hg@mail.gmail.com>
+ <CAP01uRkU4G86Ee_A0oD4cxVst3rZ12k0Zw-qS8gQmS=hNo5T3w@mail.gmail.com>
+Message-ID: <CAGxFJbRehzFbQVZaWafW_SayqrbTc=BPrnMr_VLM1e3JeLBOLQ@mail.gmail.com>
+
+Thanks.
+
+I found this to be quite informative and a nice example of how useful
+R-Help can be as a resource for R users.
+
+Best,
+Bert
+
+On Mon, Jul 22, 2024 at 4:50?AM Gabor Grothendieck
+<ggrothendieck at gmail.com> wrote:
+>
+> Base R. Regarding code improvements:
+>
+> 1. Personally I find (\(...) ...)() notation hard to read (although by
+> placing (\(x), the body and )() on 3 separate lines it can be improved
+> somewhat). Instead let us use a named function. The name of the
+> function can also serve to self document the code.
+>
+> 2. The use of dat both at the start of the pipeline and then again
+> within a later step of the pipeline goes against a strict left to
+> right flow. In general if this occurs it is either a sign that we need
+> to break the pipeline into two or that we need to find another
+> approach which is what we do here.
+>
+> We can use the base R code below. Note that the column names produced
+> by transform(S = read.table(...)) are S.V1, S.V2, etc. so to fix the
+> column names remove .V from all column names as in the fix_colnames
+> function shown. It does no harm to apply that to all column names
+> since the remaining column names will not match.
+>
+>   fix_colnames <- function(x) {
+>     setNames(x, sub("\\.V", "", names(x)))
+>   }
+>
+>   dat |>
+>      transform(S = read.table(text = string,
+>        header = FALSE, fill = TRUE, na.strings = "")) |>
+>        fix_colnames()
+>
+> Another way to write this which does not use a separate defined
+> function nor the anonymous function notation is to box the output of
+> transform:
+>
+>   dat |>
+>      transform(S = read.table(text = string,
+>        header = FALSE, fill = TRUE, na.strings = "")) |>
+>        list(x = _) |>
+>        with( setNames(x, sub("\\.V", "", names(x))) )
+>
+> dplyr. Alternately use dplyr in which case we can make use of
+> rename_with . In this case read.table(...) creates column names V1,
+> V2, etc. and mutate does not change them so simply replacing V with S
+> at the start of each column name in the output of read.table will do.
+> Also we can pipe the read.table output directly to rename_with using a
+> nested pipeline, i.e. the second pipe is entirely within mutate rather
+> than after it) since mutate won't change the column names. The win
+> here is because, unlike transform, mutate does not require the S= that
+> is needed with transform (although it allows it had we wanted it).
+>
+>   library(dplyr)
+>
+>   dat |>
+>      mutate(read.table(text = string,
+>        header = FALSE, fill = TRUE, na.strings = "")  |>
+>       rename_with(~ sub("^V", "S", .x))
+>     )
+>
+>
+> On Sun, Jul 21, 2024 at 3:08?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> > As always, good point.
+> > Here's a piped version of your code for those who are pipe
+> > afficianados. As I'm not very skilled with pipes, it might certainly
+> > be improved.
+> > dat <-
+> >       dat$string |>
+> >          read.table( text = _, fill = TRUE, header = FALSE, na.strings = "")  |>
+> >          (\(x)'names<-'(x,paste0("s", seq_along(x))))() |>
+> >          (\(x)cbind(dat, x))()
+> >
+> > -- Bert
+> >
+> >
+> > On Sun, Jul 21, 2024 at 11:30?AM Gabor Grothendieck
+> > <ggrothendieck at gmail.com> wrote:
+> > >
+> > > Fixing col.names=paste0("S", 1:5) assumes that there will be 5 columns and
+> > > we may not want to do that.  If there are only 3 fields in string, at the most,
+> > > we may wish to generate only 3 columns.
+> > >
+> > > On Sun, Jul 21, 2024 at 2:20?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> > > >
+> > > > Nice! -- Let read.table do the work of handling the NA's.
+> > > > However, even simpler is to use the 'colnames' argument of
+> > > > read.table() for the column names no?
+> > > >
+> > > >       string <- read.table(text = dat$string, fill = TRUE, header =
+> > > > FALSE, na.strings = "",
+> > > > col.names = paste0("s", 1:5))
+> > > >       dat <- cbind(dat, string)
+> > > >
+> > > > -- Bert
+> > > >
+> > > > On Sun, Jul 21, 2024 at 10:16?AM Gabor Grothendieck
+> > > > <ggrothendieck at gmail.com> wrote:
+> > > > >
+> > > > > We can use read.table for a base R solution
+> > > > >
+> > > > > string <- read.table(text = dat$string, fill = TRUE, header = FALSE,
+> > > > > na.strings = "")
+> > > > > names(string) <- paste0("S", seq_along(string))
+> > > > > cbind(dat[-3], string)
+> > > > >
+> > > > > On Fri, Jul 19, 2024 at 12:52?PM Val <valkremk at gmail.com> wrote:
+> > > > > >
+> > > > > > Hi All,
+> > > > > >
+> > > > > > I want to extract new variables from a string and add it to the dataframe.
+> > > > > > Sample data is csv file.
+> > > > > >
+> > > > > > dat<-read.csv(text="Year, Sex,string
+> > > > > > 2002,F,15 xc Ab
+> > > > > > 2003,F,14
+> > > > > > 2004,M,18 xb 25 35 21
+> > > > > > 2005,M,13 25
+> > > > > > 2006,M,14 ac 256 AV 35
+> > > > > > 2007,F,11",header=TRUE)
+> > > > > >
+> > > > > > The string column has  a maximum of five variables. Some rows have all
+> > > > > > and others may not have all the five variables. If missing then  fill
+> > > > > > it with NA,
+> > > > > > Desired result is shown below,
+> > > > > >
+> > > > > >
+> > > > > > Year,Sex,string, S1, S2, S3 S4,S5
+> > > > > > 2002,F,15 xc Ab, 15,xc,Ab, NA, NA
+> > > > > > 2003,F,14, 14,NA,NA,NA,NA
+> > > > > > 2004,M,18 xb 25 35 21,18, xb, 25, 35, 21
+> > > > > > 2005,M,13 25,13, 25,NA,NA,NA
+> > > > > > 2006,M,14 ac 256 AV 35, 14, ac, 256, AV, 35
+> > > > > > 2007,F,11, 11,NA,NA,NA,NA
+> > > > > >
+> > > > > > Any help?
+> > > > > > Thank you in advance.
+> > > > > >
+> > > > > > ______________________________________________
+> > > > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > > > > and provide commented, minimal, self-contained, reproducible code.
+> > > > >
+> > > > >
+> > > > >
+> > > > > --
+> > > > > Statistics & Software Consulting
+> > > > > GKX Group, GKX Associates Inc.
+> > > > > tel: 1-877-GKX-GROUP
+> > > > > email: ggrothendieck at gmail.com
+> > > > >
+> > > > > ______________________________________________
+> > > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > > > and provide commented, minimal, self-contained, reproducible code.
+> > >
+> > >
+> > >
+> > > --
+> > > Statistics & Software Consulting
+> > > GKX Group, GKX Associates Inc.
+> > > tel: 1-877-GKX-GROUP
+> > > email: ggrothendieck at gmail.com
+>
+>
+>
+> --
+> Statistics & Software Consulting
+> GKX Group, GKX Associates Inc.
+> tel: 1-877-GKX-GROUP
+> email: ggrothendieck at gmail.com
+
+
+From ggrothend|eck @end|ng |rom gm@||@com  Mon Jul 22 16:45:23 2024
+From: ggrothend|eck @end|ng |rom gm@||@com (Gabor Grothendieck)
+Date: Mon, 22 Jul 2024 10:45:23 -0400
+Subject: [R] Extract
+In-Reply-To: <CAP01uRkU4G86Ee_A0oD4cxVst3rZ12k0Zw-qS8gQmS=hNo5T3w@mail.gmail.com>
+References: <CAJOiR6YNtC41Htw+4gO9poiH_Qn9o96dh7j74Jpuf1jDdFFiyQ@mail.gmail.com>
+ <CAP01uR=FZ2m+TbgtQxP9QCE8ufabPZ0Cv2XE=pYuNhaaHA0t5A@mail.gmail.com>
+ <CAGxFJbR86GgM0MFicCxA2t7Wr_45zPMyfdbhY8-J9g-UuyJS5w@mail.gmail.com>
+ <CAP01uRn21n2q5BV=+5pZfnGbJKyu6-Z9noYBP2_=Fz1WzZRB6w@mail.gmail.com>
+ <CAGxFJbRSaUO+X=6u2uDptwAawv_bxTM6-7282s2gyH0Dn980Hg@mail.gmail.com>
+ <CAP01uRkU4G86Ee_A0oD4cxVst3rZ12k0Zw-qS8gQmS=hNo5T3w@mail.gmail.com>
+Message-ID: <CAP01uRnoO_DzP2DFqQO1xHZcGyhoWRNWqbiUdvE-wDZiaASKpg@mail.gmail.com>
+
+I had missed that one can pass fix.empty.names = TRUE to transform and
+if we do that then we can
+put an unnamed data.frame in transform like we can with mutate so
+making that change we have the following
+base R solution where there is an inner nested pipeline within the
+outer pipeline as with the dplyr example.
+
+  transform(dat,
+    read.table(text = string, header = FALSE, na.strings = "", fill =
+TRUE), fix.empty.names = TRUE) |>
+      list(x = _) |>
+      with( setNames(x, sub("V", "S", names(x)) )
+    )
+
+
+On Mon, Jul 22, 2024 at 7:49?AM Gabor Grothendieck
+<ggrothendieck at gmail.com> wrote:
+>
+> Base R. Regarding code improvements:
+>
+> 1. Personally I find (\(...) ...)() notation hard to read (although by
+> placing (\(x), the body and )() on 3 separate lines it can be improved
+> somewhat). Instead let us use a named function. The name of the
+> function can also serve to self document the code.
+>
+> 2. The use of dat both at the start of the pipeline and then again
+> within a later step of the pipeline goes against a strict left to
+> right flow. In general if this occurs it is either a sign that we need
+> to break the pipeline into two or that we need to find another
+> approach which is what we do here.
+>
+> We can use the base R code below. Note that the column names produced
+> by transform(S = read.table(...)) are S.V1, S.V2, etc. so to fix the
+> column names remove .V from all column names as in the fix_colnames
+> function shown. It does no harm to apply that to all column names
+> since the remaining column names will not match.
+>
+>   fix_colnames <- function(x) {
+>     setNames(x, sub("\\.V", "", names(x)))
+>   }
+>
+>   dat |>
+>      transform(S = read.table(text = string,
+>        header = FALSE, fill = TRUE, na.strings = "")) |>
+>        fix_colnames()
+>
+> Another way to write this which does not use a separate defined
+> function nor the anonymous function notation is to box the output of
+> transform:
+>
+>   dat |>
+>      transform(S = read.table(text = string,
+>        header = FALSE, fill = TRUE, na.strings = "")) |>
+>        list(x = _) |>
+>        with( setNames(x, sub("\\.V", "", names(x))) )
+>
+> dplyr. Alternately use dplyr in which case we can make use of
+> rename_with . In this case read.table(...) creates column names V1,
+> V2, etc. and mutate does not change them so simply replacing V with S
+> at the start of each column name in the output of read.table will do.
+> Also we can pipe the read.table output directly to rename_with using a
+> nested pipeline, i.e. the second pipe is entirely within mutate rather
+> than after it) since mutate won't change the column names. The win
+> here is because, unlike transform, mutate does not require the S= that
+> is needed with transform (although it allows it had we wanted it).
+>
+>   library(dplyr)
+>
+>   dat |>
+>      mutate(read.table(text = string,
+>        header = FALSE, fill = TRUE, na.strings = "")  |>
+>       rename_with(~ sub("^V", "S", .x))
+>     )
+>
+>
+> On Sun, Jul 21, 2024 at 3:08?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> > As always, good point.
+> > Here's a piped version of your code for those who are pipe
+> > afficianados. As I'm not very skilled with pipes, it might certainly
+> > be improved.
+> > dat <-
+> >       dat$string |>
+> >          read.table( text = _, fill = TRUE, header = FALSE, na.strings = "")  |>
+> >          (\(x)'names<-'(x,paste0("s", seq_along(x))))() |>
+> >          (\(x)cbind(dat, x))()
+> >
+> > -- Bert
+> >
+> >
+> > On Sun, Jul 21, 2024 at 11:30?AM Gabor Grothendieck
+> > <ggrothendieck at gmail.com> wrote:
+> > >
+> > > Fixing col.names=paste0("S", 1:5) assumes that there will be 5 columns and
+> > > we may not want to do that.  If there are only 3 fields in string, at the most,
+> > > we may wish to generate only 3 columns.
+> > >
+> > > On Sun, Jul 21, 2024 at 2:20?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> > > >
+> > > > Nice! -- Let read.table do the work of handling the NA's.
+> > > > However, even simpler is to use the 'colnames' argument of
+> > > > read.table() for the column names no?
+> > > >
+> > > >       string <- read.table(text = dat$string, fill = TRUE, header =
+> > > > FALSE, na.strings = "",
+> > > > col.names = paste0("s", 1:5))
+> > > >       dat <- cbind(dat, string)
+> > > >
+> > > > -- Bert
+> > > >
+> > > > On Sun, Jul 21, 2024 at 10:16?AM Gabor Grothendieck
+> > > > <ggrothendieck at gmail.com> wrote:
+> > > > >
+> > > > > We can use read.table for a base R solution
+> > > > >
+> > > > > string <- read.table(text = dat$string, fill = TRUE, header = FALSE,
+> > > > > na.strings = "")
+> > > > > names(string) <- paste0("S", seq_along(string))
+> > > > > cbind(dat[-3], string)
+> > > > >
+> > > > > On Fri, Jul 19, 2024 at 12:52?PM Val <valkremk at gmail.com> wrote:
+> > > > > >
+> > > > > > Hi All,
+> > > > > >
+> > > > > > I want to extract new variables from a string and add it to the dataframe.
+> > > > > > Sample data is csv file.
+> > > > > >
+> > > > > > dat<-read.csv(text="Year, Sex,string
+> > > > > > 2002,F,15 xc Ab
+> > > > > > 2003,F,14
+> > > > > > 2004,M,18 xb 25 35 21
+> > > > > > 2005,M,13 25
+> > > > > > 2006,M,14 ac 256 AV 35
+> > > > > > 2007,F,11",header=TRUE)
+> > > > > >
+> > > > > > The string column has  a maximum of five variables. Some rows have all
+> > > > > > and others may not have all the five variables. If missing then  fill
+> > > > > > it with NA,
+> > > > > > Desired result is shown below,
+> > > > > >
+> > > > > >
+> > > > > > Year,Sex,string, S1, S2, S3 S4,S5
+> > > > > > 2002,F,15 xc Ab, 15,xc,Ab, NA, NA
+> > > > > > 2003,F,14, 14,NA,NA,NA,NA
+> > > > > > 2004,M,18 xb 25 35 21,18, xb, 25, 35, 21
+> > > > > > 2005,M,13 25,13, 25,NA,NA,NA
+> > > > > > 2006,M,14 ac 256 AV 35, 14, ac, 256, AV, 35
+> > > > > > 2007,F,11, 11,NA,NA,NA,NA
+> > > > > >
+> > > > > > Any help?
+> > > > > > Thank you in advance.
+> > > > > >
+> > > > > > ______________________________________________
+> > > > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > > > > and provide commented, minimal, self-contained, reproducible code.
+> > > > >
+> > > > >
+> > > > >
+> > > > > --
+> > > > > Statistics & Software Consulting
+> > > > > GKX Group, GKX Associates Inc.
+> > > > > tel: 1-877-GKX-GROUP
+> > > > > email: ggrothendieck at gmail.com
+> > > > >
+> > > > > ______________________________________________
+> > > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > > > and provide commented, minimal, self-contained, reproducible code.
+> > >
+> > >
+> > >
+> > > --
+> > > Statistics & Software Consulting
+> > > GKX Group, GKX Associates Inc.
+> > > tel: 1-877-GKX-GROUP
+> > > email: ggrothendieck at gmail.com
+>
+>
+>
+> --
+> Statistics & Software Consulting
+> GKX Group, GKX Associates Inc.
+> tel: 1-877-GKX-GROUP
+> email: ggrothendieck at gmail.com
+
+
+
+-- 
+Statistics & Software Consulting
+GKX Group, GKX Associates Inc.
+tel: 1-877-GKX-GROUP
+email: ggrothendieck at gmail.com
+
+
+From po|c1410 @end|ng |rom gm@||@com  Mon Jul 22 18:04:43 2024
+From: po|c1410 @end|ng |rom gm@||@com (CALUM POLWART)
+Date: Mon, 22 Jul 2024 17:04:43 +0100
+Subject: [R] Extract
+In-Reply-To: <CAGxFJbRehzFbQVZaWafW_SayqrbTc=BPrnMr_VLM1e3JeLBOLQ@mail.gmail.com>
+References: <CAJOiR6YNtC41Htw+4gO9poiH_Qn9o96dh7j74Jpuf1jDdFFiyQ@mail.gmail.com>
+ <CAP01uR=FZ2m+TbgtQxP9QCE8ufabPZ0Cv2XE=pYuNhaaHA0t5A@mail.gmail.com>
+ <CAGxFJbR86GgM0MFicCxA2t7Wr_45zPMyfdbhY8-J9g-UuyJS5w@mail.gmail.com>
+ <CAP01uRn21n2q5BV=+5pZfnGbJKyu6-Z9noYBP2_=Fz1WzZRB6w@mail.gmail.com>
+ <CAGxFJbRSaUO+X=6u2uDptwAawv_bxTM6-7282s2gyH0Dn980Hg@mail.gmail.com>
+ <CAP01uRkU4G86Ee_A0oD4cxVst3rZ12k0Zw-qS8gQmS=hNo5T3w@mail.gmail.com>
+ <CAGxFJbRehzFbQVZaWafW_SayqrbTc=BPrnMr_VLM1e3JeLBOLQ@mail.gmail.com>
+Message-ID: <CA+etgPnwBVWYc6J1ET3n_BWY26tv6T0j5t3-SnTU1K4esoPR1w@mail.gmail.com>
+
+But have we lured you to the dark side with the tidyverse yet ;-)
+
+
+
+On Mon, 22 Jul 2024, 15:22 Bert Gunter, <bgunter.4567 at gmail.com> wrote:
+
+> Thanks.
+>
+> I found this to be quite informative and a nice example of how useful
+> R-Help can be as a resource for R users.
+>
+> Best,
+> Bert
+>
+> On Mon, Jul 22, 2024 at 4:50?AM Gabor Grothendieck
+> <ggrothendieck at gmail.com> wrote:
+> >
+> > Base R. Regarding code improvements:
+> >
+> > 1. Personally I find (\(...) ...)() notation hard to read (although by
+> > placing (\(x), the body and )() on 3 separate lines it can be improved
+> > somewhat). Instead let us use a named function. The name of the
+> > function can also serve to self document the code.
+> >
+> > 2. The use of dat both at the start of the pipeline and then again
+> > within a later step of the pipeline goes against a strict left to
+> > right flow. In general if this occurs it is either a sign that we need
+> > to break the pipeline into two or that we need to find another
+> > approach which is what we do here.
+> >
+> > We can use the base R code below. Note that the column names produced
+> > by transform(S = read.table(...)) are S.V1, S.V2, etc. so to fix the
+> > column names remove .V from all column names as in the fix_colnames
+> > function shown. It does no harm to apply that to all column names
+> > since the remaining column names will not match.
+> >
+> >   fix_colnames <- function(x) {
+> >     setNames(x, sub("\\.V", "", names(x)))
+> >   }
+> >
+> >   dat |>
+> >      transform(S = read.table(text = string,
+> >        header = FALSE, fill = TRUE, na.strings = "")) |>
+> >        fix_colnames()
+> >
+> > Another way to write this which does not use a separate defined
+> > function nor the anonymous function notation is to box the output of
+> > transform:
+> >
+> >   dat |>
+> >      transform(S = read.table(text = string,
+> >        header = FALSE, fill = TRUE, na.strings = "")) |>
+> >        list(x = _) |>
+> >        with( setNames(x, sub("\\.V", "", names(x))) )
+> >
+> > dplyr. Alternately use dplyr in which case we can make use of
+> > rename_with . In this case read.table(...) creates column names V1,
+> > V2, etc. and mutate does not change them so simply replacing V with S
+> > at the start of each column name in the output of read.table will do.
+> > Also we can pipe the read.table output directly to rename_with using a
+> > nested pipeline, i.e. the second pipe is entirely within mutate rather
+> > than after it) since mutate won't change the column names. The win
+> > here is because, unlike transform, mutate does not require the S= that
+> > is needed with transform (although it allows it had we wanted it).
+> >
+> >   library(dplyr)
+> >
+> >   dat |>
+> >      mutate(read.table(text = string,
+> >        header = FALSE, fill = TRUE, na.strings = "")  |>
+> >       rename_with(~ sub("^V", "S", .x))
+> >     )
+> >
+> >
+> > On Sun, Jul 21, 2024 at 3:08?PM Bert Gunter <bgunter.4567 at gmail.com>
+> wrote:
+> > >
+> > > As always, good point.
+> > > Here's a piped version of your code for those who are pipe
+> > > afficianados. As I'm not very skilled with pipes, it might certainly
+> > > be improved.
+> > > dat <-
+> > >       dat$string |>
+> > >          read.table( text = _, fill = TRUE, header = FALSE, na.strings
+> = "")  |>
+> > >          (\(x)'names<-'(x,paste0("s", seq_along(x))))() |>
+> > >          (\(x)cbind(dat, x))()
+> > >
+> > > -- Bert
+> > >
+> > >
+> > > On Sun, Jul 21, 2024 at 11:30?AM Gabor Grothendieck
+> > > <ggrothendieck at gmail.com> wrote:
+> > > >
+> > > > Fixing col.names=paste0("S", 1:5) assumes that there will be 5
+> columns and
+> > > > we may not want to do that.  If there are only 3 fields in string,
+> at the most,
+> > > > we may wish to generate only 3 columns.
+> > > >
+> > > > On Sun, Jul 21, 2024 at 2:20?PM Bert Gunter <bgunter.4567 at gmail.com>
+> wrote:
+> > > > >
+> > > > > Nice! -- Let read.table do the work of handling the NA's.
+> > > > > However, even simpler is to use the 'colnames' argument of
+> > > > > read.table() for the column names no?
+> > > > >
+> > > > >       string <- read.table(text = dat$string, fill = TRUE, header =
+> > > > > FALSE, na.strings = "",
+> > > > > col.names = paste0("s", 1:5))
+> > > > >       dat <- cbind(dat, string)
+> > > > >
+> > > > > -- Bert
+> > > > >
+> > > > > On Sun, Jul 21, 2024 at 10:16?AM Gabor Grothendieck
+> > > > > <ggrothendieck at gmail.com> wrote:
+> > > > > >
+> > > > > > We can use read.table for a base R solution
+> > > > > >
+> > > > > > string <- read.table(text = dat$string, fill = TRUE, header =
+> FALSE,
+> > > > > > na.strings = "")
+> > > > > > names(string) <- paste0("S", seq_along(string))
+> > > > > > cbind(dat[-3], string)
+> > > > > >
+> > > > > > On Fri, Jul 19, 2024 at 12:52?PM Val <valkremk at gmail.com> wrote:
+> > > > > > >
+> > > > > > > Hi All,
+> > > > > > >
+> > > > > > > I want to extract new variables from a string and add it to
+> the dataframe.
+> > > > > > > Sample data is csv file.
+> > > > > > >
+> > > > > > > dat<-read.csv(text="Year, Sex,string
+> > > > > > > 2002,F,15 xc Ab
+> > > > > > > 2003,F,14
+> > > > > > > 2004,M,18 xb 25 35 21
+> > > > > > > 2005,M,13 25
+> > > > > > > 2006,M,14 ac 256 AV 35
+> > > > > > > 2007,F,11",header=TRUE)
+> > > > > > >
+> > > > > > > The string column has  a maximum of five variables. Some rows
+> have all
+> > > > > > > and others may not have all the five variables. If missing
+> then  fill
+> > > > > > > it with NA,
+> > > > > > > Desired result is shown below,
+> > > > > > >
+> > > > > > >
+> > > > > > > Year,Sex,string, S1, S2, S3 S4,S5
+> > > > > > > 2002,F,15 xc Ab, 15,xc,Ab, NA, NA
+> > > > > > > 2003,F,14, 14,NA,NA,NA,NA
+> > > > > > > 2004,M,18 xb 25 35 21,18, xb, 25, 35, 21
+> > > > > > > 2005,M,13 25,13, 25,NA,NA,NA
+> > > > > > > 2006,M,14 ac 256 AV 35, 14, ac, 256, AV, 35
+> > > > > > > 2007,F,11, 11,NA,NA,NA,NA
+> > > > > > >
+> > > > > > > Any help?
+> > > > > > > Thank you in advance.
+> > > > > > >
+> > > > > > > ______________________________________________
+> > > > > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more,
+> see
+> > > > > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > > > > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > > > > > > and provide commented, minimal, self-contained, reproducible
+> code.
+> > > > > >
+> > > > > >
+> > > > > >
+> > > > > > --
+> > > > > > Statistics & Software Consulting
+> > > > > > GKX Group, GKX Associates Inc.
+> > > > > > tel: 1-877-GKX-GROUP
+> > > > > > email: ggrothendieck at gmail.com
+> > > > > >
+> > > > > > ______________________________________________
+> > > > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more,
+> see
+> > > > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > > > PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> > > > > > and provide commented, minimal, self-contained, reproducible
+> code.
+> > > >
+> > > >
+> > > >
+> > > > --
+> > > > Statistics & Software Consulting
+> > > > GKX Group, GKX Associates Inc.
+> > > > tel: 1-877-GKX-GROUP
+> > > > email: ggrothendieck at gmail.com
+> >
+> >
+> >
+> > --
+> > Statistics & Software Consulting
+> > GKX Group, GKX Associates Inc.
+> > tel: 1-877-GKX-GROUP
+> > email: ggrothendieck at gmail.com
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
