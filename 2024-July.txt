@@ -24693,3 +24693,338 @@ G?ran
 > 
 
 
+From r-m@||@ @end|ng |rom erez@h@org  Tue Jul 30 04:54:11 2024
+From: r-m@||@ @end|ng |rom erez@h@org (Erez Shomron)
+Date: Tue, 30 Jul 2024 05:54:11 +0300
+Subject: [R] C API - no NULL pointer guarantee?
+In-Reply-To: <20240729132359.555ddf03@arachnoid>
+References: <8bd9238a-1d2a-4c63-8594-5516f569003e@app.fastmail.com>
+ <20240729132359.555ddf03@arachnoid>
+Message-ID: <71bcd586-a7b9-466d-b10e-de55dcfa147a@app.fastmail.com>
+
+Thank you Ivan,
+
+At this point, without it being documented explicitly, I tend to lean on the safe side.
+
+If the non-null assumption is ever incorrect, on debug and safe builds unwrapping is an assert that will guarantee to crash R.
+
+While the source code has plenty of NULL checks, also for some SEXP, it's hard to tell just from grepping if any are related to the public API or not.
+
+Secondly as zig's documentation indicates: "Edge cases matter". If I'm making bindings in this language, I should care about edge cases as well.
+
+Last but not least, thanks for sharing your WIP documentation. If you agree, I definitely can use that as a reference as I progress.
+
+Best regards,
+- Erez
+
+
+
+On Mon, Jul 29, 2024, at 1:23 PM, Ivan Krylov wrote:
+> ? Sat, 27 Jul 2024 14:36:20 +0300
+> "Erez Shomron" <r-mails at erezsh.org> ?????:
+> 
+> > I'm working on bindings for the API (for zig), and was wondering if
+> > the R's C API guarantees it won't return null pointers? The only
+> > reference I found in the "Writing R Extensions" manual where this not
+> > the case is `R_tryEval` and `R_tryEvalSilent`.
+> 
+> Based on what I've been reading while working on (still very much
+> incomplete) <https://aitap.codeberg.page/R-api>, I think that these are
+> the only two cases where a SEXP can be null, precisely because a null
+> pointer is distinguished from every possible value that could be
+> returned by eval().
+> 
+> Some APIs may accept a null SEXP (with comments in the source code that
+> this is to support some legacy code, not the intended use), but when R
+> wants to return a value, it is always allocated through the memory
+> manager. A failing allocation will longjmp() away from the frame, not
+> return a null pointer.
+> 
+> It's hard to prove a negative, though.
+> 
+> -- 
+> Best regards,
+> Ivan
+> 
+
+
+From @|mon@urb@nek @end|ng |rom R-project@org  Tue Jul 30 07:32:55 2024
+From: @|mon@urb@nek @end|ng |rom R-project@org (Simon Urbanek)
+Date: Tue, 30 Jul 2024 17:32:55 +1200
+Subject: [R] C API - no NULL pointer guarantee?
+In-Reply-To: <71bcd586-a7b9-466d-b10e-de55dcfa147a@app.fastmail.com>
+References: <8bd9238a-1d2a-4c63-8594-5516f569003e@app.fastmail.com>
+ <20240729132359.555ddf03@arachnoid>
+ <71bcd586-a7b9-466d-b10e-de55dcfa147a@app.fastmail.com>
+Message-ID: <80E5B2A4-799D-44EF-B5EC-54C074655D31@R-project.org>
+
+Erez,
+
+I think the API is very explicit about this, NULL is not an accepted input for any function taking SEXP by design. The special case of try*Eval() return values can be taken as a case where the resulting object is not actually SEXP but rather a special type which can be NULL (=failure) or SEXP. It may be even perhaps useful to declare it as a separate type to make this clearer, but I don't think it was really necessary so far. Any other cases where a SEXP value somehow escapes as NULL should be considered a bug.
+
+Cheers,
+Simon
+
+
+> On 30/07/2024, at 2:54 PM, Erez Shomron <r-mails at erezsh.org> wrote:
+> 
+> Thank you Ivan,
+> 
+> At this point, without it being documented explicitly, I tend to lean on the safe side.
+> 
+> If the non-null assumption is ever incorrect, on debug and safe builds unwrapping is an assert that will guarantee to crash R.
+> 
+> While the source code has plenty of NULL checks, also for some SEXP, it's hard to tell just from grepping if any are related to the public API or not.
+> 
+> Secondly as zig's documentation indicates: "Edge cases matter". If I'm making bindings in this language, I should care about edge cases as well.
+> 
+> Last but not least, thanks for sharing your WIP documentation. If you agree, I definitely can use that as a reference as I progress.
+> 
+> Best regards,
+> - Erez
+> 
+> 
+> 
+> On Mon, Jul 29, 2024, at 1:23 PM, Ivan Krylov wrote:
+>> ? Sat, 27 Jul 2024 14:36:20 +0300
+>> "Erez Shomron" <r-mails at erezsh.org> ?????:
+>> 
+>>> I'm working on bindings for the API (for zig), and was wondering if
+>>> the R's C API guarantees it won't return null pointers? The only
+>>> reference I found in the "Writing R Extensions" manual where this not
+>>> the case is `R_tryEval` and `R_tryEvalSilent`.
+>> 
+>> Based on what I've been reading while working on (still very much
+>> incomplete) <https://aitap.codeberg.page/R-api>, I think that these are
+>> the only two cases where a SEXP can be null, precisely because a null
+>> pointer is distinguished from every possible value that could be
+>> returned by eval().
+>> 
+>> Some APIs may accept a null SEXP (with comments in the source code that
+>> this is to support some legacy code, not the intended use), but when R
+>> wants to return a value, it is always allocated through the memory
+>> manager. A failing allocation will longjmp() away from the frame, not
+>> return a null pointer.
+>> 
+>> It's hard to prove a negative, though.
+>> 
+>> -- 
+>> Best regards,
+>> Ivan
+>> 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+> 
+
+
+From JH@rm@e @end|ng |rom roku@com  Tue Jul 30 17:09:21 2024
+From: JH@rm@e @end|ng |rom roku@com (Jorgen Harmse)
+Date: Tue, 30 Jul 2024 15:09:21 +0000
+Subject: [R] round and trailing zero
+In-Reply-To: <mailman.371715.1.1722333601.38826.r-help@r-project.org>
+References: <mailman.371715.1.1722333601.38826.r-help@r-project.org>
+Message-ID: <BL0PR01MB4434C3CE7ABB97B459F242C5DCB02@BL0PR01MB4434.prod.exchangelabs.com>
+
+Duncan Murdoch answered your question, but I have another. Are you going to do some computation with the rounded numbers, or are they just for display? (One thing I like about Excel is that I can change the display format of a cell without changing answers that depend on that cell.) In the latter case, why stash them in a variable? For more control of the display, consider sprintf (or a wrapper that combines sprintf with cat).
+
+Regards,
+Jorgen Harmse.
+
+
+	[[alternative HTML version deleted]]
+
+
+From r-m@||@ @end|ng |rom erez@h@org  Tue Jul 30 18:03:40 2024
+From: r-m@||@ @end|ng |rom erez@h@org (Erez Shomron)
+Date: Tue, 30 Jul 2024 19:03:40 +0300
+Subject: [R] C API - no NULL pointer guarantee?
+In-Reply-To: <80E5B2A4-799D-44EF-B5EC-54C074655D31@R-project.org>
+References: <8bd9238a-1d2a-4c63-8594-5516f569003e@app.fastmail.com>
+ <20240729132359.555ddf03@arachnoid>
+ <71bcd586-a7b9-466d-b10e-de55dcfa147a@app.fastmail.com>
+ <80E5B2A4-799D-44EF-B5EC-54C074655D31@R-project.org>
+Message-ID: <d46c13b6-a223-4883-b0ec-3452bff52c6f@app.fastmail.com>
+
+Thank you and I appreciate the explanation.
+
+I will drop the optional from all but the tryEval() cases.
+
+Thanks,
+- Erez
+
+
+
+On Tue, Jul 30, 2024, at 8:32 AM, Simon Urbanek wrote:
+> Erez,
+> 
+> I think the API is very explicit about this, NULL is not an accepted input for any function taking SEXP by design. The special case of try*Eval() return values can be taken as a case where the resulting object is not actually SEXP but rather a special type which can be NULL (=failure) or SEXP. It may be even perhaps useful to declare it as a separate type to make this clearer, but I don't think it was really necessary so far. Any other cases where a SEXP value somehow escapes as NULL should be considered a bug.
+> 
+> Cheers,
+> Simon
+> 
+> 
+> > On 30/07/2024, at 2:54 PM, Erez Shomron <r-mails at erezsh.org> wrote:
+> > 
+> > Thank you Ivan,
+> > 
+> > At this point, without it being documented explicitly, I tend to lean on the safe side.
+> > 
+> > If the non-null assumption is ever incorrect, on debug and safe builds unwrapping is an assert that will guarantee to crash R.
+> > 
+> > While the source code has plenty of NULL checks, also for some SEXP, it's hard to tell just from grepping if any are related to the public API or not.
+> > 
+> > Secondly as zig's documentation indicates: "Edge cases matter". If I'm making bindings in this language, I should care about edge cases as well.
+> > 
+> > Last but not least, thanks for sharing your WIP documentation. If you agree, I definitely can use that as a reference as I progress.
+> > 
+> > Best regards,
+> > - Erez
+> > 
+> > 
+> > 
+> > On Mon, Jul 29, 2024, at 1:23 PM, Ivan Krylov wrote:
+> >> ? Sat, 27 Jul 2024 14:36:20 +0300
+> >> "Erez Shomron" <r-mails at erezsh.org> ?????:
+> >> 
+> >>> I'm working on bindings for the API (for zig), and was wondering if
+> >>> the R's C API guarantees it won't return null pointers? The only
+> >>> reference I found in the "Writing R Extensions" manual where this not
+> >>> the case is `R_tryEval` and `R_tryEvalSilent`.
+> >> 
+> >> Based on what I've been reading while working on (still very much
+> >> incomplete) <https://aitap.codeberg.page/R-api>, I think that these are
+> >> the only two cases where a SEXP can be null, precisely because a null
+> >> pointer is distinguished from every possible value that could be
+> >> returned by eval().
+> >> 
+> >> Some APIs may accept a null SEXP (with comments in the source code that
+> >> this is to support some legacy code, not the intended use), but when R
+> >> wants to return a value, it is always allocated through the memory
+> >> manager. A failing allocation will longjmp() away from the frame, not
+> >> return a null pointer.
+> >> 
+> >> It's hard to prove a negative, though.
+> >> 
+> >> -- 
+> >> Best regards,
+> >> Ivan
+> >> 
+> > 
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> > 
+> 
+> 
+
+
+From gb @end|ng |rom eh@r@@e  Tue Jul 30 20:55:11 2024
+From: gb @end|ng |rom eh@r@@e (=?UTF-8?Q?G=C3=B6ran_Brostr=C3=B6m?=)
+Date: Tue, 30 Jul 2024 20:55:11 +0200
+Subject: [R] round and trailing zero
+In-Reply-To: <BL0PR01MB4434C3CE7ABB97B459F242C5DCB02@BL0PR01MB4434.prod.exchangelabs.com>
+References: <mailman.371715.1.1722333601.38826.r-help@r-project.org>
+ <BL0PR01MB4434C3CE7ABB97B459F242C5DCB02@BL0PR01MB4434.prod.exchangelabs.com>
+Message-ID: <72831bba-9da6-45bd-bfc9-cb91c9c3dec2@ehar.se>
+
+
+
+Den 2024-07-30 kl. 17:09, skrev Jorgen Harmse:
+> Duncan Murdoch answered your question, but I have another. Are you
+> going to do some computation with the rounded numbers, 
+
+Wouldn't dream of it.
+
+> or are they just for display? 
+
+Yes.
+
+G,
+
+> (One thing I like about Excel is that I can change
+> the display format of a cell without changing answers that depend on
+> that cell.) In the latter case, why stash them in a variable? For
+> more control of the display, consider sprintf (or a wrapper that
+> combines sprintf with cat).
+> 
+> Regards,
+> 
+> Jorgen Harmse.
+>
+
+
+From ken@knob|@uch @end|ng |rom |n@erm@|r  Wed Jul 31 14:45:06 2024
+From: ken@knob|@uch @end|ng |rom |n@erm@|r (Kenneth Knoblauch)
+Date: Wed, 31 Jul 2024 12:45:06 +0000
+Subject: [R] cloning a graphics window
+Message-ID: <31ec0bb9dadf4208bd649e6b8b2e2c81@inserm.fr>
+
+I often want to get a graphics window that is the same size as one that I resized by hand
+(because it was quicker than setting the width and height directly in dev.new)
+and have sometimes resorted to using a ruler on my screen or just resize matching.
+
+I came up with the following function that does what I want
+
+dev.clone <- function(){
+	if(is.null(dev.list())) stop("No active graphics window!")
+	dev.size() |> 
+		as.list() |> 
+			setNames(c("width", 'height')) |> 
+				do.call(dev.new, args = _ ) 
+	invisible(dev.size())
+}
+
+I thought that I might be able to leverage the new %||% operator but
+wasn't able to get the logic to work out as I wanted.  
+
+I haven't found another function to do this.  dev.copy doesn't keep
+the dimensions of the previous plot, but maybe there is a more
+concise and direct way to achieve this that has escaped me.  
+If anyone knows?
+
+Thanks.
+
+best,
+
+Ken
+     
+  
+ R version 4.4.1 Patched (2024-06-15 r86749)
+Platform: x86_64-apple-darwin20
+Running under: macOS Monterey 12.7.6
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/4.4-x86_64/Resources/lib/libRblas.0.dylib 
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-x86_64/Resources/lib/libRlapack.dylib;  LAPACK version 3.12.0
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+time zone: Europe/Paris
+tzcode source: internal
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+loaded via a namespace (and not attached):
+[1] compiler_4.4.1 tools_4.4.1   
+
+  ___
+  Kenneth Knoblauch
+ Inserm U1208
+ Stem-cell and Brain Research Institute
+ 18 avenue du Doyen L?pine
+ 69500 Bron
+ France
+ tel: +33 (0)4 72 91 34 77
+ fax: +33 (0)4 72 91 34 61
+ portable: +33 (0)6 84 10 64 10
+ https://sbri.fr/public-profile/63/single-member/
+    
+
