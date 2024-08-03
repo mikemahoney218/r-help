@@ -1,0 +1,1044 @@
+From |kry|ov @end|ng |rom d|@root@org  Thu Aug  1 18:06:28 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Thu, 1 Aug 2024 19:06:28 +0300
+Subject: [R] 
+ Difference between stats.steps() and MuMIn.dredge() to select
+ best fit model
+In-Reply-To: <ff2e607efd2c1093cfa0f6c42a37df3e@posteo.de>
+References: <ff2e607efd2c1093cfa0f6c42a37df3e@posteo.de>
+Message-ID: <20240801190628.5a34acb5@arachnoid>
+
+? Wed, 31 Jul 2024 11:56:55 +0000
+c.buhtz at posteo.jp ?????:
+
+> step() explore the model space with a step wise approach.
+> And dredge() try out all possible combinations of the variables.
+>
+> But isn't that the same? I might have a mental block on this.
+> 
+> Which model (formula) would dredge() "test" that step() wouldn't?`
+
+Suppose that the predictors a, b, c, d, e, f are arranged in the
+descending order of contribution to the model.
+
+Consider a forward stepwise algorithm that is asked to choose three
+variables.
+
+It starts by testing a, b, c, d, e, f, and chooses a.
+
+It continues by testing a + b, a + c, a + d, a + e, a + f, and chooses
+a + b.
+
+It continues by testing a + b + c, a + b + d, a + b + e, a + b + f, and
+chooses a + b + c.
+
+By being greedy, it doesn't consider, for example, the model d + e + f,
+because for that it would have to pick d before a.
+
+A greedy algorithm for K variables out N tests N + (N-1) + ... +
+(N-K+1) = N*K - K(K-1)/2 models. An exhaustive search would have to test
+choose(N,K) = N!/(N-K)!/K! models.
+
+-- 
+Best regards,
+Ivan
+
+
+From phii m@iii@g oii phiiipsmith@c@  Thu Aug  1 20:01:56 2024
+From: phii m@iii@g oii phiiipsmith@c@ (phii m@iii@g oii phiiipsmith@c@)
+Date: Thu, 01 Aug 2024 14:01:56 -0400
+Subject: [R] R facets including two kinds of charts
+Message-ID: <6b69af2baaeeaf7679053b7b9430ef08@philipsmith.ca>
+
+I am asking for help with a ggplot2 program that has facets. There are 
+actually 100 facets in my program, but in the example below I have 
+limited the number to 3. There are two kinds of charts among the facets. 
+One kind is a simple line plot with all of the y-values greater than 
+zero. The facet for "A" in my example below is this kind. The other kind 
+is a line plot combined with a bar chart with some of the y-values being 
+positive and others negative. The facets for "B" and "C" in my example 
+are this kind.
+
+The facets for "B" and "C" look the way I want them to. However the 
+facet for "A" has a scale on the y-axis that starts at zero, whereas I 
+would like the minimum value on this scale to be non-zero, chosen by 
+ggplot2 to be closer to the minimum value of y for that particular 
+facet.
+
+My example may not be the most efficient way to achieve this, but it 
+works except for one aspect. Chart A, for which I do not wish to show a 
+zero line, does indeed not show a zero line but it nevertheless chooses 
+a scale for the y-axis that has a minimum value of zero. How can I 
+adjust the code so that it chooses a minimum value on the y-axis that is 
+non-zero and closer to the minimum actual y-value (as would be the case 
+for a simple line chart alone, without any facets)?
+
+library(ggplot2)
+library(dplyr)
+
+df <- data.frame(
+   date=c(1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6),
+   
+nm=c("A","B","C","A","B","C","A","B","C","A","B","C","A","B","C","A","B","C"),
+   val0=c(NA,-5,4,NA,-3,3,NA,2,4,NA,3,3,NA,3,1,NA,-3,-4),
+   val1=c(NA,-3,6,NA,-1,4,NA,5,5,NA,7,2,NA,4,3,NA,-2,-2),
+   val2=c(50,NA,NA,53,NA,NA,62,NA,NA,56,NA,NA,54,NA,NA,61,NA,NA),
+   zline=c(NA,0,0,NA,0,0,NA,0,0,NA,0,0,NA,0,0,NA,0,0)
+)
+
+ggplot(df)+
+   geom_col(aes(x=date,y=val0),na.rm=TRUE,fill="white")+
+   geom_line(aes(x=date,y=val1))+
+   geom_line(aes(x=date,y=val2))+
+   geom_hline(aes(yintercept=zline),na.rm=TRUE)+
+   facet_wrap(~nm,scales="free_y")
+
+Thank you for your assistance.
+
+Philip
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Thu Aug  1 21:08:07 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Thu, 1 Aug 2024 20:08:07 +0100
+Subject: [R] R facets including two kinds of charts
+In-Reply-To: <6b69af2baaeeaf7679053b7b9430ef08@philipsmith.ca>
+References: <6b69af2baaeeaf7679053b7b9430ef08@philipsmith.ca>
+Message-ID: <88456aba-8474-44be-af47-287305301f7e@sapo.pt>
+
+?s 19:01 de 01/08/2024, phil at philipsmith.ca escreveu:
+> I am asking for help with a ggplot2 program that has facets. There are 
+> actually 100 facets in my program, but in the example below I have 
+> limited the number to 3. There are two kinds of charts among the facets. 
+> One kind is a simple line plot with all of the y-values greater than 
+> zero. The facet for "A" in my example below is this kind. The other kind 
+> is a line plot combined with a bar chart with some of the y-values being 
+> positive and others negative. The facets for "B" and "C" in my example 
+> are this kind.
+> 
+> The facets for "B" and "C" look the way I want them to. However the 
+> facet for "A" has a scale on the y-axis that starts at zero, whereas I 
+> would like the minimum value on this scale to be non-zero, chosen by 
+> ggplot2 to be closer to the minimum value of y for that particular facet.
+> 
+> My example may not be the most efficient way to achieve this, but it 
+> works except for one aspect. Chart A, for which I do not wish to show a 
+> zero line, does indeed not show a zero line but it nevertheless chooses 
+> a scale for the y-axis that has a minimum value of zero. How can I 
+> adjust the code so that it chooses a minimum value on the y-axis that is 
+> non-zero and closer to the minimum actual y-value (as would be the case 
+> for a simple line chart alone, without any facets)?
+> 
+> library(ggplot2)
+> library(dplyr)
+> 
+> df <- data.frame(
+>  ? date=c(1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6),
+> nm=c("A","B","C","A","B","C","A","B","C","A","B","C","A","B","C","A","B","C"),
+>  ? val0=c(NA,-5,4,NA,-3,3,NA,2,4,NA,3,3,NA,3,1,NA,-3,-4),
+>  ? val1=c(NA,-3,6,NA,-1,4,NA,5,5,NA,7,2,NA,4,3,NA,-2,-2),
+>  ? val2=c(50,NA,NA,53,NA,NA,62,NA,NA,56,NA,NA,54,NA,NA,61,NA,NA),
+>  ? zline=c(NA,0,0,NA,0,0,NA,0,0,NA,0,0,NA,0,0,NA,0,0)
+> )
+> 
+> ggplot(df)+
+>  ? geom_col(aes(x=date,y=val0),na.rm=TRUE,fill="white")+
+>  ? geom_line(aes(x=date,y=val1))+
+>  ? geom_line(aes(x=date,y=val2))+
+>  ? geom_hline(aes(yintercept=zline),na.rm=TRUE)+
+>  ? facet_wrap(~nm,scales="free_y")
+> 
+> Thank you for your assistance.
+> 
+> Philip
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Try to remove
+
+scales="free_y"
+
+from facet_wrap(). With scales="free_y" each facet will have its own y 
+limits, given by the data plotted in each of them. If you want a global 
+y limits, don't use it.
+
+Hope this helps,
+
+Rui Barradas
+
+
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From phii m@iii@g oii phiiipsmith@c@  Thu Aug  1 21:10:35 2024
+From: phii m@iii@g oii phiiipsmith@c@ (phii m@iii@g oii phiiipsmith@c@)
+Date: Thu, 01 Aug 2024 15:10:35 -0400
+Subject: [R] R facets including two kinds of charts
+In-Reply-To: <88456aba-8474-44be-af47-287305301f7e@sapo.pt>
+References: <6b69af2baaeeaf7679053b7b9430ef08@philipsmith.ca>
+ <88456aba-8474-44be-af47-287305301f7e@sapo.pt>
+Message-ID: <5818e5e4b18a77b959a8ca3b23ef393d@philipsmith.ca>
+
+Thanks for the suggestion, but this does not give me what I want. Each 
+chart needs its own unique scale on the y-axis.
+
+Philip
+
+
+On 2024-08-01 15:08, Rui Barradas wrote:
+> ?s 19:01 de 01/08/2024, phil at philipsmith.ca escreveu:
+>> I am asking for help with a ggplot2 program that has facets. There are 
+>> actually 100 facets in my program, but in the example below I have 
+>> limited the number to 3. There are two kinds of charts among the 
+>> facets. One kind is a simple line plot with all of the y-values 
+>> greater than zero. The facet for "A" in my example below is this kind. 
+>> The other kind is a line plot combined with a bar chart with some of 
+>> the y-values being positive and others negative. The facets for "B" 
+>> and "C" in my example are this kind.
+>> 
+>> The facets for "B" and "C" look the way I want them to. However the 
+>> facet for "A" has a scale on the y-axis that starts at zero, whereas I 
+>> would like the minimum value on this scale to be non-zero, chosen by 
+>> ggplot2 to be closer to the minimum value of y for that particular 
+>> facet.
+>> 
+>> My example may not be the most efficient way to achieve this, but it 
+>> works except for one aspect. Chart A, for which I do not wish to show 
+>> a zero line, does indeed not show a zero line but it nevertheless 
+>> chooses a scale for the y-axis that has a minimum value of zero. How 
+>> can I adjust the code so that it chooses a minimum value on the y-axis 
+>> that is non-zero and closer to the minimum actual y-value (as would be 
+>> the case for a simple line chart alone, without any facets)?
+>> 
+>> library(ggplot2)
+>> library(dplyr)
+>> 
+>> df <- data.frame(
+>>  ? date=c(1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6),
+>> nm=c("A","B","C","A","B","C","A","B","C","A","B","C","A","B","C","A","B","C"),
+>>  ? val0=c(NA,-5,4,NA,-3,3,NA,2,4,NA,3,3,NA,3,1,NA,-3,-4),
+>>  ? val1=c(NA,-3,6,NA,-1,4,NA,5,5,NA,7,2,NA,4,3,NA,-2,-2),
+>>  ? val2=c(50,NA,NA,53,NA,NA,62,NA,NA,56,NA,NA,54,NA,NA,61,NA,NA),
+>>  ? zline=c(NA,0,0,NA,0,0,NA,0,0,NA,0,0,NA,0,0,NA,0,0)
+>> )
+>> 
+>> ggplot(df)+
+>>  ? geom_col(aes(x=date,y=val0),na.rm=TRUE,fill="white")+
+>>  ? geom_line(aes(x=date,y=val1))+
+>>  ? geom_line(aes(x=date,y=val2))+
+>>  ? geom_hline(aes(yintercept=zline),na.rm=TRUE)+
+>>  ? facet_wrap(~nm,scales="free_y")
+>> 
+>> Thank you for your assistance.
+>> 
+>> Philip
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+> 
+> Try to remove
+> 
+> scales="free_y"
+> 
+> from facet_wrap(). With scales="free_y" each facet will have its own y 
+> limits, given by the data plotted in each of them. If you want a global 
+> y limits, don't use it.
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Thu Aug  1 21:44:57 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Thu, 1 Aug 2024 20:44:57 +0100
+Subject: [R] R facets including two kinds of charts
+In-Reply-To: <5818e5e4b18a77b959a8ca3b23ef393d@philipsmith.ca>
+References: <6b69af2baaeeaf7679053b7b9430ef08@philipsmith.ca>
+ <88456aba-8474-44be-af47-287305301f7e@sapo.pt>
+ <5818e5e4b18a77b959a8ca3b23ef393d@philipsmith.ca>
+Message-ID: <47681136-52d9-443a-96a4-9a24df56484f@sapo.pt>
+
+Hello,
+
+I hadn't understood the problem, sorry.
+The problem are the bar plots, ggplot is plotting one in the "A" facet. 
+And since there is nothing to plot, the bars start at 0.
+
+A hack is to plot facet "A" separately and then combine the plots with 
+one of several ways to combine ggplot plots. Below is an example with 
+cowplot::plot_grid
+
+
+library(ggplot2)
+library(dplyr)
+library(cowplot)
+
+p1 <- df %>%
+   filter(nm == "A") %>%
+   ggplot(aes(x = date)) +
+   geom_line(aes(y = val2)) +
+   facet_wrap(~ nm, scales = "free_y") +
+   theme(plot.margin = unit(c(0.2, 0, 0.1, 0), "cm"))
+
+p2 <- df %>%
+   filter(nm != "A") %>%
+   ggplot(aes(x = date)) +
+   geom_col(aes(y = val0), na.rm = TRUE, fill = "white") +
+   geom_line(aes(y = val1)) +
+   ylab("") +
+   facet_wrap(~ nm, scales = "free_y")
+
+plot_grid(p1, p2, rel_widths = c(1, 2))
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+
+?s 20:10 de 01/08/2024, phil at philipsmith.ca escreveu:
+> Thanks for the suggestion, but this does not give me what I want. Each 
+> chart needs its own unique scale on the y-axis.
+> 
+> Philip
+> 
+> 
+> On 2024-08-01 15:08, Rui Barradas wrote:
+>> ?s 19:01 de 01/08/2024, phil at philipsmith.ca escreveu:
+>>> I am asking for help with a ggplot2 program that has facets. There 
+>>> are actually 100 facets in my program, but in the example below I 
+>>> have limited the number to 3. There are two kinds of charts among the 
+>>> facets. One kind is a simple line plot with all of the y-values 
+>>> greater than zero. The facet for "A" in my example below is this 
+>>> kind. The other kind is a line plot combined with a bar chart with 
+>>> some of the y-values being positive and others negative. The facets 
+>>> for "B" and "C" in my example are this kind.
+>>>
+>>> The facets for "B" and "C" look the way I want them to. However the 
+>>> facet for "A" has a scale on the y-axis that starts at zero, whereas 
+>>> I would like the minimum value on this scale to be non-zero, chosen 
+>>> by ggplot2 to be closer to the minimum value of y for that particular 
+>>> facet.
+>>>
+>>> My example may not be the most efficient way to achieve this, but it 
+>>> works except for one aspect. Chart A, for which I do not wish to show 
+>>> a zero line, does indeed not show a zero line but it nevertheless 
+>>> chooses a scale for the y-axis that has a minimum value of zero. How 
+>>> can I adjust the code so that it chooses a minimum value on the 
+>>> y-axis that is non-zero and closer to the minimum actual y-value (as 
+>>> would be the case for a simple line chart alone, without any facets)?
+>>>
+>>> library(ggplot2)
+>>> library(dplyr)
+>>>
+>>> df <- data.frame(
+>>> ?? date=c(1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6),
+>>> nm=c("A","B","C","A","B","C","A","B","C","A","B","C","A","B","C","A","B","C"),
+>>> ?? val0=c(NA,-5,4,NA,-3,3,NA,2,4,NA,3,3,NA,3,1,NA,-3,-4),
+>>> ?? val1=c(NA,-3,6,NA,-1,4,NA,5,5,NA,7,2,NA,4,3,NA,-2,-2),
+>>> ?? val2=c(50,NA,NA,53,NA,NA,62,NA,NA,56,NA,NA,54,NA,NA,61,NA,NA),
+>>> ?? zline=c(NA,0,0,NA,0,0,NA,0,0,NA,0,0,NA,0,0,NA,0,0)
+>>> )
+>>>
+>>> ggplot(df)+
+>>> ?? geom_col(aes(x=date,y=val0),na.rm=TRUE,fill="white")+
+>>> ?? geom_line(aes(x=date,y=val1))+
+>>> ?? geom_line(aes(x=date,y=val2))+
+>>> ?? geom_hline(aes(yintercept=zline),na.rm=TRUE)+
+>>> ?? facet_wrap(~nm,scales="free_y")
+>>>
+>>> Thank you for your assistance.
+>>>
+>>> Philip
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide 
+>>> http://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>> Hello,
+>>
+>> Try to remove
+>>
+>> scales="free_y"
+>>
+>> from facet_wrap(). With scales="free_y" each facet will have its own y 
+>> limits, given by the data plotted in each of them. If you want a 
+>> global y limits, don't use it.
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From phii m@iii@g oii phiiipsmith@c@  Thu Aug  1 22:03:29 2024
+From: phii m@iii@g oii phiiipsmith@c@ (phii m@iii@g oii phiiipsmith@c@)
+Date: Thu, 01 Aug 2024 16:03:29 -0400
+Subject: [R] R facets including two kinds of charts
+In-Reply-To: <47681136-52d9-443a-96a4-9a24df56484f@sapo.pt>
+References: <6b69af2baaeeaf7679053b7b9430ef08@philipsmith.ca>
+ <88456aba-8474-44be-af47-287305301f7e@sapo.pt>
+ <5818e5e4b18a77b959a8ca3b23ef393d@philipsmith.ca>
+ <47681136-52d9-443a-96a4-9a24df56484f@sapo.pt>
+Message-ID: <3a617832a1bd07c8079021ebd4adb101@philipsmith.ca>
+
+Thank you. That approach could work and I might use it, but a 
+complication is that the 100 facets must be in a specified order and 
+that order mixes charts of type A and B/C in an unsystematic way. I 
+suppose I could write two functions, use them to create all the plots 
+and then join them together with cowplot. Or perhaps I could use 
+patchwork, with which I am more familiar. I was of course hoping this 
+could just be done with facets.
+
+Incidentally this used to work fine with facets (I post the results on 
+the web periodically. See 
+http://www.philipsmith.ca/Canadian_macroeconomic_indicators/) but 
+something must have changed in one of the packages (I'm guessing) and 
+that approach suddenly stopped working.
+
+Philip
+
+
+On 2024-08-01 15:44, Rui Barradas wrote:
+> Hello,
+> 
+> I hadn't understood the problem, sorry.
+> The problem are the bar plots, ggplot is plotting one in the "A" facet. 
+> And since there is nothing to plot, the bars start at 0.
+> 
+> A hack is to plot facet "A" separately and then combine the plots with 
+> one of several ways to combine ggplot plots. Below is an example with 
+> cowplot::plot_grid
+> 
+> 
+> library(ggplot2)
+> library(dplyr)
+> library(cowplot)
+> 
+> p1 <- df %>%
+>   filter(nm == "A") %>%
+>   ggplot(aes(x = date)) +
+>   geom_line(aes(y = val2)) +
+>   facet_wrap(~ nm, scales = "free_y") +
+>   theme(plot.margin = unit(c(0.2, 0, 0.1, 0), "cm"))
+> 
+> p2 <- df %>%
+>   filter(nm != "A") %>%
+>   ggplot(aes(x = date)) +
+>   geom_col(aes(y = val0), na.rm = TRUE, fill = "white") +
+>   geom_line(aes(y = val1)) +
+>   ylab("") +
+>   facet_wrap(~ nm, scales = "free_y")
+> 
+> plot_grid(p1, p2, rel_widths = c(1, 2))
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> 
+> 
+> ?s 20:10 de 01/08/2024, phil at philipsmith.ca escreveu:
+>> Thanks for the suggestion, but this does not give me what I want. Each 
+>> chart needs its own unique scale on the y-axis.
+>> 
+>> Philip
+>> 
+>> 
+>> On 2024-08-01 15:08, Rui Barradas wrote:
+>>> ?s 19:01 de 01/08/2024, phil at philipsmith.ca escreveu:
+>>>> I am asking for help with a ggplot2 program that has facets. There 
+>>>> are actually 100 facets in my program, but in the example below I 
+>>>> have limited the number to 3. There are two kinds of charts among 
+>>>> the facets. One kind is a simple line plot with all of the y-values 
+>>>> greater than zero. The facet for "A" in my example below is this 
+>>>> kind. The other kind is a line plot combined with a bar chart with 
+>>>> some of the y-values being positive and others negative. The facets 
+>>>> for "B" and "C" in my example are this kind.
+>>>> 
+>>>> The facets for "B" and "C" look the way I want them to. However the 
+>>>> facet for "A" has a scale on the y-axis that starts at zero, whereas 
+>>>> I would like the minimum value on this scale to be non-zero, chosen 
+>>>> by ggplot2 to be closer to the minimum value of y for that 
+>>>> particular facet.
+>>>> 
+>>>> My example may not be the most efficient way to achieve this, but it 
+>>>> works except for one aspect. Chart A, for which I do not wish to 
+>>>> show a zero line, does indeed not show a zero line but it 
+>>>> nevertheless chooses a scale for the y-axis that has a minimum value 
+>>>> of zero. How can I adjust the code so that it chooses a minimum 
+>>>> value on the y-axis that is non-zero and closer to the minimum 
+>>>> actual y-value (as would be the case for a simple line chart alone, 
+>>>> without any facets)?
+>>>> 
+>>>> library(ggplot2)
+>>>> library(dplyr)
+>>>> 
+>>>> df <- data.frame(
+>>>> ?? date=c(1,1,1,2,2,2,3,3,3,4,4,4,5,5,5,6,6,6),
+>>>> nm=c("A","B","C","A","B","C","A","B","C","A","B","C","A","B","C","A","B","C"),
+>>>> ?? val0=c(NA,-5,4,NA,-3,3,NA,2,4,NA,3,3,NA,3,1,NA,-3,-4),
+>>>> ?? val1=c(NA,-3,6,NA,-1,4,NA,5,5,NA,7,2,NA,4,3,NA,-2,-2),
+>>>> ?? val2=c(50,NA,NA,53,NA,NA,62,NA,NA,56,NA,NA,54,NA,NA,61,NA,NA),
+>>>> ?? zline=c(NA,0,0,NA,0,0,NA,0,0,NA,0,0,NA,0,0,NA,0,0)
+>>>> )
+>>>> 
+>>>> ggplot(df)+
+>>>> ?? geom_col(aes(x=date,y=val0),na.rm=TRUE,fill="white")+
+>>>> ?? geom_line(aes(x=date,y=val1))+
+>>>> ?? geom_line(aes(x=date,y=val2))+
+>>>> ?? geom_hline(aes(yintercept=zline),na.rm=TRUE)+
+>>>> ?? facet_wrap(~nm,scales="free_y")
+>>>> 
+>>>> Thank you for your assistance.
+>>>> 
+>>>> Philip
+>>>> 
+>>>> ______________________________________________
+>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>> PLEASE do read the posting guide 
+>>>> http://www.R-project.org/posting-guide.html
+>>>> and provide commented, minimal, self-contained, reproducible code.
+>>> Hello,
+>>> 
+>>> Try to remove
+>>> 
+>>> scales="free_y"
+>>> 
+>>> from facet_wrap(). With scales="free_y" each facet will have its own 
+>>> y limits, given by the data plotted in each of them. If you want a 
+>>> global y limits, don't use it.
+>>> 
+>>> Hope this helps,
+>>> 
+>>> Rui Barradas
+
+
+From @tyen @end|ng |rom ntu@edu@tw  Fri Aug  2 03:10:53 2024
+From: @tyen @end|ng |rom ntu@edu@tw (Steven Yen)
+Date: Fri, 2 Aug 2024 09:10:53 +0800
+Subject: [R] grep
+Message-ID: <8be3d2f5-b15c-4477-880f-2118bfae7897@ntu.edu.tw>
+
+Good Morning. Below I like statement like
+
+j<-grep(".r\\b",colnames(mydata),value=TRUE); j
+
+with the \\b option which I read long time ago which Ive found useful.
+
+Are there more or these options, other than ? grep? Thanks.
+
+dstat is just my own descriptive routine.
+
+ > x
+ ?[1] "age"????????? "sleep"??????? "primary"????? "middle"
+ ?[5] "high"???????? "somewhath"??? "veryh"??????? "somewhatm"
+ ?[9] "verym"??????? "somewhatc"??? "veryc"??????? "somewhatl"
+[13] "veryl"??????? "village"????? "married"????? "social"
+[17] "agricultural" "communist"??? "minority"???? "religious"
+ > colnames(mydata)
+ ?[1] "depression"???? "sleep"????????? "female" "village"
+ ?[5] "agricultural"?? "married"??????? "communist" "minority"
+ ?[9] "religious"????? "social"???????? "no" "primary"
+[13] "middle"???????? "high"?????????? "veryh" "somewhath"
+[17] "notveryh"?????? "verym"????????? "somewhatm" "notverym"
+[21] "veryc"????????? "somewhatc"????? "notveryc" "veryl"
+[25] "somewhatl"????? "notveryl"?????? "age" "village.r"
+[29] "married.r"????? "social.r"?????? "agricultural.r" "communist.r"
+[33] "minority.r"???? "religious.r"??? "male.r" "education.r"
+ > j<-grep(".r\\b",colnames(mydata),value=TRUE); j
+[1] "village.r"????? "married.r"????? "social.r" "agricultural.r"
+[5] "communist.r"??? "minority.r"???? "religious.r" "male.r"
+[9] "education.r"
+ > j<-c(x,j); j
+ ?[1] "age"??????????? "sleep"????????? "primary" "middle"
+ ?[5] "high"?????????? "somewhath"????? "veryh" "somewhatm"
+ ?[9] "verym"????????? "somewhatc"????? "veryc" "somewhatl"
+[13] "veryl"????????? "village"??????? "married" "social"
+[17] "agricultural"?? "communist"????? "minority" "religious"
+[21] "village.r"????? "married.r"????? "social.r" "agricultural.r"
+[25] "communist.r"??? "minority.r"???? "religious.r" "male.r"
+[29] "education.r"
+ > data<-mydata[j]
+ > cbind(
++?? dstat(subset(data,male.r==1))[,1:2],
++?? dstat(subset(data,male.r==0))[,1:2]
++ )
+Sample statistics (Weighted =? FALSE )
+
+Sample statistics (Weighted =? FALSE )
+
+ ??????????????? Mean Std.dev? Mean Std.dev
+age??????????? 6.279?? 0.841 6.055?? 0.813
+sleep????????? 6.483?? 1.804 6.087?? 2.045
+primary??????? 0.452?? 0.498 0.408?? 0.491
+middle???????? 0.287?? 0.453 0.176?? 0.381
+high?????????? 0.171?? 0.377 0.082?? 0.275
+somewhath????? 0.522?? 0.500 0.447?? 0.497
+veryh????????? 0.254?? 0.435 0.250?? 0.433
+somewhatm????? 0.419?? 0.493 0.460?? 0.498
+verym????????? 0.544?? 0.498 0.411?? 0.492
+somewhatc????? 0.376?? 0.484 0.346?? 0.476
+veryc????????? 0.593?? 0.491 0.615?? 0.487
+somewhatl????? 0.544?? 0.498 0.504?? 0.500
+veryl????????? 0.390?? 0.488 0.389?? 0.487
+village??????? 0.757?? 0.429 0.752?? 0.432
+married??????? 0.936?? 0.245 0.906?? 0.291
+social???????? 0.538?? 0.499 0.528?? 0.499
+agricultural?? 0.780?? 0.414 0.826?? 0.379
+communist????? 0.178?? 0.383 0.038?? 0.190
+minority?????? 0.071?? 0.256 0.081?? 0.273
+religious????? 0.088?? 0.284 0.102?? 0.302
+village.r????? 0.243?? 0.429 0.248?? 0.432
+married.r????? 0.064?? 0.245 0.094?? 0.291
+social.r?????? 0.462?? 0.499 0.472?? 0.499
+agricultural.r 0.220?? 0.414 0.174?? 0.379
+communist.r??? 0.822?? 0.383 0.962?? 0.190
+minority.r???? 0.929?? 0.256 0.919?? 0.273
+religious.r??? 0.912?? 0.284 0.898?? 0.302
+male.r???????? 1.000?? 0.000 0.000?? 0.000
+education.r??? 0.090?? 0.286 0.334?? 0.472
+ >
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Fri Aug  2 03:40:27 2024
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Thu, 1 Aug 2024 21:40:27 -0400
+Subject: [R] grep
+In-Reply-To: <8be3d2f5-b15c-4477-880f-2118bfae7897@ntu.edu.tw>
+References: <8be3d2f5-b15c-4477-880f-2118bfae7897@ntu.edu.tw>
+Message-ID: <CADNULg_p7AwzR=nXeZ_r2SXOeREX4JP_Bq0xOVTd=UqQYzsHzQ@mail.gmail.com>
+
+You can find more by reading through ?regex as well as Perl documentation
+(which you can find online).
+
+On Thu, Aug 1, 2024, 21:11 Steven Yen <styen at ntu.edu.tw> wrote:
+
+> Good Morning. Below I like statement like
+>
+> j<-grep(".r\\b",colnames(mydata),value=TRUE); j
+>
+> with the \\b option which I read long time ago which Ive found useful.
+>
+> Are there more or these options, other than ? grep? Thanks.
+>
+> dstat is just my own descriptive routine.
+>
+>  > x
+>   [1] "age"          "sleep"        "primary"      "middle"
+>   [5] "high"         "somewhath"    "veryh"        "somewhatm"
+>   [9] "verym"        "somewhatc"    "veryc"        "somewhatl"
+> [13] "veryl"        "village"      "married"      "social"
+> [17] "agricultural" "communist"    "minority"     "religious"
+>  > colnames(mydata)
+>   [1] "depression"     "sleep"          "female" "village"
+>   [5] "agricultural"   "married"        "communist" "minority"
+>   [9] "religious"      "social"         "no" "primary"
+> [13] "middle"         "high"           "veryh" "somewhath"
+> [17] "notveryh"       "verym"          "somewhatm" "notverym"
+> [21] "veryc"          "somewhatc"      "notveryc" "veryl"
+> [25] "somewhatl"      "notveryl"       "age" "village.r"
+> [29] "married.r"      "social.r"       "agricultural.r" "communist.r"
+> [33] "minority.r"     "religious.r"    "male.r" "education.r"
+>  > j<-grep(".r\\b",colnames(mydata),value=TRUE); j
+> [1] "village.r"      "married.r"      "social.r" "agricultural.r"
+> [5] "communist.r"    "minority.r"     "religious.r" "male.r"
+> [9] "education.r"
+>  > j<-c(x,j); j
+>   [1] "age"            "sleep"          "primary" "middle"
+>   [5] "high"           "somewhath"      "veryh" "somewhatm"
+>   [9] "verym"          "somewhatc"      "veryc" "somewhatl"
+> [13] "veryl"          "village"        "married" "social"
+> [17] "agricultural"   "communist"      "minority" "religious"
+> [21] "village.r"      "married.r"      "social.r" "agricultural.r"
+> [25] "communist.r"    "minority.r"     "religious.r" "male.r"
+> [29] "education.r"
+>  > data<-mydata[j]
+>  > cbind(
+> +   dstat(subset(data,male.r==1))[,1:2],
+> +   dstat(subset(data,male.r==0))[,1:2]
+> + )
+> Sample statistics (Weighted =  FALSE )
+>
+> Sample statistics (Weighted =  FALSE )
+>
+>                  Mean Std.dev  Mean Std.dev
+> age            6.279   0.841 6.055   0.813
+> sleep          6.483   1.804 6.087   2.045
+> primary        0.452   0.498 0.408   0.491
+> middle         0.287   0.453 0.176   0.381
+> high           0.171   0.377 0.082   0.275
+> somewhath      0.522   0.500 0.447   0.497
+> veryh          0.254   0.435 0.250   0.433
+> somewhatm      0.419   0.493 0.460   0.498
+> verym          0.544   0.498 0.411   0.492
+> somewhatc      0.376   0.484 0.346   0.476
+> veryc          0.593   0.491 0.615   0.487
+> somewhatl      0.544   0.498 0.504   0.500
+> veryl          0.390   0.488 0.389   0.487
+> village        0.757   0.429 0.752   0.432
+> married        0.936   0.245 0.906   0.291
+> social         0.538   0.499 0.528   0.499
+> agricultural   0.780   0.414 0.826   0.379
+> communist      0.178   0.383 0.038   0.190
+> minority       0.071   0.256 0.081   0.273
+> religious      0.088   0.284 0.102   0.302
+> village.r      0.243   0.429 0.248   0.432
+> married.r      0.064   0.245 0.094   0.291
+> social.r       0.462   0.499 0.472   0.499
+> agricultural.r 0.220   0.414 0.174   0.379
+> communist.r    0.822   0.383 0.962   0.190
+> minority.r     0.929   0.256 0.919   0.273
+> religious.r    0.912   0.284 0.898   0.302
+> male.r         1.000   0.000 0.000   0.000
+> education.r    0.090   0.286 0.334   0.472
+>  >
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Fri Aug  2 06:28:50 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Fri, 2 Aug 2024 05:28:50 +0100
+Subject: [R] grep
+In-Reply-To: <8be3d2f5-b15c-4477-880f-2118bfae7897@ntu.edu.tw>
+References: <8be3d2f5-b15c-4477-880f-2118bfae7897@ntu.edu.tw>
+Message-ID: <774d24ec-d361-43af-941e-afce99fce6e9@sapo.pt>
+
+?s 02:10 de 02/08/2024, Steven Yen escreveu:
+> Good Morning. Below I like statement like
+> 
+> j<-grep(".r\\b",colnames(mydata),value=TRUE); j
+> 
+> with the \\b option which I read long time ago which Ive found useful.
+> 
+> Are there more or these options, other than ? grep? Thanks.
+> 
+> dstat is just my own descriptive routine.
+> 
+>  > x
+>  ?[1] "age"????????? "sleep"??????? "primary"????? "middle"
+>  ?[5] "high"???????? "somewhath"??? "veryh"??????? "somewhatm"
+>  ?[9] "verym"??????? "somewhatc"??? "veryc"??????? "somewhatl"
+> [13] "veryl"??????? "village"????? "married"????? "social"
+> [17] "agricultural" "communist"??? "minority"???? "religious"
+>  > colnames(mydata)
+>  ?[1] "depression"???? "sleep"????????? "female" "village"
+>  ?[5] "agricultural"?? "married"??????? "communist" "minority"
+>  ?[9] "religious"????? "social"???????? "no" "primary"
+> [13] "middle"???????? "high"?????????? "veryh" "somewhath"
+> [17] "notveryh"?????? "verym"????????? "somewhatm" "notverym"
+> [21] "veryc"????????? "somewhatc"????? "notveryc" "veryl"
+> [25] "somewhatl"????? "notveryl"?????? "age" "village.r"
+> [29] "married.r"????? "social.r"?????? "agricultural.r" "communist.r"
+> [33] "minority.r"???? "religious.r"??? "male.r" "education.r"
+>  > j<-grep(".r\\b",colnames(mydata),value=TRUE); j
+> [1] "village.r"????? "married.r"????? "social.r" "agricultural.r"
+> [5] "communist.r"??? "minority.r"???? "religious.r" "male.r"
+> [9] "education.r"
+>  > j<-c(x,j); j
+>  ?[1] "age"??????????? "sleep"????????? "primary" "middle"
+>  ?[5] "high"?????????? "somewhath"????? "veryh" "somewhatm"
+>  ?[9] "verym"????????? "somewhatc"????? "veryc" "somewhatl"
+> [13] "veryl"????????? "village"??????? "married" "social"
+> [17] "agricultural"?? "communist"????? "minority" "religious"
+> [21] "village.r"????? "married.r"????? "social.r" "agricultural.r"
+> [25] "communist.r"??? "minority.r"???? "religious.r" "male.r"
+> [29] "education.r"
+>  > data<-mydata[j]
+>  > cbind(
+> +?? dstat(subset(data,male.r==1))[,1:2],
+> +?? dstat(subset(data,male.r==0))[,1:2]
+> + )
+> Sample statistics (Weighted =? FALSE )
+> 
+> Sample statistics (Weighted =? FALSE )
+> 
+>  ??????????????? Mean Std.dev? Mean Std.dev
+> age??????????? 6.279?? 0.841 6.055?? 0.813
+> sleep????????? 6.483?? 1.804 6.087?? 2.045
+> primary??????? 0.452?? 0.498 0.408?? 0.491
+> middle???????? 0.287?? 0.453 0.176?? 0.381
+> high?????????? 0.171?? 0.377 0.082?? 0.275
+> somewhath????? 0.522?? 0.500 0.447?? 0.497
+> veryh????????? 0.254?? 0.435 0.250?? 0.433
+> somewhatm????? 0.419?? 0.493 0.460?? 0.498
+> verym????????? 0.544?? 0.498 0.411?? 0.492
+> somewhatc????? 0.376?? 0.484 0.346?? 0.476
+> veryc????????? 0.593?? 0.491 0.615?? 0.487
+> somewhatl????? 0.544?? 0.498 0.504?? 0.500
+> veryl????????? 0.390?? 0.488 0.389?? 0.487
+> village??????? 0.757?? 0.429 0.752?? 0.432
+> married??????? 0.936?? 0.245 0.906?? 0.291
+> social???????? 0.538?? 0.499 0.528?? 0.499
+> agricultural?? 0.780?? 0.414 0.826?? 0.379
+> communist????? 0.178?? 0.383 0.038?? 0.190
+> minority?????? 0.071?? 0.256 0.081?? 0.273
+> religious????? 0.088?? 0.284 0.102?? 0.302
+> village.r????? 0.243?? 0.429 0.248?? 0.432
+> married.r????? 0.064?? 0.245 0.094?? 0.291
+> social.r?????? 0.462?? 0.499 0.472?? 0.499
+> agricultural.r 0.220?? 0.414 0.174?? 0.379
+> communist.r??? 0.822?? 0.383 0.962?? 0.190
+> minority.r???? 0.929?? 0.256 0.919?? 0.273
+> religious.r??? 0.912?? 0.284 0.898?? 0.302
+> male.r???????? 1.000?? 0.000 0.000?? 0.000
+> education.r??? 0.090?? 0.286 0.334?? 0.472
+>  >
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+The metacharacters reference is the documentation ?regex.
+If you want to know whether there are more metacharacters similar to \b,
+there are \< and \>. low are examples of using them instead of \b.
+
+Also, the pattern '.r' does not match a period followed by an 'r', the 
+period matches any character ('.'). To match a literal period you must 
+escape it. The correct regex is '\\.r'.
+
+
+
+x <- c("age", "sleep", "primary", "middle", "high", "somewhath", "veryh",
+        "somewhatm", "verym", "somewhatc", "veryc", "somewhatl", "veryl",
+        "village", "married", "social", "agricultural", "communist",
+        "minority", "religious")
+colnms <- c("depression", "sleep", "female", "village", "agricultural",
+             "married", "communist", "minority", "religious", "social", 
+"no",
+             "primary", "middle", "high", "veryh", "somewhath", "notveryh",
+             "verym", "somewhatm", "notverym", "veryc", "somewhatc", 
+"notveryc",
+             "veryl", "somewhatl", "notveryl", "age", "village.r", 
+"married.r",
+             "social.r", "agricultural.r", "communist.r", "minority.r", 
+"religious.r",
+             "male.r", "education.r")
+
+grep("\\.r\\b", colnms, value = TRUE)
+#> [1] "village.r"      "married.r"      "social.r"       "agricultural.r"
+#> [5] "communist.r"    "minority.r"     "religious.r"    "male.r"
+#> [9] "education.r"
+# the same as above
+# \\> matches the empty string at the end of a word,
+# \\b matches the empty string at both ends of a word
+grep("\\.r\\>", colnms, value = TRUE)
+#> [1] "village.r"      "married.r"      "social.r"       "agricultural.r"
+#> [5] "communist.r"    "minority.r"     "religious.r"    "male.r"
+#> [9] "education.r"
+
+# 4 col names have a 'm' and end in '.r' therefore 4 matches
+grep("m.*\\.r\\>", colnms, value = TRUE)
+#> [1] "married.r"   "communist.r" "minority.r"  "male.r"
+# only the strings starting with 'm'
+grep("\\bm.*\\.r\\b", colnms, value = TRUE)
+#> [1] "married.r"  "minority.r" "male.r"
+grep("\\<m.*\\.r\\>", colnms, value = TRUE)
+#> [1] "married.r"  "minority.r" "male.r"
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From @tyen @end|ng |rom ntu@edu@tw  Fri Aug  2 08:32:49 2024
+From: @tyen @end|ng |rom ntu@edu@tw (Steven Yen)
+Date: Fri, 2 Aug 2024 14:32:49 +0800
+Subject: [R] grep
+In-Reply-To: <774d24ec-d361-43af-941e-afce99fce6e9@sapo.pt>
+References: <8be3d2f5-b15c-4477-880f-2118bfae7897@ntu.edu.tw>
+ <774d24ec-d361-43af-941e-afce99fce6e9@sapo.pt>
+Message-ID: <e8766b05-28de-4857-bd9a-6d85384ec486@ntu.edu.tw>
+
+Thanks!
+
+On 8/2/2024 12:28 PM, Rui Barradas wrote:
+> ?s 02:10 de 02/08/2024, Steven Yen escreveu:
+>> Good Morning. Below I like statement like
+>>
+>> j<-grep(".r\\b",colnames(mydata),value=TRUE); j
+>>
+>> with the \\b option which I read long time ago which Ive found useful.
+>>
+>> Are there more or these options, other than ? grep? Thanks.
+>>
+>> dstat is just my own descriptive routine.
+>>
+>> ?> x
+>> ??[1] "age"????????? "sleep"??????? "primary"????? "middle"
+>> ??[5] "high"???????? "somewhath"??? "veryh"??????? "somewhatm"
+>> ??[9] "verym"??????? "somewhatc"??? "veryc"??????? "somewhatl"
+>> [13] "veryl"??????? "village"????? "married"????? "social"
+>> [17] "agricultural" "communist"??? "minority"???? "religious"
+>> ?> colnames(mydata)
+>> ??[1] "depression"???? "sleep"????????? "female" "village"
+>> ??[5] "agricultural"?? "married"??????? "communist" "minority"
+>> ??[9] "religious"????? "social"???????? "no" "primary"
+>> [13] "middle"???????? "high"?????????? "veryh" "somewhath"
+>> [17] "notveryh"?????? "verym"????????? "somewhatm" "notverym"
+>> [21] "veryc"????????? "somewhatc"????? "notveryc" "veryl"
+>> [25] "somewhatl"????? "notveryl"?????? "age" "village.r"
+>> [29] "married.r"????? "social.r"?????? "agricultural.r" "communist.r"
+>> [33] "minority.r"???? "religious.r"??? "male.r" "education.r"
+>> ?> j<-grep(".r\\b",colnames(mydata),value=TRUE); j
+>> [1] "village.r"????? "married.r"????? "social.r" "agricultural.r"
+>> [5] "communist.r"??? "minority.r"???? "religious.r" "male.r"
+>> [9] "education.r"
+>> ?> j<-c(x,j); j
+>> ??[1] "age"??????????? "sleep"????????? "primary" "middle"
+>> ??[5] "high"?????????? "somewhath"????? "veryh" "somewhatm"
+>> ??[9] "verym"????????? "somewhatc"????? "veryc" "somewhatl"
+>> [13] "veryl"????????? "village"??????? "married" "social"
+>> [17] "agricultural"?? "communist"????? "minority" "religious"
+>> [21] "village.r"????? "married.r"????? "social.r" "agricultural.r"
+>> [25] "communist.r"??? "minority.r"???? "religious.r" "male.r"
+>> [29] "education.r"
+>> ?> data<-mydata[j]
+>> ?> cbind(
+>> +?? dstat(subset(data,male.r==1))[,1:2],
+>> +?? dstat(subset(data,male.r==0))[,1:2]
+>> + )
+>> Sample statistics (Weighted =? FALSE )
+>>
+>> Sample statistics (Weighted =? FALSE )
+>>
+>> ???????????????? Mean Std.dev? Mean Std.dev
+>> age??????????? 6.279?? 0.841 6.055?? 0.813
+>> sleep????????? 6.483?? 1.804 6.087?? 2.045
+>> primary??????? 0.452?? 0.498 0.408?? 0.491
+>> middle???????? 0.287?? 0.453 0.176?? 0.381
+>> high?????????? 0.171?? 0.377 0.082?? 0.275
+>> somewhath????? 0.522?? 0.500 0.447?? 0.497
+>> veryh????????? 0.254?? 0.435 0.250?? 0.433
+>> somewhatm????? 0.419?? 0.493 0.460?? 0.498
+>> verym????????? 0.544?? 0.498 0.411?? 0.492
+>> somewhatc????? 0.376?? 0.484 0.346?? 0.476
+>> veryc????????? 0.593?? 0.491 0.615?? 0.487
+>> somewhatl????? 0.544?? 0.498 0.504?? 0.500
+>> veryl????????? 0.390?? 0.488 0.389?? 0.487
+>> village??????? 0.757?? 0.429 0.752?? 0.432
+>> married??????? 0.936?? 0.245 0.906?? 0.291
+>> social???????? 0.538?? 0.499 0.528?? 0.499
+>> agricultural?? 0.780?? 0.414 0.826?? 0.379
+>> communist????? 0.178?? 0.383 0.038?? 0.190
+>> minority?????? 0.071?? 0.256 0.081?? 0.273
+>> religious????? 0.088?? 0.284 0.102?? 0.302
+>> village.r????? 0.243?? 0.429 0.248?? 0.432
+>> married.r????? 0.064?? 0.245 0.094?? 0.291
+>> social.r?????? 0.462?? 0.499 0.472?? 0.499
+>> agricultural.r 0.220?? 0.414 0.174?? 0.379
+>> communist.r??? 0.822?? 0.383 0.962?? 0.190
+>> minority.r???? 0.929?? 0.256 0.919?? 0.273
+>> religious.r??? 0.912?? 0.284 0.898?? 0.302
+>> male.r???????? 1.000?? 0.000 0.000?? 0.000
+>> education.r??? 0.090?? 0.286 0.334?? 0.472
+>> ?>
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide 
+>> http://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+>
+> The metacharacters reference is the documentation ?regex.
+> If you want to know whether there are more metacharacters similar to \b,
+> there are \< and \>. low are examples of using them instead of \b.
+>
+> Also, the pattern '.r' does not match a period followed by an 'r', the 
+> period matches any character ('.'). To match a literal period you must 
+> escape it. The correct regex is '\\.r'.
+>
+>
+>
+> x <- c("age", "sleep", "primary", "middle", "high", "somewhath", "veryh",
+> ?????? "somewhatm", "verym", "somewhatc", "veryc", "somewhatl", "veryl",
+> ?????? "village", "married", "social", "agricultural", "communist",
+> ?????? "minority", "religious")
+> colnms <- c("depression", "sleep", "female", "village", "agricultural",
+> ??????????? "married", "communist", "minority", "religious", "social", 
+> "no",
+> ??????????? "primary", "middle", "high", "veryh", "somewhath", 
+> "notveryh",
+> ??????????? "verym", "somewhatm", "notverym", "veryc", "somewhatc", 
+> "notveryc",
+> ??????????? "veryl", "somewhatl", "notveryl", "age", "village.r", 
+> "married.r",
+> ??????????? "social.r", "agricultural.r", "communist.r", "minority.r", 
+> "religious.r",
+> ??????????? "male.r", "education.r")
+>
+> grep("\\.r\\b", colnms, value = TRUE)
+> #> [1] "village.r"????? "married.r"????? "social.r" "agricultural.r"
+> #> [5] "communist.r"??? "minority.r"???? "religious.r" "male.r"
+> #> [9] "education.r"
+> # the same as above
+> # \\> matches the empty string at the end of a word,
+> # \\b matches the empty string at both ends of a word
+> grep("\\.r\\>", colnms, value = TRUE)
+> #> [1] "village.r"????? "married.r"????? "social.r" "agricultural.r"
+> #> [5] "communist.r"??? "minority.r"???? "religious.r" "male.r"
+> #> [9] "education.r"
+>
+> # 4 col names have a 'm' and end in '.r' therefore 4 matches
+> grep("m.*\\.r\\>", colnms, value = TRUE)
+> #> [1] "married.r"?? "communist.r" "minority.r"? "male.r"
+> # only the strings starting with 'm'
+> grep("\\bm.*\\.r\\b", colnms, value = TRUE)
+> #> [1] "married.r"? "minority.r" "male.r"
+> grep("\\<m.*\\.r\\>", colnms, value = TRUE)
+> #> [1] "married.r"? "minority.r" "male.r"
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+
+
