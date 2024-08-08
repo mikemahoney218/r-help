@@ -1339,3 +1339,420 @@ On Tue, Aug 6, 2024 at 1:28?AM Eric Berger <ericjberger at gmail.com> wrote:
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From br|@n@m|th199312 @end|ng |rom gm@||@com  Wed Aug  7 12:06:36 2024
+From: br|@n@m|th199312 @end|ng |rom gm@||@com (Brian Smith)
+Date: Wed, 7 Aug 2024 15:36:36 +0530
+Subject: [R] Manually calculating values from aov() result
+Message-ID: <CAHUBDY9+TyGtz7UWCzgtPVeiXHjms468DqX57BNxx6ucYn+OZw@mail.gmail.com>
+
+Hi,
+
+I have performed ANOVA as below
+
+dat = data.frame(
+'A' = c(-0.3960025, -0.3492880, -1.5893792, -1.4579074, -4.9214873,
+-0.8575018, -2.5551363, -0.9366557, -1.4307489, -0.3943704),
+'B' = c(2,1,2,2,1,2,2,2,2,2),
+'C' = c(0,1,1,1,1,1,1,0,1,1))
+
+summary(aov(A ~ B * C, dat))
+
+However now I also tried to calculate SSE for factor C
+
+Mean = sapply(split(dat, dat$C), function(x) mean(x$A))
+N = sapply(split(dat, dat$C), function(x) dim(x)[1])
+
+N[1] * (Mean[1] - mean(dat$A))^2 + N[2] * (Mean[2] - mean(dat$A))^2
+#1.691
+
+But in ANOVA table the sum-square for C is reported as 0.77.
+
+Could you please help how exactly this C = 0.77 is obtained from aov()
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Aug  7 13:30:54 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 7 Aug 2024 07:30:54 -0400
+Subject: [R] Manually calculating values from aov() result
+In-Reply-To: <CAHUBDY9+TyGtz7UWCzgtPVeiXHjms468DqX57BNxx6ucYn+OZw@mail.gmail.com>
+References: <CAHUBDY9+TyGtz7UWCzgtPVeiXHjms468DqX57BNxx6ucYn+OZw@mail.gmail.com>
+Message-ID: <a1e03df9-d75d-4d71-88a1-072d91fffdb2@gmail.com>
+
+On 2024-08-07 6:06 a.m., Brian Smith wrote:
+> Hi,
+> 
+> I have performed ANOVA as below
+> 
+> dat = data.frame(
+> 'A' = c(-0.3960025, -0.3492880, -1.5893792, -1.4579074, -4.9214873,
+> -0.8575018, -2.5551363, -0.9366557, -1.4307489, -0.3943704),
+> 'B' = c(2,1,2,2,1,2,2,2,2,2),
+> 'C' = c(0,1,1,1,1,1,1,0,1,1))
+> 
+> summary(aov(A ~ B * C, dat))
+> 
+> However now I also tried to calculate SSE for factor C
+> 
+> Mean = sapply(split(dat, dat$C), function(x) mean(x$A))
+> N = sapply(split(dat, dat$C), function(x) dim(x)[1])
+> 
+> N[1] * (Mean[1] - mean(dat$A))^2 + N[2] * (Mean[2] - mean(dat$A))^2
+> #1.691
+> 
+> But in ANOVA table the sum-square for C is reported as 0.77.
+> 
+> Could you please help how exactly this C = 0.77 is obtained from aov()
+
+Your design isn't balanced, so there are several ways to calculate the 
+SS for C.  What you have calculated looks like the "Type I SS" in SAS 
+notation, if I remember correctly, assuming that C enters the model 
+before B.  That's not what R uses; I think it is Type II SS.
+
+For some details about this, see 
+https://mcfromnz.wordpress.com/2011/03/02/anova-type-iiiiii-ss-explained/
+
+
+From br|@n@m|th199312 @end|ng |rom gm@||@com  Wed Aug  7 14:27:48 2024
+From: br|@n@m|th199312 @end|ng |rom gm@||@com (Brian Smith)
+Date: Wed, 7 Aug 2024 17:57:48 +0530
+Subject: [R] Manually calculating values from aov() result
+In-Reply-To: <a1e03df9-d75d-4d71-88a1-072d91fffdb2@gmail.com>
+References: <CAHUBDY9+TyGtz7UWCzgtPVeiXHjms468DqX57BNxx6ucYn+OZw@mail.gmail.com>
+ <a1e03df9-d75d-4d71-88a1-072d91fffdb2@gmail.com>
+Message-ID: <CAHUBDY8=qaoFx9Bk3V-7Sj=ssBX9eK-53q2cd+Dab2a35wS_qg@mail.gmail.com>
+
+Hi,
+
+Thanks for this information. Is there any way to force R to use Type-1
+SS? I think most textbooks use this only.
+
+Thanks and regards,
+
+On Wed, 7 Aug 2024 at 17:00, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>
+> On 2024-08-07 6:06 a.m., Brian Smith wrote:
+> > Hi,
+> >
+> > I have performed ANOVA as below
+> >
+> > dat = data.frame(
+> > 'A' = c(-0.3960025, -0.3492880, -1.5893792, -1.4579074, -4.9214873,
+> > -0.8575018, -2.5551363, -0.9366557, -1.4307489, -0.3943704),
+> > 'B' = c(2,1,2,2,1,2,2,2,2,2),
+> > 'C' = c(0,1,1,1,1,1,1,0,1,1))
+> >
+> > summary(aov(A ~ B * C, dat))
+> >
+> > However now I also tried to calculate SSE for factor C
+> >
+> > Mean = sapply(split(dat, dat$C), function(x) mean(x$A))
+> > N = sapply(split(dat, dat$C), function(x) dim(x)[1])
+> >
+> > N[1] * (Mean[1] - mean(dat$A))^2 + N[2] * (Mean[2] - mean(dat$A))^2
+> > #1.691
+> >
+> > But in ANOVA table the sum-square for C is reported as 0.77.
+> >
+> > Could you please help how exactly this C = 0.77 is obtained from aov()
+>
+> Your design isn't balanced, so there are several ways to calculate the
+> SS for C.  What you have calculated looks like the "Type I SS" in SAS
+> notation, if I remember correctly, assuming that C enters the model
+> before B.  That's not what R uses; I think it is Type II SS.
+>
+> For some details about this, see
+> https://mcfromnz.wordpress.com/2011/03/02/anova-type-iiiiii-ss-explained/
+>
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Aug  7 14:50:39 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 7 Aug 2024 08:50:39 -0400
+Subject: [R] Manually calculating values from aov() result
+In-Reply-To: <CAHUBDY8=qaoFx9Bk3V-7Sj=ssBX9eK-53q2cd+Dab2a35wS_qg@mail.gmail.com>
+References: <CAHUBDY9+TyGtz7UWCzgtPVeiXHjms468DqX57BNxx6ucYn+OZw@mail.gmail.com>
+ <a1e03df9-d75d-4d71-88a1-072d91fffdb2@gmail.com>
+ <CAHUBDY8=qaoFx9Bk3V-7Sj=ssBX9eK-53q2cd+Dab2a35wS_qg@mail.gmail.com>
+Message-ID: <b003450f-6f40-43c8-8440-39fd25ae24ff@gmail.com>
+
+Sure, summary(aov(A ~ C, dat)) will give it to you.
+
+Duncan Murdoch
+
+On 2024-08-07 8:27 a.m., Brian Smith wrote:
+> Hi,
+> 
+> Thanks for this information. Is there any way to force R to use Type-1
+> SS? I think most textbooks use this only.
+> 
+> Thanks and regards,
+> 
+> On Wed, 7 Aug 2024 at 17:00, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>
+>> On 2024-08-07 6:06 a.m., Brian Smith wrote:
+>>> Hi,
+>>>
+>>> I have performed ANOVA as below
+>>>
+>>> dat = data.frame(
+>>> 'A' = c(-0.3960025, -0.3492880, -1.5893792, -1.4579074, -4.9214873,
+>>> -0.8575018, -2.5551363, -0.9366557, -1.4307489, -0.3943704),
+>>> 'B' = c(2,1,2,2,1,2,2,2,2,2),
+>>> 'C' = c(0,1,1,1,1,1,1,0,1,1))
+>>>
+>>> summary(aov(A ~ B * C, dat))
+>>>
+>>> However now I also tried to calculate SSE for factor C
+>>>
+>>> Mean = sapply(split(dat, dat$C), function(x) mean(x$A))
+>>> N = sapply(split(dat, dat$C), function(x) dim(x)[1])
+>>>
+>>> N[1] * (Mean[1] - mean(dat$A))^2 + N[2] * (Mean[2] - mean(dat$A))^2
+>>> #1.691
+>>>
+>>> But in ANOVA table the sum-square for C is reported as 0.77.
+>>>
+>>> Could you please help how exactly this C = 0.77 is obtained from aov()
+>>
+>> Your design isn't balanced, so there are several ways to calculate the
+>> SS for C.  What you have calculated looks like the "Type I SS" in SAS
+>> notation, if I remember correctly, assuming that C enters the model
+>> before B.  That's not what R uses; I think it is Type II SS.
+>>
+>> For some details about this, see
+>> https://mcfromnz.wordpress.com/2011/03/02/anova-type-iiiiii-ss-explained/
+>>
+
+
+From tebert @end|ng |rom u||@edu  Wed Aug  7 15:09:28 2024
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Wed, 7 Aug 2024 13:09:28 +0000
+Subject: [R] Manually calculating values from aov() result
+In-Reply-To: <CAHUBDY8=qaoFx9Bk3V-7Sj=ssBX9eK-53q2cd+Dab2a35wS_qg@mail.gmail.com>
+References: <CAHUBDY9+TyGtz7UWCzgtPVeiXHjms468DqX57BNxx6ucYn+OZw@mail.gmail.com>
+ <a1e03df9-d75d-4d71-88a1-072d91fffdb2@gmail.com>
+ <CAHUBDY8=qaoFx9Bk3V-7Sj=ssBX9eK-53q2cd+Dab2a35wS_qg@mail.gmail.com>
+Message-ID: <CH3PR22MB451413843DF345EEB9AAAAA2CFB82@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+In proc glm, SAS will give both type I and type III sums of squares. You can get type II if you ask. Other procedures in SAS have different output as defaults.
+
+Introductory textbooks may only cover type I SS. It is easy to calculate and gets the idea across. In application one of the problems is that a researcher could reanalyze the data to get an outcome of their choice because the order in which variables appear in the model influences their type I SS.
+A + B + A*B + C + A*C + B*C + A*B*C
+B + C + A + A*B + A*C + B*C + A*B*C
+
+Each variable (or interaction) can have a different type I SS and that can change the perception of which elements of the model are significant or not. Type III SS will give the same SS values for either model.
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Brian Smith
+Sent: Wednesday, August 7, 2024 8:28 AM
+To: Duncan Murdoch <murdoch.duncan at gmail.com>
+Cc: r-help at r-project.org
+Subject: Re: [R] Manually calculating values from aov() result
+
+[External Email]
+
+Hi,
+
+Thanks for this information. Is there any way to force R to use Type-1 SS? I think most textbooks use this only.
+
+Thanks and regards,
+
+On Wed, 7 Aug 2024 at 17:00, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>
+> On 2024-08-07 6:06 a.m., Brian Smith wrote:
+> > Hi,
+> >
+> > I have performed ANOVA as below
+> >
+> > dat = data.frame(
+> > 'A' = c(-0.3960025, -0.3492880, -1.5893792, -1.4579074, -4.9214873,
+> > -0.8575018, -2.5551363, -0.9366557, -1.4307489, -0.3943704), 'B' =
+> > c(2,1,2,2,1,2,2,2,2,2), 'C' = c(0,1,1,1,1,1,1,0,1,1))
+> >
+> > summary(aov(A ~ B * C, dat))
+> >
+> > However now I also tried to calculate SSE for factor C
+> >
+> > Mean = sapply(split(dat, dat$C), function(x) mean(x$A)) N =
+> > sapply(split(dat, dat$C), function(x) dim(x)[1])
+> >
+> > N[1] * (Mean[1] - mean(dat$A))^2 + N[2] * (Mean[2] - mean(dat$A))^2
+> > #1.691
+> >
+> > But in ANOVA table the sum-square for C is reported as 0.77.
+> >
+> > Could you please help how exactly this C = 0.77 is obtained from
+> > aov()
+>
+> Your design isn't balanced, so there are several ways to calculate the
+> SS for C.  What you have calculated looks like the "Type I SS" in SAS
+> notation, if I remember correctly, assuming that C enters the model
+> before B.  That's not what R uses; I think it is Type II SS.
+>
+> For some details about this, see
+> https://mcfr/
+> omnz.wordpress.com%2F2011%2F03%2F02%2Fanova-type-iiiiii-ss-explained%2
+> F&data=05%7C02%7Ctebert%40ufl.edu%7C21219670c5d541da503d08dcb6dc6c08%7
+> C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638586305046428793%7CUnkno
+> wn%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiL
+> CJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=HIGCrSH46P%2B1Y0cXUAfZ7DMCCORvtWaiRGC
+> crokr4Rs%3D&reserved=0
+>
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide http://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From j|ox @end|ng |rom mcm@@ter@c@  Wed Aug  7 15:58:38 2024
+From: j|ox @end|ng |rom mcm@@ter@c@ (John Fox)
+Date: Wed, 7 Aug 2024 09:58:38 -0400
+Subject: [R] Manually calculating values from aov() result
+In-Reply-To: <CAHUBDY8=qaoFx9Bk3V-7Sj=ssBX9eK-53q2cd+Dab2a35wS_qg@mail.gmail.com>
+References: <CAHUBDY9+TyGtz7UWCzgtPVeiXHjms468DqX57BNxx6ucYn+OZw@mail.gmail.com>
+ <a1e03df9-d75d-4d71-88a1-072d91fffdb2@gmail.com>
+ <CAHUBDY8=qaoFx9Bk3V-7Sj=ssBX9eK-53q2cd+Dab2a35wS_qg@mail.gmail.com>
+Message-ID: <46c97bcb-6dc4-4d0c-aba0-01f8522460e4@mcmaster.ca>
+
+Dear Brian,
+
+As Duncan mentioned, the terms type-I, II, and III sums of squares 
+originated in SAS. The type-II and III SSs computed by the Anova() 
+function in the car package take a different computational approach than 
+in SAS, but in almost all cases produce the same results. (I slightly 
+regret using the "type-*" terminology for car::Anova() because of the 
+lack of exact correspondence to SAS.) The standard R anova() function 
+computes type-I (sequential) SSs.
+
+The focus, however, shouldn't be on the SSs, or how they're computed, 
+but on the hypotheses that are tested. Briefly, the hypotheses for 
+type-I tests assume that all terms later in the sequence are 0 in the 
+population; type-II tests assume that interactions to which main effects 
+are marginal (and higher-order interactions to which lower-order 
+interactions are marginal) are 0. Type-III tests don't, e.g., assume 
+that interactions to which a main effect are marginal are 0 in testing 
+the main effect, which represents an average over levels of the 
+factor(s) with which the factor in the main effect interact. The 
+description of the hypotheses for type-III tests is even more complex if 
+there are covariates. In my opinion, researchers are usually interested 
+in the hypotheses for type-II tests.
+
+These matters are described in detail, for example, in my applied 
+regression text <https://www.john-fox.ca/AppliedRegression/index.html>.
+
+I hope this helps,
+  John
+
+-- 
+John Fox, Professor Emeritus
+McMaster University
+Hamilton, Ontario, Canada
+web: https://www.john-fox.ca/
+--
+On 2024-08-07 8:27 a.m., Brian Smith wrote:
+> [You don't often get email from briansmith199312 at gmail.com. Learn why this is important at https://aka.ms/LearnAboutSenderIdentification ]
+> 
+> Caution: External email.
+> 
+> 
+> Hi,
+> 
+> Thanks for this information. Is there any way to force R to use Type-1
+> SS? I think most textbooks use this only.
+> 
+> Thanks and regards,
+> 
+> On Wed, 7 Aug 2024 at 17:00, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>
+>> On 2024-08-07 6:06 a.m., Brian Smith wrote:
+>>> Hi,
+>>>
+>>> I have performed ANOVA as below
+>>>
+>>> dat = data.frame(
+>>> 'A' = c(-0.3960025, -0.3492880, -1.5893792, -1.4579074, -4.9214873,
+>>> -0.8575018, -2.5551363, -0.9366557, -1.4307489, -0.3943704),
+>>> 'B' = c(2,1,2,2,1,2,2,2,2,2),
+>>> 'C' = c(0,1,1,1,1,1,1,0,1,1))
+>>>
+>>> summary(aov(A ~ B * C, dat))
+>>>
+>>> However now I also tried to calculate SSE for factor C
+>>>
+>>> Mean = sapply(split(dat, dat$C), function(x) mean(x$A))
+>>> N = sapply(split(dat, dat$C), function(x) dim(x)[1])
+>>>
+>>> N[1] * (Mean[1] - mean(dat$A))^2 + N[2] * (Mean[2] - mean(dat$A))^2
+>>> #1.691
+>>>
+>>> But in ANOVA table the sum-square for C is reported as 0.77.
+>>>
+>>> Could you please help how exactly this C = 0.77 is obtained from aov()
+>>
+>> Your design isn't balanced, so there are several ways to calculate the
+>> SS for C.  What you have calculated looks like the "Type I SS" in SAS
+>> notation, if I remember correctly, assuming that C enters the model
+>> before B.  That's not what R uses; I think it is Type II SS.
+>>
+>> For some details about this, see
+>> https://mcfromnz.wordpress.com/2011/03/02/anova-type-iiiiii-ss-explained/
+>>
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ro||turner @end|ng |rom po@teo@net  Thu Aug  8 01:24:48 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Wed,  7 Aug 2024 23:24:48 +0000
+Subject: [R] Manually calculating values from aov() result
+In-Reply-To: <46c97bcb-6dc4-4d0c-aba0-01f8522460e4@mcmaster.ca>
+References: <CAHUBDY9+TyGtz7UWCzgtPVeiXHjms468DqX57BNxx6ucYn+OZw@mail.gmail.com>
+ <a1e03df9-d75d-4d71-88a1-072d91fffdb2@gmail.com>
+ <CAHUBDY8=qaoFx9Bk3V-7Sj=ssBX9eK-53q2cd+Dab2a35wS_qg@mail.gmail.com>
+ <46c97bcb-6dc4-4d0c-aba0-01f8522460e4@mcmaster.ca>
+Message-ID: <20240808112448.26210ab6@elderly-dell>
+
+
+On Wed, 7 Aug 2024 09:58:38 -0400
+John Fox <jfox at mcmaster.ca> wrote:
+
+> Dear Brian,
+> 
+> As Duncan mentioned, the terms type-I, II, and III sums of squares 
+> originated in SAS. ...
+
+<SNIP>
+
+> The focus, however, shouldn't be on the SSs, or how they're computed, 
+> but on the hypotheses that are tested.
+
+<SNIP>
+
+The last point is focussed on in:
+
+    https://www.stats.ox.ac.uk/pub/MASS3/Exegeses.pdf
+
+I don't agree with everything that Prof. Venables says, but "Exegeses"
+is *well* worth a read.
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
