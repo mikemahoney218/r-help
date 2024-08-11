@@ -3547,3 +3547,3119 @@ This message and any attachments are intended solely for the individual or entit
 	[[alternative HTML version deleted]]
 
 
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Aug 10 03:30:54 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Fri, 9 Aug 2024 18:30:54 -0700
+Subject: [R] a fast way to do my job
+In-Reply-To: <MN2PR02MB691185ED67AD413C46A0AAEED4BA2@MN2PR02MB6911.namprd02.prod.outlook.com>
+References: <MN2PR02MB691185ED67AD413C46A0AAEED4BA2@MN2PR02MB6911.namprd02.prod.outlook.com>
+Message-ID: <CAGxFJbRj=GP4QP4L9npjcS9zwRB7t-1vib03fqicNW2dE-wQZQ@mail.gmail.com>
+
+See ?lm.fit.
+I must be missing something, because:
+
+results <- sapply(74:35164, \(i) residuals(lm.fit(purity2,
+gem751be.rpkm[, i] )))
+
+would give you a 751 x 35091 matrix of the residuals from each of the
+regressions.
+I assume it will be considerably faster than all the overhead you are
+carrying in your current code, but of course you'll have to try it and
+see. ... Assuming that I have interpreted your request correctly.
+Ignore if not.
+
+Cheers,
+Bert
+
+On Fri, Aug 9, 2024 at 4:50?PM Yuan Chun Ding via R-help
+<r-help at r-project.org> wrote:
+>
+> Dear R users,
+>
+> I am running the following code below,  the gem751be.rpkm is a dataframe with dim of 751 samples by 35164 variables,  73 phenotypic variables in the furst to 73rd column and 35091 genomic variables or genes in the 74th to 35164th columns.  What I need to do is to calculate the residuals for each gene using the simple linear regression model of genelist[i] ~ purity2;
+>
+> The following code is running,  it takes long time, but I have an expensive ThinkStation window computer.
+> Can you provide a fast way to do it?
+>
+> Thank you,
+>
+> Ding
+>
+> ---------------------------------------------------------------------------------
+>
+>
+> gem751be.rpkm <-merge(gem751be10, as.data.frame(t(rna849.fpkm2)),
+> +                           by.x="id2",by.y=0)
+> >   row.names(gem751be.rpkm)<-gem751be.rpkm$id3
+> >   colnames(gem751be.rpkm)<-gsub(colnames(gem751be.rpkm),pattern="-",replacement="_")
+> >   genelist <- gem751be.rpkm %>% dplyr::select(74:35164)
+> >   residuals <- NULL
+> >   for (i in 1:length(genelist)) {
+> +     #i=1
+> +     formula <- reformulate("purity2", response=names(genelist)[i])
+> +     model <- lm(formula, data = gem751be.rpkm)
+> +     resi <- as.data.frame(residuals(model))
+> +     colnames(resi)[1]<-names(genelist)[i]
+> +     resi <-as.data.frame(t(resi))
+> +     residuals <- rbind(residuals, resi)
+> +   }
+>
+>
+>
+> ----------------------------------------------------------------------
+> ------------------------------------------------------------
+> -SECURITY/CONFIDENTIALITY WARNING-
+>
+> This message and any attachments are intended solely for the individual or entity to which they are addressed. This communication may contain information that is privileged, confidential, or exempt from disclosure under applicable law (e.g., personal health information, research data, financial information). Because this e-mail has been sent without encryption, individuals other than the intended recipient may be able to view the information, forward it to others or tamper with the information without the knowledge or consent of the sender. If you are not the intended recipient, or the employee or person responsible for delivering the message to the intended recipient, any dissemination, distribution or copying of the communication is strictly prohibited. If you received the communication in error, please notify the sender immediately by replying to this message and deleting the message and any accompanying files from your system. If, due to the security risks, you do not wish to rec
+>  eive further communications via e-mail, please reply to this message and inform the sender that you do not wish to receive further e-mail from the sender. (LCP301)
+> ------------------------------------------------------------
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sat Aug 10 03:38:22 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Fri, 9 Aug 2024 21:38:22 -0400
+Subject: [R] a fast way to do my job
+In-Reply-To: <CAGxFJbRj=GP4QP4L9npjcS9zwRB7t-1vib03fqicNW2dE-wQZQ@mail.gmail.com>
+References: <MN2PR02MB691185ED67AD413C46A0AAEED4BA2@MN2PR02MB6911.namprd02.prod.outlook.com>
+ <CAGxFJbRj=GP4QP4L9npjcS9zwRB7t-1vib03fqicNW2dE-wQZQ@mail.gmail.com>
+Message-ID: <CABghstS_rwq41mudBsFyEML2RrWmKi1thhHi5D81pqVyqaDPSw@mail.gmail.com>
+
+You can also fit a linear model with a matrix-valued response
+variable, which should be even faster (not sure off the top of my head
+how to get the residuals and reshape them to the dimensions you want)
+
+On Fri, Aug 9, 2024 at 9:31?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> See ?lm.fit.
+> I must be missing something, because:
+>
+> results <- sapply(74:35164, \(i) residuals(lm.fit(purity2,
+> gem751be.rpkm[, i] )))
+>
+> would give you a 751 x 35091 matrix of the residuals from each of the
+> regressions.
+> I assume it will be considerably faster than all the overhead you are
+> carrying in your current code, but of course you'll have to try it and
+> see. ... Assuming that I have interpreted your request correctly.
+> Ignore if not.
+>
+> Cheers,
+> Bert
+>
+> On Fri, Aug 9, 2024 at 4:50?PM Yuan Chun Ding via R-help
+> <r-help at r-project.org> wrote:
+> >
+> > Dear R users,
+> >
+> > I am running the following code below,  the gem751be.rpkm is a dataframe with dim of 751 samples by 35164 variables,  73 phenotypic variables in the furst to 73rd column and 35091 genomic variables or genes in the 74th to 35164th columns.  What I need to do is to calculate the residuals for each gene using the simple linear regression model of genelist[i] ~ purity2;
+> >
+> > The following code is running,  it takes long time, but I have an expensive ThinkStation window computer.
+> > Can you provide a fast way to do it?
+> >
+> > Thank you,
+> >
+> > Ding
+> >
+> > ---------------------------------------------------------------------------------
+> >
+> >
+> > gem751be.rpkm <-merge(gem751be10, as.data.frame(t(rna849.fpkm2)),
+> > +                           by.x="id2",by.y=0)
+> > >   row.names(gem751be.rpkm)<-gem751be.rpkm$id3
+> > >   colnames(gem751be.rpkm)<-gsub(colnames(gem751be.rpkm),pattern="-",replacement="_")
+> > >   genelist <- gem751be.rpkm %>% dplyr::select(74:35164)
+> > >   residuals <- NULL
+> > >   for (i in 1:length(genelist)) {
+> > +     #i=1
+> > +     formula <- reformulate("purity2", response=names(genelist)[i])
+> > +     model <- lm(formula, data = gem751be.rpkm)
+> > +     resi <- as.data.frame(residuals(model))
+> > +     colnames(resi)[1]<-names(genelist)[i]
+> > +     resi <-as.data.frame(t(resi))
+> > +     residuals <- rbind(residuals, resi)
+> > +   }
+> >
+> >
+> >
+> > ----------------------------------------------------------------------
+> > ------------------------------------------------------------
+> > -SECURITY/CONFIDENTIALITY WARNING-
+> >
+> > This message and any attachments are intended solely for the individual or entity to which they are addressed. This communication may contain information that is privileged, confidential, or exempt from disclosure under applicable law (e.g., personal health information, research data, financial information). Because this e-mail has been sent without encryption, individuals other than the intended recipient may be able to view the information, forward it to others or tamper with the information without the knowledge or consent of the sender. If you are not the intended recipient, or the employee or person responsible for delivering the message to the intended recipient, any dissemination, distribution or copying of the communication is strictly prohibited. If you received the communication in error, please notify the sender immediately by replying to this message and deleting the message and any accompanying files from your system. If, due to the security risks, you do not wish to rec
+> >  eive further communications via e-mail, please reply to this message and inform the sender that you do not wish to receive further e-mail from the sender. (LCP301)
+> > ------------------------------------------------------------
+> >
+> >         [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Aug 10 04:10:43 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Fri, 9 Aug 2024 19:10:43 -0700
+Subject: [R] a fast way to do my job
+In-Reply-To: <CABghstS_rwq41mudBsFyEML2RrWmKi1thhHi5D81pqVyqaDPSw@mail.gmail.com>
+References: <MN2PR02MB691185ED67AD413C46A0AAEED4BA2@MN2PR02MB6911.namprd02.prod.outlook.com>
+ <CAGxFJbRj=GP4QP4L9npjcS9zwRB7t-1vib03fqicNW2dE-wQZQ@mail.gmail.com>
+ <CABghstS_rwq41mudBsFyEML2RrWmKi1thhHi5D81pqVyqaDPSw@mail.gmail.com>
+Message-ID: <CAGxFJbTbdt+QaNX8i4P_X-bir0Td-6Rn=jm5ryB6XrK_CoA0Hw@mail.gmail.com>
+
+Better idea, Ben!
+
+It would work as you might expect it to to produce the same results as
+the above:
+
+##first make sure your regressor is a matrix:
+pur2 <- matrix(purity2, ncol =1)
+## convert the data frame variables into a matrix
+dat <- as.matrix(gem751be.rpkm[ , 74:35164])
+##then
+result <- residuals(lm.fit( x= pur2, y = dat))
+
+Cheers,
+Bert
+
+On Fri, Aug 9, 2024 at 6:38?PM Ben Bolker <bbolker at gmail.com> wrote:
+>
+> You can also fit a linear model with a matrix-valued response
+> variable, which should be even faster (not sure off the top of my head
+> how to get the residuals and reshape them to the dimensions you want)
+>
+> On Fri, Aug 9, 2024 at 9:31?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> > See ?lm.fit.
+> > I must be missing something, because:
+> >
+> > results <- sapply(74:35164, \(i) residuals(lm.fit(purity2,
+> > gem751be.rpkm[, i] )))
+> >
+> > would give you a 751 x 35091 matrix of the residuals from each of the
+> > regressions.
+> > I assume it will be considerably faster than all the overhead you are
+> > carrying in your current code, but of course you'll have to try it and
+> > see. ... Assuming that I have interpreted your request correctly.
+> > Ignore if not.
+> >
+> > Cheers,
+> > Bert
+> >
+> > On Fri, Aug 9, 2024 at 4:50?PM Yuan Chun Ding via R-help
+> > <r-help at r-project.org> wrote:
+> > >
+> > > Dear R users,
+> > >
+> > > I am running the following code below,  the gem751be.rpkm is a dataframe with dim of 751 samples by 35164 variables,  73 phenotypic variables in the furst to 73rd column and 35091 genomic variables or genes in the 74th to 35164th columns.  What I need to do is to calculate the residuals for each gene using the simple linear regression model of genelist[i] ~ purity2;
+> > >
+> > > The following code is running,  it takes long time, but I have an expensive ThinkStation window computer.
+> > > Can you provide a fast way to do it?
+> > >
+> > > Thank you,
+> > >
+> > > Ding
+> > >
+> > > ---------------------------------------------------------------------------------
+> > >
+> > >
+> > > gem751be.rpkm <-merge(gem751be10, as.data.frame(t(rna849.fpkm2)),
+> > > +                           by.x="id2",by.y=0)
+> > > >   row.names(gem751be.rpkm)<-gem751be.rpkm$id3
+> > > >   colnames(gem751be.rpkm)<-gsub(colnames(gem751be.rpkm),pattern="-",replacement="_")
+> > > >   genelist <- gem751be.rpkm %>% dplyr::select(74:35164)
+> > > >   residuals <- NULL
+> > > >   for (i in 1:length(genelist)) {
+> > > +     #i=1
+> > > +     formula <- reformulate("purity2", response=names(genelist)[i])
+> > > +     model <- lm(formula, data = gem751be.rpkm)
+> > > +     resi <- as.data.frame(residuals(model))
+> > > +     colnames(resi)[1]<-names(genelist)[i]
+> > > +     resi <-as.data.frame(t(resi))
+> > > +     residuals <- rbind(residuals, resi)
+> > > +   }
+> > >
+> > >
+> > >
+> > > ----------------------------------------------------------------------
+> > > ------------------------------------------------------------
+> > > -SECURITY/CONFIDENTIALITY WARNING-
+> > >
+> > > This message and any attachments are intended solely for the individual or entity to which they are addressed. This communication may contain information that is privileged, confidential, or exempt from disclosure under applicable law (e.g., personal health information, research data, financial information). Because this e-mail has been sent without encryption, individuals other than the intended recipient may be able to view the information, forward it to others or tamper with the information without the knowledge or consent of the sender. If you are not the intended recipient, or the employee or person responsible for delivering the message to the intended recipient, any dissemination, distribution or copying of the communication is strictly prohibited. If you received the communication in error, please notify the sender immediately by replying to this message and deleting the message and any accompanying files from your system. If, due to the security risks, you do not wish to rec
+> > >  eive further communications via e-mail, please reply to this message and inform the sender that you do not wish to receive further e-mail from the sender. (LCP301)
+> > > ------------------------------------------------------------
+> > >
+> > >         [[alternative HTML version deleted]]
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+
+From @@m@gregory @end|ng |rom |c|oud@com  Fri Aug  9 11:20:56 2024
+From: @@m@gregory @end|ng |rom |c|oud@com (martin gregory)
+Date: Fri, 9 Aug 2024 11:20:56 +0200
+Subject: [R] If loop
+In-Reply-To: <CA+etgPkQvRHtNG3nAdCfMOubzX3uvPhpT9TNUD33LoKp79MH5w@mail.gmail.com>
+References: <b6ce61b0-91e1-4f2c-b7b5-6d8298ae54a1@ntu.edu.tw>
+ <CA+etgPmNBAXj3PLcWqYmTr+-0k3naNdojqEOJ1TnWc21e4S13g@mail.gmail.com>
+ <23d8f633-b229-4aba-bd6c-5ac2c09220f1@ntu.edu.tw>
+ <CA+etgPkQvRHtNG3nAdCfMOubzX3uvPhpT9TNUD33LoKp79MH5w@mail.gmail.com>
+Message-ID: <A0A34437-3840-45C3-B11A-B9A1696A79F5@icloud.com>
+
+
+> On 9. Aug 2024, at 10:45, CALUM POLWART <polc1410 at gmail.com> wrote:
+> 
+> Or use <<- assignment I think.  (I usually return, but return can only
+> return one object and I think you want two or more
+> 
+
+One can return multiple objects by putting them in a list and returning the list.
+
+Martin
+
+
+From @nupty@g| @end|ng |rom gm@||@com  Sat Aug 10 15:47:21 2024
+From: @nupty@g| @end|ng |rom gm@||@com (Anupam Tyagi)
+Date: Sat, 10 Aug 2024 19:17:21 +0530
+Subject: [R] WDI package commands timing out and not working
+In-Reply-To: <20240809194601.7a6f3bd1@arachnoid>
+References: <CAFL9eun-6HWgw1LQ1xia0vS+wqb+xe4oC7irr=GogVi0U45v8A@mail.gmail.com>
+ <20240809152358.4c56c457@arachnoid>
+ <26294.5335.483728.210282@stat.math.ethz.ch>
+ <CAFL9eu=t7-SUX=VJcjT8No5wx6bKJgy866p=qUsjg75ZzpbzQQ@mail.gmail.com>
+ <20240809194601.7a6f3bd1@arachnoid>
+Message-ID: <CAFL9eumBqr7Mn7A5gARM4ZgGFVnAFtMuEet-SjLP8gDFdQpy9w@mail.gmail.com>
+
+Thanks, Ivan. I will fill out the support form at the World Bank.
+
+On Fri, 9 Aug 2024 at 22:16, Ivan Krylov <ikrylov at disroot.org> wrote:
+
+> ? Fri, 9 Aug 2024 20:25:51 +0530
+> Anupam Tyagi <anuptyagi at gmail.com> ?????:
+>
+> > I am trying this in Bengaluru, India, using R-studio. I tried
+> > downloading a single variable. It happened fast, in less than 5
+> > seconds. I tried downloading six variables, it took much longer, but
+> > less than a minute. Tried eight variables and it did not download
+> > even in five minutes.
+>
+> > I checked in the browser using the URL provided in the warning
+> > messages:  The World Bank web API gave me the indicator in less than
+> > a second.
+>
+> I think that the fact that this initially works from R but then only
+> works in the browser is clear evidence of Cloudflare "protecting" the
+> World Bank API from you trying to use it in an automated manner. That
+> this mostly defeats the purpose of an API was probably lost on people
+> who set it up.
+>
+> In theory, this should be reported to the people who operate the API.
+> There seems to be a support form at
+> <
+> https://datahelpdesk.worldbank.org/knowledgebase/topics/125589-developer-information
+> >.
+> I don't have a lot of confidence in them fixing anything as a result
+> of such a request.
+>
+> Try to cache all access to the API. Consider getting a proxy in a
+> country less discriminated against by Cloudflare. Maybe petition the
+> WDI maintainer to export a function that parses a JSON file manually
+> downloaded with a browser?
+>
+> --
+> Best regards,
+> Ivan
+>
+
+
+-- 
+Anupam.
+
+	[[alternative HTML version deleted]]
+
+
+From ycd|ng @end|ng |rom coh@org  Sat Aug 10 21:29:47 2024
+From: ycd|ng @end|ng |rom coh@org (Yuan Chun Ding)
+Date: Sat, 10 Aug 2024 19:29:47 +0000
+Subject: [R] a fast way to do my job
+In-Reply-To: <CAGxFJbTbdt+QaNX8i4P_X-bir0Td-6Rn=jm5ryB6XrK_CoA0Hw@mail.gmail.com>
+References: <MN2PR02MB691185ED67AD413C46A0AAEED4BA2@MN2PR02MB6911.namprd02.prod.outlook.com>
+ <CAGxFJbRj=GP4QP4L9npjcS9zwRB7t-1vib03fqicNW2dE-wQZQ@mail.gmail.com>
+ <CABghstS_rwq41mudBsFyEML2RrWmKi1thhHi5D81pqVyqaDPSw@mail.gmail.com>
+ <CAGxFJbTbdt+QaNX8i4P_X-bir0Td-6Rn=jm5ryB6XrK_CoA0Hw@mail.gmail.com>
+Message-ID: <MN2PR02MB6911508EC9B0040C41044C86D4BB2@MN2PR02MB6911.namprd02.prod.outlook.com>
+
+HI Bert and Ben,
+
+Yes, running lm.fit using the matrix format is much faster. I read a couple of online comments why it is faster.
+
+However, the residual values for three tested variables or genes from lm function and lm.fit function are different, with Pearson correlation of 0.55, 0.89, and 0.99.
+
+I have not found the reason.
+
+Thanks,
+
+Ding
+
+From: Bert Gunter <bgunter.4567 at gmail.com>
+Sent: Friday, August 9, 2024 7:11 PM
+To: Ben Bolker <bbolker at gmail.com>
+Cc: Yuan Chun Ding <ycding at coh.org>; r-help at r-project.org
+Subject: Re: [R] a fast way to do my job
+
+Better idea, Ben! It would work as you might expect it to to produce the same results as the above: ##first make sure your regressor is a matrix: pur2 <- matrix(purity2, ncol =1) ## convert the data frame variables into a matrix dat <-
+
+
+Better idea, Ben!
+
+
+
+It would work as you might expect it to to produce the same results as
+
+the above:
+
+
+
+##first make sure your regressor is a matrix:
+
+pur2 <- matrix(purity2, ncol =1)
+
+## convert the data frame variables into a matrix
+
+dat <- as.matrix(gem751be.rpkm[ , 74:35164])
+
+##then
+
+result <- residuals(lm.fit( x= pur2, y = dat))
+
+
+
+Cheers,
+
+Bert
+
+
+
+On Fri, Aug 9, 2024 at 6:38?PM Ben Bolker <bbolker at gmail.com<mailto:bbolker at gmail.com>> wrote:
+
+>
+
+> You can also fit a linear model with a matrix-valued response
+
+> variable, which should be even faster (not sure off the top of my head
+
+> how to get the residuals and reshape them to the dimensions you want)
+
+>
+
+> On Fri, Aug 9, 2024 at 9:31?PM Bert Gunter <bgunter.4567 at gmail.com<mailto:bgunter.4567 at gmail.com>> wrote:
+
+> >
+
+> > See ?lm.fit.
+
+> > I must be missing something, because:
+
+> >
+
+> > results <- sapply(74:35164, \(i) residuals(lm.fit(purity2,
+
+> > gem751be.rpkm[, i] )))
+
+> >
+
+> > would give you a 751 x 35091 matrix of the residuals from each of the
+
+> > regressions.
+
+> > I assume it will be considerably faster than all the overhead you are
+
+> > carrying in your current code, but of course you'll have to try it and
+
+> > see. ... Assuming that I have interpreted your request correctly.
+
+> > Ignore if not.
+
+> >
+
+> > Cheers,
+
+> > Bert
+
+> >
+
+> > On Fri, Aug 9, 2024 at 4:50?PM Yuan Chun Ding via R-help
+
+> > <r-help at r-project.org<mailto:r-help at r-project.org>> wrote:
+
+> > >
+
+> > > Dear R users,
+
+> > >
+
+> > > I am running the following code below,  the gem751be.rpkm is a dataframe with dim of 751 samples by 35164 variables,  73 phenotypic variables in the furst to 73rd column and 35091 genomic variables or genes in the 74th to 35164th columns.  What I need to do is to calculate the residuals for each gene using the simple linear regression model of genelist[i] ~ purity2;
+
+> > >
+
+> > > The following code is running,  it takes long time, but I have an expensive ThinkStation window computer.
+
+> > > Can you provide a fast way to do it?
+
+> > >
+
+> > > Thank you,
+
+> > >
+
+> > > Ding
+
+> > >
+
+> > > ---------------------------------------------------------------------------------
+
+> > >
+
+> > >
+
+> > > gem751be.rpkm <-merge(gem751be10, as.data.frame(t(rna849.fpkm2)),
+
+> > > +                           by.x="id2",by.y=0)
+
+> > > >   row.names(gem751be.rpkm)<-gem751be.rpkm$id3
+
+> > > >   colnames(gem751be.rpkm)<-gsub(colnames(gem751be.rpkm),pattern="-",replacement="_")
+
+> > > >   genelist <- gem751be.rpkm %>% dplyr::select(74:35164)
+
+> > > >   residuals <- NULL
+
+> > > >   for (i in 1:length(genelist)) {
+
+> > > +     #i=1
+
+> > > +     formula <- reformulate("purity2", response=names(genelist)[i])
+
+> > > +     model <- lm(formula, data = gem751be.rpkm)
+
+> > > +     resi <- as.data.frame(residuals(model))
+
+> > > +     colnames(resi)[1]<-names(genelist)[i]
+
+> > > +     resi <-as.data.frame(t(resi))
+
+> > > +     residuals <- rbind(residuals, resi)
+
+> > > +   }
+
+> > >
+
+> > >
+
+> > >
+
+> > > ----------------------------------------------------------------------
+
+> > > ------------------------------------------------------------
+
+> > > -SECURITY/CONFIDENTIALITY WARNING-
+
+> > >
+
+> > > This message and any attachments are intended solely for the individual or entity to which they are addressed. This communication may contain information that is privileged, confidential, or exempt from disclosure under applicable law (e.g., personal health information, research data, financial information). Because this e-mail has been sent without encryption, individuals other than the intended recipient may be able to view the information, forward it to others or tamper with the information without the knowledge or consent of the sender. If you are not the intended recipient, or the employee or person responsible for delivering the message to the intended recipient, any dissemination, distribution or copying of the communication is strictly prohibited. If you received the communication in error, please notify the sender immediately by replying to this message and deleting the message and any accompanying files from your system. If, due to the security risks, you do not wish to rec
+
+> > >  eive further communications via e-mail, please reply to this message and inform the sender that you do not wish to receive further e-mail from the sender. (LCP301)
+
+> > > ------------------------------------------------------------
+
+> > >
+
+> > >         [[alternative HTML version deleted]]
+
+> > >
+
+> > > ______________________________________________
+
+> > > R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+
+> > > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$<https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$>
+
+> > > PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$<https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$>
+
+> > > and provide commented, minimal, self-contained, reproducible code.
+
+> >
+
+> > ______________________________________________
+
+> > R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+
+> > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$<https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$>
+
+> > PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$<https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$>
+
+> > and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Aug 10 21:59:33 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 10 Aug 2024 12:59:33 -0700
+Subject: [R] a fast way to do my job
+In-Reply-To: <MN2PR02MB6911508EC9B0040C41044C86D4BB2@MN2PR02MB6911.namprd02.prod.outlook.com>
+References: <MN2PR02MB691185ED67AD413C46A0AAEED4BA2@MN2PR02MB6911.namprd02.prod.outlook.com>
+ <CAGxFJbRj=GP4QP4L9npjcS9zwRB7t-1vib03fqicNW2dE-wQZQ@mail.gmail.com>
+ <CABghstS_rwq41mudBsFyEML2RrWmKi1thhHi5D81pqVyqaDPSw@mail.gmail.com>
+ <CAGxFJbTbdt+QaNX8i4P_X-bir0Td-6Rn=jm5ryB6XrK_CoA0Hw@mail.gmail.com>
+ <MN2PR02MB6911508EC9B0040C41044C86D4BB2@MN2PR02MB6911.namprd02.prod.outlook.com>
+Message-ID: <CAGxFJbQE_0-PLDoZG_+xRqk4dM6tno-yxkndS_MPyCto-t=+bQ@mail.gmail.com>
+
+Probably because you inadvertently ran different models. Without your code,
+I haven't a clue.
+
+On Sat, Aug 10, 2024, 12:29 Yuan Chun Ding <ycding at coh.org> wrote:
+
+> HI Bert and Ben,
+>
+>
+>
+> Yes, running lm.fit using the matrix format is much faster. I read a
+> couple of online comments why it is faster.
+>
+>
+>
+> However, the residual values for three tested variables or genes from lm
+> function and lm.fit function are different, with Pearson correlation of
+> 0.55, 0.89, and 0.99.
+>
+>
+>
+> I have not found the reason.
+>
+>
+>
+> Thanks,
+>
+>
+> Ding
+>
+>
+>
+> *From:* Bert Gunter <bgunter.4567 at gmail.com>
+> *Sent:* Friday, August 9, 2024 7:11 PM
+> *To:* Ben Bolker <bbolker at gmail.com>
+> *Cc:* Yuan Chun Ding <ycding at coh.org>; r-help at r-project.org
+> *Subject:* Re: [R] a fast way to do my job
+>
+>
+>
+> Better idea, Ben! It would work as you might expect it to to produce the
+> same results as the above: ##first make sure your regressor is a matrix:
+> pur2 <- matrix(purity2, ncol =1) ## convert the data frame variables into a
+> matrix dat <-
+>
+> Better idea, Ben!
+>
+>
+>
+> It would work as you might expect it to to produce the same results as
+>
+> the above:
+>
+>
+>
+> ##first make sure your regressor is a matrix:
+>
+> pur2 <- matrix(purity2, ncol =1)
+>
+> ## convert the data frame variables into a matrix
+>
+> dat <- as.matrix(gem751be.rpkm[ , 74:35164])
+>
+> ##then
+>
+> result <- residuals(lm.fit( x= pur2, y = dat))
+>
+>
+>
+> Cheers,
+>
+> Bert
+>
+>
+>
+> On Fri, Aug 9, 2024 at 6:38?PM Ben Bolker <bbolker at gmail.com> wrote:
+>
+> >
+>
+> > You can also fit a linear model with a matrix-valued response
+>
+> > variable, which should be even faster (not sure off the top of my head
+>
+> > how to get the residuals and reshape them to the dimensions you want)
+>
+> >
+>
+> > On Fri, Aug 9, 2024 at 9:31?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> > >
+>
+> > > See ?lm.fit.
+>
+> > > I must be missing something, because:
+>
+> > >
+>
+> > > results <- sapply(74:35164, \(i) residuals(lm.fit(purity2,
+>
+> > > gem751be.rpkm[, i] )))
+>
+> > >
+>
+> > > would give you a 751 x 35091 matrix of the residuals from each of the
+>
+> > > regressions.
+>
+> > > I assume it will be considerably faster than all the overhead you are
+>
+> > > carrying in your current code, but of course you'll have to try it and
+>
+> > > see. ... Assuming that I have interpreted your request correctly.
+>
+> > > Ignore if not.
+>
+> > >
+>
+> > > Cheers,
+>
+> > > Bert
+>
+> > >
+>
+> > > On Fri, Aug 9, 2024 at 4:50?PM Yuan Chun Ding via R-help
+>
+> > > <r-help at r-project.org> wrote:
+>
+> > > >
+>
+> > > > Dear R users,
+>
+> > > >
+>
+> > > > I am running the following code below,  the gem751be.rpkm is a dataframe with dim of 751 samples by 35164 variables,  73 phenotypic variables in the furst to 73rd column and 35091 genomic variables or genes in the 74th to 35164th columns.  What I need to do is to calculate the residuals for each gene using the simple linear regression model of genelist[i] ~ purity2;
+>
+> > > >
+>
+> > > > The following code is running,  it takes long time, but I have an expensive ThinkStation window computer.
+>
+> > > > Can you provide a fast way to do it?
+>
+> > > >
+>
+> > > > Thank you,
+>
+> > > >
+>
+> > > > Ding
+>
+> > > >
+>
+> > > > ---------------------------------------------------------------------------------
+>
+> > > >
+>
+> > > >
+>
+> > > > gem751be.rpkm <-merge(gem751be10, as.data.frame(t(rna849.fpkm2)),
+>
+> > > > +                           by.x="id2",by.y=0)
+>
+> > > > >   row.names(gem751be.rpkm)<-gem751be.rpkm$id3
+>
+> > > > >   colnames(gem751be.rpkm)<-gsub(colnames(gem751be.rpkm),pattern="-",replacement="_")
+>
+> > > > >   genelist <- gem751be.rpkm %>% dplyr::select(74:35164)
+>
+> > > > >   residuals <- NULL
+>
+> > > > >   for (i in 1:length(genelist)) {
+>
+> > > > +     #i=1
+>
+> > > > +     formula <- reformulate("purity2", response=names(genelist)[i])
+>
+> > > > +     model <- lm(formula, data = gem751be.rpkm)
+>
+> > > > +     resi <- as.data.frame(residuals(model))
+>
+> > > > +     colnames(resi)[1]<-names(genelist)[i]
+>
+> > > > +     resi <-as.data.frame(t(resi))
+>
+> > > > +     residuals <- rbind(residuals, resi)
+>
+> > > > +   }
+>
+> > > >
+>
+> > > >
+>
+> > > >
+>
+> > > > ----------------------------------------------------------------------
+>
+> > > > ------------------------------------------------------------
+>
+> > > > -SECURITY/CONFIDENTIALITY WARNING-
+>
+> > > >
+>
+> > > > This message and any attachments are intended solely for the individual or entity to which they are addressed. This communication may contain information that is privileged, confidential, or exempt from disclosure under applicable law (e.g., personal health information, research data, financial information). Because this e-mail has been sent without encryption, individuals other than the intended recipient may be able to view the information, forward it to others or tamper with the information without the knowledge or consent of the sender. If you are not the intended recipient, or the employee or person responsible for delivering the message to the intended recipient, any dissemination, distribution or copying of the communication is strictly prohibited. If you received the communication in error, please notify the sender immediately by replying to this message and deleting the message and any accompanying files from your system. If, due to the security risks, you do not wish to rec
+>
+> > > >  eive further communications via e-mail, please reply to this message and inform the sender that you do not wish to receive further e-mail from the sender. (LCP301)
+>
+> > > > ------------------------------------------------------------
+>
+> > > >
+>
+> > > >         [[alternative HTML version deleted]]
+>
+> > > >
+>
+> > > > ______________________________________________
+>
+> > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>
+> > > > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$ <https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$>
+>
+> > > > PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$ <https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$>
+>
+> > > > and provide commented, minimal, self-contained, reproducible code.
+>
+> > >
+>
+> > > ______________________________________________
+>
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>
+> > > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$ <https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$>
+>
+> > > PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$ <https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$>
+>
+> > > and provide commented, minimal, self-contained, reproducible code.
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From ycd|ng @end|ng |rom coh@org  Sat Aug 10 22:01:12 2024
+From: ycd|ng @end|ng |rom coh@org (Yuan Chun Ding)
+Date: Sat, 10 Aug 2024 20:01:12 +0000
+Subject: [R] a fast way to do my job
+In-Reply-To: <MN2PR02MB6911508EC9B0040C41044C86D4BB2@MN2PR02MB6911.namprd02.prod.outlook.com>
+References: <MN2PR02MB691185ED67AD413C46A0AAEED4BA2@MN2PR02MB6911.namprd02.prod.outlook.com>
+ <CAGxFJbRj=GP4QP4L9npjcS9zwRB7t-1vib03fqicNW2dE-wQZQ@mail.gmail.com>
+ <CABghstS_rwq41mudBsFyEML2RrWmKi1thhHi5D81pqVyqaDPSw@mail.gmail.com>
+ <CAGxFJbTbdt+QaNX8i4P_X-bir0Td-6Rn=jm5ryB6XrK_CoA0Hw@mail.gmail.com>
+ <MN2PR02MB6911508EC9B0040C41044C86D4BB2@MN2PR02MB6911.namprd02.prod.outlook.com>
+Message-ID: <MN2PR02MB691150859EDFB8E2DB98B5F2D4BB2@MN2PR02MB6911.namprd02.prod.outlook.com>
+
+Hi Bert and Ben,
+
+Thanks a lot for your suggestion!!.
+
+About the different residuals between lm function and lm.fit,  from online search,  lt seems like that I need to add an intercept in the design matrix x;
+
+pur2 <- matrix(gem751be.rpkm$purity2, ncol =1)
+  pur2.1 <- cbind(1,gem751be.rpkm$purity2)
+
+then running result2 <- residuals(lm.fit( x= pur2.1, y = dat));
+now I am thinking whether an intercept is required or not.
+
+Ding
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Yuan Chun Ding via R-help
+Sent: Saturday, August 10, 2024 12:30 PM
+To: Bert Gunter <bgunter.4567 at gmail.com>; Ben Bolker <bbolker at gmail.com>
+Cc: r-help at r-project.org
+Subject: Re: [R] a fast way to do my job
+
+HI Bert and Ben, Yes, running lm.?fit using the matrix format is much faster. I read a couple of online comments why it is faster. However, the residual values for three tested variables or genes from lm function and lm.?fit function are different,
+
+
+HI Bert and Ben,
+
+
+
+Yes, running lm.fit using the matrix format is much faster. I read a couple of online comments why it is faster.
+
+
+
+However, the residual values for three tested variables or genes from lm function and lm.fit function are different, with Pearson correlation of 0.55, 0.89, and 0.99.
+
+
+
+I have not found the reason.
+
+
+
+Thanks,
+
+
+
+Ding
+
+
+
+From: Bert Gunter <bgunter.4567 at gmail.com<mailto:bgunter.4567 at gmail.com>>
+
+Sent: Friday, August 9, 2024 7:11 PM
+
+To: Ben Bolker <bbolker at gmail.com<mailto:bbolker at gmail.com>>
+
+Cc: Yuan Chun Ding <ycding at coh.org<mailto:ycding at coh.org>>; r-help at r-project.org<mailto:r-help at r-project.org>
+
+Subject: Re: [R] a fast way to do my job
+
+
+
+Better idea, Ben! It would work as you might expect it to to produce the same results as the above: ##first make sure your regressor is a matrix: pur2 <- matrix(purity2, ncol =1) ## convert the data frame variables into a matrix dat <-
+
+
+
+
+
+Better idea, Ben!
+
+
+
+
+
+
+
+It would work as you might expect it to to produce the same results as
+
+
+
+the above:
+
+
+
+
+
+
+
+##first make sure your regressor is a matrix:
+
+
+
+pur2 <- matrix(purity2, ncol =1)
+
+
+
+## convert the data frame variables into a matrix
+
+
+
+dat <- as.matrix(gem751be.rpkm[ , 74:35164])
+
+
+
+##then
+
+
+
+result <- residuals(lm.fit( x= pur2, y = dat))
+
+
+
+
+
+
+
+Cheers,
+
+
+
+Bert
+
+
+
+
+
+
+
+On Fri, Aug 9, 2024 at 6:38?PM Ben Bolker <bbolker at gmail.com<mailto:bbolker at gmail.com<mailto:bbolker at gmail.com%3cmailto:bbolker at gmail.com>>> wrote:
+
+
+
+>
+
+
+
+> You can also fit a linear model with a matrix-valued response
+
+
+
+> variable, which should be even faster (not sure off the top of my head
+
+
+
+> how to get the residuals and reshape them to the dimensions you want)
+
+
+
+>
+
+
+
+> On Fri, Aug 9, 2024 at 9:31?PM Bert Gunter <bgunter.4567 at gmail.com<mailto:bgunter.4567 at gmail.com<mailto:bgunter.4567 at gmail.com%3cmailto:bgunter.4567 at gmail.com>>> wrote:
+
+
+
+> >
+
+
+
+> > See ?lm.fit.
+
+
+
+> > I must be missing something, because:
+
+
+
+> >
+
+
+
+> > results <- sapply(74:35164, \(i) residuals(lm.fit(purity2,
+
+
+
+> > gem751be.rpkm[, i] )))
+
+
+
+> >
+
+
+
+> > would give you a 751 x 35091 matrix of the residuals from each of the
+
+
+
+> > regressions.
+
+
+
+> > I assume it will be considerably faster than all the overhead you are
+
+
+
+> > carrying in your current code, but of course you'll have to try it and
+
+
+
+> > see. ... Assuming that I have interpreted your request correctly.
+
+
+
+> > Ignore if not.
+
+
+
+> >
+
+
+
+> > Cheers,
+
+
+
+> > Bert
+
+
+
+> >
+
+
+
+> > On Fri, Aug 9, 2024 at 4:50?PM Yuan Chun Ding via R-help
+
+
+
+> > <r-help at r-project.org<mailto:r-help at r-project.org<mailto:r-help at r-project.org%3cmailto:r-help at r-project.org>>> wrote:
+
+
+
+> > >
+
+
+
+> > > Dear R users,
+
+
+
+> > >
+
+
+
+> > > I am running the following code below,  the gem751be.rpkm is a dataframe with dim of 751 samples by 35164 variables,  73 phenotypic variables in the furst to 73rd column and 35091 genomic variables or genes in the 74th to 35164th columns.  What I need to do is to calculate the residuals for each gene using the simple linear regression model of genelist[i] ~ purity2;
+
+
+
+> > >
+
+
+
+> > > The following code is running,  it takes long time, but I have an expensive ThinkStation window computer.
+
+
+
+> > > Can you provide a fast way to do it?
+
+
+
+> > >
+
+
+
+> > > Thank you,
+
+
+
+> > >
+
+
+
+> > > Ding
+
+
+
+> > >
+
+
+
+> > > ---------------------------------------------------------------------------------
+
+
+
+> > >
+
+
+
+> > >
+
+
+
+> > > gem751be.rpkm <-merge(gem751be10, as.data.frame(t(rna849.fpkm2)),
+
+
+
+> > > +                           by.x="id2",by.y=0)
+
+
+
+> > > >   row.names(gem751be.rpkm)<-gem751be.rpkm$id3
+
+
+
+> > > >   colnames(gem751be.rpkm)<-gsub(colnames(gem751be.rpkm),pattern="-",replacement="_")
+
+
+
+> > > >   genelist <- gem751be.rpkm %>% dplyr::select(74:35164)
+
+
+
+> > > >   residuals <- NULL
+
+
+
+> > > >   for (i in 1:length(genelist)) {
+
+
+
+> > > +     #i=1
+
+
+
+> > > +     formula <- reformulate("purity2", response=names(genelist)[i])
+
+
+
+> > > +     model <- lm(formula, data = gem751be.rpkm)
+
+
+
+> > > +     resi <- as.data.frame(residuals(model))
+
+
+
+> > > +     colnames(resi)[1]<-names(genelist)[i]
+
+
+
+> > > +     resi <-as.data.frame(t(resi))
+
+
+
+> > > +     residuals <- rbind(residuals, resi)
+
+
+
+> > > +   }
+
+
+
+> > >
+
+
+
+> > >
+
+
+
+> > >
+
+
+
+> > > ----------------------------------------------------------------------
+
+
+
+> > > ------------------------------------------------------------
+
+
+
+> > > -SECURITY/CONFIDENTIALITY WARNING-
+
+
+
+> > >
+
+
+
+> > > This message and any attachments are intended solely for the individual or entity to which they are addressed. This communication may contain information that is privileged, confidential, or exempt from disclosure under applicable law (e.g., personal health information, research data, financial information). Because this e-mail has been sent without encryption, individuals other than the intended recipient may be able to view the information, forward it to others or tamper with the information without the knowledge or consent of the sender. If you are not the intended recipient, or the employee or person responsible for delivering the message to the intended recipient, any dissemination, distribution or copying of the communication is strictly prohibited. If you received the communication in error, please notify the sender immediately by replying to this message and deleting the message and any accompanying files from your system. If, due to the security risks, you do not wish to rec
+
+
+
+> > >  eive further communications via e-mail, please reply to this message and inform the sender that you do not wish to receive further e-mail from the sender. (LCP301)
+
+
+
+> > > ------------------------------------------------------------
+
+
+
+> > >
+
+
+
+> > >         [[alternative HTML version deleted]]
+
+
+
+> > >
+
+
+
+> > > ______________________________________________
+
+
+
+> > > R-help at r-project.org<mailto:R-help at r-project.org<mailto:R-help at r-project.org%3cmailto:R-help at r-project.org>> mailing list -- To UNSUBSCRIBE and more, see
+
+
+
+> > > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$<https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$><https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3chttps:/urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3e%3e>
+
+ <https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3chttps:/urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3e%3e>
+
+><https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3chttps:/urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3e%3e>> > PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$<https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$><https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3chttps:/urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3e%3e>
+
+ <https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3chttps:/urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3e%3e>
+
+><https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3chttps:/urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3e%3e>> > and provide commented, minimal, self-contained, reproducible code.
+
+
+
+> >
+
+
+
+> > ______________________________________________
+
+
+
+> > R-help at r-project.org<mailto:R-help at r-project.org<mailto:R-help at r-project.org%3cmailto:R-help at r-project.org>> mailing list -- To UNSUBSCRIBE and more, see
+
+
+
+> > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$<https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$><https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3chttps:/urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3e%3e>
+
+ <https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3chttps:/urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3e%3e>
+
+><https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3chttps:/urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3e%3e>> PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$<https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$><https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3chttps:/urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3e%3e>
+
+ <https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3chttps:/urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3e%3e>
+
+><https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3chttps:/urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3e%3e>> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+               [[alternative HTML version deleted]]
+
+
+
+______________________________________________
+
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+
+https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qqGp8uiTt4Nzt-4q2_z-dVpb3v8sQFbRq5O7Nok73NE3PTvgaktKByzXHf3KUh9X0Z4OaDMB0o_GD0c$<https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qqGp8uiTt4Nzt-4q2_z-dVpb3v8sQFbRq5O7Nok73NE3PTvgaktKByzXHf3KUh9X0Z4OaDMB0o_GD0c$>
+
+PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qqGp8uiTt4Nzt-4q2_z-dVpb3v8sQFbRq5O7Nok73NE3PTvgaktKByzXHf3KUh9X0Z4OaDMBoUteypM$<https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qqGp8uiTt4Nzt-4q2_z-dVpb3v8sQFbRq5O7Nok73NE3PTvgaktKByzXHf3KUh9X0Z4OaDMBoUteypM$>
+
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Aug 10 22:02:51 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 10 Aug 2024 13:02:51 -0700
+Subject: [R] a fast way to do my job
+In-Reply-To: <CAGxFJbQE_0-PLDoZG_+xRqk4dM6tno-yxkndS_MPyCto-t=+bQ@mail.gmail.com>
+References: <MN2PR02MB691185ED67AD413C46A0AAEED4BA2@MN2PR02MB6911.namprd02.prod.outlook.com>
+ <CAGxFJbRj=GP4QP4L9npjcS9zwRB7t-1vib03fqicNW2dE-wQZQ@mail.gmail.com>
+ <CABghstS_rwq41mudBsFyEML2RrWmKi1thhHi5D81pqVyqaDPSw@mail.gmail.com>
+ <CAGxFJbTbdt+QaNX8i4P_X-bir0Td-6Rn=jm5ryB6XrK_CoA0Hw@mail.gmail.com>
+ <MN2PR02MB6911508EC9B0040C41044C86D4BB2@MN2PR02MB6911.namprd02.prod.outlook.com>
+ <CAGxFJbQE_0-PLDoZG_+xRqk4dM6tno-yxkndS_MPyCto-t=+bQ@mail.gmail.com>
+Message-ID: <CAGxFJbRXzQC2r5s4+o21q86SzVX_PN_0m8Pbvq6xhEjE1Gc8Sw@mail.gmail.com>
+
+Is it because I failed to to add a column of ones for an intercept to
+the x matrix? TRhat would be my bad.
+
+-- Bert
+
+
+On Sat, Aug 10, 2024 at 12:59?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> Probably because you inadvertently ran different models. Without your code, I haven't a clue.
+>
+>
+> On Sat, Aug 10, 2024, 12:29 Yuan Chun Ding <ycding at coh.org> wrote:
+>>
+>> HI Bert and Ben,
+>>
+>>
+>>
+>> Yes, running lm.fit using the matrix format is much faster. I read a couple of online comments why it is faster.
+>>
+>>
+>>
+>> However, the residual values for three tested variables or genes from lm function and lm.fit function are different, with Pearson correlation of 0.55, 0.89, and 0.99.
+>>
+>>
+>>
+>> I have not found the reason.
+>>
+>>
+>>
+>> Thanks,
+>>
+>>
+>> Ding
+>>
+>>
+>>
+>> From: Bert Gunter <bgunter.4567 at gmail.com>
+>> Sent: Friday, August 9, 2024 7:11 PM
+>> To: Ben Bolker <bbolker at gmail.com>
+>> Cc: Yuan Chun Ding <ycding at coh.org>; r-help at r-project.org
+>> Subject: Re: [R] a fast way to do my job
+>>
+>>
+>>
+>> Better idea, Ben! It would work as you might expect it to to produce the same results as the above: ##first make sure your regressor is a matrix: pur2 <- matrix(purity2, ncol =1) ## convert the data frame variables into a matrix dat <-
+>>
+>> Better idea, Ben!
+>>
+>>
+>>
+>> It would work as you might expect it to to produce the same results as
+>>
+>> the above:
+>>
+>>
+>>
+>> ##first make sure your regressor is a matrix:
+>>
+>> pur2 <- matrix(purity2, ncol =1)
+>>
+>> ## convert the data frame variables into a matrix
+>>
+>> dat <- as.matrix(gem751be.rpkm[ , 74:35164])
+>>
+>> ##then
+>>
+>> result <- residuals(lm.fit( x= pur2, y = dat))
+>>
+>>
+>>
+>> Cheers,
+>>
+>> Bert
+>>
+>>
+>>
+>> On Fri, Aug 9, 2024 at 6:38?PM Ben Bolker <bbolker at gmail.com> wrote:
+>>
+>> >
+>>
+>> > You can also fit a linear model with a matrix-valued response
+>>
+>> > variable, which should be even faster (not sure off the top of my head
+>>
+>> > how to get the residuals and reshape them to the dimensions you want)
+>>
+>> >
+>>
+>> > On Fri, Aug 9, 2024 at 9:31?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>>
+>> > >
+>>
+>> > > See ?lm.fit.
+>>
+>> > > I must be missing something, because:
+>>
+>> > >
+>>
+>> > > results <- sapply(74:35164, \(i) residuals(lm.fit(purity2,
+>>
+>> > > gem751be.rpkm[, i] )))
+>>
+>> > >
+>>
+>> > > would give you a 751 x 35091 matrix of the residuals from each of the
+>>
+>> > > regressions.
+>>
+>> > > I assume it will be considerably faster than all the overhead you are
+>>
+>> > > carrying in your current code, but of course you'll have to try it and
+>>
+>> > > see. ... Assuming that I have interpreted your request correctly.
+>>
+>> > > Ignore if not.
+>>
+>> > >
+>>
+>> > > Cheers,
+>>
+>> > > Bert
+>>
+>> > >
+>>
+>> > > On Fri, Aug 9, 2024 at 4:50?PM Yuan Chun Ding via R-help
+>>
+>> > > <r-help at r-project.org> wrote:
+>>
+>> > > >
+>>
+>> > > > Dear R users,
+>>
+>> > > >
+>>
+>> > > > I am running the following code below,  the gem751be.rpkm is a dataframe with dim of 751 samples by 35164 variables,  73 phenotypic variables in the furst to 73rd column and 35091 genomic variables or genes in the 74th to 35164th columns.  What I need to do is to calculate the residuals for each gene using the simple linear regression model of genelist[i] ~ purity2;
+>>
+>> > > >
+>>
+>> > > > The following code is running,  it takes long time, but I have an expensive ThinkStation window computer.
+>>
+>> > > > Can you provide a fast way to do it?
+>>
+>> > > >
+>>
+>> > > > Thank you,
+>>
+>> > > >
+>>
+>> > > > Ding
+>>
+>> > > >
+>>
+>> > > > ---------------------------------------------------------------------------------
+>>
+>> > > >
+>>
+>> > > >
+>>
+>> > > > gem751be.rpkm <-merge(gem751be10, as.data.frame(t(rna849.fpkm2)),
+>>
+>> > > > +                           by.x="id2",by.y=0)
+>>
+>> > > > >   row.names(gem751be.rpkm)<-gem751be.rpkm$id3
+>>
+>> > > > >   colnames(gem751be.rpkm)<-gsub(colnames(gem751be.rpkm),pattern="-",replacement="_")
+>>
+>> > > > >   genelist <- gem751be.rpkm %>% dplyr::select(74:35164)
+>>
+>> > > > >   residuals <- NULL
+>>
+>> > > > >   for (i in 1:length(genelist)) {
+>>
+>> > > > +     #i=1
+>>
+>> > > > +     formula <- reformulate("purity2", response=names(genelist)[i])
+>>
+>> > > > +     model <- lm(formula, data = gem751be.rpkm)
+>>
+>> > > > +     resi <- as.data.frame(residuals(model))
+>>
+>> > > > +     colnames(resi)[1]<-names(genelist)[i]
+>>
+>> > > > +     resi <-as.data.frame(t(resi))
+>>
+>> > > > +     residuals <- rbind(residuals, resi)
+>>
+>> > > > +   }
+>>
+>> > > >
+>>
+>> > > >
+>>
+>> > > >
+>>
+>> > > > ----------------------------------------------------------------------
+>>
+>> > > > ------------------------------------------------------------
+>>
+>> > > > -SECURITY/CONFIDENTIALITY WARNING-
+>>
+>> > > >
+>>
+>> > > > This message and any attachments are intended solely for the individual or entity to which they are addressed. This communication may contain information that is privileged, confidential, or exempt from disclosure under applicable law (e.g., personal health information, research data, financial information). Because this e-mail has been sent without encryption, individuals other than the intended recipient may be able to view the information, forward it to others or tamper with the information without the knowledge or consent of the sender. If you are not the intended recipient, or the employee or person responsible for delivering the message to the intended recipient, any dissemination, distribution or copying of the communication is strictly prohibited. If you received the communication in error, please notify the sender immediately by replying to this message and deleting the message and any accompanying files from your system. If, due to the security risks, you do not wish to rec
+>>
+>> > > >  eive further communications via e-mail, please reply to this message and inform the sender that you do not wish to receive further e-mail from the sender. (LCP301)
+>>
+>> > > > ------------------------------------------------------------
+>>
+>> > > >
+>>
+>> > > >         [[alternative HTML version deleted]]
+>>
+>> > > >
+>>
+>> > > > ______________________________________________
+>>
+>> > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>
+>> > > > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$
+>>
+>> > > > PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$
+>>
+>> > > > and provide commented, minimal, self-contained, reproducible code.
+>>
+>> > >
+>>
+>> > > ______________________________________________
+>>
+>> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>
+>> > > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$
+>>
+>> > > PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$
+>>
+>> > > and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Aug 10 22:06:26 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 10 Aug 2024 13:06:26 -0700
+Subject: [R] a fast way to do my job
+In-Reply-To: <CAGxFJbRXzQC2r5s4+o21q86SzVX_PN_0m8Pbvq6xhEjE1Gc8Sw@mail.gmail.com>
+References: <MN2PR02MB691185ED67AD413C46A0AAEED4BA2@MN2PR02MB6911.namprd02.prod.outlook.com>
+ <CAGxFJbRj=GP4QP4L9npjcS9zwRB7t-1vib03fqicNW2dE-wQZQ@mail.gmail.com>
+ <CABghstS_rwq41mudBsFyEML2RrWmKi1thhHi5D81pqVyqaDPSw@mail.gmail.com>
+ <CAGxFJbTbdt+QaNX8i4P_X-bir0Td-6Rn=jm5ryB6XrK_CoA0Hw@mail.gmail.com>
+ <MN2PR02MB6911508EC9B0040C41044C86D4BB2@MN2PR02MB6911.namprd02.prod.outlook.com>
+ <CAGxFJbQE_0-PLDoZG_+xRqk4dM6tno-yxkndS_MPyCto-t=+bQ@mail.gmail.com>
+ <CAGxFJbRXzQC2r5s4+o21q86SzVX_PN_0m8Pbvq6xhEjE1Gc8Sw@mail.gmail.com>
+Message-ID: <CAGxFJbToq5aVdDwro7MyxYMBWLPEoALOQTw2BPuedy+Fe+X=Jg@mail.gmail.com>
+
+Ah, messages crossed.
+A no-intercept model **assumes** the straight line fit must pass
+through the origin. Unless there is a strong justification for such an
+assumption, you should include an intercept.
+
+-- Bert
+
+On Sat, Aug 10, 2024 at 1:02?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+> Is it because I failed to to add a column of ones for an intercept to
+> the x matrix? TRhat would be my bad.
+>
+> -- Bert
+>
+>
+> On Sat, Aug 10, 2024 at 12:59?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >
+> > Probably because you inadvertently ran different models. Without your code, I haven't a clue.
+> >
+> >
+> > On Sat, Aug 10, 2024, 12:29 Yuan Chun Ding <ycding at coh.org> wrote:
+> >>
+> >> HI Bert and Ben,
+> >>
+> >>
+> >>
+> >> Yes, running lm.fit using the matrix format is much faster. I read a couple of online comments why it is faster.
+> >>
+> >>
+> >>
+> >> However, the residual values for three tested variables or genes from lm function and lm.fit function are different, with Pearson correlation of 0.55, 0.89, and 0.99.
+> >>
+> >>
+> >>
+> >> I have not found the reason.
+> >>
+> >>
+> >>
+> >> Thanks,
+> >>
+> >>
+> >> Ding
+> >>
+> >>
+> >>
+> >> From: Bert Gunter <bgunter.4567 at gmail.com>
+> >> Sent: Friday, August 9, 2024 7:11 PM
+> >> To: Ben Bolker <bbolker at gmail.com>
+> >> Cc: Yuan Chun Ding <ycding at coh.org>; r-help at r-project.org
+> >> Subject: Re: [R] a fast way to do my job
+> >>
+> >>
+> >>
+> >> Better idea, Ben! It would work as you might expect it to to produce the same results as the above: ##first make sure your regressor is a matrix: pur2 <- matrix(purity2, ncol =1) ## convert the data frame variables into a matrix dat <-
+> >>
+> >> Better idea, Ben!
+> >>
+> >>
+> >>
+> >> It would work as you might expect it to to produce the same results as
+> >>
+> >> the above:
+> >>
+> >>
+> >>
+> >> ##first make sure your regressor is a matrix:
+> >>
+> >> pur2 <- matrix(purity2, ncol =1)
+> >>
+> >> ## convert the data frame variables into a matrix
+> >>
+> >> dat <- as.matrix(gem751be.rpkm[ , 74:35164])
+> >>
+> >> ##then
+> >>
+> >> result <- residuals(lm.fit( x= pur2, y = dat))
+> >>
+> >>
+> >>
+> >> Cheers,
+> >>
+> >> Bert
+> >>
+> >>
+> >>
+> >> On Fri, Aug 9, 2024 at 6:38?PM Ben Bolker <bbolker at gmail.com> wrote:
+> >>
+> >> >
+> >>
+> >> > You can also fit a linear model with a matrix-valued response
+> >>
+> >> > variable, which should be even faster (not sure off the top of my head
+> >>
+> >> > how to get the residuals and reshape them to the dimensions you want)
+> >>
+> >> >
+> >>
+> >> > On Fri, Aug 9, 2024 at 9:31?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> >>
+> >> > >
+> >>
+> >> > > See ?lm.fit.
+> >>
+> >> > > I must be missing something, because:
+> >>
+> >> > >
+> >>
+> >> > > results <- sapply(74:35164, \(i) residuals(lm.fit(purity2,
+> >>
+> >> > > gem751be.rpkm[, i] )))
+> >>
+> >> > >
+> >>
+> >> > > would give you a 751 x 35091 matrix of the residuals from each of the
+> >>
+> >> > > regressions.
+> >>
+> >> > > I assume it will be considerably faster than all the overhead you are
+> >>
+> >> > > carrying in your current code, but of course you'll have to try it and
+> >>
+> >> > > see. ... Assuming that I have interpreted your request correctly.
+> >>
+> >> > > Ignore if not.
+> >>
+> >> > >
+> >>
+> >> > > Cheers,
+> >>
+> >> > > Bert
+> >>
+> >> > >
+> >>
+> >> > > On Fri, Aug 9, 2024 at 4:50?PM Yuan Chun Ding via R-help
+> >>
+> >> > > <r-help at r-project.org> wrote:
+> >>
+> >> > > >
+> >>
+> >> > > > Dear R users,
+> >>
+> >> > > >
+> >>
+> >> > > > I am running the following code below,  the gem751be.rpkm is a dataframe with dim of 751 samples by 35164 variables,  73 phenotypic variables in the furst to 73rd column and 35091 genomic variables or genes in the 74th to 35164th columns.  What I need to do is to calculate the residuals for each gene using the simple linear regression model of genelist[i] ~ purity2;
+> >>
+> >> > > >
+> >>
+> >> > > > The following code is running,  it takes long time, but I have an expensive ThinkStation window computer.
+> >>
+> >> > > > Can you provide a fast way to do it?
+> >>
+> >> > > >
+> >>
+> >> > > > Thank you,
+> >>
+> >> > > >
+> >>
+> >> > > > Ding
+> >>
+> >> > > >
+> >>
+> >> > > > ---------------------------------------------------------------------------------
+> >>
+> >> > > >
+> >>
+> >> > > >
+> >>
+> >> > > > gem751be.rpkm <-merge(gem751be10, as.data.frame(t(rna849.fpkm2)),
+> >>
+> >> > > > +                           by.x="id2",by.y=0)
+> >>
+> >> > > > >   row.names(gem751be.rpkm)<-gem751be.rpkm$id3
+> >>
+> >> > > > >   colnames(gem751be.rpkm)<-gsub(colnames(gem751be.rpkm),pattern="-",replacement="_")
+> >>
+> >> > > > >   genelist <- gem751be.rpkm %>% dplyr::select(74:35164)
+> >>
+> >> > > > >   residuals <- NULL
+> >>
+> >> > > > >   for (i in 1:length(genelist)) {
+> >>
+> >> > > > +     #i=1
+> >>
+> >> > > > +     formula <- reformulate("purity2", response=names(genelist)[i])
+> >>
+> >> > > > +     model <- lm(formula, data = gem751be.rpkm)
+> >>
+> >> > > > +     resi <- as.data.frame(residuals(model))
+> >>
+> >> > > > +     colnames(resi)[1]<-names(genelist)[i]
+> >>
+> >> > > > +     resi <-as.data.frame(t(resi))
+> >>
+> >> > > > +     residuals <- rbind(residuals, resi)
+> >>
+> >> > > > +   }
+> >>
+> >> > > >
+> >>
+> >> > > >
+> >>
+> >> > > >
+> >>
+> >> > > > ----------------------------------------------------------------------
+> >>
+> >> > > > ------------------------------------------------------------
+> >>
+> >> > > > -SECURITY/CONFIDENTIALITY WARNING-
+> >>
+> >> > > >
+> >>
+> >> > > > This message and any attachments are intended solely for the individual or entity to which they are addressed. This communication may contain information that is privileged, confidential, or exempt from disclosure under applicable law (e.g., personal health information, research data, financial information). Because this e-mail has been sent without encryption, individuals other than the intended recipient may be able to view the information, forward it to others or tamper with the information without the knowledge or consent of the sender. If you are not the intended recipient, or the employee or person responsible for delivering the message to the intended recipient, any dissemination, distribution or copying of the communication is strictly prohibited. If you received the communication in error, please notify the sender immediately by replying to this message and deleting the message and any accompanying files from your system. If, due to the security risks, you do not wish to rec
+> >>
+> >> > > >  eive further communications via e-mail, please reply to this message and inform the sender that you do not wish to receive further e-mail from the sender. (LCP301)
+> >>
+> >> > > > ------------------------------------------------------------
+> >>
+> >> > > >
+> >>
+> >> > > >         [[alternative HTML version deleted]]
+> >>
+> >> > > >
+> >>
+> >> > > > ______________________________________________
+> >>
+> >> > > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>
+> >> > > > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$
+> >>
+> >> > > > PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$
+> >>
+> >> > > > and provide commented, minimal, self-contained, reproducible code.
+> >>
+> >> > >
+> >>
+> >> > > ______________________________________________
+> >>
+> >> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>
+> >> > > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$
+> >>
+> >> > > PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$
+> >>
+> >> > > and provide commented, minimal, self-contained, reproducible code.
+
+
+From ycd|ng @end|ng |rom coh@org  Sat Aug 10 22:06:33 2024
+From: ycd|ng @end|ng |rom coh@org (Yuan Chun Ding)
+Date: Sat, 10 Aug 2024 20:06:33 +0000
+Subject: [R] a fast way to do my job
+In-Reply-To: <CAGxFJbQE_0-PLDoZG_+xRqk4dM6tno-yxkndS_MPyCto-t=+bQ@mail.gmail.com>
+References: <MN2PR02MB691185ED67AD413C46A0AAEED4BA2@MN2PR02MB6911.namprd02.prod.outlook.com>
+ <CAGxFJbRj=GP4QP4L9npjcS9zwRB7t-1vib03fqicNW2dE-wQZQ@mail.gmail.com>
+ <CABghstS_rwq41mudBsFyEML2RrWmKi1thhHi5D81pqVyqaDPSw@mail.gmail.com>
+ <CAGxFJbTbdt+QaNX8i4P_X-bir0Td-6Rn=jm5ryB6XrK_CoA0Hw@mail.gmail.com>
+ <MN2PR02MB6911508EC9B0040C41044C86D4BB2@MN2PR02MB6911.namprd02.prod.outlook.com>
+ <CAGxFJbQE_0-PLDoZG_+xRqk4dM6tno-yxkndS_MPyCto-t=+bQ@mail.gmail.com>
+Message-ID: <MN2PR02MB69110F8DE678018C2A02834CD4BB2@MN2PR02MB6911.namprd02.prod.outlook.com>
+
+after add intercept, all residuals are the same from lm or lm.fit.
+
+Ding
+
+From: Bert Gunter <bgunter.4567 at gmail.com>
+Sent: Saturday, August 10, 2024 1:00 PM
+To: Yuan Chun Ding <ycding at coh.org>
+Cc: Ben Bolker <bbolker at gmail.com>; r-help at r-project.org
+Subject: Re: [R] a fast way to do my job
+
+Probably because you inadvertently ran different models. Without your code, I haven't a clue. On Sat, Aug 10, 2024, 12:?29 Yuan Chun Ding <ycding@?coh.?org> wrote: HI Bert and Ben, Yes, running lm.?fit using the matrix format is much faster.?
+
+
+Probably because you inadvertently ran different models. Without your code, I haven't a clue.
+
+On Sat, Aug 10, 2024, 12:29 Yuan Chun Ding <ycding at coh.org<mailto:ycding at coh.org>> wrote:
+HI Bert and Ben,
+
+Yes, running lm.fit using the matrix format is much faster. I read a couple of online comments why it is faster.
+
+However, the residual values for three tested variables or genes from lm function and lm.fit function are different, with Pearson correlation of 0.55, 0.89, and 0.99.
+
+I have not found the reason.
+
+Thanks,
+
+Ding
+
+From: Bert Gunter <bgunter.4567 at gmail.com<mailto:bgunter.4567 at gmail.com>>
+Sent: Friday, August 9, 2024 7:11 PM
+To: Ben Bolker <bbolker at gmail.com<mailto:bbolker at gmail.com>>
+Cc: Yuan Chun Ding <ycding at coh.org<mailto:ycding at coh.org>>; r-help at r-project.org<mailto:r-help at r-project.org>
+Subject: Re: [R] a fast way to do my job
+
+Better idea, Ben! It would work as you might expect it to to produce the same results as the above: ##first make sure your regressor is a matrix: pur2 <- matrix(purity2, ncol =1) ## convert the data frame variables into a matrix dat <-
+
+Better idea, Ben!
+
+
+
+It would work as you might expect it to to produce the same results as
+
+the above:
+
+
+
+##first make sure your regressor is a matrix:
+
+pur2 <- matrix(purity2, ncol =1)
+
+## convert the data frame variables into a matrix
+
+dat <- as.matrix(gem751be.rpkm[ , 74:35164])
+
+##then
+
+result <- residuals(lm.fit( x= pur2, y = dat))
+
+
+
+Cheers,
+
+Bert
+
+
+
+On Fri, Aug 9, 2024 at 6:38?PM Ben Bolker <bbolker at gmail.com<mailto:bbolker at gmail.com>> wrote:
+
+>
+
+> You can also fit a linear model with a matrix-valued response
+
+> variable, which should be even faster (not sure off the top of my head
+
+> how to get the residuals and reshape them to the dimensions you want)
+
+>
+
+> On Fri, Aug 9, 2024 at 9:31?PM Bert Gunter <bgunter.4567 at gmail.com<mailto:bgunter.4567 at gmail.com>> wrote:
+
+> >
+
+> > See ?lm.fit.
+
+> > I must be missing something, because:
+
+> >
+
+> > results <- sapply(74:35164, \(i) residuals(lm.fit(purity2,
+
+> > gem751be.rpkm[, i] )))
+
+> >
+
+> > would give you a 751 x 35091 matrix of the residuals from each of the
+
+> > regressions.
+
+> > I assume it will be considerably faster than all the overhead you are
+
+> > carrying in your current code, but of course you'll have to try it and
+
+> > see. ... Assuming that I have interpreted your request correctly.
+
+> > Ignore if not.
+
+> >
+
+> > Cheers,
+
+> > Bert
+
+> >
+
+> > On Fri, Aug 9, 2024 at 4:50?PM Yuan Chun Ding via R-help
+
+> > <r-help at r-project.org<mailto:r-help at r-project.org>> wrote:
+
+> > >
+
+> > > Dear R users,
+
+> > >
+
+> > > I am running the following code below,  the gem751be.rpkm is a dataframe with dim of 751 samples by 35164 variables,  73 phenotypic variables in the furst to 73rd column and 35091 genomic variables or genes in the 74th to 35164th columns.  What I need to do is to calculate the residuals for each gene using the simple linear regression model of genelist[i] ~ purity2;
+
+> > >
+
+> > > The following code is running,  it takes long time, but I have an expensive ThinkStation window computer.
+
+> > > Can you provide a fast way to do it?
+
+> > >
+
+> > > Thank you,
+
+> > >
+
+> > > Ding
+
+> > >
+
+> > > ---------------------------------------------------------------------------------
+
+> > >
+
+> > >
+
+> > > gem751be.rpkm <-merge(gem751be10, as.data.frame(t(rna849.fpkm2)),
+
+> > > +                           by.x="id2",by.y=0)
+
+> > > >   row.names(gem751be.rpkm)<-gem751be.rpkm$id3
+
+> > > >   colnames(gem751be.rpkm)<-gsub(colnames(gem751be.rpkm),pattern="-",replacement="_")
+
+> > > >   genelist <- gem751be.rpkm %>% dplyr::select(74:35164)
+
+> > > >   residuals <- NULL
+
+> > > >   for (i in 1:length(genelist)) {
+
+> > > +     #i=1
+
+> > > +     formula <- reformulate("purity2", response=names(genelist)[i])
+
+> > > +     model <- lm(formula, data = gem751be.rpkm)
+
+> > > +     resi <- as.data.frame(residuals(model))
+
+> > > +     colnames(resi)[1]<-names(genelist)[i]
+
+> > > +     resi <-as.data.frame(t(resi))
+
+> > > +     residuals <- rbind(residuals, resi)
+
+> > > +   }
+
+> > >
+
+> > >
+
+> > >
+
+> > > ----------------------------------------------------------------------
+
+> > > ------------------------------------------------------------
+
+> > > -SECURITY/CONFIDENTIALITY WARNING-
+
+> > >
+
+> > > This message and any attachments are intended solely for the individual or entity to which they are addressed. This communication may contain information that is privileged, confidential, or exempt from disclosure under applicable law (e.g., personal health information, research data, financial information). Because this e-mail has been sent without encryption, individuals other than the intended recipient may be able to view the information, forward it to others or tamper with the information without the knowledge or consent of the sender. If you are not the intended recipient, or the employee or person responsible for delivering the message to the intended recipient, any dissemination, distribution or copying of the communication is strictly prohibited. If you received the communication in error, please notify the sender immediately by replying to this message and deleting the message and any accompanying files from your system. If, due to the security risks, you do not wish to rec
+
+> > >  eive further communications via e-mail, please reply to this message and inform the sender that you do not wish to receive further e-mail from the sender. (LCP301)
+
+> > > ------------------------------------------------------------
+
+> > >
+
+> > >         [[alternative HTML version deleted]]
+
+> > >
+
+> > > ______________________________________________
+
+> > > R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+
+> > > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$<https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$>
+
+> > > PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$<https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$>
+
+> > > and provide commented, minimal, self-contained, reproducible code.
+
+> >
+
+> > ______________________________________________
+
+> > R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+
+> > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$<https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$>
+
+> > PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$<https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$>
+
+> > and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From ycd|ng @end|ng |rom coh@org  Sat Aug 10 22:08:47 2024
+From: ycd|ng @end|ng |rom coh@org (Yuan Chun Ding)
+Date: Sat, 10 Aug 2024 20:08:47 +0000
+Subject: [R] a fast way to do my job
+In-Reply-To: <CAGxFJbToq5aVdDwro7MyxYMBWLPEoALOQTw2BPuedy+Fe+X=Jg@mail.gmail.com>
+References: <MN2PR02MB691185ED67AD413C46A0AAEED4BA2@MN2PR02MB6911.namprd02.prod.outlook.com>
+ <CAGxFJbRj=GP4QP4L9npjcS9zwRB7t-1vib03fqicNW2dE-wQZQ@mail.gmail.com>
+ <CABghstS_rwq41mudBsFyEML2RrWmKi1thhHi5D81pqVyqaDPSw@mail.gmail.com>
+ <CAGxFJbTbdt+QaNX8i4P_X-bir0Td-6Rn=jm5ryB6XrK_CoA0Hw@mail.gmail.com>
+ <MN2PR02MB6911508EC9B0040C41044C86D4BB2@MN2PR02MB6911.namprd02.prod.outlook.com>
+ <CAGxFJbQE_0-PLDoZG_+xRqk4dM6tno-yxkndS_MPyCto-t=+bQ@mail.gmail.com>
+ <CAGxFJbRXzQC2r5s4+o21q86SzVX_PN_0m8Pbvq6xhEjE1Gc8Sw@mail.gmail.com>
+ <CAGxFJbToq5aVdDwro7MyxYMBWLPEoALOQTw2BPuedy+Fe+X=Jg@mail.gmail.com>
+Message-ID: <MN2PR02MB6911AF5C92CB10CEDD2839B5D4BB2@MN2PR02MB6911.namprd02.prod.outlook.com>
+
+You are right.  I also just thought about that, no intercept is not applicable to my case.
+
+Ding
+
+From: Bert Gunter <bgunter.4567 at gmail.com>
+Sent: Saturday, August 10, 2024 1:06 PM
+To: Yuan Chun Ding <ycding at coh.org>
+Cc: Ben Bolker <bbolker at gmail.com>; r-help at r-project.org
+Subject: Re: [R] a fast way to do my job
+
+Ah, messages crossed. A no-intercept model **assumes** the straight line fit must pass through the origin. Unless there is a strong justification for such an assumption, you should include an intercept. -- Bert On Sat, Aug 10, 2024 at 1:?02 PM
+
+
+Ah, messages crossed.
+
+A no-intercept model **assumes** the straight line fit must pass
+
+through the origin. Unless there is a strong justification for such an
+
+assumption, you should include an intercept.
+
+
+
+-- Bert
+
+
+
+On Sat, Aug 10, 2024 at 1:02?PM Bert Gunter <bgunter.4567 at gmail.com<mailto:bgunter.4567 at gmail.com>> wrote:
+
+>
+
+> Is it because I failed to to add a column of ones for an intercept to
+
+> the x matrix? TRhat would be my bad.
+
+>
+
+> -- Bert
+
+>
+
+>
+
+> On Sat, Aug 10, 2024 at 12:59?PM Bert Gunter <bgunter.4567 at gmail.com<mailto:bgunter.4567 at gmail.com>> wrote:
+
+> >
+
+> > Probably because you inadvertently ran different models. Without your code, I haven't a clue.
+
+> >
+
+> >
+
+> > On Sat, Aug 10, 2024, 12:29 Yuan Chun Ding <ycding at coh.org<mailto:ycding at coh.org>> wrote:
+
+> >>
+
+> >> HI Bert and Ben,
+
+> >>
+
+> >>
+
+> >>
+
+> >> Yes, running lm.fit using the matrix format is much faster. I read a couple of online comments why it is faster.
+
+> >>
+
+> >>
+
+> >>
+
+> >> However, the residual values for three tested variables or genes from lm function and lm.fit function are different, with Pearson correlation of 0.55, 0.89, and 0.99.
+
+> >>
+
+> >>
+
+> >>
+
+> >> I have not found the reason.
+
+> >>
+
+> >>
+
+> >>
+
+> >> Thanks,
+
+> >>
+
+> >>
+
+> >> Ding
+
+> >>
+
+> >>
+
+> >>
+
+> >> From: Bert Gunter <bgunter.4567 at gmail.com<mailto:bgunter.4567 at gmail.com>>
+
+> >> Sent: Friday, August 9, 2024 7:11 PM
+
+> >> To: Ben Bolker <bbolker at gmail.com<mailto:bbolker at gmail.com>>
+
+> >> Cc: Yuan Chun Ding <ycding at coh.org<mailto:ycding at coh.org>>; r-help at r-project.org<mailto:r-help at r-project.org>
+
+> >> Subject: Re: [R] a fast way to do my job
+
+> >>
+
+> >>
+
+> >>
+
+> >> Better idea, Ben! It would work as you might expect it to to produce the same results as the above: ##first make sure your regressor is a matrix: pur2 <- matrix(purity2, ncol =1) ## convert the data frame variables into a matrix dat <-
+
+> >>
+
+> >> Better idea, Ben!
+
+> >>
+
+> >>
+
+> >>
+
+> >> It would work as you might expect it to to produce the same results as
+
+> >>
+
+> >> the above:
+
+> >>
+
+> >>
+
+> >>
+
+> >> ##first make sure your regressor is a matrix:
+
+> >>
+
+> >> pur2 <- matrix(purity2, ncol =1)
+
+> >>
+
+> >> ## convert the data frame variables into a matrix
+
+> >>
+
+> >> dat <- as.matrix(gem751be.rpkm[ , 74:35164])
+
+> >>
+
+> >> ##then
+
+> >>
+
+> >> result <- residuals(lm.fit( x= pur2, y = dat))
+
+> >>
+
+> >>
+
+> >>
+
+> >> Cheers,
+
+> >>
+
+> >> Bert
+
+> >>
+
+> >>
+
+> >>
+
+> >> On Fri, Aug 9, 2024 at 6:38?PM Ben Bolker <bbolker at gmail.com<mailto:bbolker at gmail.com>> wrote:
+
+> >>
+
+> >> >
+
+> >>
+
+> >> > You can also fit a linear model with a matrix-valued response
+
+> >>
+
+> >> > variable, which should be even faster (not sure off the top of my head
+
+> >>
+
+> >> > how to get the residuals and reshape them to the dimensions you want)
+
+> >>
+
+> >> >
+
+> >>
+
+> >> > On Fri, Aug 9, 2024 at 9:31?PM Bert Gunter <bgunter.4567 at gmail.com<mailto:bgunter.4567 at gmail.com>> wrote:
+
+> >>
+
+> >> > >
+
+> >>
+
+> >> > > See ?lm.fit.
+
+> >>
+
+> >> > > I must be missing something, because:
+
+> >>
+
+> >> > >
+
+> >>
+
+> >> > > results <- sapply(74:35164, \(i) residuals(lm.fit(purity2,
+
+> >>
+
+> >> > > gem751be.rpkm[, i] )))
+
+> >>
+
+> >> > >
+
+> >>
+
+> >> > > would give you a 751 x 35091 matrix of the residuals from each of the
+
+> >>
+
+> >> > > regressions.
+
+> >>
+
+> >> > > I assume it will be considerably faster than all the overhead you are
+
+> >>
+
+> >> > > carrying in your current code, but of course you'll have to try it and
+
+> >>
+
+> >> > > see. ... Assuming that I have interpreted your request correctly.
+
+> >>
+
+> >> > > Ignore if not.
+
+> >>
+
+> >> > >
+
+> >>
+
+> >> > > Cheers,
+
+> >>
+
+> >> > > Bert
+
+> >>
+
+> >> > >
+
+> >>
+
+> >> > > On Fri, Aug 9, 2024 at 4:50?PM Yuan Chun Ding via R-help
+
+> >>
+
+> >> > > <r-help at r-project.org<mailto:r-help at r-project.org>> wrote:
+
+> >>
+
+> >> > > >
+
+> >>
+
+> >> > > > Dear R users,
+
+> >>
+
+> >> > > >
+
+> >>
+
+> >> > > > I am running the following code below,  the gem751be.rpkm is a dataframe with dim of 751 samples by 35164 variables,  73 phenotypic variables in the furst to 73rd column and 35091 genomic variables or genes in the 74th to 35164th columns.  What I need to do is to calculate the residuals for each gene using the simple linear regression model of genelist[i] ~ purity2;
+
+> >>
+
+> >> > > >
+
+> >>
+
+> >> > > > The following code is running,  it takes long time, but I have an expensive ThinkStation window computer.
+
+> >>
+
+> >> > > > Can you provide a fast way to do it?
+
+> >>
+
+> >> > > >
+
+> >>
+
+> >> > > > Thank you,
+
+> >>
+
+> >> > > >
+
+> >>
+
+> >> > > > Ding
+
+> >>
+
+> >> > > >
+
+> >>
+
+> >> > > > ---------------------------------------------------------------------------------
+
+> >>
+
+> >> > > >
+
+> >>
+
+> >> > > >
+
+> >>
+
+> >> > > > gem751be.rpkm <-merge(gem751be10, as.data.frame(t(rna849.fpkm2)),
+
+> >>
+
+> >> > > > +                           by.x="id2",by.y=0)
+
+> >>
+
+> >> > > > >   row.names(gem751be.rpkm)<-gem751be.rpkm$id3
+
+> >>
+
+> >> > > > >   colnames(gem751be.rpkm)<-gsub(colnames(gem751be.rpkm),pattern="-",replacement="_")
+
+> >>
+
+> >> > > > >   genelist <- gem751be.rpkm %>% dplyr::select(74:35164)
+
+> >>
+
+> >> > > > >   residuals <- NULL
+
+> >>
+
+> >> > > > >   for (i in 1:length(genelist)) {
+
+> >>
+
+> >> > > > +     #i=1
+
+> >>
+
+> >> > > > +     formula <- reformulate("purity2", response=names(genelist)[i])
+
+> >>
+
+> >> > > > +     model <- lm(formula, data = gem751be.rpkm)
+
+> >>
+
+> >> > > > +     resi <- as.data.frame(residuals(model))
+
+> >>
+
+> >> > > > +     colnames(resi)[1]<-names(genelist)[i]
+
+> >>
+
+> >> > > > +     resi <-as.data.frame(t(resi))
+
+> >>
+
+> >> > > > +     residuals <- rbind(residuals, resi)
+
+> >>
+
+> >> > > > +   }
+
+> >>
+
+> >> > > >
+
+> >>
+
+> >> > > >
+
+> >>
+
+> >> > > >
+
+> >>
+
+> >> > > > ----------------------------------------------------------------------
+
+> >>
+
+> >> > > > ------------------------------------------------------------
+
+> >>
+
+> >> > > > -SECURITY/CONFIDENTIALITY WARNING-
+
+> >>
+
+> >> > > >
+
+> >>
+
+> >> > > > This message and any attachments are intended solely for the individual or entity to which they are addressed. This communication may contain information that is privileged, confidential, or exempt from disclosure under applicable law (e.g., personal health information, research data, financial information). Because this e-mail has been sent without encryption, individuals other than the intended recipient may be able to view the information, forward it to others or tamper with the information without the knowledge or consent of the sender. If you are not the intended recipient, or the employee or person responsible for delivering the message to the intended recipient, any dissemination, distribution or copying of the communication is strictly prohibited. If you received the communication in error, please notify the sender immediately by replying to this message and deleting the message and any accompanying files from your system. If, due to the security risks, you do not wish to rec
+
+> >>
+
+> >> > > >  eive further communications via e-mail, please reply to this message and inform the sender that you do not wish to receive further e-mail from the sender. (LCP301)
+
+> >>
+
+> >> > > > ------------------------------------------------------------
+
+> >>
+
+> >> > > >
+
+> >>
+
+> >> > > >         [[alternative HTML version deleted]]
+
+> >>
+
+> >> > > >
+
+> >>
+
+> >> > > > ______________________________________________
+
+> >>
+
+> >> > > > R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+
+> >>
+
+> >> > > > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$<https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3e>
+
+><https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3e>>>
+
+> >> > > > PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$<https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3e>
+
+><https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3e>>>
+
+> >> > > > and provide commented, minimal, self-contained, reproducible code.
+
+> >>
+
+> >> > >
+
+> >>
+
+> >> > > ______________________________________________
+
+> >>
+
+> >> > > R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+
+> >>
+
+> >> > > https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$<https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3e>
+
+><https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3e>>>
+
+> >> > > PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$<https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3e>
+
+><https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3e>>>
+
+> >> > > and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sat Aug 10 23:02:37 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sat, 10 Aug 2024 22:02:37 +0100
+Subject: [R] a fast way to do my job
+In-Reply-To: <MN2PR02MB6911AF5C92CB10CEDD2839B5D4BB2@MN2PR02MB6911.namprd02.prod.outlook.com>
+References: <MN2PR02MB691185ED67AD413C46A0AAEED4BA2@MN2PR02MB6911.namprd02.prod.outlook.com>
+ <CAGxFJbRj=GP4QP4L9npjcS9zwRB7t-1vib03fqicNW2dE-wQZQ@mail.gmail.com>
+ <CABghstS_rwq41mudBsFyEML2RrWmKi1thhHi5D81pqVyqaDPSw@mail.gmail.com>
+ <CAGxFJbTbdt+QaNX8i4P_X-bir0Td-6Rn=jm5ryB6XrK_CoA0Hw@mail.gmail.com>
+ <MN2PR02MB6911508EC9B0040C41044C86D4BB2@MN2PR02MB6911.namprd02.prod.outlook.com>
+ <CAGxFJbQE_0-PLDoZG_+xRqk4dM6tno-yxkndS_MPyCto-t=+bQ@mail.gmail.com>
+ <CAGxFJbRXzQC2r5s4+o21q86SzVX_PN_0m8Pbvq6xhEjE1Gc8Sw@mail.gmail.com>
+ <CAGxFJbToq5aVdDwro7MyxYMBWLPEoALOQTw2BPuedy+Fe+X=Jg@mail.gmail.com>
+ <MN2PR02MB6911AF5C92CB10CEDD2839B5D4BB2@MN2PR02MB6911.namprd02.prod.outlook.com>
+Message-ID: <3683a5e2-365d-484e-8c71-0188443cca41@sapo.pt>
+
+Hello,
+
+.lm.fit is an order of magnitude faster than lm.fit but the Description 
+section warns on its use, see the examples in help("lm.fit").
+
+Hope this helps,
+
+Rui Barradas
+
+?s 21:08 de 10/08/2024, Yuan Chun Ding via R-help escreveu:
+> You are right.  I also just thought about that, no intercept is not applicable to my case.
+> 
+> Ding
+> 
+> From: Bert Gunter <bgunter.4567 at gmail.com>
+> Sent: Saturday, August 10, 2024 1:06 PM
+> To: Yuan Chun Ding <ycding at coh.org>
+> Cc: Ben Bolker <bbolker at gmail.com>; r-help at r-project.org
+> Subject: Re: [R] a fast way to do my job
+> 
+> Ah, messages crossed. A no-intercept model **assumes** the straight line fit must pass through the origin. Unless there is a strong justification for such an assumption, you should include an intercept. -- Bert On Sat, Aug 10, 2024 at 1:?02 PM
+> 
+> 
+> Ah, messages crossed.
+> 
+> A no-intercept model **assumes** the straight line fit must pass
+> 
+> through the origin. Unless there is a strong justification for such an
+> 
+> assumption, you should include an intercept.
+> 
+> 
+> 
+> -- Bert
+> 
+> 
+> 
+> On Sat, Aug 10, 2024 at 1:02?PM Bert Gunter <bgunter.4567 at gmail.com<mailto:bgunter.4567 at gmail.com>> wrote:
+> 
+>>
+> 
+>> Is it because I failed to to add a column of ones for an intercept to
+> 
+>> the x matrix? TRhat would be my bad.
+> 
+>>
+> 
+>> -- Bert
+> 
+>>
+> 
+>>
+> 
+>> On Sat, Aug 10, 2024 at 12:59?PM Bert Gunter <bgunter.4567 at gmail.com<mailto:bgunter.4567 at gmail.com>> wrote:
+> 
+>>>
+> 
+>>> Probably because you inadvertently ran different models. Without your code, I haven't a clue.
+> 
+>>>
+> 
+>>>
+> 
+>>> On Sat, Aug 10, 2024, 12:29 Yuan Chun Ding <ycding at coh.org<mailto:ycding at coh.org>> wrote:
+> 
+>>>>
+> 
+>>>> HI Bert and Ben,
+> 
+>>>>
+> 
+>>>>
+> 
+>>>>
+> 
+>>>> Yes, running lm.fit using the matrix format is much faster. I read a couple of online comments why it is faster.
+> 
+>>>>
+> 
+>>>>
+> 
+>>>>
+> 
+>>>> However, the residual values for three tested variables or genes from lm function and lm.fit function are different, with Pearson correlation of 0.55, 0.89, and 0.99.
+> 
+>>>>
+> 
+>>>>
+> 
+>>>>
+> 
+>>>> I have not found the reason.
+> 
+>>>>
+> 
+>>>>
+> 
+>>>>
+> 
+>>>> Thanks,
+> 
+>>>>
+> 
+>>>>
+> 
+>>>> Ding
+> 
+>>>>
+> 
+>>>>
+> 
+>>>>
+> 
+>>>> From: Bert Gunter <bgunter.4567 at gmail.com<mailto:bgunter.4567 at gmail.com>>
+> 
+>>>> Sent: Friday, August 9, 2024 7:11 PM
+> 
+>>>> To: Ben Bolker <bbolker at gmail.com<mailto:bbolker at gmail.com>>
+> 
+>>>> Cc: Yuan Chun Ding <ycding at coh.org<mailto:ycding at coh.org>>; r-help at r-project.org<mailto:r-help at r-project.org>
+> 
+>>>> Subject: Re: [R] a fast way to do my job
+> 
+>>>>
+> 
+>>>>
+> 
+>>>>
+> 
+>>>> Better idea, Ben! It would work as you might expect it to to produce the same results as the above: ##first make sure your regressor is a matrix: pur2 <- matrix(purity2, ncol =1) ## convert the data frame variables into a matrix dat <-
+> 
+>>>>
+> 
+>>>> Better idea, Ben!
+> 
+>>>>
+> 
+>>>>
+> 
+>>>>
+> 
+>>>> It would work as you might expect it to to produce the same results as
+> 
+>>>>
+> 
+>>>> the above:
+> 
+>>>>
+> 
+>>>>
+> 
+>>>>
+> 
+>>>> ##first make sure your regressor is a matrix:
+> 
+>>>>
+> 
+>>>> pur2 <- matrix(purity2, ncol =1)
+> 
+>>>>
+> 
+>>>> ## convert the data frame variables into a matrix
+> 
+>>>>
+> 
+>>>> dat <- as.matrix(gem751be.rpkm[ , 74:35164])
+> 
+>>>>
+> 
+>>>> ##then
+> 
+>>>>
+> 
+>>>> result <- residuals(lm.fit( x= pur2, y = dat))
+> 
+>>>>
+> 
+>>>>
+> 
+>>>>
+> 
+>>>> Cheers,
+> 
+>>>>
+> 
+>>>> Bert
+> 
+>>>>
+> 
+>>>>
+> 
+>>>>
+> 
+>>>> On Fri, Aug 9, 2024 at 6:38?PM Ben Bolker <bbolker at gmail.com<mailto:bbolker at gmail.com>> wrote:
+> 
+>>>>
+> 
+>>>>>
+> 
+>>>>
+> 
+>>>>> You can also fit a linear model with a matrix-valued response
+> 
+>>>>
+> 
+>>>>> variable, which should be even faster (not sure off the top of my head
+> 
+>>>>
+> 
+>>>>> how to get the residuals and reshape them to the dimensions you want)
+> 
+>>>>
+> 
+>>>>>
+> 
+>>>>
+> 
+>>>>> On Fri, Aug 9, 2024 at 9:31?PM Bert Gunter <bgunter.4567 at gmail.com<mailto:bgunter.4567 at gmail.com>> wrote:
+> 
+>>>>
+> 
+>>>>>>
+> 
+>>>>
+> 
+>>>>>> See ?lm.fit.
+> 
+>>>>
+> 
+>>>>>> I must be missing something, because:
+> 
+>>>>
+> 
+>>>>>>
+> 
+>>>>
+> 
+>>>>>> results <- sapply(74:35164, \(i) residuals(lm.fit(purity2,
+> 
+>>>>
+> 
+>>>>>> gem751be.rpkm[, i] )))
+> 
+>>>>
+> 
+>>>>>>
+> 
+>>>>
+> 
+>>>>>> would give you a 751 x 35091 matrix of the residuals from each of the
+> 
+>>>>
+> 
+>>>>>> regressions.
+> 
+>>>>
+> 
+>>>>>> I assume it will be considerably faster than all the overhead you are
+> 
+>>>>
+> 
+>>>>>> carrying in your current code, but of course you'll have to try it and
+> 
+>>>>
+> 
+>>>>>> see. ... Assuming that I have interpreted your request correctly.
+> 
+>>>>
+> 
+>>>>>> Ignore if not.
+> 
+>>>>
+> 
+>>>>>>
+> 
+>>>>
+> 
+>>>>>> Cheers,
+> 
+>>>>
+> 
+>>>>>> Bert
+> 
+>>>>
+> 
+>>>>>>
+> 
+>>>>
+> 
+>>>>>> On Fri, Aug 9, 2024 at 4:50?PM Yuan Chun Ding via R-help
+> 
+>>>>
+> 
+>>>>>> <r-help at r-project.org<mailto:r-help at r-project.org>> wrote:
+> 
+>>>>
+> 
+>>>>>>>
+> 
+>>>>
+> 
+>>>>>>> Dear R users,
+> 
+>>>>
+> 
+>>>>>>>
+> 
+>>>>
+> 
+>>>>>>> I am running the following code below,  the gem751be.rpkm is a dataframe with dim of 751 samples by 35164 variables,  73 phenotypic variables in the furst to 73rd column and 35091 genomic variables or genes in the 74th to 35164th columns.  What I need to do is to calculate the residuals for each gene using the simple linear regression model of genelist[i] ~ purity2;
+> 
+>>>>
+> 
+>>>>>>>
+> 
+>>>>
+> 
+>>>>>>> The following code is running,  it takes long time, but I have an expensive ThinkStation window computer.
+> 
+>>>>
+> 
+>>>>>>> Can you provide a fast way to do it?
+> 
+>>>>
+> 
+>>>>>>>
+> 
+>>>>
+> 
+>>>>>>> Thank you,
+> 
+>>>>
+> 
+>>>>>>>
+> 
+>>>>
+> 
+>>>>>>> Ding
+> 
+>>>>
+> 
+>>>>>>>
+> 
+>>>>
+> 
+>>>>>>> ---------------------------------------------------------------------------------
+> 
+>>>>
+> 
+>>>>>>>
+> 
+>>>>
+> 
+>>>>>>>
+> 
+>>>>
+> 
+>>>>>>> gem751be.rpkm <-merge(gem751be10, as.data.frame(t(rna849.fpkm2)),
+> 
+>>>>
+> 
+>>>>>>> +                           by.x="id2",by.y=0)
+> 
+>>>>
+> 
+>>>>>>>>    row.names(gem751be.rpkm)<-gem751be.rpkm$id3
+> 
+>>>>
+> 
+>>>>>>>>    colnames(gem751be.rpkm)<-gsub(colnames(gem751be.rpkm),pattern="-",replacement="_")
+> 
+>>>>
+> 
+>>>>>>>>    genelist <- gem751be.rpkm %>% dplyr::select(74:35164)
+> 
+>>>>
+> 
+>>>>>>>>    residuals <- NULL
+> 
+>>>>
+> 
+>>>>>>>>    for (i in 1:length(genelist)) {
+> 
+>>>>
+> 
+>>>>>>> +     #i=1
+> 
+>>>>
+> 
+>>>>>>> +     formula <- reformulate("purity2", response=names(genelist)[i])
+> 
+>>>>
+> 
+>>>>>>> +     model <- lm(formula, data = gem751be.rpkm)
+> 
+>>>>
+> 
+>>>>>>> +     resi <- as.data.frame(residuals(model))
+> 
+>>>>
+> 
+>>>>>>> +     colnames(resi)[1]<-names(genelist)[i]
+> 
+>>>>
+> 
+>>>>>>> +     resi <-as.data.frame(t(resi))
+> 
+>>>>
+> 
+>>>>>>> +     residuals <- rbind(residuals, resi)
+> 
+>>>>
+> 
+>>>>>>> +   }
+> 
+>>>>
+> 
+>>>>>>>
+> 
+>>>>
+> 
+>>>>>>>
+> 
+>>>>
+> 
+>>>>>>>
+> 
+>>>>
+> 
+>>>>>>> ----------------------------------------------------------------------
+> 
+>>>>
+> 
+>>>>>>> ------------------------------------------------------------
+> 
+>>>>
+> 
+>>>>>>> -SECURITY/CONFIDENTIALITY WARNING-
+> 
+>>>>
+> 
+>>>>>>>
+> 
+>>>>
+> 
+>>>>>>> This message and any attachments are intended solely for the individual or entity to which they are addressed. This communication may contain information that is privileged, confidential, or exempt from disclosure under applicable law (e.g., personal health information, research data, financial information). Because this e-mail has been sent without encryption, individuals other than the intended recipient may be able to view the information, forward it to others or tamper with the information without the knowledge or consent of the sender. If you are not the intended recipient, or the employee or person responsible for delivering the message to the intended recipient, any dissemination, distribution or copying of the communication is strictly prohibited. If you received the communication in error, please notify the sender immediately by replying to this message and deleting the message and any accompanying files from your system. If, due to the security risks, you do not wish to rec
+> 
+>>>>
+> 
+>>>>>>>   eive further communications via e-mail, please reply to this message and inform the sender that you do not wish to receive further e-mail from the sender. (LCP301)
+> 
+>>>>
+> 
+>>>>>>> ------------------------------------------------------------
+> 
+>>>>
+> 
+>>>>>>>
+> 
+>>>>
+> 
+>>>>>>>          [[alternative HTML version deleted]]
+> 
+>>>>
+> 
+>>>>>>>
+> 
+>>>>
+> 
+>>>>>>> ______________________________________________
+> 
+>>>>
+> 
+>>>>>>> R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+> 
+>>>>
+> 
+>>>>>>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$<https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3e>
+> 
+>> <https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3e>>>
+> 
+>>>>>>> PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$<https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3e>
+> 
+>> <https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3e>>>
+> 
+>>>>>>> and provide commented, minimal, self-contained, reproducible code.
+> 
+>>>>
+> 
+>>>>>>
+> 
+>>>>
+> 
+>>>>>> ______________________________________________
+> 
+>>>>
+> 
+>>>>>> R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+> 
+>>>>
+> 
+>>>>>> https://urldefense.com/v3/__https://stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$<https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3e>
+> 
+>> <https://urldefense.com/v3/__https:/stat.ethz.ch/mailman/listinfo/r-help__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX72PW30DQ$%3e>>>
+> 
+>>>>>> PLEASE do read the posting guide https://urldefense.com/v3/__http://www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$<https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3e>
+> 
+>> <https://urldefense.com/v3/__http:/www.R-project.org/posting-guide.html__;!!Fou38LsQmgU!qcJ4z-vlMNzsa8XCsJUcuPOz8Vt12zsV_XaWpqXsyUYJBTlcNRonFPr7w7Ql3xqcDnZ9ZYC8JX66rfmKvA$%3e>>>
+> 
+>>>>>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide http://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
