@@ -13586,3 +13586,1597 @@ On Wed, 28 Aug 2024, 00:06 Bert Gunter, <bgunter.4567 at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From bgunter@4567 @end|ng |rom gm@||@com  Wed Aug 28 04:38:14 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 27 Aug 2024 19:38:14 -0700
+Subject: [R] Fill NA values in columns with values of another column
+In-Reply-To: <CA+etgPnXQc2XwnMJFDjfg9=WVGvXDM7uw=OX=W-dmOtWK8nrVg@mail.gmail.com>
+References: <CAMXoJ=KGa71=k7MSexzn10YuT=QRszq68-nETXEv--dc=c2G9g@mail.gmail.com>
+ <CAGxFJbRwpQS3ASvMitK5mtMVg_HbebXU_aM4J+Gq_08ufckf7w@mail.gmail.com>
+ <CA+etgPnXQc2XwnMJFDjfg9=WVGvXDM7uw=OX=W-dmOtWK8nrVg@mail.gmail.com>
+Message-ID: <CAGxFJbSW0kLOGsavXARMBnF1U6HvrAb5N0KJ+cF2FMmu2zOemg@mail.gmail.com>
+
+Thanks, Calum. After rereading the post, I came to your interpret it
+as you did. So glad that we agree.
+
+"easier" of course is in the mind of the beholder. But I'm glad that
+you presented a "tidyverse" approach. There are other issues of
+dependencies and efficiency that also might be relevant.
+
+Anyway, here is another "simpler" approach -- in the sense that only
+base R without any dependencies is needed. Beyond that, I make no
+claims.
+
+I first extracted the data from the post and converted them into a
+data frame, dat, with two (numeric) column named "Value" and "Group".
+
+Then the following does what (I think) was requested:
+
+spl <-split(seq_len(nrow(dat)), dat$Group)
+## a structure giving all row numbers per group
+
+for(grp in unique(dat$Group)){
+   ix <- spl[[grp]] ## extract indices for the group
+   dat[ix, 'Value'] <- na.omit(dat[ix,'Value'] )[1]
+##extract values for the group
+##set all values in the Value column for these indices to the first
+non-NA value"
+}
+
+yielding:
+
+> dat
+   Value Group
+1      6     8
+2      9     5
+3      2     1
+4      5     6
+5      2     7
+6      7     2
+7      4     4
+8      2     7
+9      2     7
+10    10     3
+11     7     2
+12     4     4
+13     5     6
+14     9     5
+15     9     5
+16     5     6
+17    10     3
+18     7     2
+19     2     1
+20     2     7
+21     7     2
+22     6     8
+23     4     4
+24     9     5
+25     5     6
+26     2     1
+27     4     4
+28     6     8
+29    10     3
+30    10     3
+31     6     8
+32     2     1
+
+As Calum said, whether this is really a good approach depends on what
+the OP wants to do after this.
+
+Cheers,
+Bert
+
+On Tue, Aug 27, 2024 at 5:07?PM CALUM POLWART <polc1410 at gmail.com> wrote:
+>
+> Bert
+>
+> I thought she meant she wanted to replace the NAs with the 6. But I could be wrong.
+>
+> It looks like the data is combined from cbind.
+>
+> I'm going to give tidyverse examples because it's (/s) *"always"* (/s) easier.
+>
+> require(tidyverse)
+> # impute the missing NAs
+> myData <- cbind(VB1d[,1],s1id[,1])
+>
+> myData |> said[
+>   filter(!is.na(1)) |>  #uses col1 would be better to use a name
+>   unique() -> referenceData
+>
+> myData |>
+>   select(2) |> #better to name
+>   left_join(referenceData) -> cleanData
+>
+> You will notice I've used column numbers. I suspect cbind will name the columns oddly. And I'm typing this on my phone so it's untested.
+>
+> If you wanted counts
+>
+> myData |>
+>   filter (!is.na(1)) |>
+>   group_by(2) |>
+>   summarise (n())
+>
+> I won't answer the c(5,5) that Bert mentions because that's an extra question of what you do next with the data to know how best to present it.
+>
+>
+> On Wed, 28 Aug 2024, 00:06 Bert Gunter, <bgunter.4567 at gmail.com> wrote:
+>>
+>> Sorry, not clear to me.
+>>
+>> For group 8 in your example, do you want extract the values in column
+>> 1 that are not NA, i.e. one value, 6; or do you want to extract the
+>> number of values -- that is, the count --  that are not NA, i.e. 1?
+>>
+>> ... and for group 5, would it be c(9,9) for the values; or 2 for the count?
+>>
+>> Or something else entirely if I have completely misunderstood.
+>>
+>> Either of the above are easy and quick to do. You can also just remove
+>>  the NA's via a version of ?na.omit if that's what you want.
+>>
+>> Of course, feel free to ignore this and wait for a more helpful
+>> response from someone who understands your query better than I.
+>>
+>> Cheers,
+>> Bert
+>>
+>> On Tue, Aug 27, 2024 at 3:45?PM Francesca PANCOTTO via R-help
+>> <r-help at r-project.org> wrote:
+>> >
+>> > Dear Contributors,
+>> > I have a problem with a database composed of many individuals for many
+>> > periods, for which I need to perform a manipulation of data as follows.
+>> > Here I report the procedure I need to do for the first 32 observations of
+>> > the first period.
+>> >
+>> >
+>> > cbind(VB1d[,1],s1id[,1])
+>> >       [,1] [,2]
+>> >  [1,]    6    8
+>> >  [2,]    9    5
+>> >  [3,]   NA    1
+>> >  [4,]    5    6
+>> >  [5,]   NA    7
+>> >  [6,]   NA    2
+>> >  [7,]    4    4
+>> >  [8,]    2    7
+>> >  [9,]    2    7
+>> > [10,]   NA    3
+>> > [11,]   NA    2
+>> > [12,]   NA    4
+>> > [13,]    5    6
+>> > [14,]    9    5
+>> > [15,]   NA    5
+>> > [16,]   NA    6
+>> > [17,]   10    3
+>> > [18,]    7    2
+>> > [19,]    2    1
+>> > [20,]   NA    7
+>> > [21,]    7    2
+>> > [22,]   NA    8
+>> > [23,]   NA    4
+>> > [24,]   NA    5
+>> > [25,]   NA    6
+>> > [26,]    2    1
+>> > [27,]    4    4
+>> > [28,]    6    8
+>> > [29,]   10    3
+>> > [30,]   NA    3
+>> > [31,]   NA    8
+>> > [32,]   NA    1
+>> >
+>> >
+>> > In column s1id, I have numbers from 1 to 8, which are the id of 8 groups ,
+>> > randomly mixed in the larger group of 32.
+>> > For each group, I want the value that is reported for only to group
+>> > members, to all the four group members.
+>> >
+>> > For example, value 8 in first row , second column, is group 8. The value
+>> > for group 8 of the variable VB1d is 6. At row 28, again for s1id equal to
+>> > 8, I have 6.
+>> > But in row 22, the value 8 of the second variable, reports a value NA.
+>> > in each group is the same, only two values have the correct number, the
+>> > other two are NA.
+>> > I need that each group, identified by the values of the variable S1id,
+>> > correctly report the number of variable VB1d that is present for just two
+>> > group members.
+>> >
+>> > I hope my explanation is acceptable.
+>> > The task appears complex to me right now, especially because I will need to
+>> > multiply this procedure for x12x14 similar databases.
+>> >
+>> > Anyone has ever encountered a similar problem?
+>> > Thanks in advance for any help provided.
+>> >
+>> > ----------------------------------
+>> >
+>> > Francesca Pancotto
+>> >
+>> > Associate Professor Political Economy
+>> >
+>> > University of Modena, Largo Santa Eufemia, 19, Modena
+>> >
+>> > Office Phone: +39 0522 523264
+>> >
+>> > Web: *https://sites.google.com/view/francescapancotto/home
+>> > <https://sites.google.com/view/francescapancotto/home>*
+>> >
+>> >  ----------------------------------
+>> >
+>> >         [[alternative HTML version deleted]]
+>> >
+>> > ______________________________________________
+>> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> > https://stat.ethz.ch/mailman/listinfo/r-help
+>> > PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+>> > and provide commented, minimal, self-contained, reproducible code.
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From sibyiie@stoeckii m@iii@g oii gmx@ch  Wed Aug 28 09:34:58 2024
+From: sibyiie@stoeckii m@iii@g oii gmx@ch (sibyiie@stoeckii m@iii@g oii gmx@ch)
+Date: Wed, 28 Aug 2024 09:34:58 +0200
+Subject: [R] boxplot of raster and shapefile
+In-Reply-To: <20240827195514.4894264e@Tarkus>
+References: <003201daf7b4$17e52c80$47af8580$@gmx.ch>
+ <20240827195514.4894264e@Tarkus>
+Message-ID: <009d01daf91c$c903f050$5b0bd0f0$@gmx.ch>
+
+Dear Ivan
+
+ 
+
+In the meantime I have found a much easier function. As before the code does not work with my own dataset, probably because of my multipolygonal shape file. There is a warning, that z coordinate are ignored. I provided the output of my shapefile. I changed from read_sf to vect() as I have read that this would work better.
+
+ 
+
+Probably this warming message drives the error when running e <- extract(r,v): ? cannot find an inherited method for function ?extract? for signature ??RasterLayer?, ?SpatVector??
+
+ 
+
+Working example
+
+ 
+
+# load libraries
+
+library(terra)
+
+library(ggplot2)
+
+ 
+
+# Load shp and raster from example files of terra
+
+(v <- vect(system.file("ex/lux.shp", package="terra")))
+
+(r <- rast(system.file("ex/elev.tif", package="terra")))
+
+plot(r); plot(v, add = TRUE); text(v, labels = "NAME_2", col=c("white"))
+
+# extract, include names from vector attributes
+
+e <- extract(r,v)
+
+e$NAME_2 <- v$NAME_2[e$ID]
+
+str(e)
+
+# plot
+
+ggplot(e, aes(x = NAME_2, y = elevation)) +
+
+  geom_boxplot() +
+
+  theme_minimal() +
+
+  theme(axis.text.x = element_text(angle = 45))
+
+ 
+
+ 
+
+Personal example not working
+
+ 
+
+# Load shp file
+
+> v <- vect("C:/Users/?._BiogeoRegion.shp")
+
+Warning message:
+
+[vect] Z coordinates ignored 
+
+> str(v)
+
+S4 class 'SpatVector' [package "terra"]
+
+> names(v)
+
+[1] "RegionNumm" "RegionName" "Unterregio" "Unterreg_1" "ObjNummer"  "Version"    "Shape_Leng" "Shape_Area" "DERegionNa" "FRRegionNa" "ITRegionNa"
+
+[12] "DEBioBedeu" "FRBioBedeu" "ITBioBedeu"
+
+ 
+
+> v
+
+class       : SpatVector 
+
+ geometry    : polygons 
+
+ dimensions  : 12, 14  (geometries, attributes)
+
+extent      : 2485410, 2833842, 1075268, 1295934  (xmin, xmax, ymin, ymax)
+
+source      : N2020_Revision_BiogeoRegion.shp
+
+coord. ref. : CH1903+ / LV95 (EPSG:2056) 
+
+ names       : RegionNumm RegionName Unterregio Unterreg_1 ObjNummer    Version Shape_Leng Shape_Area DERegionNa FRRegionNa (and 4 more)
+
+type        :      <int>      <chr>      <int>      <chr>     <chr>      <chr>      <num>      <num>      <chr>      <chr>             
+
+ values      :          1         R1         11        U11         1 2020/05/08  7.251e+05  4.171e+09       Jura       Jura             
+
+                        2         R2         21        U21         2 2020/05/08  3.344e+05  1.112e+09 Mittelland    Plateau             
+
+                        2         R2         22        U22         3 2020/05/08  5.397e+05  1.068e+09 Mittelland    Plateau 
+
+ 
+
+ 
+
+# lodad raster files
+
+#first import all files in a single folder as a list 
+
+rastlist_pres <- list.files(path ="C:/Users/?.presence", pattern='.tif$', all.files= T, full.names= T)
+
+rastlist_RCP85P2 <- list.files(path ="C:/Users/?._bee_RCP85P2", pattern='.tif$', all.files= T, full.names= T)
+
+#import all raster files in folder using lapply 
+
+allrasters_pres <- lapply(rastlist_pres, raster)
+
+allrasters_RCP85P2 <- lapply(rastlist_RCP85P2, raster)
+
+r <- allrasters_pres[[1]]
+
+ 
+
+ 
+
+> r
+
+class      : RasterLayer 
+
+dimensions : 9200, 14400, 132480000  (nrow, ncol, ncell)
+
+resolution : 25, 25  (x, y)
+
+extent     : 2480000, 2840000, 1070000, 1300000  (xmin, xmax, ymin, ymax)
+
+crs        : +proj=somerc +lat_0=46.9524055555556 +lon_0=7.43958333333333 +k_0=1 +x_0=2600000 +y_0=1200000 +ellps=bessel +units=m +no_defs 
+
+source     : Andrena.barbilabris_glo_ensemble.tif 
+
+names      : Andrena.barbilabris_glo_ensemble 
+
+values     : 0, 53  (min, max)
+
+ 
+
+> str(r)
+
+Formal class 'RasterLayer' [package "raster"] with 13 slots
+
+  ..@ file    :Formal class '.RasterFile' [package "raster"] with 13 slots
+
+  .. .. ..@ name        : chr "C:\\Users\\.......\\Andren"| __truncated__
+
+  .. .. ..@ datanotation: chr "INT2U"
+
+  .. .. ..@ byteorder   : chr "little"
+
+  .. .. ..@ nodatavalue : num -Inf
+
+  .. .. ..@ NAchanged   : logi FALSE
+
+  .. .. ..@ nbands      : int 1
+
+  .. .. ..@ bandorder   : chr "BIL"
+
+  .. .. ..@ offset      : int 0
+
+  .. .. ..@ toptobottom : logi TRUE
+
+  .. .. ..@ blockrows   : Named int 1
+
+  .. .. .. ..- attr(*, "names")= chr "rows"
+
+  .. .. ..@ blockcols   : Named int 14400
+
+  .. .. .. ..- attr(*, "names")= chr "cols"
+
+  .. .. ..@ driver      : chr "gdal"
+
+  .. .. ..@ open        : logi FALSE
+
+  ..@ data    :Formal class '.SingleLayerData' [package "raster"] with 13 slots
+
+  .. .. ..@ values    : logi(0) 
+
+  .. .. ..@ offset    : num 0
+
+  .. .. ..@ gain      : num 1
+
+  .. .. ..@ inmemory  : logi FALSE
+
+  .. .. ..@ fromdisk  : logi TRUE
+
+  .. .. ..@ isfactor  : logi FALSE
+
+  .. .. ..@ attributes: list()
+
+  .. .. ..@ haveminmax: logi TRUE
+
+  .. .. ..@ min       : num 0
+
+  .. .. ..@ max       : num 53
+
+  .. .. ..@ band      : int 1
+
+  .. .. ..@ unit      : chr ""
+
+  .. .. ..@ names     : chr "Andrena.barbilabris_glo_ensemble"
+
+  ..@ legend  :Formal class '.RasterLegend' [package "raster"] with 5 slots
+
+  .. .. ..@ type      : chr(0) 
+
+  .. .. ..@ values    : logi(0) 
+
+  .. .. ..@ color     : logi(0) 
+
+  .. .. ..@ names     : logi(0) 
+
+  .. .. ..@ colortable: logi(0) 
+
+  ..@ title   : chr(0) 
+
+  ..@ extent  :Formal class 'Extent' [package "raster"] with 4 slots
+
+  .. .. ..@ xmin: num 2480000
+
+  .. .. ..@ xmax: num 2840000
+
+  .. .. ..@ ymin: num 1070000
+
+  .. .. ..@ ymax: num 1300000
+
+  ..@ rotated : logi FALSE
+
+  ..@ rotation:Formal class '.Rotation' [package "raster"] with 2 slots
+
+  .. .. ..@ geotrans: num(0) 
+
+  .. .. ..@ transfun:function ()  
+
+  ..@ ncols   : int 14400
+
+  ..@ nrows   : int 9200
+
+  ..@ crs     :Formal class 'CRS' [package "sp"] with 1 slot
+
+  .. .. ..@ projargs: chr "+proj=somerc +lat_0=46.9524055555556 +lon_0=7.43958333333333 +k_0=1 +x_0=2600000 +y_0=1200000 +ellps=bessel +units=m +no_defs"
+
+  .. .. ..$ comment: chr "PROJCRS[\"unknown\",\n    BASEGEOGCRS[\"unknown\",\n        DATUM[\"Unknown based on Bessel 1841 ellipsoid\",\n"| __truncated__
+
+  ..@ srs     : chr "+proj=somerc +lat_0=46.9524055555556 +lon_0=7.43958333333333 +k_0=1 +x_0=2600000 +y_0=1200000 +ellps=bessel +units=m +no_defs"
+
+  ..@ history : list()
+
+  ..@ z       : list()
+
+ 
+
+ 
+
+> e <- extract(r,v)
+
+Error in (function (classes, fdef, mtable)  : 
+
+  kann keine vererbte Methode finden f?r Funktion ?extract? f?r Signatur ?"RasterLayer", "SpatVector"?
+
+ 
+
+ 
+
+Kind regards
+
+Sibylle
+
+ 
+
+-----Original Message-----
+From: Ivan Krylov <ikrylov at disroot.org> 
+Sent: Tuesday, August 27, 2024 6:55 PM
+To: SIBYLLE ST?CKLI via R-help <r-help at r-project.org>
+Cc: sibylle.stoeckli at gmx.ch
+Subject: Re: [R] boxplot of raster and shapefile
+
+ 
+
+? Mon, 26 Aug 2024 14:33:02 +0200
+
+SIBYLLE ST?CKLI via R-help < <mailto:r-help at r-project.org> r-help at r-project.org> ?????:
+
+ 
+
+> > # Extract raster values within the shapefile extracted_values <- 
+
+> > extract(raster_file, shape_file)
+
+ 
+
+> > # Assuming the shapefile has multiple polygons and you want to # 
+
+> > create a boxplot for each data_list <- 
+
+> > lapply(1:length(extracted_values), function(i) {
+
+> +     data.frame(value = extracted_values[[i]], polygon = i)
+
+> + })
+
+> > data <- do.call(rbind, data_list)
+
+ 
+
+> > names(data)
+
+> [1] "value"   "polygon"
+
+> > # Create the boxplot
+
+> > bp<-ggplot(data, aes(x = factor(polygon), y = value)) +  
+
+> +     geom_boxplot() +
+
+> +     labs(x = "Polygon", y = "Raster Values") +
+
+> +     theme_minimal()
+
+> > bp  
+
+> Error in UseMethod("depth") : 
+
+>   no applicable method for 'depth' applied to an object of class
+
+> "NULL"
+
+> In addition: Warning message:
+
+> Removed 452451 rows containing non-finite outside the scale range
+
+> (`stat_boxplot()`). 
+
+ 
+
+Thank you for providing a runnable example! Could you please also show
+
+the output of str(extracted_values) and str(data)?
+
+ 
+
+-- 
+
+Best regards,
+
+Ivan
+
+
+	[[alternative HTML version deleted]]
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Wed Aug 28 10:18:42 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Wed, 28 Aug 2024 09:18:42 +0100
+Subject: [R] Fill NA values in columns with values of another column
+In-Reply-To: <CAMXoJ=KGa71=k7MSexzn10YuT=QRszq68-nETXEv--dc=c2G9g@mail.gmail.com>
+References: <CAMXoJ=KGa71=k7MSexzn10YuT=QRszq68-nETXEv--dc=c2G9g@mail.gmail.com>
+Message-ID: <34d9dd27-ddb2-4725-9e46-efcaa2c4b689@sapo.pt>
+
+?s 11:23 de 27/08/2024, Francesca PANCOTTO via R-help escreveu:
+> Dear Contributors,
+> I have a problem with a database composed of many individuals for many
+> periods, for which I need to perform a manipulation of data as follows.
+> Here I report the procedure I need to do for the first 32 observations of
+> the first period.
+> 
+> 
+> cbind(VB1d[,1],s1id[,1])
+>        [,1] [,2]
+>   [1,]    6    8
+>   [2,]    9    5
+>   [3,]   NA    1
+>   [4,]    5    6
+>   [5,]   NA    7
+>   [6,]   NA    2
+>   [7,]    4    4
+>   [8,]    2    7
+>   [9,]    2    7
+> [10,]   NA    3
+> [11,]   NA    2
+> [12,]   NA    4
+> [13,]    5    6
+> [14,]    9    5
+> [15,]   NA    5
+> [16,]   NA    6
+> [17,]   10    3
+> [18,]    7    2
+> [19,]    2    1
+> [20,]   NA    7
+> [21,]    7    2
+> [22,]   NA    8
+> [23,]   NA    4
+> [24,]   NA    5
+> [25,]   NA    6
+> [26,]    2    1
+> [27,]    4    4
+> [28,]    6    8
+> [29,]   10    3
+> [30,]   NA    3
+> [31,]   NA    8
+> [32,]   NA    1
+> 
+> 
+> In column s1id, I have numbers from 1 to 8, which are the id of 8 groups ,
+> randomly mixed in the larger group of 32.
+> For each group, I want the value that is reported for only to group
+> members, to all the four group members.
+> 
+> For example, value 8 in first row , second column, is group 8. The value
+> for group 8 of the variable VB1d is 6. At row 28, again for s1id equal to
+> 8, I have 6.
+> But in row 22, the value 8 of the second variable, reports a value NA.
+> in each group is the same, only two values have the correct number, the
+> other two are NA.
+> I need that each group, identified by the values of the variable S1id,
+> correctly report the number of variable VB1d that is present for just two
+> group members.
+> 
+> I hope my explanation is acceptable.
+> The task appears complex to me right now, especially because I will need to
+> multiply this procedure for x12x14 similar databases.
+> 
+> Anyone has ever encountered a similar problem?
+> Thanks in advance for any help provided.
+> 
+> ----------------------------------
+> 
+> Francesca Pancotto
+> 
+> Associate Professor Political Economy
+> 
+> University of Modena, Largo Santa Eufemia, 19, Modena
+> 
+> Office Phone: +39 0522 523264
+> 
+> Web: *https://sites.google.com/view/francescapancotto/home
+> <https://sites.google.com/view/francescapancotto/home>*
+> 
+>   ----------------------------------
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Here is a solution.
+Split the 1st column by the 2nd, keep only the not-NA values and unlist, 
+to have a named vector.
+Then put the names and the values together with cbind.
+
+
+
+mat <- structure(
+   c(6L, 9L, NA, 5L, NA, NA, 4L, 2L, 2L, NA, NA, NA, 5L,
+     9L, NA, NA, 10L, 7L, 2L, NA, 7L, NA, NA, NA, NA, 2L, 4L, 6L,
+     10L, NA, NA, NA, 8L, 5L, 1L, 6L, 7L, 2L, 4L, 7L, 7L, 3L, 2L,
+     4L, 6L, 5L, 5L, 6L, 3L, 2L, 1L, 7L, 2L, 8L, 4L, 5L, 6L, 1L, 4L,
+     8L, 3L, 3L, 8L, 1L), dim = c(32L, 2L))
+
+
+res <- split(mat[, 1L], mat[, 2L]) |> lapply(\(x) x[!is.na(x)]) |> unlist()
+nms <- names(res)
+res <- cbind(
+   VB1d = res,
+   s1id = substr(nms, 1, nchar(nms) - 1L) |> as.integer()
+)
+res
+#>    VB1d s1id
+#> 11    2    1
+#> 12    2    1
+#> 21    7    2
+#> 22    7    2
+#> 31   10    3
+#> 32   10    3
+#> 41    4    4
+#> 42    4    4
+#> 51    9    5
+#> 52    9    5
+#> 61    5    6
+#> 62    5    6
+#> 71    2    7
+#> 72    2    7
+#> 81    6    8
+#> 82    6    8
+
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From o_0991 @end|ng |rom hotm@||@com  Wed Aug 28 09:41:37 2024
+From: o_0991 @end|ng |rom hotm@||@com (=?utf-8?B?2YfZitmE2Ycg2KfZhNiv2YjYs9ix2Yo=?=)
+Date: Wed, 28 Aug 2024 07:41:37 +0000
+Subject: [R] [FORGED]  Fitting arima Models with Exogenous Variables
+Message-ID: <FRZP194MB2368EB9FC9AA49E1EB775706FE952@FRZP194MB2368.EURP194.PROD.OUTLOOK.COM>
+
+good morning 
+
+I am working on my project and I am fitting an SARIMAX model on my data 
+I have a seasonal thime sereis O3 levels 
+With 3 variables temperature, humidity and wind speed..
+
+The O3, temperature and humidity shows a sesonal behavior, however, wind speed is stationary 
+
+When I fit the model using Arima() in R.. is it correct to include the wind speed? Since it?s stationary so the model will take the seasonal difference 
+
+Can you help me ?
+Thanks 
+
+From btupper @end|ng |rom b|ge|ow@org  Wed Aug 28 15:16:26 2024
+From: btupper @end|ng |rom b|ge|ow@org (Ben Tupper)
+Date: Wed, 28 Aug 2024 09:16:26 -0400
+Subject: [R] boxplot of raster and shapefile
+In-Reply-To: <009d01daf91c$c903f050$5b0bd0f0$@gmx.ch>
+References: <003201daf7b4$17e52c80$47af8580$@gmx.ch>
+ <20240827195514.4894264e@Tarkus>
+ <009d01daf91c$c903f050$5b0bd0f0$@gmx.ch>
+Message-ID: <CALrbzg19kinzbRhnEzD8dJ5JAwt=3+bhqXCrX7_Y-pmEB0UycA@mail.gmail.com>
+
+Hi,
+
+> e <- extract(r,v)
+
+Error in (function (classes, fdef, mtable)  :
+
+  kann keine vererbte Methode finden f?r Funktion ?extract? f?r Signatur
+?"RasterLayer", "SpatVector"?
+
+
+The error message is telling you that extract(r, v) hasn't been configured
+for the combination extract(RasterLayer, SpatVector).  If you bring up the
+help for terra::extract you can see the various datatypes that extract()
+has been configured for.  In the help document
+<https://search.r-project.org/CRAN/refmans/terra/html/extract.html>the
+various "signatures" for r and v are detailed.
+
+So, if you read your raster data with terra::rast() rather than
+raster::raster() your r variable will be of type 'SpatRaster' then your
+signatures will be extract(SpatRaster, SpatVector) which should work.
+
+CHeers,
+Ben
+
+
+
+On Wed, Aug 28, 2024 at 3:35?AM SIBYLLE ST?CKLI via R-help <
+r-help at r-project.org> wrote:
+
+> Dear Ivan
+>
+>
+>
+> In the meantime I have found a much easier function. As before the code
+> does not work with my own dataset, probably because of my multipolygonal
+> shape file. There is a warning, that z coordinate are ignored. I provided
+> the output of my shapefile. I changed from read_sf to vect() as I have read
+> that this would work better.
+>
+>
+>
+> Probably this warming message drives the error when running e <-
+> extract(r,v): ? cannot find an inherited method for function ?extract? for
+> signature ??RasterLayer?, ?SpatVector??
+>
+>
+>
+> Working example
+>
+>
+>
+> # load libraries
+>
+> library(terra)
+>
+> library(ggplot2)
+>
+>
+>
+> # Load shp and raster from example files of terra
+>
+> (v <- vect(system.file("ex/lux.shp", package="terra")))
+>
+> (r <- rast(system.file("ex/elev.tif", package="terra")))
+>
+> plot(r); plot(v, add = TRUE); text(v, labels = "NAME_2", col=c("white"))
+>
+> # extract, include names from vector attributes
+>
+> e <- extract(r,v)
+>
+> e$NAME_2 <- v$NAME_2[e$ID]
+>
+> str(e)
+>
+> # plot
+>
+> ggplot(e, aes(x = NAME_2, y = elevation)) +
+>
+>   geom_boxplot() +
+>
+>   theme_minimal() +
+>
+>   theme(axis.text.x = element_text(angle = 45))
+>
+>
+>
+>
+>
+> Personal example not working
+>
+>
+>
+> # Load shp file
+>
+> > v <- vect("C:/Users/?._BiogeoRegion.shp")
+>
+> Warning message:
+>
+> [vect] Z coordinates ignored
+>
+> > str(v)
+>
+> S4 class 'SpatVector' [package "terra"]
+>
+> > names(v)
+>
+> [1] "RegionNumm" "RegionName" "Unterregio" "Unterreg_1" "ObjNummer"
+> "Version"    "Shape_Leng" "Shape_Area" "DERegionNa" "FRRegionNa"
+> "ITRegionNa"
+>
+> [12] "DEBioBedeu" "FRBioBedeu" "ITBioBedeu"
+>
+>
+>
+> > v
+>
+> class       : SpatVector
+>
+>  geometry    : polygons
+>
+>  dimensions  : 12, 14  (geometries, attributes)
+>
+> extent      : 2485410, 2833842, 1075268, 1295934  (xmin, xmax, ymin, ymax)
+>
+> source      : N2020_Revision_BiogeoRegion.shp
+>
+> coord. ref. : CH1903+ / LV95 (EPSG:2056)
+>
+>  names       : RegionNumm RegionName Unterregio Unterreg_1 ObjNummer
+> Version Shape_Leng Shape_Area DERegionNa FRRegionNa (and 4 more)
+>
+> type        :      <int>      <chr>      <int>      <chr>     <chr>
+> <chr>      <num>      <num>      <chr>      <chr>
+>
+>  values      :          1         R1         11        U11         1
+> 2020/05/08  7.251e+05  4.171e+09       Jura       Jura
+>
+>                         2         R2         21        U21         2
+> 2020/05/08  3.344e+05  1.112e+09 Mittelland    Plateau
+>
+>                         2         R2         22        U22         3
+> 2020/05/08  5.397e+05  1.068e+09 Mittelland    Plateau
+>
+>
+>
+>
+>
+> # lodad raster files
+>
+> #first import all files in a single folder as a list
+>
+> rastlist_pres <- list.files(path ="C:/Users/?.presence", pattern='.tif$',
+> all.files= T, full.names= T)
+>
+> rastlist_RCP85P2 <- list.files(path ="C:/Users/?._bee_RCP85P2",
+> pattern='.tif$', all.files= T, full.names= T)
+>
+> #import all raster files in folder using lapply
+>
+> allrasters_pres <- lapply(rastlist_pres, raster)
+>
+> allrasters_RCP85P2 <- lapply(rastlist_RCP85P2, raster)
+>
+> r <- allrasters_pres[[1]]
+>
+>
+>
+>
+>
+> > r
+>
+> class      : RasterLayer
+>
+> dimensions : 9200, 14400, 132480000  (nrow, ncol, ncell)
+>
+> resolution : 25, 25  (x, y)
+>
+> extent     : 2480000, 2840000, 1070000, 1300000  (xmin, xmax, ymin, ymax)
+>
+> crs        : +proj=somerc +lat_0=46.9524055555556 +lon_0=7.43958333333333
+> +k_0=1 +x_0=2600000 +y_0=1200000 +ellps=bessel +units=m +no_defs
+>
+> source     : Andrena.barbilabris_glo_ensemble.tif
+>
+> names      : Andrena.barbilabris_glo_ensemble
+>
+> values     : 0, 53  (min, max)
+>
+>
+>
+> > str(r)
+>
+> Formal class 'RasterLayer' [package "raster"] with 13 slots
+>
+>   ..@ file    :Formal class '.RasterFile' [package "raster"] with 13 slots
+>
+>   .. .. ..@ name        : chr "C:\\Users\\.......\\Andren"| __truncated__
+>
+>   .. .. ..@ datanotation: chr "INT2U"
+>
+>   .. .. ..@ byteorder   : chr "little"
+>
+>   .. .. ..@ nodatavalue : num -Inf
+>
+>   .. .. ..@ NAchanged   : logi FALSE
+>
+>   .. .. ..@ nbands      : int 1
+>
+>   .. .. ..@ bandorder   : chr "BIL"
+>
+>   .. .. ..@ offset      : int 0
+>
+>   .. .. ..@ toptobottom : logi TRUE
+>
+>   .. .. ..@ blockrows   : Named int 1
+>
+>   .. .. .. ..- attr(*, "names")= chr "rows"
+>
+>   .. .. ..@ blockcols   : Named int 14400
+>
+>   .. .. .. ..- attr(*, "names")= chr "cols"
+>
+>   .. .. ..@ driver      : chr "gdal"
+>
+>   .. .. ..@ open        : logi FALSE
+>
+>   ..@ data    :Formal class '.SingleLayerData' [package "raster"] with 13
+> slots
+>
+>   .. .. ..@ values    : logi(0)
+>
+>   .. .. ..@ offset    : num 0
+>
+>   .. .. ..@ gain      : num 1
+>
+>   .. .. ..@ inmemory  : logi FALSE
+>
+>   .. .. ..@ fromdisk  : logi TRUE
+>
+>   .. .. ..@ isfactor  : logi FALSE
+>
+>   .. .. ..@ attributes: list()
+>
+>   .. .. ..@ haveminmax: logi TRUE
+>
+>   .. .. ..@ min       : num 0
+>
+>   .. .. ..@ max       : num 53
+>
+>   .. .. ..@ band      : int 1
+>
+>   .. .. ..@ unit      : chr ""
+>
+>   .. .. ..@ names     : chr "Andrena.barbilabris_glo_ensemble"
+>
+>   ..@ legend  :Formal class '.RasterLegend' [package "raster"] with 5 slots
+>
+>   .. .. ..@ type      : chr(0)
+>
+>   .. .. ..@ values    : logi(0)
+>
+>   .. .. ..@ color     : logi(0)
+>
+>   .. .. ..@ names     : logi(0)
+>
+>   .. .. ..@ colortable: logi(0)
+>
+>   ..@ title   : chr(0)
+>
+>   ..@ extent  :Formal class 'Extent' [package "raster"] with 4 slots
+>
+>   .. .. ..@ xmin: num 2480000
+>
+>   .. .. ..@ xmax: num 2840000
+>
+>   .. .. ..@ ymin: num 1070000
+>
+>   .. .. ..@ ymax: num 1300000
+>
+>   ..@ rotated : logi FALSE
+>
+>   ..@ rotation:Formal class '.Rotation' [package "raster"] with 2 slots
+>
+>   .. .. ..@ geotrans: num(0)
+>
+>   .. .. ..@ transfun:function ()
+>
+>   ..@ ncols   : int 14400
+>
+>   ..@ nrows   : int 9200
+>
+>   ..@ crs     :Formal class 'CRS' [package "sp"] with 1 slot
+>
+>   .. .. ..@ projargs: chr "+proj=somerc +lat_0=46.9524055555556
+> +lon_0=7.43958333333333 +k_0=1 +x_0=2600000 +y_0=1200000 +ellps=bessel
+> +units=m +no_defs"
+>
+>   .. .. ..$ comment: chr "PROJCRS[\"unknown\",\n
+> BASEGEOGCRS[\"unknown\",\n        DATUM[\"Unknown based on Bessel 1841
+> ellipsoid\",\n"| __truncated__
+>
+>   ..@ srs     : chr "+proj=somerc +lat_0=46.9524055555556
+> +lon_0=7.43958333333333 +k_0=1 +x_0=2600000 +y_0=1200000 +ellps=bessel
+> +units=m +no_defs"
+>
+>   ..@ history : list()
+>
+>   ..@ z       : list()
+>
+>
+>
+>
+>
+> > e <- extract(r,v)
+>
+> Error in (function (classes, fdef, mtable)  :
+>
+>   kann keine vererbte Methode finden f?r Funktion ?extract? f?r Signatur
+> ?"RasterLayer", "SpatVector"?
+>
+>
+>
+>
+>
+> Kind regards
+>
+> Sibylle
+>
+>
+>
+> -----Original Message-----
+> From: Ivan Krylov <ikrylov at disroot.org>
+> Sent: Tuesday, August 27, 2024 6:55 PM
+> To: SIBYLLE ST?CKLI via R-help <r-help at r-project.org>
+> Cc: sibylle.stoeckli at gmx.ch
+> Subject: Re: [R] boxplot of raster and shapefile
+>
+>
+>
+> ? Mon, 26 Aug 2024 14:33:02 +0200
+>
+> SIBYLLE ST?CKLI via R-help < <mailto:r-help at r-project.org>
+> r-help at r-project.org> ?????:
+>
+>
+>
+> > > # Extract raster values within the shapefile extracted_values <-
+>
+> > > extract(raster_file, shape_file)
+>
+>
+>
+> > > # Assuming the shapefile has multiple polygons and you want to #
+>
+> > > create a boxplot for each data_list <-
+>
+> > > lapply(1:length(extracted_values), function(i) {
+>
+> > +     data.frame(value = extracted_values[[i]], polygon = i)
+>
+> > + })
+>
+> > > data <- do.call(rbind, data_list)
+>
+>
+>
+> > > names(data)
+>
+> > [1] "value"   "polygon"
+>
+> > > # Create the boxplot
+>
+> > > bp<-ggplot(data, aes(x = factor(polygon), y = value)) +
+>
+> > +     geom_boxplot() +
+>
+> > +     labs(x = "Polygon", y = "Raster Values") +
+>
+> > +     theme_minimal()
+>
+> > > bp
+>
+> > Error in UseMethod("depth") :
+>
+> >   no applicable method for 'depth' applied to an object of class
+>
+> > "NULL"
+>
+> > In addition: Warning message:
+>
+> > Removed 452451 rows containing non-finite outside the scale range
+>
+> > (`stat_boxplot()`).
+>
+>
+>
+> Thank you for providing a runnable example! Could you please also show
+>
+> the output of str(extracted_values) and str(data)?
+>
+>
+>
+> --
+>
+> Best regards,
+>
+> Ivan
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From tebert @end|ng |rom u||@edu  Wed Aug 28 17:24:22 2024
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Wed, 28 Aug 2024 15:24:22 +0000
+Subject: [R] Fill NA values in columns with values of another column
+In-Reply-To: <34d9dd27-ddb2-4725-9e46-efcaa2c4b689@sapo.pt>
+References: <CAMXoJ=KGa71=k7MSexzn10YuT=QRszq68-nETXEv--dc=c2G9g@mail.gmail.com>
+ <34d9dd27-ddb2-4725-9e46-efcaa2c4b689@sapo.pt>
+Message-ID: <CH3PR22MB4514523DD45B7F53D5C8042ECF952@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+Why not use na.omit() and then go from there? Unless one handles NA differently in different groups there is no point in processing the data by groups to remove NA even if later analysis steps do require group information.
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Rui Barradas
+Sent: Wednesday, August 28, 2024 4:19 AM
+To: Francesca PANCOTTO <francesca.pancotto at unimore.it>; r-help at r-project.org
+Subject: Re: [R] Fill NA values in columns with values of another column
+
+[External Email]
+
+?s 11:23 de 27/08/2024, Francesca PANCOTTO via R-help escreveu:
+> Dear Contributors,
+> I have a problem with a database composed of many individuals for many
+> periods, for which I need to perform a manipulation of data as follows.
+> Here I report the procedure I need to do for the first 32 observations
+> of the first period.
+>
+>
+> cbind(VB1d[,1],s1id[,1])
+>        [,1] [,2]
+>   [1,]    6    8
+>   [2,]    9    5
+>   [3,]   NA    1
+>   [4,]    5    6
+>   [5,]   NA    7
+>   [6,]   NA    2
+>   [7,]    4    4
+>   [8,]    2    7
+>   [9,]    2    7
+> [10,]   NA    3
+> [11,]   NA    2
+> [12,]   NA    4
+> [13,]    5    6
+> [14,]    9    5
+> [15,]   NA    5
+> [16,]   NA    6
+> [17,]   10    3
+> [18,]    7    2
+> [19,]    2    1
+> [20,]   NA    7
+> [21,]    7    2
+> [22,]   NA    8
+> [23,]   NA    4
+> [24,]   NA    5
+> [25,]   NA    6
+> [26,]    2    1
+> [27,]    4    4
+> [28,]    6    8
+> [29,]   10    3
+> [30,]   NA    3
+> [31,]   NA    8
+> [32,]   NA    1
+>
+>
+> In column s1id, I have numbers from 1 to 8, which are the id of 8
+> groups , randomly mixed in the larger group of 32.
+> For each group, I want the value that is reported for only to group
+> members, to all the four group members.
+>
+> For example, value 8 in first row , second column, is group 8. The
+> value for group 8 of the variable VB1d is 6. At row 28, again for s1id
+> equal to 8, I have 6.
+> But in row 22, the value 8 of the second variable, reports a value NA.
+> in each group is the same, only two values have the correct number,
+> the other two are NA.
+> I need that each group, identified by the values of the variable S1id,
+> correctly report the number of variable VB1d that is present for just
+> two group members.
+>
+> I hope my explanation is acceptable.
+> The task appears complex to me right now, especially because I will
+> need to multiply this procedure for x12x14 similar databases.
+>
+> Anyone has ever encountered a similar problem?
+> Thanks in advance for any help provided.
+>
+> ----------------------------------
+>
+> Francesca Pancotto
+>
+> Associate Professor Political Economy
+>
+> University of Modena, Largo Santa Eufemia, 19, Modena
+>
+> Office Phone: +39 0522 523264
+>
+> Web:
+> *https://sit/
+> es.google.com%2Fview%2Ffrancescapancotto%2Fhome&data=05%7C02%7Ctebert%
+> 40ufl.edu%7C0ca2745d1f2142a0723608dcc73a15e3%7C0d4da0f84a314d76ace60a6
+> 2331e1b84%7C0%7C0%7C638604299508876897%7CUnknown%7CTWFpbGZsb3d8eyJWIjo
+> iMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%
+> 7C&sdata=yHdkL%2BmnsHgL1O3nE%2B0r4Wf5nvRgJp66VWJHHiYJVGA%3D&reserved=0
+> <https://sit/
+> es.google.com%2Fview%2Ffrancescapancotto%2Fhome&data=05%7C02%7Ctebert%
+> 40ufl.edu%7C0ca2745d1f2142a0723608dcc73a15e3%7C0d4da0f84a314d76ace60a6
+> 2331e1b84%7C0%7C0%7C638604299508887226%7CUnknown%7CTWFpbGZsb3d8eyJWIjo
+> iMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%
+> 7C&sdata=XsB7jdjGD5S7YKiyPhY5DSR%2F1yhPrTuFxdA5qz3KEBY%3D&reserved=0>*
+>
+>   ----------------------------------
+>
+>       [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat/
+> .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C02%7Ctebert%40ufl.edu
+> %7C0ca2745d1f2142a0723608dcc73a15e3%7C0d4da0f84a314d76ace60a62331e1b84
+> %7C0%7C0%7C638604299508890269%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAw
+> MDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=
+> BLTZvAFGtdZUoKefcgEtEsrw5pm4UHRUZJCGLXx5QFE%3D&reserved=0
+> PLEASE do read the posting guide
+> https://www/.
+> r-project.org%2Fposting-guide.html&data=05%7C02%7Ctebert%40ufl.edu%7C0
+> ca2745d1f2142a0723608dcc73a15e3%7C0d4da0f84a314d76ace60a62331e1b84%7C0
+> %7C0%7C638604299508893127%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAi
+> LCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=q4Mj
+> %2BjSL2ZG0%2Fi0%2FrBUR3Z2B%2BbV6eH35to2Rt6kHUZ8%3D&reserved=0
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Here is a solution.
+Split the 1st column by the 2nd, keep only the not-NA values and unlist, to have a named vector.
+Then put the names and the values together with cbind.
+
+
+
+mat <- structure(
+   c(6L, 9L, NA, 5L, NA, NA, 4L, 2L, 2L, NA, NA, NA, 5L,
+     9L, NA, NA, 10L, 7L, 2L, NA, 7L, NA, NA, NA, NA, 2L, 4L, 6L,
+     10L, NA, NA, NA, 8L, 5L, 1L, 6L, 7L, 2L, 4L, 7L, 7L, 3L, 2L,
+     4L, 6L, 5L, 5L, 6L, 3L, 2L, 1L, 7L, 2L, 8L, 4L, 5L, 6L, 1L, 4L,
+     8L, 3L, 3L, 8L, 1L), dim = c(32L, 2L))
+
+
+res <- split(mat[, 1L], mat[, 2L]) |> lapply(\(x) x[!is.na(x)]) |> unlist() nms <- names(res) res <- cbind(
+   VB1d = res,
+   s1id = substr(nms, 1, nchar(nms) - 1L) |> as.integer()
+)
+res
+#>    VB1d s1id
+#> 11    2    1
+#> 12    2    1
+#> 21    7    2
+#> 22    7    2
+#> 31   10    3
+#> 32   10    3
+#> 41    4    4
+#> 42    4    4
+#> 51    9    5
+#> 52    9    5
+#> 61    5    6
+#> 62    5    6
+#> 71    2    7
+#> 72    2    7
+#> 81    6    8
+#> 82    6    8
+
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+--
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+http://www.avg.com/
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Wed Aug 28 19:21:11 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Wed, 28 Aug 2024 18:21:11 +0100
+Subject: [R] Fill NA values in columns with values of another column
+In-Reply-To: <CH3PR22MB4514523DD45B7F53D5C8042ECF952@CH3PR22MB4514.namprd22.prod.outlook.com>
+References: <CAMXoJ=KGa71=k7MSexzn10YuT=QRszq68-nETXEv--dc=c2G9g@mail.gmail.com>
+ <34d9dd27-ddb2-4725-9e46-efcaa2c4b689@sapo.pt>
+ <CH3PR22MB4514523DD45B7F53D5C8042ECF952@CH3PR22MB4514.namprd22.prod.outlook.com>
+Message-ID: <3ddf3384-1a8f-463d-8562-d9d060ca0346@sapo.pt>
+
+?s 16:24 de 28/08/2024, Ebert,Timothy Aaron escreveu:
+> Why not use na.omit() and then go from there? Unless one handles NA differently in different groups there is no point in processing the data by groups to remove NA even if later analysis steps do require group information.
+> 
+> Tim
+> 
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Rui Barradas
+> Sent: Wednesday, August 28, 2024 4:19 AM
+> To: Francesca PANCOTTO <francesca.pancotto at unimore.it>; r-help at r-project.org
+> Subject: Re: [R] Fill NA values in columns with values of another column
+> 
+> [External Email]
+> 
+> ?s 11:23 de 27/08/2024, Francesca PANCOTTO via R-help escreveu:
+>> Dear Contributors,
+>> I have a problem with a database composed of many individuals for many
+>> periods, for which I need to perform a manipulation of data as follows.
+>> Here I report the procedure I need to do for the first 32 observations
+>> of the first period.
+>>
+>>
+>> cbind(VB1d[,1],s1id[,1])
+>>         [,1] [,2]
+>>    [1,]    6    8
+>>    [2,]    9    5
+>>    [3,]   NA    1
+>>    [4,]    5    6
+>>    [5,]   NA    7
+>>    [6,]   NA    2
+>>    [7,]    4    4
+>>    [8,]    2    7
+>>    [9,]    2    7
+>> [10,]   NA    3
+>> [11,]   NA    2
+>> [12,]   NA    4
+>> [13,]    5    6
+>> [14,]    9    5
+>> [15,]   NA    5
+>> [16,]   NA    6
+>> [17,]   10    3
+>> [18,]    7    2
+>> [19,]    2    1
+>> [20,]   NA    7
+>> [21,]    7    2
+>> [22,]   NA    8
+>> [23,]   NA    4
+>> [24,]   NA    5
+>> [25,]   NA    6
+>> [26,]    2    1
+>> [27,]    4    4
+>> [28,]    6    8
+>> [29,]   10    3
+>> [30,]   NA    3
+>> [31,]   NA    8
+>> [32,]   NA    1
+>>
+>>
+>> In column s1id, I have numbers from 1 to 8, which are the id of 8
+>> groups , randomly mixed in the larger group of 32.
+>> For each group, I want the value that is reported for only to group
+>> members, to all the four group members.
+>>
+>> For example, value 8 in first row , second column, is group 8. The
+>> value for group 8 of the variable VB1d is 6. At row 28, again for s1id
+>> equal to 8, I have 6.
+>> But in row 22, the value 8 of the second variable, reports a value NA.
+>> in each group is the same, only two values have the correct number,
+>> the other two are NA.
+>> I need that each group, identified by the values of the variable S1id,
+>> correctly report the number of variable VB1d that is present for just
+>> two group members.
+>>
+>> I hope my explanation is acceptable.
+>> The task appears complex to me right now, especially because I will
+>> need to multiply this procedure for x12x14 similar databases.
+>>
+>> Anyone has ever encountered a similar problem?
+>> Thanks in advance for any help provided.
+>>
+>> ----------------------------------
+>>
+>> Francesca Pancotto
+>>
+>> Associate Professor Political Economy
+>>
+>> University of Modena, Largo Santa Eufemia, 19, Modena
+>>
+>> Office Phone: +39 0522 523264
+>>
+>> Web:
+>> *https://sit/
+>> es.google.com%2Fview%2Ffrancescapancotto%2Fhome&data=05%7C02%7Ctebert%
+>> 40ufl.edu%7C0ca2745d1f2142a0723608dcc73a15e3%7C0d4da0f84a314d76ace60a6
+>> 2331e1b84%7C0%7C0%7C638604299508876897%7CUnknown%7CTWFpbGZsb3d8eyJWIjo
+>> iMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%
+>> 7C&sdata=yHdkL%2BmnsHgL1O3nE%2B0r4Wf5nvRgJp66VWJHHiYJVGA%3D&reserved=0
+>> <https://sit/
+>> es.google.com%2Fview%2Ffrancescapancotto%2Fhome&data=05%7C02%7Ctebert%
+>> 40ufl.edu%7C0ca2745d1f2142a0723608dcc73a15e3%7C0d4da0f84a314d76ace60a6
+>> 2331e1b84%7C0%7C0%7C638604299508887226%7CUnknown%7CTWFpbGZsb3d8eyJWIjo
+>> iMC4wLjAwMDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%
+>> 7C&sdata=XsB7jdjGD5S7YKiyPhY5DSR%2F1yhPrTuFxdA5qz3KEBY%3D&reserved=0>*
+>>
+>>    ----------------------------------
+>>
+>>        [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat/
+>> .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C02%7Ctebert%40ufl.edu
+>> %7C0ca2745d1f2142a0723608dcc73a15e3%7C0d4da0f84a314d76ace60a62331e1b84
+>> %7C0%7C0%7C638604299508890269%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAw
+>> MDAiLCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=
+>> BLTZvAFGtdZUoKefcgEtEsrw5pm4UHRUZJCGLXx5QFE%3D&reserved=0
+>> PLEASE do read the posting guide
+>> https://www/.
+>> r-project.org%2Fposting-guide.html&data=05%7C02%7Ctebert%40ufl.edu%7C0
+>> ca2745d1f2142a0723608dcc73a15e3%7C0d4da0f84a314d76ace60a62331e1b84%7C0
+>> %7C0%7C638604299508893127%7CUnknown%7CTWFpbGZsb3d8eyJWIjoiMC4wLjAwMDAi
+>> LCJQIjoiV2luMzIiLCJBTiI6Ik1haWwiLCJXVCI6Mn0%3D%7C0%7C%7C%7C&sdata=q4Mj
+>> %2BjSL2ZG0%2Fi0%2FrBUR3Z2B%2BbV6eH35to2Rt6kHUZ8%3D&reserved=0
+>> and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+> 
+> Here is a solution.
+> Split the 1st column by the 2nd, keep only the not-NA values and unlist, to have a named vector.
+> Then put the names and the values together with cbind.
+> 
+> 
+> 
+> mat <- structure(
+>     c(6L, 9L, NA, 5L, NA, NA, 4L, 2L, 2L, NA, NA, NA, 5L,
+>       9L, NA, NA, 10L, 7L, 2L, NA, 7L, NA, NA, NA, NA, 2L, 4L, 6L,
+>       10L, NA, NA, NA, 8L, 5L, 1L, 6L, 7L, 2L, 4L, 7L, 7L, 3L, 2L,
+>       4L, 6L, 5L, 5L, 6L, 3L, 2L, 1L, 7L, 2L, 8L, 4L, 5L, 6L, 1L, 4L,
+>       8L, 3L, 3L, 8L, 1L), dim = c(32L, 2L))
+> 
+> 
+> res <- split(mat[, 1L], mat[, 2L]) |> lapply(\(x) x[!is.na(x)]) |> unlist() nms <- names(res) res <- cbind(
+>     VB1d = res,
+>     s1id = substr(nms, 1, nchar(nms) - 1L) |> as.integer()
+> )
+> res
+> #>    VB1d s1id
+> #> 11    2    1
+> #> 12    2    1
+> #> 21    7    2
+> #> 22    7    2
+> #> 31   10    3
+> #> 32   10    3
+> #> 41    4    4
+> #> 42    4    4
+> #> 51    9    5
+> #> 52    9    5
+> #> 61    5    6
+> #> 62    5    6
+> #> 71    2    7
+> #> 72    2    7
+> #> 81    6    8
+> #> 82    6    8
+> 
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> 
+> --
+> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+> http://www.avg.com/
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+You are right, I don't know why I complicated so much.
+Another possibility is complete.cases.
+
+
+na.omit(mat)
+mat[complete.cases(mat), ]
+
+
+Hope this helps,
+
+Rui Barradas
+
+
