@@ -1,0 +1,203 @@
+From @vi@e@gross m@iii@g oii gm@ii@com  Sun Sep  1 00:17:27 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 31 Aug 2024 18:17:27 -0400
+Subject: [R] aggregating data with quality control
+In-Reply-To: <27c3b1964d64474aac11678760647e61@regione.marche.it>
+References: <27c3b1964d64474aac11678760647e61@regione.marche.it>
+Message-ID: <017a01dafbf3$902a31c0$b07e9540$@gmail.com>
+
+Stefano,
+
+I see you already have an answer that works for you.
+
+Sometimes you want to step back and see if some modification makes a problem easier to solve.
+
+I often simply switch to using tools in the tidyverse such as dplyr for parts of the job albeit much of the same can be done using functions built-in to R.
+
+In your case, there are many possible solutions besides taking the max in some way as in a factor column.
+
+You seem to expect exactly 48 measurements. Currently you encode them as one of two character strings but if this is really a binary choice, you could have used a 0/1 or TRUE/FALSE column instead, or make one. This lets you do things like take the sum and compare it to 48 to see if all are true, or to zero to check if all are false. You could take the product to check if at least one is false or use a negation for another perspective. If the number of rows may not be 48, you can compare to a calculation of the actual number of rows in that subset.
+
+If your data was placed into wide format, say based on your hs field being unique for each test site, there are similar ideas by taking a subset of the columns and applying things  by using functions like rowSum.
+
+Again, some things I commonly use in dplyr such as group_by() and how it impacts other operations including reports, makes this a little different but most things can be done with careful use of base R, except areas where dplyr supports more and more abstract ways to specify what you want and that your example does not need.
+
+Just FYI, you did not share what your function my.mean() is. 
+
+I won't share the code unless interested but it looks like part of what you are doing is to bundle by a truncated version of date/time to just a day.  I am not sure your method is optimal. You make a list of three different things containing parts of a date. That can work but as dates are already looking like 2024-01-02 which sorts and compares well alphabetically, I wonder if instead you group by that.
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Stefano Sofia
+Sent: Saturday, August 31, 2024 7:15 AM
+To: r-help at R-project.org
+Subject: [R] aggregating data with quality control
+
+Dear R-list users,
+
+I deal with semi-hourly data from automatic meteorological stations.
+
+They have to pass a manual validation; suppose that status = "C" stands for correct and status = "D" for discarded.
+
+Here a simple example with "Snow height" (HS):
+
+
+mydf <- data.frame(data_POSIX=seq(as.POSIXct("2024-01-01 00:00:00", format = "%Y-%m-%d %H:%M:%S", tz="Etc/GMT-1"), as.POSIXct("2024-01-02 23:30:00", format = "%Y-%m-%d %H:%M:%S", tz="Etc/GMT-1"), by="30 min"))
+
+mydf$hs <- round(runif(96, 0, 100))
+
+mydf$status <- c(rep("C", 50), "S", rep("C", 45))
+
+
+Evaluating the daily mean indipendently from the status is very easy:
+
+aggregate(mydf$hs, by=list(format(mydf$data_POSIX, "%Y"), format(mydf$data_POSIX, "%m"), format(mydf$data_POSIX, "%d")), my.mean)
+
+
+Things become more complicated when I need to export also the status: this should be "C" when all 48 data have status equal to "C", and status "D" when at least one value has status ="D".
+
+
+I have no clue on how to do that in an efficient way.
+
+Could some of you give me some clues on how to do that?
+
+
+Thank you for your usual support
+
+Stefano Sofia
+
+
+         (oo)
+--oOO--( )--OOo--------------------------------------
+Stefano Sofia PhD
+Civil Protection - Marche Region - Italy
+Meteo Section
+Snow Section
+Via del Colle Ameno 5
+60126 Torrette di Ancona, Ancona (AN)
+Uff: +39 071 806 7743
+E-mail: stefano.sofia at regione.marche.it
+---Oo---------oO----------------------------------------
+
+________________________________
+
+AVVISO IMPORTANTE: Questo messaggio di posta elettronica pu? contenere informazioni confidenziali, pertanto ? destinato solo a persone autorizzate alla ricezione. I messaggi di posta elettronica per i client di Regione Marche possono contenere informazioni confidenziali e con privilegi legali. Se non si ? il destinatario specificato, non leggere, copiare, inoltrare o archiviare questo messaggio. Se si ? ricevuto questo messaggio per errore, inoltrarlo al mittente ed eliminarlo completamente dal sistema del proprio computer. Ai sensi dell'art. 6 della DGR n. 1394/2008 si segnala che, in caso di necessit? ed urgenza, la risposta al presente messaggio di posta elettronica pu? essere visionata da persone estranee al destinatario.
+IMPORTANT NOTICE: This e-mail message is intended to be received only by persons entitled to receive the confidential information it may contain. E-mail messages to clients of Regione Marche may contain information that is confidential and legally privileged. Please do not read, copy, forward, or store this message unless you are an intended recipient of it. If you have received this message in error, please forward it to the sender and delete it completely from your computer system.
+
+	[[alternative HTML version deleted]]
+
+
+From bog@@o@chr|@to|er @end|ng |rom gm@||@com  Tue Sep  3 01:26:17 2024
+From: bog@@o@chr|@to|er @end|ng |rom gm@||@com (Christofer Bogaso)
+Date: Tue, 3 Sep 2024 04:56:17 +0530
+Subject: [R] Adding parameters for Benchmark normal distribution in
+ shapiro.test
+Message-ID: <CA+dpOJnCG=jhE=T4fdsq8F6X8JiLQmm81jX=kTGcMokywCC13w@mail.gmail.com>
+
+Hi,
+
+In ?shapiro.test, there seems to be no option to pass mean and sd
+information of the Normal distribution which I want to compare my
+sample data to.
+
+For example in the code below, I want to test my sample to N(0, 10).
+
+shapiro.test(rnorm(100, mean = 5, sd = 3))
+
+Is there any way to pass the information of the benchmark normal distribution?
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Tue Sep  3 01:53:50 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Mon, 02 Sep 2024 16:53:50 -0700
+Subject: [R] Adding parameters for Benchmark normal distribution in
+ shapiro.test
+In-Reply-To: <CA+dpOJnCG=jhE=T4fdsq8F6X8JiLQmm81jX=kTGcMokywCC13w@mail.gmail.com>
+References: <CA+dpOJnCG=jhE=T4fdsq8F6X8JiLQmm81jX=kTGcMokywCC13w@mail.gmail.com>
+Message-ID: <637456A8-A64B-44DB-AADE-E660B413238B@dcn.davis.ca.us>
+
+Wouldn't that be because the sample is not being compared to a specific distribution but rather to many possible distributions by MC? [1]
+
+If you think that need not be the case, perhaps you can write your own test... but then it will probably be answering a different question?
+
+[1] https://en.m.wikipedia.org/wiki/Shapiro%E2%80%93Wilk_test
+
+On September 2, 2024 4:26:17 PM PDT, Christofer Bogaso <bogaso.christofer at gmail.com> wrote:
+>Hi,
+>
+>In ?shapiro.test, there seems to be no option to pass mean and sd
+>information of the Normal distribution which I want to compare my
+>sample data to.
+>
+>For example in the code below, I want to test my sample to N(0, 10).
+>
+>shapiro.test(rnorm(100, mean = 5, sd = 3))
+>
+>Is there any way to pass the information of the benchmark normal distribution?
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From bbo|ker @end|ng |rom gm@||@com  Tue Sep  3 02:22:08 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Mon, 2 Sep 2024 20:22:08 -0400
+Subject: [R] Adding parameters for Benchmark normal distribution in
+ shapiro.test
+In-Reply-To: <CA+dpOJnCG=jhE=T4fdsq8F6X8JiLQmm81jX=kTGcMokywCC13w@mail.gmail.com>
+References: <CA+dpOJnCG=jhE=T4fdsq8F6X8JiLQmm81jX=kTGcMokywCC13w@mail.gmail.com>
+Message-ID: <d557d541-24cf-45dc-9bbb-d7b9d050f5f1@gmail.com>
+
+   From Shapiro and Wilk's paper:
+
+ > The objective is to derive a test for the hypothesis that this is a 
+sample from a normal distribution with unknown mean mu and unknown 
+variance sigma^2
+
+  That is, the estimates of the mean and SD are folded into the 
+derivation of the test statistic.
+
+   If you want to test against a specified alternative you could try 
+e.g. a Kolmogorov-Smirnov test
+
+set.seed(101)
+x <- rnorm(100, mean = 5, sd = 3)
+
+ks.test(x, "pnorm", 0, 10)
+
+
+
+
+On 2024-09-02 7:26 p.m., Christofer Bogaso wrote:
+> Hi,
+> 
+> In ?shapiro.test, there seems to be no option to pass mean and sd
+> information of the Normal distribution which I want to compare my
+> sample data to.
+> 
+> For example in the code below, I want to test my sample to N(0, 10).
+> 
+> shapiro.test(rnorm(100, mean = 5, sd = 3))
+> 
+> Is there any way to pass the information of the benchmark normal distribution?
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
