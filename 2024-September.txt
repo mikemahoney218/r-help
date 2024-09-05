@@ -264,3 +264,939 @@ of estimated coefficients?
 Does R uses some approximation like delta rule?
 
 
+From |@go@g|ne @end|ng |rom @jd@e@  Wed Sep  4 07:23:48 2024
+From: |@go@g|ne @end|ng |rom @jd@e@ (=?iso-8859-1?Q?Iago_Gin=E9_V=E1zquez?=)
+Date: Wed, 4 Sep 2024 05:23:48 +0000
+Subject: [R] fixed set.seed + kmeans output disagree on distinct platforms
+Message-ID: <VI0PR02MB104934BC51026686BB56EEE3594922@VI0PR02MB10493.eurprd02.prod.outlook.com>
+
+Hi all,
+
+I build a dataset processing in the same way the same data in Windows than in Linux.
+
+The output of Windows processing is: https://gitlab.com/iagogv/repdata/-/raw/main/exdata.csv?ref_type=heads
+The output of Linux processing is: https://gitlab.com/iagogv/repdata/-/raw/main/exdata2.csv?ref_type=heads
+
+exdata=as.matrix(read.csv("https://gitlab.com/iagogv/repdata/-/raw/main/exdata.csv?ref_type=heads", header=FALSE))
+exdata2=as.matrix(read.csv("https://gitlab.com/iagogv/repdata/-/raw/main/exdata2.csv?ref_type=heads", header=FALSE))
+
+They are not identical (`identical(exdata,exdata2)` is FALSE), but they are essentially equal (`all.equal(exdata,exdata2)` is TRUE). If I run
+
+set.seed(20232260)
+exkmns <- kmeans(exdata, centers = 7, iter.max = 2000, nstart = 750)
+
+I get
+
+exkmns$centers
+          V1         V2          V3          V4          V5           V6
+1 -0.4910731 -0.2662055  0.57928758  0.14267293 -0.03013791  0.106472717
+2  0.5301237  0.2815620 -0.23898532  1.00979412 -0.26123328  0.068099931
+3  0.2255298 -0.5165964 -0.02498471 -0.20438275 -0.41224195 -0.107538855
+4 -0.2616257  0.5680582  0.55387437 -0.09562789 -0.01706577 -0.028248679
+5 -0.4820078 -0.1667370 -0.46533618 -0.05271446  0.05477352  0.005236259
+6  0.6455994 -0.1396674  0.05988547 -0.15557399  0.62766365  0.031051986
+7  0.1072127  0.5538876 -0.33117098 -0.43209203 -0.18646403 -0.081273130
+
+both in Windows  (1) and in Linux (2, 3) up to rows order. If I run in Linux in my computer (2)
+
+set.seed(20232260)
+exkmns2 <- kmeans(exdata2, centers = 7, iter.max = 2000, nstart = 750)
+
+then, I get
+
+exkmns2$centers
+           V1         V2          V3          V4          V5          V6
+1  0.64559941 -0.1396674  0.05988547 -0.15557399  0.62766365  0.03105199
+2 -0.26162573  0.5680582  0.55387437 -0.09562789 -0.01706577 -0.02824868
+3  0.53012369  0.2815620 -0.23898532  1.00979412 -0.26123328  0.06809993
+4  0.03409765  0.3492520 -0.36910409 -0.40721418 -0.21482793  0.03073180
+5 -0.58527394 -0.1790337 -0.46778956  0.03573883  0.15473589 -0.07980379
+6 -0.49107314 -0.2662055  0.57928758  0.14267293 -0.03013791  0.10647272
+7  0.22552984 -0.5165964 -0.02498471 -0.20438275 -0.41224195 -0.10753886
+
+therefore, all rows essentially equal except for rows 5 and 7 of first dataset (5 and 4 of second dataset).  With a bit more detail:
+
+  *
+Row 0.2255298 -0.5165964 -0.02498471 -0.20438275 -0.41224195 -0.107538855 belongs to exdata (and exdata2) and is center of both outputs
+  *
+Row 0.1072127  0.5538876 -0.33117098 -0.43209203 -0.18646403 -0.081273130 belongs to the dataset and it is only center of exdata output
+  *
+Row -0.4820078 -0.1667370 -0.46533618 -0.05271446  0.05477352  0.005236259 does not belong to the dataset and it is only center of exdata output
+  *
+Row -0.58527394 -0.1790337 -0.46778956  0.03573883  0.15473589 -0.07980379 belongs to the dataset and it is only center for exdata2 on Linux in my computer
+  *
+Row 0.03409765  0.3492520 -0.36910409 -0.40721418 -0.21482793  0.03073180 does not belong to the dataset and it is only center for exdata2 on Linux in my computer
+  *
+All other 4 rows (1,2,4 and 6 of first output) do not belong to the dataset and are common centers.
+
+Even, further, if I run
+
+set.seed(20232260)
+exkmns <- kmeans(exdata, centers = 7, iter.max = 2000, nstart = 750)
+
+in  posit.cloud (3), I get the same result than above. However, if I run (both in posit.cloud or in Windows)
+
+set.seed(20232260)
+exkmns2 <- kmeans(exdata2, centers = 7, iter.max = 2000, nstart = 750)
+
+then I get
+
+
+exkmns2$centers
+          V1         V2          V3         V4          V5          V6
+1  0.6426035 -0.1449498  0.05843435 -0.1527968  0.62943077  0.02984948
+2 -0.4092382 -0.3740695  0.69597037  0.1956896 -0.05026200 -0.01453132
+3  0.1072127  0.5538876 -0.33117098 -0.4320920 -0.18646403 -0.08127313
+4  0.2255298 -0.5165964 -0.02498471 -0.2043827 -0.41224195 -0.10753886
+5  0.5301237  0.2815620 -0.23898532  1.0097941 -0.26123328  0.06809993
+6 -0.5223387 -0.1484517 -0.38982567 -0.0341488  0.06446446  0.03622056
+7 -0.2701703  0.5263218  0.52942311 -0.1112202 -0.03460591  0.03577287
+
+So only its rows 4 and 5 are common centers to both of previous outputs and row 3 is common width exdata centers.
+
+Does all this have any sense?
+
+Thanks!
+
+Iago
+
+(1)
+R version 4.4.1 (2024-06-14 ucrt)
+Platform: x86_64-w64-mingw32/x64
+Running under: Windows 10 x64 (build 19045)
+
+Matrix products: default
+
+(2)
+R version 4.4.1 (2024-06-14)
+Platform: x86_64-pc-linux-gnu
+Running under: Debian GNU/Linux 12 (bookworm)
+
+Matrix products: default
+BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3
+LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.21.so;  LAPACK version 3.11.0
+
+(3)
+R version 4.4.1 (2024-06-14)
+Platform: x86_64-pc-linux-gnu
+Running under: Ubuntu 20.04.6 LTS
+
+ Matrix products: default
+BLAS/LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.8.so;  LAPACK version 3.9.0
+
+
+
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Wed Sep  4 08:32:25 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 3 Sep 2024 23:32:25 -0700
+Subject: [R] 
+ fixed set.seed + kmeans output disagree on distinct platforms
+In-Reply-To: <VI0PR02MB104934BC51026686BB56EEE3594922@VI0PR02MB10493.eurprd02.prod.outlook.com>
+References: <VI0PR02MB104934BC51026686BB56EEE3594922@VI0PR02MB10493.eurprd02.prod.outlook.com>
+Message-ID: <CAGxFJbR2AHToKZM+L0ZXnQSY+acZbBsMgYUPi9wM1GuXmBszSQ@mail.gmail.com>
+
+I have no clue, but I did note that you are using different versions of
+BLAS/LAPACK on the different platforms. Could that be (part) of the issue?
+
+Cheers,
+Bert
+
+On Tue, Sep 3, 2024 at 10:24?PM Iago Gin? V?zquez <iago.gine at sjd.es> wrote:
+
+> Hi all,
+>
+> I build a dataset processing in the same way the same data in Windows than
+> in Linux.
+>
+> The output of Windows processing is:
+> https://gitlab.com/iagogv/repdata/-/raw/main/exdata.csv?ref_type=heads
+> The output of Linux processing is:
+> https://gitlab.com/iagogv/repdata/-/raw/main/exdata2.csv?ref_type=heads
+>
+> exdata=as.matrix(read.csv("
+> https://gitlab.com/iagogv/repdata/-/raw/main/exdata.csv?ref_type=heads",
+> header=FALSE))
+> exdata2=as.matrix(read.csv("
+> https://gitlab.com/iagogv/repdata/-/raw/main/exdata2.csv?ref_type=heads",
+> header=FALSE))
+>
+> They are not identical (`identical(exdata,exdata2)` is FALSE), but they
+> are essentially equal (`all.equal(exdata,exdata2)` is TRUE). If I run
+>
+> set.seed(20232260)
+> exkmns <- kmeans(exdata, centers = 7, iter.max = 2000, nstart = 750)
+>
+> I get
+>
+> exkmns$centers
+>           V1         V2          V3          V4          V5           V6
+> 1 -0.4910731 -0.2662055  0.57928758  0.14267293 -0.03013791  0.106472717
+> 2  0.5301237  0.2815620 -0.23898532  1.00979412 -0.26123328  0.068099931
+> 3  0.2255298 -0.5165964 -0.02498471 -0.20438275 -0.41224195 -0.107538855
+> 4 -0.2616257  0.5680582  0.55387437 -0.09562789 -0.01706577 -0.028248679
+> 5 -0.4820078 -0.1667370 -0.46533618 -0.05271446  0.05477352  0.005236259
+> 6  0.6455994 -0.1396674  0.05988547 -0.15557399  0.62766365  0.031051986
+> 7  0.1072127  0.5538876 -0.33117098 -0.43209203 -0.18646403 -0.081273130
+>
+> both in Windows  (1) and in Linux (2, 3) up to rows order. If I run in
+> Linux in my computer (2)
+>
+> set.seed(20232260)
+> exkmns2 <- kmeans(exdata2, centers = 7, iter.max = 2000, nstart = 750)
+>
+> then, I get
+>
+> exkmns2$centers
+>            V1         V2          V3          V4          V5          V6
+> 1  0.64559941 -0.1396674  0.05988547 -0.15557399  0.62766365  0.03105199
+> 2 -0.26162573  0.5680582  0.55387437 -0.09562789 -0.01706577 -0.02824868
+> 3  0.53012369  0.2815620 -0.23898532  1.00979412 -0.26123328  0.06809993
+> 4  0.03409765  0.3492520 -0.36910409 -0.40721418 -0.21482793  0.03073180
+> 5 -0.58527394 -0.1790337 -0.46778956  0.03573883  0.15473589 -0.07980379
+> 6 -0.49107314 -0.2662055  0.57928758  0.14267293 -0.03013791  0.10647272
+> 7  0.22552984 -0.5165964 -0.02498471 -0.20438275 -0.41224195 -0.10753886
+>
+> therefore, all rows essentially equal except for rows 5 and 7 of first
+> dataset (5 and 4 of second dataset).  With a bit more detail:
+>
+>   *
+> Row 0.2255298 -0.5165964 -0.02498471 -0.20438275 -0.41224195 -0.107538855
+> belongs to exdata (and exdata2) and is center of both outputs
+>   *
+> Row 0.1072127  0.5538876 -0.33117098 -0.43209203 -0.18646403 -0.081273130
+> belongs to the dataset and it is only center of exdata output
+>   *
+> Row -0.4820078 -0.1667370 -0.46533618 -0.05271446  0.05477352  0.005236259
+> does not belong to the dataset and it is only center of exdata output
+>   *
+> Row -0.58527394 -0.1790337 -0.46778956  0.03573883  0.15473589 -0.07980379
+> belongs to the dataset and it is only center for exdata2 on Linux in my
+> computer
+>   *
+> Row 0.03409765  0.3492520 -0.36910409 -0.40721418 -0.21482793  0.03073180
+> does not belong to the dataset and it is only center for exdata2 on Linux
+> in my computer
+>   *
+> All other 4 rows (1,2,4 and 6 of first output) do not belong to the
+> dataset and are common centers.
+>
+> Even, further, if I run
+>
+> set.seed(20232260)
+> exkmns <- kmeans(exdata, centers = 7, iter.max = 2000, nstart = 750)
+>
+> in  posit.cloud (3), I get the same result than above. However, if I run
+> (both in posit.cloud or in Windows)
+>
+> set.seed(20232260)
+> exkmns2 <- kmeans(exdata2, centers = 7, iter.max = 2000, nstart = 750)
+>
+> then I get
+>
+>
+> exkmns2$centers
+>           V1         V2          V3         V4          V5          V6
+> 1  0.6426035 -0.1449498  0.05843435 -0.1527968  0.62943077  0.02984948
+> 2 -0.4092382 -0.3740695  0.69597037  0.1956896 -0.05026200 -0.01453132
+> 3  0.1072127  0.5538876 -0.33117098 -0.4320920 -0.18646403 -0.08127313
+> 4  0.2255298 -0.5165964 -0.02498471 -0.2043827 -0.41224195 -0.10753886
+> 5  0.5301237  0.2815620 -0.23898532  1.0097941 -0.26123328  0.06809993
+> 6 -0.5223387 -0.1484517 -0.38982567 -0.0341488  0.06446446  0.03622056
+> 7 -0.2701703  0.5263218  0.52942311 -0.1112202 -0.03460591  0.03577287
+>
+> So only its rows 4 and 5 are common centers to both of previous outputs
+> and row 3 is common width exdata centers.
+>
+> Does all this have any sense?
+>
+> Thanks!
+>
+> Iago
+>
+> (1)
+> R version 4.4.1 (2024-06-14 ucrt)
+> Platform: x86_64-w64-mingw32/x64
+> Running under: Windows 10 x64 (build 19045)
+>
+> Matrix products: default
+>
+> (2)
+> R version 4.4.1 (2024-06-14)
+> Platform: x86_64-pc-linux-gnu
+> Running under: Debian GNU/Linux 12 (bookworm)
+>
+> Matrix products: default
+> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3
+> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.21.so;
+> LAPACK version 3.11.0
+>
+> (3)
+> R version 4.4.1 (2024-06-14)
+> Platform: x86_64-pc-linux-gnu
+> Running under: Ubuntu 20.04.6 LTS
+>
+>  Matrix products: default
+> BLAS/LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/
+> libopenblasp-r0.3.8.so;  LAPACK version 3.9.0
+>
+>
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Sep  4 10:41:34 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 4 Sep 2024 10:41:34 +0200
+Subject: [R] 
+ fixed set.seed + kmeans output disagree on distinct platforms
+In-Reply-To: <CAGxFJbR2AHToKZM+L0ZXnQSY+acZbBsMgYUPi9wM1GuXmBszSQ@mail.gmail.com>
+References: <VI0PR02MB104934BC51026686BB56EEE3594922@VI0PR02MB10493.eurprd02.prod.outlook.com>
+ <CAGxFJbR2AHToKZM+L0ZXnQSY+acZbBsMgYUPi9wM1GuXmBszSQ@mail.gmail.com>
+Message-ID: <26328.7486.699492.779127@stat.math.ethz.ch>
+
+>>>>> Bert Gunter 
+>>>>>     on Tue, 3 Sep 2024 23:32:25 -0700 writes:
+
+    > I have no clue, but I did note that you are using different versions of
+    > BLAS/LAPACK on the different platforms. Could that be (part) of the issue?
+
+Good catch!  My gut feeling would say "yes!" that is almost surely part of
+the issue.
+
+    > Cheers,
+    > Bert
+
+Additionally, careful reading of the help page (*before* any post ..)
+would have shown
+
+   Note:
+
+	The clusters are numbered in the returned object, but they are a
+	_set_ and no ordering is implied.  (Their apparent ordering may
+	differ by platform.)
+
+
+Martin
+
+
+
+    > On Tue, Sep 3, 2024 at 10:24?PM Iago Gin? V?zquez <iago.gine at sjd.es> wrote:
+
+    >> Hi all,
+    >> 
+    >> I build a dataset processing in the same way the same data in Windows than
+    >> in Linux.
+    >> 
+    >> The output of Windows processing is:
+    >> https://gitlab.com/iagogv/repdata/-/raw/main/exdata.csv?ref_type=heads
+    >> The output of Linux processing is:
+    >> https://gitlab.com/iagogv/repdata/-/raw/main/exdata2.csv?ref_type=heads
+    >> 
+    >> exdata=as.matrix(read.csv("
+    >> https://gitlab.com/iagogv/repdata/-/raw/main/exdata.csv?ref_type=heads",
+    >> header=FALSE))
+    >> exdata2=as.matrix(read.csv("
+    >> https://gitlab.com/iagogv/repdata/-/raw/main/exdata2.csv?ref_type=heads",
+    >> header=FALSE))
+    >> 
+    >> They are not identical (`identical(exdata,exdata2)` is FALSE), but they
+    >> are essentially equal (`all.equal(exdata,exdata2)` is TRUE). If I run
+    >> 
+    >> set.seed(20232260)
+    >> exkmns <- kmeans(exdata, centers = 7, iter.max = 2000, nstart = 750)
+    >> 
+    >> I get
+    >> 
+    >> exkmns$centers
+    >> V1         V2          V3          V4          V5           V6
+    >> 1 -0.4910731 -0.2662055  0.57928758  0.14267293 -0.03013791  0.106472717
+    >> 2  0.5301237  0.2815620 -0.23898532  1.00979412 -0.26123328  0.068099931
+    >> 3  0.2255298 -0.5165964 -0.02498471 -0.20438275 -0.41224195 -0.107538855
+    >> 4 -0.2616257  0.5680582  0.55387437 -0.09562789 -0.01706577 -0.028248679
+    >> 5 -0.4820078 -0.1667370 -0.46533618 -0.05271446  0.05477352  0.005236259
+    >> 6  0.6455994 -0.1396674  0.05988547 -0.15557399  0.62766365  0.031051986
+    >> 7  0.1072127  0.5538876 -0.33117098 -0.43209203 -0.18646403 -0.081273130
+    >> 
+    >> both in Windows  (1) and in Linux (2, 3) up to rows order. If I run in
+    >> Linux in my computer (2)
+    >> 
+    >> set.seed(20232260)
+    >> exkmns2 <- kmeans(exdata2, centers = 7, iter.max = 2000, nstart = 750)
+    >> 
+    >> then, I get
+    >> 
+    >> exkmns2$centers
+    >> V1         V2          V3          V4          V5          V6
+    >> 1  0.64559941 -0.1396674  0.05988547 -0.15557399  0.62766365  0.03105199
+    >> 2 -0.26162573  0.5680582  0.55387437 -0.09562789 -0.01706577 -0.02824868
+    >> 3  0.53012369  0.2815620 -0.23898532  1.00979412 -0.26123328  0.06809993
+    >> 4  0.03409765  0.3492520 -0.36910409 -0.40721418 -0.21482793  0.03073180
+    >> 5 -0.58527394 -0.1790337 -0.46778956  0.03573883  0.15473589 -0.07980379
+    >> 6 -0.49107314 -0.2662055  0.57928758  0.14267293 -0.03013791  0.10647272
+    >> 7  0.22552984 -0.5165964 -0.02498471 -0.20438275 -0.41224195 -0.10753886
+    >> 
+    >> therefore, all rows essentially equal except for rows 5 and 7 of first
+    >> dataset (5 and 4 of second dataset).  With a bit more detail:
+    >> 
+    >> *
+    >> Row 0.2255298 -0.5165964 -0.02498471 -0.20438275 -0.41224195 -0.107538855
+    >> belongs to exdata (and exdata2) and is center of both outputs
+    >> *
+    >> Row 0.1072127  0.5538876 -0.33117098 -0.43209203 -0.18646403 -0.081273130
+    >> belongs to the dataset and it is only center of exdata output
+    >> *
+    >> Row -0.4820078 -0.1667370 -0.46533618 -0.05271446  0.05477352  0.005236259
+    >> does not belong to the dataset and it is only center of exdata output
+    >> *
+    >> Row -0.58527394 -0.1790337 -0.46778956  0.03573883  0.15473589 -0.07980379
+    >> belongs to the dataset and it is only center for exdata2 on Linux in my
+    >> computer
+    >> *
+    >> Row 0.03409765  0.3492520 -0.36910409 -0.40721418 -0.21482793  0.03073180
+    >> does not belong to the dataset and it is only center for exdata2 on Linux
+    >> in my computer
+    >> *
+    >> All other 4 rows (1,2,4 and 6 of first output) do not belong to the
+    >> dataset and are common centers.
+    >> 
+    >> Even, further, if I run
+    >> 
+    >> set.seed(20232260)
+    >> exkmns <- kmeans(exdata, centers = 7, iter.max = 2000, nstart = 750)
+    >> 
+    >> in  posit.cloud (3), I get the same result than above. However, if I run
+    >> (both in posit.cloud or in Windows)
+    >> 
+    >> set.seed(20232260)
+    >> exkmns2 <- kmeans(exdata2, centers = 7, iter.max = 2000, nstart = 750)
+    >> 
+    >> then I get
+    >> 
+    >> 
+    >> exkmns2$centers
+    >> V1         V2          V3         V4          V5          V6
+    >> 1  0.6426035 -0.1449498  0.05843435 -0.1527968  0.62943077  0.02984948
+    >> 2 -0.4092382 -0.3740695  0.69597037  0.1956896 -0.05026200 -0.01453132
+    >> 3  0.1072127  0.5538876 -0.33117098 -0.4320920 -0.18646403 -0.08127313
+    >> 4  0.2255298 -0.5165964 -0.02498471 -0.2043827 -0.41224195 -0.10753886
+    >> 5  0.5301237  0.2815620 -0.23898532  1.0097941 -0.26123328  0.06809993
+    >> 6 -0.5223387 -0.1484517 -0.38982567 -0.0341488  0.06446446  0.03622056
+    >> 7 -0.2701703  0.5263218  0.52942311 -0.1112202 -0.03460591  0.03577287
+    >> 
+    >> So only its rows 4 and 5 are common centers to both of previous outputs
+    >> and row 3 is common width exdata centers.
+    >> 
+    >> Does all this have any sense?
+    >> 
+    >> Thanks!
+    >> 
+    >> Iago
+    >> 
+    >> (1)
+    >> R version 4.4.1 (2024-06-14 ucrt)
+    >> Platform: x86_64-w64-mingw32/x64
+    >> Running under: Windows 10 x64 (build 19045)
+    >> 
+    >> Matrix products: default
+    >> 
+    >> (2)
+    >> R version 4.4.1 (2024-06-14)
+    >> Platform: x86_64-pc-linux-gnu
+    >> Running under: Debian GNU/Linux 12 (bookworm)
+    >> 
+    >> Matrix products: default
+    >> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3
+    >> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.21.so;
+    >> LAPACK version 3.11.0
+    >> 
+    >> (3)
+    >> R version 4.4.1 (2024-06-14)
+    >> Platform: x86_64-pc-linux-gnu
+    >> Running under: Ubuntu 20.04.6 LTS
+    >> 
+    >> Matrix products: default
+    >> BLAS/LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/
+    >> libopenblasp-r0.3.8.so;  LAPACK version 3.9.0
+    >>
+
+
+From |@go@g|ne @end|ng |rom @jd@e@  Wed Sep  4 11:18:55 2024
+From: |@go@g|ne @end|ng |rom @jd@e@ (=?utf-8?B?SWFnbyBHaW7DqSBWw6F6cXVleg==?=)
+Date: Wed, 4 Sep 2024 09:18:55 +0000
+Subject: [R] 
+ fixed set.seed + kmeans output disagree on distinct platforms
+In-Reply-To: <26328.7486.699492.779127@stat.math.ethz.ch>
+References: <VI0PR02MB104934BC51026686BB56EEE3594922@VI0PR02MB10493.eurprd02.prod.outlook.com>
+ <CAGxFJbR2AHToKZM+L0ZXnQSY+acZbBsMgYUPi9wM1GuXmBszSQ@mail.gmail.com>
+ <26328.7486.699492.779127@stat.math.ethz.ch>
+Message-ID: <VI0PR02MB10493B13612F7B58FC7A3872A949C2@VI0PR02MB10493.eurprd02.prod.outlook.com>
+
+Thanks both Bert and Martin,
+
+However  exkmns2$centers is common in posit.cloud  - LAPACK version 3.9.0- and in Windows -LAPACK 3.12.0-, while  distinct with my Linux settings -LAPACK version 3.11.0- (I don't know the BLAS version used by R in windows). It is a bit strange...
+
+Iago
+
+________________________________
+De: Martin Maechler <maechler at stat.math.ethz.ch>
+Enviat el: dimecres, 4 de setembre de 2024 10:41
+Per a: Bert Gunter <bgunter.4567 at gmail.com>
+A/c: Iago Gin? V?zquez <iago.gine at sjd.es>; r-help at r-project.org <r-help at r-project.org>
+Tema: Re: [R] fixed set.seed + kmeans output disagree on distinct platforms
+
+>>>>> Bert Gunter
+>>>>>     on Tue, 3 Sep 2024 23:32:25 -0700 writes:
+
+    > I have no clue, but I did note that you are using different versions of
+    > BLAS/LAPACK on the different platforms. Could that be (part) of the issue?
+
+Good catch!  My gut feeling would say "yes!" that is almost surely part of
+the issue.
+
+    > Cheers,
+    > Bert
+
+Additionally, careful reading of the help page (*before* any post ..)
+would have shown
+
+   Note:
+
+        The clusters are numbered in the returned object, but they are a
+        _set_ and no ordering is implied.  (Their apparent ordering may
+        differ by platform.)
+
+
+Martin
+
+
+
+    > On Tue, Sep 3, 2024 at 10:24?PM Iago Gin? V?zquez <iago.gine at sjd.es> wrote:
+
+    >> Hi all,
+    >>
+    >> I build a dataset processing in the same way the same data in Windows than
+    >> in Linux.
+    >>
+    >> The output of Windows processing is:
+    >> https://gitlab.com/iagogv/repdata/-/raw/main/exdata.csv?ref_type=heads
+    >> The output of Linux processing is:
+    >> https://gitlab.com/iagogv/repdata/-/raw/main/exdata2.csv?ref_type=heads
+    >>
+    >> exdata=as.matrix(read.csv("
+    >> https://gitlab.com/iagogv/repdata/-/raw/main/exdata.csv?ref_type=heads",
+    >> header=FALSE))
+    >> exdata2=as.matrix(read.csv("
+    >> https://gitlab.com/iagogv/repdata/-/raw/main/exdata2.csv?ref_type=heads",
+    >> header=FALSE))
+    >>
+    >> They are not identical (`identical(exdata,exdata2)` is FALSE), but they
+    >> are essentially equal (`all.equal(exdata,exdata2)` is TRUE). If I run
+    >>
+    >> set.seed(20232260)
+    >> exkmns <- kmeans(exdata, centers = 7, iter.max = 2000, nstart = 750)
+    >>
+    >> I get
+    >>
+    >> exkmns$centers
+    >> V1         V2          V3          V4          V5           V6
+    >> 1 -0.4910731 -0.2662055  0.57928758  0.14267293 -0.03013791  0.106472717
+    >> 2  0.5301237  0.2815620 -0.23898532  1.00979412 -0.26123328  0.068099931
+    >> 3  0.2255298 -0.5165964 -0.02498471 -0.20438275 -0.41224195 -0.107538855
+    >> 4 -0.2616257  0.5680582  0.55387437 -0.09562789 -0.01706577 -0.028248679
+    >> 5 -0.4820078 -0.1667370 -0.46533618 -0.05271446  0.05477352  0.005236259
+    >> 6  0.6455994 -0.1396674  0.05988547 -0.15557399  0.62766365  0.031051986
+    >> 7  0.1072127  0.5538876 -0.33117098 -0.43209203 -0.18646403 -0.081273130
+    >>
+    >> both in Windows  (1) and in Linux (2, 3) up to rows order. If I run in
+    >> Linux in my computer (2)
+    >>
+    >> set.seed(20232260)
+    >> exkmns2 <- kmeans(exdata2, centers = 7, iter.max = 2000, nstart = 750)
+    >>
+    >> then, I get
+    >>
+    >> exkmns2$centers
+    >> V1         V2          V3          V4          V5          V6
+    >> 1  0.64559941 -0.1396674  0.05988547 -0.15557399  0.62766365  0.03105199
+    >> 2 -0.26162573  0.5680582  0.55387437 -0.09562789 -0.01706577 -0.02824868
+    >> 3  0.53012369  0.2815620 -0.23898532  1.00979412 -0.26123328  0.06809993
+    >> 4  0.03409765  0.3492520 -0.36910409 -0.40721418 -0.21482793  0.03073180
+    >> 5 -0.58527394 -0.1790337 -0.46778956  0.03573883  0.15473589 -0.07980379
+    >> 6 -0.49107314 -0.2662055  0.57928758  0.14267293 -0.03013791  0.10647272
+    >> 7  0.22552984 -0.5165964 -0.02498471 -0.20438275 -0.41224195 -0.10753886
+    >>
+    >> therefore, all rows essentially equal except for rows 5 and 7 of first
+    >> dataset (5 and 4 of second dataset).  With a bit more detail:
+    >>
+    >> *
+    >> Row 0.2255298 -0.5165964 -0.02498471 -0.20438275 -0.41224195 -0.107538855
+    >> belongs to exdata (and exdata2) and is center of both outputs
+    >> *
+    >> Row 0.1072127  0.5538876 -0.33117098 -0.43209203 -0.18646403 -0.081273130
+    >> belongs to the dataset and it is only center of exdata output
+    >> *
+    >> Row -0.4820078 -0.1667370 -0.46533618 -0.05271446  0.05477352  0.005236259
+    >> does not belong to the dataset and it is only center of exdata output
+    >> *
+    >> Row -0.58527394 -0.1790337 -0.46778956  0.03573883  0.15473589 -0.07980379
+    >> belongs to the dataset and it is only center for exdata2 on Linux in my
+    >> computer
+    >> *
+    >> Row 0.03409765  0.3492520 -0.36910409 -0.40721418 -0.21482793  0.03073180
+    >> does not belong to the dataset and it is only center for exdata2 on Linux
+    >> in my computer
+    >> *
+    >> All other 4 rows (1,2,4 and 6 of first output) do not belong to the
+    >> dataset and are common centers.
+    >>
+    >> Even, further, if I run
+    >>
+    >> set.seed(20232260)
+    >> exkmns <- kmeans(exdata, centers = 7, iter.max = 2000, nstart = 750)
+    >>
+    >> in  posit.cloud (3), I get the same result than above. However, if I run
+    >> (both in posit.cloud or in Windows)
+    >>
+    >> set.seed(20232260)
+    >> exkmns2 <- kmeans(exdata2, centers = 7, iter.max = 2000, nstart = 750)
+    >>
+    >> then I get
+    >>
+    >>
+    >> exkmns2$centers
+    >> V1         V2          V3         V4          V5          V6
+    >> 1  0.6426035 -0.1449498  0.05843435 -0.1527968  0.62943077  0.02984948
+    >> 2 -0.4092382 -0.3740695  0.69597037  0.1956896 -0.05026200 -0.01453132
+    >> 3  0.1072127  0.5538876 -0.33117098 -0.4320920 -0.18646403 -0.08127313
+    >> 4  0.2255298 -0.5165964 -0.02498471 -0.2043827 -0.41224195 -0.10753886
+    >> 5  0.5301237  0.2815620 -0.23898532  1.0097941 -0.26123328  0.06809993
+    >> 6 -0.5223387 -0.1484517 -0.38982567 -0.0341488  0.06446446  0.03622056
+    >> 7 -0.2701703  0.5263218  0.52942311 -0.1112202 -0.03460591  0.03577287
+    >>
+    >> So only its rows 4 and 5 are common centers to both of previous outputs
+    >> and row 3 is common width exdata centers.
+    >>
+    >> Does all this have any sense?
+    >>
+    >> Thanks!
+    >>
+    >> Iago
+    >>
+    >> (1)
+    >> R version 4.4.1 (2024-06-14 ucrt)
+    >> Platform: x86_64-w64-mingw32/x64
+    >> Running under: Windows 10 x64 (build 19045)
+    >>
+    >> Matrix products: default
+    >>
+    >> (2)
+    >> R version 4.4.1 (2024-06-14)
+    >> Platform: x86_64-pc-linux-gnu
+    >> Running under: Debian GNU/Linux 12 (bookworm)
+    >>
+    >> Matrix products: default
+    >> BLAS:   /usr/lib/x86_64-linux-gnu/openblas-pthread/libblas.so.3
+    >> LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/libopenblasp-r0.3.21.so;
+    >> LAPACK version 3.11.0
+    >>
+    >> (3)
+    >> R version 4.4.1 (2024-06-14)
+    >> Platform: x86_64-pc-linux-gnu
+    >> Running under: Ubuntu 20.04.6 LTS
+    >>
+    >> Matrix products: default
+    >> BLAS/LAPACK: /usr/lib/x86_64-linux-gnu/openblas-pthread/
+    >> libopenblasp-r0.3.8.so;  LAPACK version 3.9.0
+    >>
+
+	[[alternative HTML version deleted]]
+
+
+From @nupty@g| @end|ng |rom gm@||@com  Wed Sep  4 15:16:18 2024
+From: @nupty@g| @end|ng |rom gm@||@com (Anupam Tyagi)
+Date: Wed, 4 Sep 2024 18:46:18 +0530
+Subject: [R] dotchart and dotplot(lattice) plot with two/three conditioning
+ variables
+Message-ID: <CAFL9eu=RLJ2-cdDSkjp_uokTnAahGxaX2YE6w51zE7kkm6YM_Q@mail.gmail.com>
+
+Hello, I am trying to make a Cleaveland Dotplot with two, if possible
+three, variables on the vertical axis. I was able to do it in Stata
+with two variables, Year and Population (see graph at the link:
+https://drive.google.com/file/d/1SiIfmmqk6IFa_OI5i26Ux1ZxkN2oek-o/view?usp=sharing
+). I hope the link to the graph works. I have never tried this before.
+
+I want to make a similar (possibly better) graph in R. I tried several
+ways to make it in R with dotchart() and dotplot(lattice). I have been
+only partially successful thus far. I would like Year, Population and
+popGroup on the vertical axis. If popGroup occupies too much space,
+then I would like a gap between the groups of Cities and Villages, so
+they can be seen as distinct "Populations". My code and a made-up data
+are below (in actual data I have 18 categories in "Population",
+instead of only six in the made-up data). How can I make this type of
+graph?
+
+# Only for 2004-05. How to plot 2011-12 on the same plot?
+dotchart(test$"X0_50"[test$"Year"=="2004-05"], labels=test$Population,
+xlab = "Income Share ",
+         main = "Income shares of percentiles of population", xlim = c(12, 50))
+points(test$"X50_90"[test$"Year"=="2004-05"], 1:6, pch = 2)
+points(test$"X90_100"[test$"Year"=="2004-05"], 1:6, pch = 16)
+legend(x = "topleft",
+       legend = c("0-50%", "50-90%", "90-100%"),
+       pch = c(1,2, 16)
+)
+
+# reorder so Year 2004-05 is plotted before Year 2011-12. This is not
+plotting correctly for
+# second and third variables. Gap between different Cities and
+Villages is quite a bit.
+test2 <- test[order(test$seqCode, test$Year, decreasing = T),]
+
+dotchart(test2$"X0_50", labels=test2$Year, xlab = "Income Share ",
+         main = "Income shares of percentiles of population", groups =
+as.factor(test2$Population), xlim = c(12, 50))
+points(test2$"X50_90", 1:12, pch = 2)
+points(test2$"X90_100", 1: 12, pch = 16)
+
+
+# use lattice library
+library(lattice)
+dotplot(reorder(Population, -seqCode) ~ test$"X0_50" + test$"X50_90" +
+test$"X90_100", data = test, auto.key = TRUE)
+
+testLong <- reshape(test, idvar = c("Population", "Year"), varying = list(5:7),
+                           v.names = "ptile", direction = "long")
+
+dotplot(reorder(Population, -seqCode) ~ ptile | Year, data = testLong,
+groups = time, auto.key = T)
+
+Dataframe is below using dput(). Dataframe is named "test" in my code.
+
+structure(list(seqCode = c(1L, 2L, 3L, 4L, 5L, 6L, 1L, 2L, 3L,
+4L, 5L, 6L), popGroup = c("City", "City", "City", "Village",
+"Village", "Village", "City", "City", "City", "Village", "Village",
+"Village"), Population = c("Dallas", "Boston", "Chicago", "Kip",
+"Von", "Dan", "Dallas", "Boston", "Chicago", "Kip", "Von", "Dan"
+), Year = c("2004-05", "2004-05", "2004-05", "2004-05", "2004-05",
+"2004-05", "2011-12", "2011-12", "2011-12", "2011-12", "2011-12",
+"2011-12"), X0_50 = c(15.47, 21.29, 18.04, 15.62, 18.89, 24.37,
+17.43, 17.99, 18.04, 14.95, 16.33, 28.98), X50_90 = c(44.12,
+43.25, 45.72, 46.15, 43.84, 46.24, 44.39, 44.08, 43.62, 42.89,
+44.57, 47.14), X90_100 = c(40.42, 35.47, 36.24, 38.24, 37.27,
+29.39, 38.18, 37.93, 38.34, 42.16, 39.11, 23.88)), class =
+"data.frame", row.names = c(NA,
+-12L))
+
+--
+Anupam.
+
+
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Wed Sep  4 16:31:40 2024
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Wed, 4 Sep 2024 20:01:40 +0530
+Subject: [R] 
+ dotchart and dotplot(lattice) plot with two/three conditioning
+ variables
+In-Reply-To: <CAFL9eu=RLJ2-cdDSkjp_uokTnAahGxaX2YE6w51zE7kkm6YM_Q@mail.gmail.com>
+References: <CAFL9eu=RLJ2-cdDSkjp_uokTnAahGxaX2YE6w51zE7kkm6YM_Q@mail.gmail.com>
+Message-ID: <CADfFDC7PWFrncupE57PNmg_pTibOM7XyrgFBC5iNB44z=UGr1g@mail.gmail.com>
+
+For lattice::dotplot(), you are close; this is more like the layout you
+want:
+
+dotplot(Year ~ ptile | reorder(Population, ptile, mean), testLong,
+        groups = c("0-50", "50-90", "90-100")[time],
+        layout = c(1, NA),
+        par.settings = simpleTheme(pch = 16), auto.key = TRUE)
+
+dotchart() works better with tables, but unfortunately it doesn't seem to
+handle more than two dimensions, so you can only get one group at a time:
+
+xtabs(ptile ~ Year + Population, testLong, subset = time == 1) |>
+dotchart(pch = 16)
+
+This seems like something that should not be too difficult to improve.
+
+Best,
+-Deepayan
+
+
+On Wed, 4 Sept 2024 at 18:46, Anupam Tyagi <anuptyagi at gmail.com> wrote:
+
+> Hello, I am trying to make a Cleaveland Dotplot with two, if possible
+> three, variables on the vertical axis. I was able to do it in Stata
+> with two variables, Year and Population (see graph at the link:
+>
+> https://drive.google.com/file/d/1SiIfmmqk6IFa_OI5i26Ux1ZxkN2oek-o/view?usp=sharing
+> ). I hope the link to the graph works. I have never tried this before.
+>
+> I want to make a similar (possibly better) graph in R. I tried several
+> ways to make it in R with dotchart() and dotplot(lattice). I have been
+> only partially successful thus far. I would like Year, Population and
+> popGroup on the vertical axis. If popGroup occupies too much space,
+> then I would like a gap between the groups of Cities and Villages, so
+> they can be seen as distinct "Populations". My code and a made-up data
+> are below (in actual data I have 18 categories in "Population",
+> instead of only six in the made-up data). How can I make this type of
+> graph?
+>
+> # Only for 2004-05. How to plot 2011-12 on the same plot?
+> dotchart(test$"X0_50"[test$"Year"=="2004-05"], labels=test$Population,
+> xlab = "Income Share ",
+>          main = "Income shares of percentiles of population", xlim = c(12,
+> 50))
+> points(test$"X50_90"[test$"Year"=="2004-05"], 1:6, pch = 2)
+> points(test$"X90_100"[test$"Year"=="2004-05"], 1:6, pch = 16)
+> legend(x = "topleft",
+>        legend = c("0-50%", "50-90%", "90-100%"),
+>        pch = c(1,2, 16)
+> )
+>
+> # reorder so Year 2004-05 is plotted before Year 2011-12. This is not
+> plotting correctly for
+> # second and third variables. Gap between different Cities and
+> Villages is quite a bit.
+> test2 <- test[order(test$seqCode, test$Year, decreasing = T),]
+>
+> dotchart(test2$"X0_50", labels=test2$Year, xlab = "Income Share ",
+>          main = "Income shares of percentiles of population", groups =
+> as.factor(test2$Population), xlim = c(12, 50))
+> points(test2$"X50_90", 1:12, pch = 2)
+> points(test2$"X90_100", 1: 12, pch = 16)
+>
+>
+> # use lattice library
+> library(lattice)
+> dotplot(reorder(Population, -seqCode) ~ test$"X0_50" + test$"X50_90" +
+> test$"X90_100", data = test, auto.key = TRUE)
+>
+> testLong <- reshape(test, idvar = c("Population", "Year"), varying =
+> list(5:7),
+>                            v.names = "ptile", direction = "long")
+>
+> dotplot(reorder(Population, -seqCode) ~ ptile | Year, data = testLong,
+> groups = time, auto.key = T)
+>
+> Dataframe is below using dput(). Dataframe is named "test" in my code.
+>
+> structure(list(seqCode = c(1L, 2L, 3L, 4L, 5L, 6L, 1L, 2L, 3L,
+> 4L, 5L, 6L), popGroup = c("City", "City", "City", "Village",
+> "Village", "Village", "City", "City", "City", "Village", "Village",
+> "Village"), Population = c("Dallas", "Boston", "Chicago", "Kip",
+> "Von", "Dan", "Dallas", "Boston", "Chicago", "Kip", "Von", "Dan"
+> ), Year = c("2004-05", "2004-05", "2004-05", "2004-05", "2004-05",
+> "2004-05", "2011-12", "2011-12", "2011-12", "2011-12", "2011-12",
+> "2011-12"), X0_50 = c(15.47, 21.29, 18.04, 15.62, 18.89, 24.37,
+> 17.43, 17.99, 18.04, 14.95, 16.33, 28.98), X50_90 = c(44.12,
+> 43.25, 45.72, 46.15, 43.84, 46.24, 44.39, 44.08, 43.62, 42.89,
+> 44.57, 47.14), X90_100 = c(40.42, 35.47, 36.24, 38.24, 37.27,
+> 29.39, 38.18, 37.93, 38.34, 42.16, 39.11, 23.88)), class =
+> "data.frame", row.names = c(NA,
+> -12L))
+>
+> --
+> Anupam.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From d@n|e|obo9976 @end|ng |rom gm@||@com  Wed Sep  4 20:54:15 2024
+From: d@n|e|obo9976 @end|ng |rom gm@||@com (Daniel Lobo)
+Date: Thu, 5 Sep 2024 00:24:15 +0530
+Subject: [R] Calculation of VCV matrix of estimated coefficient
+In-Reply-To: <CADZb7hocD=zCsmWTw3DaG7P_qgnSww5aRFsPpeL5fkAj48Tzug@mail.gmail.com>
+References: <CADZb7hocD=zCsmWTw3DaG7P_qgnSww5aRFsPpeL5fkAj48Tzug@mail.gmail.com>
+Message-ID: <CADZb7hpfAc-RPyQHAoYcz8rYEt--37BrDSWmBHuv5SnWhcAEKQ@mail.gmail.com>
+
+Hi,
+
+I am trying to replicate the R's result for VCV matrix of estimated
+coefficients from linear model as below
+
+data(mtcars)
+model <- lm(mpg~disp+hp, data=mtcars)
+model_summ <-summary(model)
+MSE = mean(model_summ$residuals^2)
+vcov(model)
+
+Now I want to calculate the same thing manually,
+
+library(dplyr)
+X = as.matrix(mtcars[, c('disp', 'hp')] %>% mutate(Intercept = 1));
+solve(t(X) %*% X) * MSE
+
+Unfortunately they do not match.
+
+Could you please help where I made mistake, if any.
+
+Thanks
+
+
+From bbo|ker @end|ng |rom gm@||@com  Wed Sep  4 22:14:09 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Wed, 4 Sep 2024 16:14:09 -0400
+Subject: [R] Calculation of VCV matrix of estimated coefficient
+In-Reply-To: <CADZb7hpfAc-RPyQHAoYcz8rYEt--37BrDSWmBHuv5SnWhcAEKQ@mail.gmail.com>
+References: <CADZb7hocD=zCsmWTw3DaG7P_qgnSww5aRFsPpeL5fkAj48Tzug@mail.gmail.com>
+ <CADZb7hpfAc-RPyQHAoYcz8rYEt--37BrDSWmBHuv5SnWhcAEKQ@mail.gmail.com>
+Message-ID: <CABghstTTqF25PnS0tRs+Pxibx+Q-X5PEwMd3vckN2Rw_bWDkwQ@mail.gmail.com>
+
+The number you need for MSE is
+
+sum(residuals(model)^2)/df.residual(model)
+
+On Wed, Sep 4, 2024 at 3:34?PM Daniel Lobo <danielobo9976 at gmail.com> wrote:
+>
+> Hi,
+>
+> I am trying to replicate the R's result for VCV matrix of estimated
+> coefficients from linear model as below
+>
+> data(mtcars)
+> model <- lm(mpg~disp+hp, data=mtcars)
+> model_summ <-summary(model)
+> MSE = mean(model_summ$residuals^2)
+> vcov(model)
+>
+> Now I want to calculate the same thing manually,
+>
+> library(dplyr)
+> X = as.matrix(mtcars[, c('disp', 'hp')] %>% mutate(Intercept = 1));
+> solve(t(X) %*% X) * MSE
+>
+> Unfortunately they do not match.
+>
+> Could you please help where I made mistake, if any.
+>
+> Thanks
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
