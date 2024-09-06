@@ -1200,3 +1200,1126 @@ On Wed, Sep 4, 2024 at 3:34?PM Daniel Lobo <danielobo9976 at gmail.com> wrote:
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From p@ych@o||u @end|ng |rom gm@||@com  Tue Sep  3 18:30:54 2024
+From: p@ych@o||u @end|ng |rom gm@||@com (Chao Liu)
+Date: Tue, 3 Sep 2024 12:30:54 -0400
+Subject: [R] [R-pkgs] Goodreader: Scrape and Analyze 'Goodreads' Book Data
+Message-ID: <CACCU-vM3B95EnoYz=-wKf5r+iWm-O8iCW6h-cBo-q+kjvuRk1Q@mail.gmail.com>
+
+Dear R Users,
+
+I am pleased to announce that Goodreader 0.1.1 is now available on CRAN.
+
+Goodreader offers a toolkit for scraping and analyzing book data from
+Goodreads. Users can search for books, scrape detailed information and
+reviews, perform sentiment analysis on reviews, and conduct topic modeling.
+
+Here?s a quick overview of how to use Goodreader:
+# Search for books
+AI_df <- search_goodreads(search_term = "artificial intelligence",
+search_in = "title", num_books = 10, sort_by = "ratings")
+
+# Retrieve Book IDs and save them to a text file
+get_book_ids(input_data = AI_df, file_name = "AI_books.txt")
+
+# Get book-related information
+scrape_books(book_ids_path = "AI_books.txt")
+
+# Scrape book reviews
+scrape_reviews(book_ids_path = "AI_books.txt", num_reviews = 10)
+
+For more details, please visit: https://liu-chao.site/Goodreader/
+
+Best regards,
+
+Chao Liu
+
+	[[alternative HTML version deleted]]
+
+_______________________________________________
+R-packages mailing list
+R-packages at r-project.org
+https://stat.ethz.ch/mailman/listinfo/r-packages
+
+
+From gdr@|@m@ @end|ng |rom x@4@||@n|  Thu Sep  5 13:05:35 2024
+From: gdr@|@m@ @end|ng |rom x@4@||@n| (Gerrit Draisma)
+Date: Thu, 5 Sep 2024 13:05:35 +0200
+Subject: [R] lattice log scale labels.
+Message-ID: <b01b6e2d-9c73-420f-8170-0cb4c900f312@xs4all.nl>
+
+Dear R-helpers,
+
+In the plot below I would like to have labels at positions 2^(3*(0:10)),
+and keep the labels in the exponential format.
+I tried using yscale.components.default.
+
+*This* gives the right format of the labels:
+--------
+ > yscale.components.default(lim= c(0,30),log=2)
+....
+$num.limit
+[1]  0 30
+...
+[1]  0  5 10 15 20 25 30
+...
+$left$labels$labels
+[1] "2^0"  "2^5"  "2^10" "2^15" "2^20" "2^25" "2^30"
+--------
+
+and *this* gives the right locations
+--------
+ > yscale.components.default(lim= c(0,30),log=2,at=2^(3*(0:10)))
+$num.limit
+[1]  0 30
+...
+  [1]  0  3  6  9 12 15 18 21 24 27 30
+...
+$left$labels$labels
+  [1] "1"          "8"          "64"         "512"        "4096"
+  [6] "32768"      "262144"     "2097152"    "16777216"   "134217728"
+[11] "1073741824"
+--------
+
+How can I get the format in the first example at the locations of the 
+second?
+
+Thanks,
+Gerrit
+
+-------------
+x <- read.csv(text="
+n,c,t,u
+4,1,2,1
+8,28,8,1
+12,495,42,3
+16,8008,256,7
+20,125970,1680,31
+24,1961256,11640,138
+28,30421755,83776,808
+32,471435600,620576,4956
+36,7307872110,4700880,33719")
+library(lattice)
+yscale.components.log2 <- function(...){
+     ans <- yscale.components.default(...)
+     ans$left$labels$labels <-
+         parse(text = ans$left$labels$labels)
+     ans
+}
+
+
+# pdf("tangle_mathFig06.pdf")
+xyplot(c+t+u~n,data=x,type="b", xlab="Size", ylab="Number of tangles",
+    scales=list(x=list(at=4*(1:9)),y=list(log=2)),
+    yscale.components=yscale.components.log2,
+    auto.key=list(columns=3,text=c("(choose m n)","tangles","unique 
+tangles"),
+    points=FALSE,lines=TRUE))
+# dev.off()
+
+
+From ggrothend|eck @end|ng |rom gm@||@com  Thu Sep  5 16:36:54 2024
+From: ggrothend|eck @end|ng |rom gm@||@com (Gabor Grothendieck)
+Date: Thu, 5 Sep 2024 10:36:54 -0400
+Subject: [R] Calculation of VCV matrix of estimated coefficient
+In-Reply-To: <CADZb7hpfAc-RPyQHAoYcz8rYEt--37BrDSWmBHuv5SnWhcAEKQ@mail.gmail.com>
+References: <CADZb7hocD=zCsmWTw3DaG7P_qgnSww5aRFsPpeL5fkAj48Tzug@mail.gmail.com>
+ <CADZb7hpfAc-RPyQHAoYcz8rYEt--37BrDSWmBHuv5SnWhcAEKQ@mail.gmail.com>
+Message-ID: <CAP01uRnywJTLerMkPEm4MsNRF4GLUVcKXyBjOpHAw8ED8HYjKw@mail.gmail.com>
+
+sigma(model)^2 will give the correct MSE.  Also note that your model
+matrix has intercept at
+the end whereas vcov will have it at the beginning so you will need to
+permute the rows
+and columns to get them to be the same/
+
+On Wed, Sep 4, 2024 at 3:34?PM Daniel Lobo <danielobo9976 at gmail.com> wrote:
+>
+> Hi,
+>
+> I am trying to replicate the R's result for VCV matrix of estimated
+> coefficients from linear model as below
+>
+> data(mtcars)
+> model <- lm(mpg~disp+hp, data=mtcars)
+> model_summ <-summary(model)
+> MSE = mean(model_summ$residuals^2)
+> vcov(model)
+>
+> Now I want to calculate the same thing manually,
+>
+> library(dplyr)
+> X = as.matrix(mtcars[, c('disp', 'hp')] %>% mutate(Intercept = 1));
+> solve(t(X) %*% X) * MSE
+>
+> Unfortunately they do not match.
+>
+> Could you please help where I made mistake, if any.
+>
+> Thanks
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Statistics & Software Consulting
+GKX Group, GKX Associates Inc.
+tel: 1-877-GKX-GROUP
+email: ggrothendieck at gmail.com
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Thu Sep  5 16:54:00 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 5 Sep 2024 07:54:00 -0700
+Subject: [R] lattice log scale labels.
+In-Reply-To: <b01b6e2d-9c73-420f-8170-0cb4c900f312@xs4all.nl>
+References: <b01b6e2d-9c73-420f-8170-0cb4c900f312@xs4all.nl>
+Message-ID: <CAGxFJbT+yMfCOLNdWPsADYZYBK_P-S4ga5SRBFD_--FFehi1-w@mail.gmail.com>
+
+Do the "at" and "labels" components of the "scales" list argument to xyplot
+not do what you want?
+
+Cheers,
+Bert
+
+On Thu, Sep 5, 2024 at 4:05?AM Gerrit Draisma <gdraisma at xs4all.nl> wrote:
+
+> Dear R-helpers,
+>
+> In the plot below I would like to have labels at positions 2^(3*(0:10)),
+> and keep the labels in the exponential format.
+> I tried using yscale.components.default.
+>
+> *This* gives the right format of the labels:
+> --------
+>  > yscale.components.default(lim= c(0,30),log=2)
+> ....
+> $num.limit
+> [1]  0 30
+> ...
+> [1]  0  5 10 15 20 25 30
+> ...
+> $left$labels$labels
+> [1] "2^0"  "2^5"  "2^10" "2^15" "2^20" "2^25" "2^30"
+> --------
+>
+> and *this* gives the right locations
+> --------
+>  > yscale.components.default(lim= c(0,30),log=2,at=2^(3*(0:10)))
+> $num.limit
+> [1]  0 30
+> ...
+>   [1]  0  3  6  9 12 15 18 21 24 27 30
+> ...
+> $left$labels$labels
+>   [1] "1"          "8"          "64"         "512"        "4096"
+>   [6] "32768"      "262144"     "2097152"    "16777216"   "134217728"
+> [11] "1073741824"
+> --------
+>
+> How can I get the format in the first example at the locations of the
+> second?
+>
+> Thanks,
+> Gerrit
+>
+> -------------
+> x <- read.csv(text="
+> n,c,t,u
+> 4,1,2,1
+> 8,28,8,1
+> 12,495,42,3
+> 16,8008,256,7
+> 20,125970,1680,31
+> 24,1961256,11640,138
+> 28,30421755,83776,808
+> 32,471435600,620576,4956
+> 36,7307872110,4700880,33719")
+> library(lattice)
+> yscale.components.log2 <- function(...){
+>      ans <- yscale.components.default(...)
+>      ans$left$labels$labels <-
+>          parse(text = ans$left$labels$labels)
+>      ans
+> }
+>
+>
+> # pdf("tangle_mathFig06.pdf")
+> xyplot(c+t+u~n,data=x,type="b", xlab="Size", ylab="Number of tangles",
+>     scales=list(x=list(at=4*(1:9)),y=list(log=2)),
+>     yscale.components=yscale.components.log2,
+>     auto.key=list(columns=3,text=c("(choose m n)","tangles","unique
+> tangles"),
+>     points=FALSE,lines=TRUE))
+> # dev.off()
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From gdr@|@m@ @end|ng |rom x@4@||@n|  Thu Sep  5 19:01:24 2024
+From: gdr@|@m@ @end|ng |rom x@4@||@n| (Gerrit Draisma)
+Date: Thu, 5 Sep 2024 19:01:24 +0200
+Subject: [R] lattice log scale labels.
+In-Reply-To: <CAGxFJbT+yMfCOLNdWPsADYZYBK_P-S4ga5SRBFD_--FFehi1-w@mail.gmail.com>
+References: <b01b6e2d-9c73-420f-8170-0cb4c900f312@xs4all.nl>
+ <CAGxFJbT+yMfCOLNdWPsADYZYBK_P-S4ga5SRBFD_--FFehi1-w@mail.gmail.com>
+Message-ID: <34aa1fe5-0160-4c34-8844-0145dc681b08@xs4all.nl>
+
+Thanks Greg and Bert for solving my problem.
+This gives what I want:
+----------------
+
+myticks <- 2^(3*(0:11))
+mylabels <- parse(text=paste0("2^",log2(myticks)))
+
+xyplot(c+t+u~n,data=x,type="b", xlab="Size", ylab="Number of tangles",
+   scales=list(x=list(at=4*(1:9)),y=list(log=2,at=myticks,labels=mylabels),
+    auto.key=list(columns=3,text=c("(choose m n)","tangles","unique
+       tangles"), points=FALSE,lines=TRUE)))
+----------------
+Solved!
+Gerrit
+
+Op 05-09-2024 om 16:54 schreef Bert Gunter:
+> Do the "at" and "labels" components of the "scales" list argument to 
+> xyplot not do what you want?
+> 
+> Cheers,
+> Bert
+> 
+> On Thu, Sep 5, 2024 at 4:05?AM Gerrit Draisma <gdraisma at xs4all.nl 
+> <mailto:gdraisma at xs4all.nl>> wrote:
+> 
+>     Dear R-helpers,
+> 
+>     In the plot below I would like to have labels at positions 2^(3*(0:10)),
+>     and keep the labels in the exponential format.
+>     I tried using yscale.components.default.
+> 
+>     *This* gives the right format of the labels:
+>     --------
+>      ?> yscale.components.default(lim= c(0,30),log=2)
+>     ....
+>     $num.limit
+>     [1]? 0 30
+>     ...
+>     [1]? 0? 5 10 15 20 25 30
+>     ...
+>     $left$labels$labels
+>     [1] "2^0"? "2^5"? "2^10" "2^15" "2^20" "2^25" "2^30"
+>     --------
+> 
+>     and *this* gives the right locations
+>     --------
+>      ?> yscale.components.default(lim= c(0,30),log=2,at=2^(3*(0:10)))
+>     $num.limit
+>     [1]? 0 30
+>     ...
+>      ? [1]? 0? 3? 6? 9 12 15 18 21 24 27 30
+>     ...
+>     $left$labels$labels
+>      ? [1] "1"? ? ? ? ? "8"? ? ? ? ? "64"? ? ? ? ?"512"? ? ? ? "4096"
+>      ? [6] "32768"? ? ? "262144"? ? ?"2097152"? ? "16777216"? ?"134217728"
+>     [11] "1073741824"
+>     --------
+> 
+>     How can I get the format in the first example at the locations of the
+>     second?
+> 
+>     Thanks,
+>     Gerrit
+> 
+>     -------------
+>     x <- read.csv(text="
+>     n,c,t,u
+>     4,1,2,1
+>     8,28,8,1
+>     12,495,42,3
+>     16,8008,256,7
+>     20,125970,1680,31
+>     24,1961256,11640,138
+>     28,30421755,83776,808
+>     32,471435600,620576,4956
+>     36,7307872110,4700880,33719")
+>     library(lattice)
+>     yscale.components.log2 <- function(...){
+>      ? ? ?ans <- yscale.components.default(...)
+>      ? ? ?ans$left$labels$labels <-
+>      ? ? ? ? ?parse(text = ans$left$labels$labels)
+>      ? ? ?ans
+>     }
+> 
+> 
+>     # pdf("tangle_mathFig06.pdf")
+>     xyplot(c+t+u~n,data=x,type="b", xlab="Size", ylab="Number of tangles",
+>      ? ? scales=list(x=list(at=4*(1:9)),y=list(log=2)),
+>      ? ? yscale.components=yscale.components.log2,
+>      ? ? auto.key=list(columns=3,text=c("(choose m n)","tangles","unique
+>     tangles"),
+>      ? ? points=FALSE,lines=TRUE))
+>     # dev.off()
+> 
+>     ______________________________________________
+>     R-help at r-project.org <mailto:R-help at r-project.org> mailing list --
+>     To UNSUBSCRIBE and more, see
+>     https://stat.ethz.ch/mailman/listinfo/r-help <https://stat.ethz.ch/
+>     mailman/listinfo/r-help>
+>     PLEASE do read the posting guide https://www.R-project.org/posting-
+>     guide.html <https://www.R-project.org/posting-guide.html>
+>     and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Thu Sep  5 22:23:25 2024
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leo Mada)
+Date: Thu, 5 Sep 2024 20:23:25 +0000
+Subject: [R] BUG: atan(1i) / 5 = NaN+Infi ?
+Message-ID: <DBAP192MB0956E56C96996102FA20D5E8849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+
+Dear R Users,
+
+Is this desired behaviour?
+I presume it's a bug.
+
+atan(1i)
+# 0+Infi
+
+tan(atan(1i))
+# 0+1i
+
+atan(1i) / 5
+# NaN+Infi
+
+There were some changes in handling of complex numbers. But it looks like a bug.
+
+Sincerely,
+
+Leonard
+
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Thu Sep  5 23:38:15 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 5 Sep 2024 14:38:15 -0700
+Subject: [R] BUG: atan(1i) / 5 = NaN+Infi ?
+In-Reply-To: <DBAP192MB0956E56C96996102FA20D5E8849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+References: <DBAP192MB0956E56C96996102FA20D5E8849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <CAGxFJbT-FU3ehHir6xUf=FSyyuSW_MArTeFCdbRwV=CU8HgieA@mail.gmail.com>
+
+What version of R are you using and on what platform?
+
+I get:
+> atan(1i)
+[1] 0.7853982+Infi
+> atan(1i)/5
+[1] NaN+Infi
+
+on:
+R version 4.4.1 (2024-06-14)
+Platform: aarch64-apple-darwin20
+Running under: macOS Sonoma 14.6.1
+
+-- Bert
+
+On Thu, Sep 5, 2024 at 1:23?PM Leo Mada via R-help <r-help at r-project.org>
+wrote:
+
+> Dear R Users,
+>
+> Is this desired behaviour?
+> I presume it's a bug.
+>
+> atan(1i)
+> # 0+Infi
+>
+> tan(atan(1i))
+> # 0+1i
+>
+> atan(1i) / 5
+> # NaN+Infi
+>
+> There were some changes in handling of complex numbers. But it looks like
+> a bug.
+>
+> Sincerely,
+>
+> Leonard
+>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Sep  5 23:40:53 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 5 Sep 2024 17:40:53 -0400
+Subject: [R] BUG: atan(1i) / 5 = NaN+Infi ?
+In-Reply-To: <DBAP192MB0956E56C96996102FA20D5E8849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+References: <DBAP192MB0956E56C96996102FA20D5E8849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <f3a0740d-386a-44e4-8415-7259c1e8827f@gmail.com>
+
+On 2024-09-05 4:23 p.m., Leo Mada via R-help wrote:
+> Dear R Users,
+> 
+> Is this desired behaviour?
+> I presume it's a bug.
+> 
+> atan(1i)
+> # 0+Infi
+> 
+> tan(atan(1i))
+> # 0+1i
+> 
+> atan(1i) / 5
+> # NaN+Infi
+
+There's no need to involve atan() and tan() in this:
+
+ > (0+Inf*1i)/5
+[1] NaN+Infi
+
+Why do you think this is a bug?
+
+Duncan Murdoch
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Fri Sep  6 00:12:06 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 5 Sep 2024 15:12:06 -0700
+Subject: [R] BUG: atan(1i) / 5 = NaN+Infi ?
+In-Reply-To: <f3a0740d-386a-44e4-8415-7259c1e8827f@gmail.com>
+References: <DBAP192MB0956E56C96996102FA20D5E8849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+ <f3a0740d-386a-44e4-8415-7259c1e8827f@gmail.com>
+Message-ID: <CAGxFJbQGcyzHa=Km+z_+iy=m9RaUCrsPOfXmHKWMPcXh9bbeHA@mail.gmail.com>
+
+Perhaps
+
+> Inf*1i
+[1] NaN+Infi
+
+clarifies why it is *not* a bug.
+(Boy, did that jog some long dusty math memories :-)  )
+
+-- Bert
+
+On Thu, Sep 5, 2024 at 2:48?PM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 2024-09-05 4:23 p.m., Leo Mada via R-help wrote:
+> > Dear R Users,
+> >
+> > Is this desired behaviour?
+> > I presume it's a bug.
+> >
+> > atan(1i)
+> > # 0+Infi
+> >
+> > tan(atan(1i))
+> > # 0+1i
+> >
+> > atan(1i) / 5
+> > # NaN+Infi
+>
+> There's no need to involve atan() and tan() in this:
+>
+>  > (0+Inf*1i)/5
+> [1] NaN+Infi
+>
+> Why do you think this is a bug?
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Fri Sep  6 00:20:20 2024
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leo Mada)
+Date: Thu, 5 Sep 2024 22:20:20 +0000
+Subject: [R] BUG: atan(1i) / 5 = NaN+Infi ?
+In-Reply-To: <CAGxFJbQGcyzHa=Km+z_+iy=m9RaUCrsPOfXmHKWMPcXh9bbeHA@mail.gmail.com>
+References: <DBAP192MB0956E56C96996102FA20D5E8849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+ <f3a0740d-386a-44e4-8415-7259c1e8827f@gmail.com>
+ <CAGxFJbQGcyzHa=Km+z_+iy=m9RaUCrsPOfXmHKWMPcXh9bbeHA@mail.gmail.com>
+Message-ID: <DBAP192MB09561B0A36D4EE0719704DFF849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+
+Dear Bert,
+
+These behave like real divisions/multiplications:
+complex(re=Inf, im = Inf) * 5
+# Inf+Infi
+complex(re=-Inf, im = Inf) * 5
+# -Inf+Infi
+
+The real division / multiplication should be faster and also is well behaved. I was expecting R to do the real division/multiplication on a complex number. Which R actually does for these very particular cases; but not when only Im(x) is Inf.
+
+Sincerely,
+
+Leonard
+
+________________________________
+From: Bert Gunter <bgunter.4567 at gmail.com>
+Sent: Friday, September 6, 2024 1:12 AM
+To: Duncan Murdoch <murdoch.duncan at gmail.com>
+Cc: Leo Mada <leo.mada at syonic.eu>; r-help at r-project.org <r-help at r-project.org>
+Subject: Re: [R] BUG: atan(1i) / 5 = NaN+Infi ?
+
+Perhaps
+
+> Inf*1i
+[1] NaN+Infi
+
+clarifies why it is *not* a bug.
+(Boy, did that jog some long dusty math memories :-)  )
+
+-- Bert
+
+On Thu, Sep 5, 2024 at 2:48?PM Duncan Murdoch <murdoch.duncan at gmail.com<mailto:murdoch.duncan at gmail.com>> wrote:
+On 2024-09-05 4:23 p.m., Leo Mada via R-help wrote:
+> Dear R Users,
+>
+> Is this desired behaviour?
+> I presume it's a bug.
+>
+> atan(1i)
+> # 0+Infi
+>
+> tan(atan(1i))
+> # 0+1i
+>
+> atan(1i) / 5
+> # NaN+Infi
+
+There's no need to involve atan() and tan() in this:
+
+ > (0+Inf*1i)/5
+[1] NaN+Infi
+
+Why do you think this is a bug?
+
+Duncan Murdoch
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Fri Sep  6 00:38:33 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 5 Sep 2024 15:38:33 -0700
+Subject: [R] BUG: atan(1i) / 5 = NaN+Infi ?
+In-Reply-To: <DBAP192MB09561B0A36D4EE0719704DFF849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+References: <DBAP192MB0956E56C96996102FA20D5E8849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+ <f3a0740d-386a-44e4-8415-7259c1e8827f@gmail.com>
+ <CAGxFJbQGcyzHa=Km+z_+iy=m9RaUCrsPOfXmHKWMPcXh9bbeHA@mail.gmail.com>
+ <DBAP192MB09561B0A36D4EE0719704DFF849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <CAGxFJbRmhS0Uuzwa75A=9bwj1+fv50Q1T78V-kbezKwcEFoDvQ@mail.gmail.com>
+
+> complex(real = 0, imaginary = Inf)
+[1] 0+Infi
+
+> Inf*1i
+[1] NaN+Infi
+
+>> complex(real = 0, imaginary = Inf)/5
+[1] NaN+Infi
+
+See the Note in ?complex for the explanation, I think.  Duncan can correct
+if I'm wrong.
+
+-- Bert
+
+On Thu, Sep 5, 2024 at 3:20?PM Leo Mada <leo.mada at syonic.eu> wrote:
+
+> Dear Bert,
+>
+> These behave like real divisions/multiplications:
+> complex(re=Inf, im = Inf) * 5
+> # Inf+Infi
+> complex(re=-Inf, im = Inf) * 5
+> # -Inf+Infi
+>
+> The real division / multiplication should be faster and also is well
+> behaved. I was expecting R to do the real division/multiplication on a
+> complex number. Which R actually does for these very particular cases; but
+> not when only Im(x) is Inf.
+>
+> Sincerely,
+>
+> Leonard
+>
+> ------------------------------
+> *From:* Bert Gunter <bgunter.4567 at gmail.com>
+> *Sent:* Friday, September 6, 2024 1:12 AM
+> *To:* Duncan Murdoch <murdoch.duncan at gmail.com>
+> *Cc:* Leo Mada <leo.mada at syonic.eu>; r-help at r-project.org <
+> r-help at r-project.org>
+> *Subject:* Re: [R] BUG: atan(1i) / 5 = NaN+Infi ?
+>
+> Perhaps
+>
+> > Inf*1i
+> [1] NaN+Infi
+>
+> clarifies why it is *not* a bug.
+> (Boy, did that jog some long dusty math memories :-)  )
+>
+> -- Bert
+>
+> On Thu, Sep 5, 2024 at 2:48?PM Duncan Murdoch <murdoch.duncan at gmail.com>
+> wrote:
+>
+> On 2024-09-05 4:23 p.m., Leo Mada via R-help wrote:
+> > Dear R Users,
+> >
+> > Is this desired behaviour?
+> > I presume it's a bug.
+> >
+> > atan(1i)
+> > # 0+Infi
+> >
+> > tan(atan(1i))
+> > # 0+1i
+> >
+> > atan(1i) / 5
+> > # NaN+Infi
+>
+> There's no need to involve atan() and tan() in this:
+>
+>  > (0+Inf*1i)/5
+> [1] NaN+Infi
+>
+> Why do you think this is a bug?
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Fri Sep  6 01:06:57 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Thu, 05 Sep 2024 16:06:57 -0700
+Subject: [R] BUG: atan(1i) / 5 = NaN+Infi ?
+In-Reply-To: <CAGxFJbRmhS0Uuzwa75A=9bwj1+fv50Q1T78V-kbezKwcEFoDvQ@mail.gmail.com>
+References: <DBAP192MB0956E56C96996102FA20D5E8849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+ <f3a0740d-386a-44e4-8415-7259c1e8827f@gmail.com>
+ <CAGxFJbQGcyzHa=Km+z_+iy=m9RaUCrsPOfXmHKWMPcXh9bbeHA@mail.gmail.com>
+ <DBAP192MB09561B0A36D4EE0719704DFF849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+ <CAGxFJbRmhS0Uuzwa75A=9bwj1+fv50Q1T78V-kbezKwcEFoDvQ@mail.gmail.com>
+Message-ID: <B013294E-6859-41ED-B0E4-D6E1E6512B3E@dcn.davis.ca.us>
+
+atan(1i) -> 0 + Inf i
+complex(1/5) -> 0.2 + 0i
+atan(1i) -> (0 + Inf i) * (0.2 + 0i)
+-> 0*0.2 + 0*0i + Inf i * 0.2 + Inf i * 0i
+infinity times zero is undefined
+-> 0 + 0i + Inf i + NaN * i^2
+-> 0 + 0i + Inf i - NaN
+-> NaN + Inf i
+
+I am not sure how complex arithmetic could arrive at another answer.
+
+I advise against messing with infinities... use atan2() if you don't actually need complex arithmetic.
+
+On September 5, 2024 3:38:33 PM PDT, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>> complex(real = 0, imaginary = Inf)
+>[1] 0+Infi
+>
+>> Inf*1i
+>[1] NaN+Infi
+>
+>>> complex(real = 0, imaginary = Inf)/5
+>[1] NaN+Infi
+>
+>See the Note in ?complex for the explanation, I think.  Duncan can correct
+>if I'm wrong.
+>
+>-- Bert
+>
+>On Thu, Sep 5, 2024 at 3:20?PM Leo Mada <leo.mada at syonic.eu> wrote:
+>
+>> Dear Bert,
+>>
+>> These behave like real divisions/multiplications:
+>> complex(re=Inf, im = Inf) * 5
+>> # Inf+Infi
+>> complex(re=-Inf, im = Inf) * 5
+>> # -Inf+Infi
+>>
+>> The real division / multiplication should be faster and also is well
+>> behaved. I was expecting R to do the real division/multiplication on a
+>> complex number. Which R actually does for these very particular cases; but
+>> not when only Im(x) is Inf.
+>>
+>> Sincerely,
+>>
+>> Leonard
+>>
+>> ------------------------------
+>> *From:* Bert Gunter <bgunter.4567 at gmail.com>
+>> *Sent:* Friday, September 6, 2024 1:12 AM
+>> *To:* Duncan Murdoch <murdoch.duncan at gmail.com>
+>> *Cc:* Leo Mada <leo.mada at syonic.eu>; r-help at r-project.org <
+>> r-help at r-project.org>
+>> *Subject:* Re: [R] BUG: atan(1i) / 5 = NaN+Infi ?
+>>
+>> Perhaps
+>>
+>> > Inf*1i
+>> [1] NaN+Infi
+>>
+>> clarifies why it is *not* a bug.
+>> (Boy, did that jog some long dusty math memories :-)  )
+>>
+>> -- Bert
+>>
+>> On Thu, Sep 5, 2024 at 2:48?PM Duncan Murdoch <murdoch.duncan at gmail.com>
+>> wrote:
+>>
+>> On 2024-09-05 4:23 p.m., Leo Mada via R-help wrote:
+>> > Dear R Users,
+>> >
+>> > Is this desired behaviour?
+>> > I presume it's a bug.
+>> >
+>> > atan(1i)
+>> > # 0+Infi
+>> >
+>> > tan(atan(1i))
+>> > # 0+1i
+>> >
+>> > atan(1i) / 5
+>> > # NaN+Infi
+>>
+>> There's no need to involve atan() and tan() in this:
+>>
+>>  > (0+Inf*1i)/5
+>> [1] NaN+Infi
+>>
+>> Why do you think this is a bug?
+>>
+>> Duncan Murdoch
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> https://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>>
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Fri Sep  6 01:40:35 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 5 Sep 2024 19:40:35 -0400
+Subject: [R] BUG: atan(1i) / 5 = NaN+Infi ?
+In-Reply-To: <DBAP192MB0956C07B3C3DE087A227C12C849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+References: <DBAP192MB0956E56C96996102FA20D5E8849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+ <f3a0740d-386a-44e4-8415-7259c1e8827f@gmail.com>
+ <DBAP192MB0956C07B3C3DE087A227C12C849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+Message-ID: <73d502d2-d6f3-4dde-bcbf-e520666b9036@gmail.com>
+
+On 2024-09-05 6:12 p.m., Leo Mada wrote:
+> Dear Duncan,
+> 
+> Here is also the missing information:
+> R version 4.4.1 (2024-06-14 ucrt)
+> Platform: x86_64-w64-mingw32/x64
+> Running under: Windows 10 x64 (build 19045)
+> 
+> Regarding the results:
+> atan(1i)
+> #?0+Infi
+> Re(atan(1i))
+> # 0
+> Im(atan(1i))
+> #? Inf
+> 
+> 0 + Inf i is a valid complex number:
+> tan(atan(1i))
+> # 0+1i
+> 
+> Inf / 5
+> # Inf
+> 
+> Note: atan(1i) / 5 should have generated 0 + Inf * 1i; even the explicit 
+> complex number fails:
+> complex(re=0, im = Inf) / 5
+> # NaN+Infi
+> complex(re=Inf, im = Inf) / 5
+> # Inf+Infi
+> 
+> I presume that R tries to do the complex division, although the real 
+> division is well defined.
+
+I imagine that what happens is that when one operand is complex, both 
+are coerced to complex and the operation is carried out.  I had assumed 
+this was documented in ?complex, but I don't see it there.  Maybe it 
+should be.
+
+If you want z/5 to be carried out using the correct mathematical 
+approach, you'll probably have to define it yourself.  For example,
+
+   CxByReal <- function(num, denom) {
+     if (is.complex(denom)) stop("this is for a real denominator!")
+     complex(real = Re(num)/denom, imaginary = Im(num)/denom)
+   }
+
+   CxByReal(complex(real=0, imaginary=Inf), 5)
+   # [1] 0+Infi
+
+Duncan Murdoch
+
+> 
+> Sincerely,
+> 
+> Leonard
+> 
+> ------------------------------------------------------------------------
+> *From:* Duncan Murdoch <murdoch.duncan at gmail.com>
+> *Sent:* Friday, September 6, 2024 12:40 AM
+> *To:* Leo Mada <leo.mada at syonic.eu>; r-help at r-project.org 
+> <r-help at r-project.org>
+> *Subject:* Re: [R] BUG: atan(1i) / 5 = NaN+Infi ?
+> On 2024-09-05 4:23 p.m., Leo Mada via R-help wrote:
+>> Dear R Users,
+>> 
+>> Is this desired behaviour?
+>> I presume it's a bug.
+>> 
+>> atan(1i)
+>> # 0+Infi
+>> 
+>> tan(atan(1i))
+>> # 0+1i
+>> 
+>> atan(1i) / 5
+>> # NaN+Infi
+> 
+> There's no need to involve atan() and tan() in this:
+> 
+>  ?> (0+Inf*1i)/5
+> [1] NaN+Infi
+> 
+> Why do you think this is a bug?
+> 
+> Duncan Murdoch
+>
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Fri Sep  6 01:55:09 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 5 Sep 2024 16:55:09 -0700
+Subject: [R] BUG: atan(1i) / 5 = NaN+Infi ?
+In-Reply-To: <B013294E-6859-41ED-B0E4-D6E1E6512B3E@dcn.davis.ca.us>
+References: <DBAP192MB0956E56C96996102FA20D5E8849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+ <f3a0740d-386a-44e4-8415-7259c1e8827f@gmail.com>
+ <CAGxFJbQGcyzHa=Km+z_+iy=m9RaUCrsPOfXmHKWMPcXh9bbeHA@mail.gmail.com>
+ <DBAP192MB09561B0A36D4EE0719704DFF849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+ <CAGxFJbRmhS0Uuzwa75A=9bwj1+fv50Q1T78V-kbezKwcEFoDvQ@mail.gmail.com>
+ <B013294E-6859-41ED-B0E4-D6E1E6512B3E@dcn.davis.ca.us>
+Message-ID: <CAGxFJbQX65wpeF8mXa7P1+A9+vJ77hpmMR5v3wssidp+JFC4gw@mail.gmail.com>
+
+> x <- complex(imag = Inf)
+> x
+[1] 0+Infi
+> x*1
+[1] NaN+Infi
+> x+0
+[1] 0+Infi
+
+R does the addition and subtraction "coordinatewise"; the C library handles
+everything else. This results in 2 different ways the point at infinity is
+printed.
+
+(Correction requested if this is wrong)
+
+Bert
+
+On Thu, Sep 5, 2024 at 4:07?PM Jeff Newmiller via R-help <
+r-help at r-project.org> wrote:
+
+> atan(1i) -> 0 + Inf i
+> complex(1/5) -> 0.2 + 0i
+> atan(1i) -> (0 + Inf i) * (0.2 + 0i)
+> -> 0*0.2 + 0*0i + Inf i * 0.2 + Inf i * 0i
+> infinity times zero is undefined
+> -> 0 + 0i + Inf i + NaN * i^2
+> -> 0 + 0i + Inf i - NaN
+> -> NaN + Inf i
+>
+> I am not sure how complex arithmetic could arrive at another answer.
+>
+> I advise against messing with infinities... use atan2() if you don't
+> actually need complex arithmetic.
+>
+> On September 5, 2024 3:38:33 PM PDT, Bert Gunter <bgunter.4567 at gmail.com>
+> wrote:
+> >> complex(real = 0, imaginary = Inf)
+> >[1] 0+Infi
+> >
+> >> Inf*1i
+> >[1] NaN+Infi
+> >
+> >>> complex(real = 0, imaginary = Inf)/5
+> >[1] NaN+Infi
+> >
+> >See the Note in ?complex for the explanation, I think.  Duncan can correct
+> >if I'm wrong.
+> >
+> >-- Bert
+> >
+> >On Thu, Sep 5, 2024 at 3:20?PM Leo Mada <leo.mada at syonic.eu> wrote:
+> >
+> >> Dear Bert,
+> >>
+> >> These behave like real divisions/multiplications:
+> >> complex(re=Inf, im = Inf) * 5
+> >> # Inf+Infi
+> >> complex(re=-Inf, im = Inf) * 5
+> >> # -Inf+Infi
+> >>
+> >> The real division / multiplication should be faster and also is well
+> >> behaved. I was expecting R to do the real division/multiplication on a
+> >> complex number. Which R actually does for these very particular cases;
+> but
+> >> not when only Im(x) is Inf.
+> >>
+> >> Sincerely,
+> >>
+> >> Leonard
+> >>
+> >> ------------------------------
+> >> *From:* Bert Gunter <bgunter.4567 at gmail.com>
+> >> *Sent:* Friday, September 6, 2024 1:12 AM
+> >> *To:* Duncan Murdoch <murdoch.duncan at gmail.com>
+> >> *Cc:* Leo Mada <leo.mada at syonic.eu>; r-help at r-project.org <
+> >> r-help at r-project.org>
+> >> *Subject:* Re: [R] BUG: atan(1i) / 5 = NaN+Infi ?
+> >>
+> >> Perhaps
+> >>
+> >> > Inf*1i
+> >> [1] NaN+Infi
+> >>
+> >> clarifies why it is *not* a bug.
+> >> (Boy, did that jog some long dusty math memories :-)  )
+> >>
+> >> -- Bert
+> >>
+> >> On Thu, Sep 5, 2024 at 2:48?PM Duncan Murdoch <murdoch.duncan at gmail.com
+> >
+> >> wrote:
+> >>
+> >> On 2024-09-05 4:23 p.m., Leo Mada via R-help wrote:
+> >> > Dear R Users,
+> >> >
+> >> > Is this desired behaviour?
+> >> > I presume it's a bug.
+> >> >
+> >> > atan(1i)
+> >> > # 0+Infi
+> >> >
+> >> > tan(atan(1i))
+> >> > # 0+1i
+> >> >
+> >> > atan(1i) / 5
+> >> > # NaN+Infi
+> >>
+> >> There's no need to involve atan() and tan() in this:
+> >>
+> >>  > (0+Inf*1i)/5
+> >> [1] NaN+Infi
+> >>
+> >> Why do you think this is a bug?
+> >>
+> >> Duncan Murdoch
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide
+> >> https://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+> >>
+> >>
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> >______________________________________________
+> >R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >https://stat.ethz.ch/mailman/listinfo/r-help
+> >PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> >and provide commented, minimal, self-contained, reproducible code.
+>
+> --
+> Sent from my phone. Please excuse my brevity.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
