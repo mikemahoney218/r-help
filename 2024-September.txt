@@ -3641,3 +3641,1000 @@ Jorgen Harmse.
 	[[alternative HTML version deleted]]
 
 
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Sat Sep  7 17:01:12 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Sat, 7 Sep 2024 17:01:12 +0200
+Subject: [R] BUG: atan(1i) / 5 = NaN+Infi ?
+In-Reply-To: <CABcYAd+LZrfVMU9AjU6jQfd_O8pCbbYotNSthpWSJKdLAG4oDA@mail.gmail.com>
+References: <DBAP192MB0956E56C96996102FA20D5E8849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+ <f3a0740d-386a-44e4-8415-7259c1e8827f@gmail.com>
+ <CAGxFJbQGcyzHa=Km+z_+iy=m9RaUCrsPOfXmHKWMPcXh9bbeHA@mail.gmail.com>
+ <DBAP192MB09561B0A36D4EE0719704DFF849D2@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+ <CAGxFJbRmhS0Uuzwa75A=9bwj1+fv50Q1T78V-kbezKwcEFoDvQ@mail.gmail.com>
+ <B013294E-6859-41ED-B0E4-D6E1E6512B3E@dcn.davis.ca.us>
+ <CABcYAdLZaO+9HTTAQg0PTGjgDzdSc42LV+fJv8nNMy_WOrb4+A@mail.gmail.com>
+ <26330.48976.240526.972936@stat.math.ethz.ch>
+ <CABcYAd+LZrfVMU9AjU6jQfd_O8pCbbYotNSthpWSJKdLAG4oDA@mail.gmail.com>
+Message-ID: <26332.27320.79283.293497@stat.math.ethz.ch>
+
+>>>>> Richard O'Keefe 
+>>>>>     on Sat, 7 Sep 2024 02:40:29 +1200 writes:
+
+    > G.5.1 para 2 can be found in the C17 standard -- I
+    > actually have the final draft not the published standard.
+
+Ok.  Thank you.
+
+A direct hopefully stable link to that final draft's  Appendix G
+seems to be    
+  https://www.open-std.org/JTC1/SC22/WG14/www/docs/n2310.pdf#chapter.14
+
+which is good to have available.
+
+    > It's in earlier standards, I just didn't check earlier
+    > standards.  Complex arithmetic was not in the first C
+    > standard (C89) but was in C99.
+
+indeed, currently we only require C11 for R.
+
+A longer term solution that we (the R core team) will probably
+look into is to start making use of current C standards for
+complex arithmetic.
+
+As mentioned, all this was not yet available when R started and
+already came with complex numbers as base type  ....
+It may (or may not, I'm not the expert) be a bit challenging
+trying to remain back compatible (e.g. with save complex number
+R objects)  and still use C standard complex headers ...
+
+But mid to long term I guess that would be the way to go.
+
+Martin
+
+    > The complex numbers do indeed form a field, and Z*W
+    > invokes an operation in that field when Z and W are both
+    > complex numbers.  Z*R and R*Z, where R is
+    > real-but-not-complex, is not that field operation; it's
+    > the scalar multiplication from the vector spec view.
+
+    > One way to characterise the C and Ada view is that real
+    > numbers x can be viewed as (x,ZERO!!!) and imaginary
+    > numbers y*i can be viewed as (ZERO!!!, y) where ZERO!!! is
+    > a real serious HARD zero, not an IEEE +epsilon or
+    > -epsilon, In fact this is important for getting "sign of
+    > zero" right.  x + (u,v) = (x+u, v) *NOT* (x+u, v+0) and
+    > this does matter in IEEE arithmetic.
+
+    > R is of course based on S, and S was not only designed
+    > before C got complex numbers, but before there was an IEEE
+    > standard with things like NaN, Inf, and signed zeros But
+    > there *is* an IEEE standard now, and even IBM mainframes
+    > offer IEEE-compliant arithmetic, so worrying about the
+    > sign of zero etc is not something we can really overlook
+    > these days.
+
+    > You are of course correct that the one-point
+    > compactification of the complex numbers involves adjoining
+    > just one infinity and that whacking IEEE infinities into
+    > complex numbers does not give you anything mathematically
+    > interesting (unless you count grief and vexation as
+    > "interesting" (:-)).  Since R distinguishes between 0+Infi
+    > and NaN+Infi, it's not clear that the one-point
+    > compactification has any relevance to what R does.  And
+    > it's not just an unexpected NaN; with all numbers finite
+    > you can get zeros with the wrong sign.  (S having been
+    > designed before the sign of zero was something you needed
+    > to be aware of.)
+
+    > For what it's worth, the ISO "Language Independent
+    > Arithmetic" standard, part 3, defines separate real,
+    > imaginary, and complex types, and defines x*(z,w) to be
+    > (x*z, x*w) directly, just like C and Ada.  So it is quite
+    > clear that R does not currently conform to LIA-3.  LIA-3
+    > (ISO/IEC 10967-3:2006) is the nearest we have to a
+    > definition of what "right" answers are for floating-point
+    > complex arithmetic, and what R does cannot be called
+    > "right" by that definition.  But of course R doesn't claim
+    > conformance to any part of the LIA standard.
+
+    > Whether the R community *want* R and C to give the same
+    > answers is not for me to say.  I can only say that *I*
+    > found it reassuring that C gave the expected answers when
+    > R did not, or, to put it another way, disconcerting that R
+    > did not agree with C (or LIA-3).
+
+
+Thank you.
+Indeed, I'd  like the idea to consider  LIA  standards as much
+as (sensibly) possible.
+
+Martin
+
+
+    > What really annoys me is that I wrote an entire technical
+    > report on (some of the) problems with complex arithmetic,
+    > and this whole "just treat x as (x, +0.0)" thing
+    > completely failed to occur to me as something anyone might
+    > do.
+
+    > On Fri, 6 Sept 2024 at 20:37, Martin Maechler
+    > <maechler at stat.math.ethz.ch> wrote:
+    >> 
+    >> >>>>> Richard O'Keefe >>>>> on Fri, 6 Sep 2024 17:24:07
+    >> +1200 writes:
+    >> 
+    >> > The thing is that real*complex, complex*real, and
+    >> complex/real are not > "complex arithmetic" in the
+    >> requisite sense.
+    >> 
+    >> > The complex numbers are a vector space over the reals,
+    >> 
+    >> Yes, but they _also_ are field (and as others have argued
+    >> mathematically only have one infinity point), and I think
+    >> here we are fighting with which definition should take
+    >> precedence here.  The English Wikipedia page is even more
+    >> extensive and precise,
+    >> https://en.wikipedia.org/wiki/Complex_number (line
+    >> breaking by me):
+    >> 
+    >> " The complex numbers form a rich structure that is
+    >> simultaneously - an algebraically closed field, - a
+    >> commutative algebra over the reals, and - a Euclidean
+    >> vector space of dimension two."
+    >> 
+    >> our problem "of course" is that we additionally add +/-
+    >> Inf for the reals and for storage etc treating them as a
+    >> 2D vector space over the reals is "obvious".
+    >> 
+    >> > and complex*real and real*complex are vector*scalar and
+    >> scalar*vector.  > For example, in the Ada programming
+    >> language, we have > function "*" (Left, Right : Complex)
+    >> return Complex; > function "*" (Left : Complex; Right :
+    >> Real'Base) return Complex; > function "*" (Left :
+    >> Real'Base; Right : Complex) return Complex; > showing
+    >> that Z*R and Z*W involve *different* functions.
+    >> 
+    >> > It's worth noting that complex*real and real*complex
+    >> just require two > real multiplications, > no other
+    >> arithmetic operations, while complex*complex requires
+    >> four > real multiplications, > an addition, and a
+    >> subtraction.  So implementing complex*real by >
+    >> conventing the real > to complex is inefficient (as well
+    >> as getting the finer points of IEEE > arithmetic wrong).
+    >> 
+    >> I see your point.
+    >> 
+    >> > As for complex division, getting that *right* in
+    >> floating-point is > fiendishly difficult (there are >
+    >> lots of algorithms out there and the majority of them
+    >> have serious flaws) > and woefully costly.
+    >> 
+    >> > It's not unfair to characterise implementing
+    >> complex/real > by conversion to complex and doing
+    >> complex/complex as a > beginner's bungle.
+    >> 
+    >> ouch!  ... but still I tend to acknowledge your point,
+    >> incl the "not unfair" ..
+    >> 
+    >> > There are good reasons why "double", "_Imaginary
+    >> double", and "_Complex double" > are distinct types in
+    >> standard C (as they are in Ada),
+    >> 
+    >> interesting.  OTOH, I think standard C did not have
+    >> strict standards about complex number storage etc in the
+    >> mid 1990s when R was created.
+    >> 
+    >> > and the definition of multiplication > in G.5.1 para 2
+    >> is *direct* (not via complex*complex).
+    >> 
+    >> I see (did not know about) -- where can we find 'G.5.1
+    >> para 2'
+    >> 
+    >> > Now R has its own way of doing things, and if the
+    >> judgement of the R > maintainers is > that keeping the
+    >> "convert to a common type and then operate" model is >
+    >> more important > than getting good answers, well, it's
+    >> THEIR language, not mine.
+    >> 
+    >> Well, it should also be the R community's language, where
+    >> we, the R core team, do most of the "base" work and also
+    >> emphasize guaranteeing long term stability.
+    >> 
+    >> Personally, I think that "convert to a common type and
+    >> then operate" is a good rule and principle in many, even
+    >> most places and cases, but I hate it if humans should not
+    >> be allowed to break good rules for even better reasons
+    >> (but should rather behave like algorithms ..).
+    >> 
+    >> This may well be a very good example of re-considering.
+    >> As mentioned above, e.g., I was not aware of the C
+    >> language standard being so specific here and different
+    >> than what we've been doing in R.
+    >> 
+    >> 
+    >> > But let's not pretend > that the answers are *right* in
+    >> any other sense.
+    >> 
+    >> I think that's too strong -- Jeff's computation (just
+    >> here below) is showing one well defined sense of "right"
+    >> I'd say.  (Still I know and agree the Inf * 0 |--> NaN
+    >> rule *is* sometimes undesirable)
+    >> 
+    >> > On Fri, 6 Sept 2024 at 11:07, Jeff Newmiller via R-help
+    >> > <r-help at r-project.org> wrote:
+    >> >>
+    >> >> atan(1i) -> 0 + Inf i >> complex(1/5) -> 0.2 + 0i >>
+    >> atan(1i) -> (0 + Inf i) * (0.2 + 0i)
+    -> 0*0.2 + 0*0i + Inf i * 0.2 + Inf i * 0i
+    >> >> infinity times zero is undefined
+    -> 0 + 0i + Inf i + NaN * i^2 0 + 0i + Inf i - NaN NaN + Inf
+    -> i
+    >> >>
+    >> >> I am not sure how complex arithmetic could arrive at
+    >> another answer.
+    >> >>
+    >> >> I advise against messing with infinities... use
+    >> atan2() if you don't actually need complex arithmetic.
+    >> >>
+    >> >> On September 5, 2024 3:38:33 PM PDT, Bert Gunter
+    >> <bgunter.4567 at gmail.com> wrote: >> >> complex(real = 0,
+    >> imaginary = Inf) >> >[1] 0+Infi
+    >> >> >
+    >> >> >> Inf*1i >> >[1] NaN+Infi
+    >> >> >
+    >> >> >>> complex(real = 0, imaginary = Inf)/5 >> >[1]
+    >> NaN+Infi
+    >> >> >
+    >> >> >See the Note in ?complex for the explanation, I
+    >> think.  Duncan can correct >> >if I'm wrong.
+    >> >> >
+    >> >> >-- Bert
+    >> 
+    >> [...................]
+    >> 
+    >> Martin
+    >> 
+    >> --
+    >> Martin Maechler ETH Zurich and R Core team
+
+
+From bog@@o@chr|@to|er @end|ng |rom gm@||@com  Sat Sep  7 21:56:36 2024
+From: bog@@o@chr|@to|er @end|ng |rom gm@||@com (Christofer Bogaso)
+Date: Sun, 8 Sep 2024 01:26:36 +0530
+Subject: [R] Reading a txt file from internet
+Message-ID: <CA+dpOJmXu6=+Ho9dosHyJW4fDhEE91S2c9_q59K66D74FhVFMw@mail.gmail.com>
+
+Hi,
+
+I am trying to the data from
+https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt
+without any success. Below is the error I am getting:
+
+> read.delim('https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt')
+
+Error in make.names(col.names, unique = TRUE) :
+
+  invalid multibyte string at '<ff><fe>t'
+
+In addition: Warning messages:
+
+1: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+
+  line 1 appears to contain embedded nulls
+
+2: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+
+  line 2 appears to contain embedded nulls
+
+3: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+
+  line 3 appears to contain embedded nulls
+
+4: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+
+  line 4 appears to contain embedded nulls
+
+5: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+
+  line 5 appears to contain embedded nulls
+
+Is there any way to read this data directly onto R?
+
+Thanks for your time
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Sep  7 22:20:21 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 7 Sep 2024 13:20:21 -0700
+Subject: [R] Reading a txt file from internet
+In-Reply-To: <CA+dpOJmXu6=+Ho9dosHyJW4fDhEE91S2c9_q59K66D74FhVFMw@mail.gmail.com>
+References: <CA+dpOJmXu6=+Ho9dosHyJW4fDhEE91S2c9_q59K66D74FhVFMw@mail.gmail.com>
+Message-ID: <CAGxFJbTohZ-mR-ezm-v2Byr=WkAuppLd5CdVKNR5UzKA2m3U7w@mail.gmail.com>
+
+Well, this is frankly an unsatisfactory answer, as it does not try to deal
+properly with the issues that you experienced, which I also did. However,
+it's simple and works. As this is a small text file,
+simply copy it in your browser to the clipboard, and then use:
+thefile <- read.table(text =
+"<paste text here>", header = TRUE)
+either in an editor or directly at the prompt in the console.
+
+In fact here's the whole thing that you can just copy and paste from this
+email:
+
+thefile <-read.table(text =
+"time vendor metal
+1 322 44.2
+2 317 44.3
+3 319 44.4
+4 323 43.4
+5 327 42.8
+6 328 44.3
+7 325 44.4
+8 326 44.8
+9 330 44.4
+10 334 43.1
+11 337 42.6
+12 341 42.4
+13 322 42.2
+14 318 41.8
+15 320 40.1
+16 326 42
+17 332 42.4
+18 334 43.1
+19 335 42.4
+20 336 43.1
+21 335 43.2
+22 338 42.8
+23 342 43
+24 348 42.8
+25 330 42.5
+26 326 42.6
+27 329 42.3
+28 337 42.9
+29 345 43.6
+30 350 44.7
+31 351 44.5
+32 354 45
+33 355 44.8
+34 357 44.9
+35 362 45.2
+36 368 45.2
+37 348 45
+38 345 45.5
+39 349 46.2
+40 355 46.8
+41 362 47.5
+42 367 48.3
+43 366 48.3
+44 370 49.1
+45 371 48.9
+46 375 49.4
+47 380 50
+48 385 50
+49 361 49.6
+50 354 49.9
+51 357 49.6
+52 367 50.7
+53 376 50.7
+54 381 50.9
+55 381 50.5
+56 383 51.2
+57 384 50.7
+58 387 50.3
+59 392 49.2
+60 396 48.1", header = TRUE)
+
+Cheers,
+Bert
+
+On Sat, Sep 7, 2024 at 12:57?PM Christofer Bogaso <
+bogaso.christofer at gmail.com> wrote:
+
+> Hi,
+>
+> I am trying to the data from
+>
+> https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt
+> without any success. Below is the error I am getting:
+>
+> > read.delim('
+> https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt
+> ')
+>
+> Error in make.names(col.names, unique = TRUE) :
+>
+>   invalid multibyte string at '<ff><fe>t'
+>
+> In addition: Warning messages:
+>
+> 1: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>   line 1 appears to contain embedded nulls
+>
+> 2: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>   line 2 appears to contain embedded nulls
+>
+> 3: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>   line 3 appears to contain embedded nulls
+>
+> 4: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>   line 4 appears to contain embedded nulls
+>
+> 5: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>   line 5 appears to contain embedded nulls
+>
+> Is there any way to read this data directly onto R?
+>
+> Thanks for your time
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Sat Sep  7 22:20:59 2024
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Sat, 7 Sep 2024 16:20:59 -0400
+Subject: [R] Reading a txt file from internet
+In-Reply-To: <CA+dpOJmXu6=+Ho9dosHyJW4fDhEE91S2c9_q59K66D74FhVFMw@mail.gmail.com>
+References: <CA+dpOJmXu6=+Ho9dosHyJW4fDhEE91S2c9_q59K66D74FhVFMw@mail.gmail.com>
+Message-ID: <CADNULg_WHHBBGFS7YO0E3e9NEYQFaLrYmRjKq5S436c5hLk_4Q@mail.gmail.com>
+
+That looks like a UTF-16LE byte order mark. Simply open the connection
+with the proper encoding:
+
+read.delim(
+    'https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt',
+    fileEncoding = "UTF-16LE"
+)
+
+On Sat, Sep 7, 2024 at 3:57?PM Christofer Bogaso
+<bogaso.christofer at gmail.com> wrote:
+>
+> Hi,
+>
+> I am trying to the data from
+> https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt
+> without any success. Below is the error I am getting:
+>
+> > read.delim('https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt')
+>
+> Error in make.names(col.names, unique = TRUE) :
+>
+>   invalid multibyte string at '<ff><fe>t'
+>
+> In addition: Warning messages:
+>
+> 1: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>   line 1 appears to contain embedded nulls
+>
+> 2: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>   line 2 appears to contain embedded nulls
+>
+> 3: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>   line 3 appears to contain embedded nulls
+>
+> 4: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>   line 4 appears to contain embedded nulls
+>
+> 5: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>   line 5 appears to contain embedded nulls
+>
+> Is there any way to read this data directly onto R?
+>
+> Thanks for your time
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From e@ @end|ng |rom enr|co@chum@nn@net  Sat Sep  7 22:22:23 2024
+From: e@ @end|ng |rom enr|co@chum@nn@net (Enrico Schumann)
+Date: Sat, 07 Sep 2024 22:22:23 +0200
+Subject: [R] Reading a txt file from internet
+In-Reply-To: <CA+dpOJmXu6=+Ho9dosHyJW4fDhEE91S2c9_q59K66D74FhVFMw@mail.gmail.com>
+ (Christofer Bogaso's message of "Sun, 8 Sep 2024 01:26:36 +0530")
+References: <CA+dpOJmXu6=+Ho9dosHyJW4fDhEE91S2c9_q59K66D74FhVFMw@mail.gmail.com>
+Message-ID: <8734mb1af4.fsf@enricoschumann.net>
+
+On Sun, 08 Sep 2024, Christofer Bogaso writes:
+
+> Hi,
+>
+> I am trying to the data from
+> https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt
+> without any success. Below is the error I am getting:
+>
+>> read.delim('https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt')
+>
+> Error in make.names(col.names, unique = TRUE) :
+>
+>   invalid multibyte string at '<ff><fe>t'
+>
+> In addition: Warning messages:
+>
+> 1: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>   line 1 appears to contain embedded nulls
+>
+> 2: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>   line 2 appears to contain embedded nulls
+>
+> 3: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>   line 3 appears to contain embedded nulls
+>
+> 4: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>   line 4 appears to contain embedded nulls
+>
+> 5: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>   line 5 appears to contain embedded nulls
+>
+> Is there any way to read this data directly onto R?
+>
+> Thanks for your time
+>
+
+The <ff><fe> looks like a byte-order mark
+(https://en.wikipedia.org/wiki/Byte_order_mark).
+Try this:
+
+    fn <- file('https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt',
+               encoding = "UTF-16LE")
+    read.delim(fn)
+
+-- 
+Enrico Schumann
+Lucerne, Switzerland
+https://enricoschumann.net
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sat Sep  7 22:40:34 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sat, 07 Sep 2024 13:40:34 -0700
+Subject: [R] Reading a txt file from internet
+In-Reply-To: <CA+dpOJmXu6=+Ho9dosHyJW4fDhEE91S2c9_q59K66D74FhVFMw@mail.gmail.com>
+References: <CA+dpOJmXu6=+Ho9dosHyJW4fDhEE91S2c9_q59K66D74FhVFMw@mail.gmail.com>
+Message-ID: <9983BE81-B175-42CC-8479-66004BA83A64@dcn.davis.ca.us>
+
+Add the
+
+   fileEncoding = "UTF-16"
+
+argument to the read call.
+
+For a human explanation of why this is going on I recommend [1]. For a more R-related take, try [2].
+
+For reference, I downloaded your file and used the "file" command line program typically available on Linux (and possibly MacOSX) which will tell you about what encoding is used in a particular file.
+
+[1] https://www.youtube.com/watch?v=4mRxIgu9R70
+[2] https://kevinushey.github.io/blog/2018/02/21/string-encoding-and-r/
+
+On September 7, 2024 12:56:36 PM PDT, Christofer Bogaso <bogaso.christofer at gmail.com> wrote:
+>Hi,
+>
+>I am trying to the data from
+>https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt
+>without any success. Below is the error I am getting:
+>
+>> read.delim('https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt')
+>
+>Error in make.names(col.names, unique = TRUE) :
+>
+>  invalid multibyte string at '<ff><fe>t'
+>
+>In addition: Warning messages:
+>
+>1: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>  line 1 appears to contain embedded nulls
+>
+>2: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>  line 2 appears to contain embedded nulls
+>
+>3: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>  line 3 appears to contain embedded nulls
+>
+>4: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>  line 4 appears to contain embedded nulls
+>
+>5: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>
+>  line 5 appears to contain embedded nulls
+>
+>Is there any way to read this data directly onto R?
+>
+>Thanks for your time
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Sep  7 22:44:47 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 7 Sep 2024 13:44:47 -0700
+Subject: [R] Reading a txt file from internet
+In-Reply-To: <CADNULg_WHHBBGFS7YO0E3e9NEYQFaLrYmRjKq5S436c5hLk_4Q@mail.gmail.com>
+References: <CA+dpOJmXu6=+Ho9dosHyJW4fDhEE91S2c9_q59K66D74FhVFMw@mail.gmail.com>
+ <CADNULg_WHHBBGFS7YO0E3e9NEYQFaLrYmRjKq5S436c5hLk_4Q@mail.gmail.com>
+Message-ID: <CAGxFJbSswXfFq7dYbQ=N+Hs1+_-zH5juOMii=OkS0dtTVBv_fQ@mail.gmail.com>
+
+Ha, the proper answer!
+Thanks for this, Iris. I followed up by consulting the Wikipedia "byte
+order mark" entry and learned something I knew nothing about.
+
+FWIW, if I had simply searched on <ff><fe>t it would have immediately led
+me to BOMs.
+
+Best,
+Bert
+
+On Sat, Sep 7, 2024 at 1:30?PM Iris Simmons <ikwsimmo at gmail.com> wrote:
+
+> That looks like a UTF-16LE byte order mark. Simply open the connection
+> with the proper encoding:
+>
+> read.delim(
+>     '
+> https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt
+> ',
+>     fileEncoding = "UTF-16LE"
+> )
+>
+> On Sat, Sep 7, 2024 at 3:57?PM Christofer Bogaso
+> <bogaso.christofer at gmail.com> wrote:
+> >
+> > Hi,
+> >
+> > I am trying to the data from
+> >
+> https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt
+> > without any success. Below is the error I am getting:
+> >
+> > > read.delim('
+> https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt
+> ')
+> >
+> > Error in make.names(col.names, unique = TRUE) :
+> >
+> >   invalid multibyte string at '<ff><fe>t'
+> >
+> > In addition: Warning messages:
+> >
+> > 1: In read.table(file = file, header = header, sep = sep, quote =
+> quote,  :
+> >
+> >   line 1 appears to contain embedded nulls
+> >
+> > 2: In read.table(file = file, header = header, sep = sep, quote =
+> quote,  :
+> >
+> >   line 2 appears to contain embedded nulls
+> >
+> > 3: In read.table(file = file, header = header, sep = sep, quote =
+> quote,  :
+> >
+> >   line 3 appears to contain embedded nulls
+> >
+> > 4: In read.table(file = file, header = header, sep = sep, quote =
+> quote,  :
+> >
+> >   line 4 appears to contain embedded nulls
+> >
+> > 5: In read.table(file = file, header = header, sep = sep, quote =
+> quote,  :
+> >
+> >   line 5 appears to contain embedded nulls
+> >
+> > Is there any way to read this data directly onto R?
+> >
+> > Thanks for your time
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sat Sep  7 22:52:31 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sat, 07 Sep 2024 13:52:31 -0700
+Subject: [R] Reading a txt file from internet
+In-Reply-To: <8734mb1af4.fsf@enricoschumann.net>
+References: <CA+dpOJmXu6=+Ho9dosHyJW4fDhEE91S2c9_q59K66D74FhVFMw@mail.gmail.com>
+ <8734mb1af4.fsf@enricoschumann.net>
+Message-ID: <66E77559-A57E-4273-B8E6-E9B433ECDE43@dcn.davis.ca.us>
+
+When you specify LE in the encoding type, you are logically telling the decoder that you know the two-byte pairs are in little-endian order... which could override whatever the byte-order-mark was indicating. If the BOM indicated big-endian then the file decoding would break. If there is a BOM, don't override it unless you have to (e.g. for a wrong BOM)... leave off the LE unless you really need it.
+
+On September 7, 2024 1:22:23 PM PDT, Enrico Schumann <es at enricoschumann.net> wrote:
+>On Sun, 08 Sep 2024, Christofer Bogaso writes:
+>
+>> Hi,
+>>
+>> I am trying to the data from
+>> https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt
+>> without any success. Below is the error I am getting:
+>>
+>>> read.delim('https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt')
+>>
+>> Error in make.names(col.names, unique = TRUE) :
+>>
+>>   invalid multibyte string at '<ff><fe>t'
+>>
+>> In addition: Warning messages:
+>>
+>> 1: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>>
+>>   line 1 appears to contain embedded nulls
+>>
+>> 2: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>>
+>>   line 2 appears to contain embedded nulls
+>>
+>> 3: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>>
+>>   line 3 appears to contain embedded nulls
+>>
+>> 4: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>>
+>>   line 4 appears to contain embedded nulls
+>>
+>> 5: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>>
+>>   line 5 appears to contain embedded nulls
+>>
+>> Is there any way to read this data directly onto R?
+>>
+>> Thanks for your time
+>>
+>
+>The <ff><fe> looks like a byte-order mark
+>(https://en.wikipedia.org/wiki/Byte_order_mark).
+>Try this:
+>
+>    fn <- file('https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt',
+>               encoding = "UTF-16LE")
+>    read.delim(fn)
+>
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sat Sep  7 23:43:24 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 7 Sep 2024 17:43:24 -0400
+Subject: [R] Reading a txt file from internet
+In-Reply-To: <66E77559-A57E-4273-B8E6-E9B433ECDE43@dcn.davis.ca.us>
+References: <CA+dpOJmXu6=+Ho9dosHyJW4fDhEE91S2c9_q59K66D74FhVFMw@mail.gmail.com>
+ <8734mb1af4.fsf@enricoschumann.net>
+ <66E77559-A57E-4273-B8E6-E9B433ECDE43@dcn.davis.ca.us>
+Message-ID: <54c12472-4017-4e09-ab1a-2df1c6b12ecb@gmail.com>
+
+On 2024-09-07 4:52 p.m., Jeff Newmiller via R-help wrote:
+> When you specify LE in the encoding type, you are logically telling the decoder that you know the two-byte pairs are in little-endian order... which could override whatever the byte-order-mark was indicating. If the BOM indicated big-endian then the file decoding would break. If there is a BOM, don't override it unless you have to (e.g. for a wrong BOM)... leave off the LE unless you really need it.
+
+That sounds like good advice, but it doesn't work:
+
+  > read.delim(
+  +     'https://online.stat.psu.edu/onlinecourses/sites/stat501/files 
+/ch15/employee.txt',
+  +     fileEncoding = "UTF-16"
+  + )
+  [1] time 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+  [2] 
+vendor.?????........??........?.??........?.??.?..?.....?..?..?...?.?..?..?...?.??....?...?.??.
+
+and so on.
+> 
+> On September 7, 2024 1:22:23 PM PDT, Enrico Schumann <es at enricoschumann.net> wrote:
+>> On Sun, 08 Sep 2024, Christofer Bogaso writes:
+>>
+>>> Hi,
+>>>
+>>> I am trying to the data from
+>>> https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt
+>>> without any success. Below is the error I am getting:
+>>>
+>>>> read.delim('https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt')
+>>>
+>>> Error in make.names(col.names, unique = TRUE) :
+>>>
+>>>    invalid multibyte string at '<ff><fe>t'
+>>>
+>>> In addition: Warning messages:
+>>>
+>>> 1: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>>>
+>>>    line 1 appears to contain embedded nulls
+>>>
+>>> 2: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>>>
+>>>    line 2 appears to contain embedded nulls
+>>>
+>>> 3: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>>>
+>>>    line 3 appears to contain embedded nulls
+>>>
+>>> 4: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>>>
+>>>    line 4 appears to contain embedded nulls
+>>>
+>>> 5: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>>>
+>>>    line 5 appears to contain embedded nulls
+>>>
+>>> Is there any way to read this data directly onto R?
+>>>
+>>> Thanks for your time
+>>>
+>>
+>> The <ff><fe> looks like a byte-order mark
+>> (https://en.wikipedia.org/wiki/Byte_order_mark).
+>> Try this:
+>>
+>>     fn <- file('https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt',
+>>                encoding = "UTF-16LE")
+>>     read.delim(fn)
+>>
+>
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sun Sep  8 01:37:50 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sat, 07 Sep 2024 16:37:50 -0700
+Subject: [R] Reading a txt file from internet
+In-Reply-To: <54c12472-4017-4e09-ab1a-2df1c6b12ecb@gmail.com>
+References: <CA+dpOJmXu6=+Ho9dosHyJW4fDhEE91S2c9_q59K66D74FhVFMw@mail.gmail.com>
+ <8734mb1af4.fsf@enricoschumann.net>
+ <66E77559-A57E-4273-B8E6-E9B433ECDE43@dcn.davis.ca.us>
+ <54c12472-4017-4e09-ab1a-2df1c6b12ecb@gmail.com>
+Message-ID: <663B47CF-365D-4C12-8B9E-4BDDF4F10E05@dcn.davis.ca.us>
+
+I tried it on R 4.4.1 on Linux Mint 21.3 just before I posted it, and I just tried it on R 3.4.2 on Ubuntu 16.04 and R 4.3.2 on Windows 11 just now and it works on all of them.
+
+I don't have a big-endian machine to test on, but the Unicode spec says to honor the BOM and if there isn't one to assume that it is big-endian data. But in this case there is a BOM so your machine has a buggy decoder?
+
+On September 7, 2024 2:43:24 PM PDT, Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>On 2024-09-07 4:52 p.m., Jeff Newmiller via R-help wrote:
+>> When you specify LE in the encoding type, you are logically telling the decoder that you know the two-byte pairs are in little-endian order... which could override whatever the byte-order-mark was indicating. If the BOM indicated big-endian then the file decoding would break. If there is a BOM, don't override it unless you have to (e.g. for a wrong BOM)... leave off the LE unless you really need it.
+>
+>That sounds like good advice, but it doesn't work:
+>
+> > read.delim(
+> +     'https://online.stat.psu.edu/onlinecourses/sites/stat501/files /ch15/employee.txt',
+> +     fileEncoding = "UTF-16"
+> + )
+> [1] time 
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+>
+> [2] vendor.?????........??........?.??........?.??.?..?.....?..?..?...?.?..?..?...?.??....?...?.??.
+>
+>and so on.
+>> 
+>> On September 7, 2024 1:22:23 PM PDT, Enrico Schumann <es at enricoschumann.net> wrote:
+>>> On Sun, 08 Sep 2024, Christofer Bogaso writes:
+>>> 
+>>>> Hi,
+>>>> 
+>>>> I am trying to the data from
+>>>> https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt
+>>>> without any success. Below is the error I am getting:
+>>>> 
+>>>>> read.delim('https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt')
+>>>> 
+>>>> Error in make.names(col.names, unique = TRUE) :
+>>>> 
+>>>>    invalid multibyte string at '<ff><fe>t'
+>>>> 
+>>>> In addition: Warning messages:
+>>>> 
+>>>> 1: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>>>> 
+>>>>    line 1 appears to contain embedded nulls
+>>>> 
+>>>> 2: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>>>> 
+>>>>    line 2 appears to contain embedded nulls
+>>>> 
+>>>> 3: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>>>> 
+>>>>    line 3 appears to contain embedded nulls
+>>>> 
+>>>> 4: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>>>> 
+>>>>    line 4 appears to contain embedded nulls
+>>>> 
+>>>> 5: In read.table(file = file, header = header, sep = sep, quote = quote,  :
+>>>> 
+>>>>    line 5 appears to contain embedded nulls
+>>>> 
+>>>> Is there any way to read this data directly onto R?
+>>>> 
+>>>> Thanks for your time
+>>>> 
+>>> 
+>>> The <ff><fe> looks like a byte-order mark
+>>> (https://en.wikipedia.org/wiki/Byte_order_mark).
+>>> Try this:
+>>> 
+>>>     fn <- file('https://online.stat.psu.edu/onlinecourses/sites/stat501/files/ch15/employee.txt',
+>>>                encoding = "UTF-16LE")
+>>>     read.delim(fn)
+>>> 
+>> 
+>
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
