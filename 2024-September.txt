@@ -6653,3 +6653,510 @@ Yes, and it's not trivial to work around, so probably not worth it.
 Thanks,
 
 
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Sat Sep 14 09:57:23 2024
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Sat, 14 Sep 2024 13:27:23 +0530
+Subject: [R] 
+ how to specify point symbols in the key on a lattice dotplot
+In-Reply-To: <20240913140605.51a11cb6@rcw-lm203c>
+References: <20240912211053.17549527@rcw-lm203c>
+ <CA+etgP=xyPBFv=pkkaFBrwT6aeZ7tj-Sgb2+Q9K+NX+LArNwvw@mail.gmail.com>
+ <20240913115850.03bbed1d@rcw-lm203c>
+ <CAGxFJbRSkDWuTj9ujEfdg7pK4544LeMQWsA1kqUduakKVCmcwg@mail.gmail.com>
+ <20240913140605.51a11cb6@rcw-lm203c>
+Message-ID: <CADfFDC6nPvd09TOPEjqX-gaibXZoio4Wj1+yjK_-ymiN7egDNw@mail.gmail.com>
+
+On Fri, 13 Sept 2024 at 23:36, Christopher W. Ryan
+<cwr at agencystatistical.com> wrote:
+>
+> For me, Bert's suggestion produces a plot with two black symbols above
+> the plotting region, a circle and a triangle, both filled, and no text.
+>
+> This, in which I specify several features of the symbols in the key,
+>
+> dd %>%  dotplot( segment ~ transit_time, groups = impact,  data = .,
+>                 pch = 16:17,
+>                 col = 1:2,
+>                 cex = 1.8,
+>                 scales = list(cex = 1.4),
+>                 key = list(text = list(c("impaction", "no impaction")),
+> points = list(pch =16:17, col = 1:2) ))
+>
+> gets me what I want.
+>
+> When using key = (), is it necessary to specify all features of the
+> plotting symbols and the text? I was under the impression that auto.key
+> and/or simpleKey (which I'd also tried) had certain defaults, but one or
+> more of those defaults could be changed by providing arguments, with all
+> unspecified features remaining at their respective defaults.
+
+Here is a very brief review:
+
+- To use key = list(...) you need to be very verbose, specifying
+everything you need. It will not "guess" anything. E.g.,
+
+dotplot(1 ~ 1, key = list(text = list(c("one", "two")), points =
+list(pch = 16:17, col = 3:4), lines = list(lwd = 2:3, lty = 2:3)))
+
+This used to be the only option in the original Trellis implementation
+in S-PLUS.
+
+- simpleKey() produces a key with parameters taken from the current
+settings, but you still need to explicitly specify the text labels,
+and which components you want. E.g.,
+
+dotplot(1 ~ 1, key = simpleKey(text = c("one", "two"), points = TRUE,
+lines = TRUE))
+
+- The result will change if you change the current settings _before_
+calling simpleKey(). E.g.,
+
+trellis.par.set(simpleTheme(pch = 16:17))
+dotplot(1 ~ 1, key = simpleKey(text = c("one", "two"), points = TRUE,
+lines = TRUE))
+
+- auto.key goes one step further and tries to guess the text (and
+which components should be included) from the context and the levels
+of the 'groups' argument. E.g.,
+
+dotplot(1:10 ~ 1:10, groups = gl(2, 5), auto.key = TRUE)
+
+It also delays the call to simpleKey() to the point when the plot is
+actually drawn, in case the settings have changed before then. One way
+to do so is to attach a list of settings (as supplied to
+trellis.par.set()) as the par.settings argument. Hence,
+
+dotplot(1:10 ~ 1:10, groups = gl(2, 5), auto.key = TRUE, par.settings
+= simpleTheme(pch = 3:4))
+
+Hope this helps.
+
+Best,
+-Deepayan
+
+
+> Thanks.
+>
+> --Chris Ryan
+>
+>
+>
+>
+> On Fri, 13 Sep 2024 10:45:08 -0700, Bert Gunter wrote:
+>
+> >"Why does key = list(points = 16:17)  not work? "
+> >
+> >Because, from the "key" section of ?xyplot
+> >" The contents of the key are determined by (possibly repeated)
+> >components named "rectangles", "lines", "points" or "text". Each of
+> >these must be **lists** with relevant graphical parameters (see later)
+> >controlling their appearance."
+> >
+> >Ergo, try:
+> >
+> >dd |> dotplot( segment ~ transit_time, groups = impact,  data = .,
+> >                pch = 16:17,
+> >                cex = 1.8,
+> >                scales = list(cex = 1.4),
+> >                key = list(points = list(pch =16:17) ))
+> >
+> >Cheers,
+> >Bert
+> >
+> >
+> >On Fri, Sep 13, 2024 at 9:53?AM Christopher W. Ryan
+> ><cwr at agencystatistical.com> wrote:
+> >>
+> >>
+> >> dd %>% dotplot( segment ~ transit_time, groups = impact,  data = .,
+> >>                pch = 16:17,
+> >>                cex = 1.8,
+> >>                scales = list(cex = 1.4),
+> >>                key = list(points = 16:17) )
+> >>
+> >> produces a graph with no discernible key, but with an asterisk at the
+> >> top, above the plotting region.
+> >>
+> >> Same result from
+> >>
+> >> dd %>% dotplot( segment ~ transit_time, groups = impact,  data = .,
+> >>                pch = 16:17,
+> >>                cex = 1.8,
+> >>                scales = list(cex = 1.4),
+> >>                key = list(points = 16:17),
+> >>                auto.key = TRUE )
+> >>
+> >>
+> >>
+> >>
+> >> dd %>% dotplot( segment ~ transit_time, groups = impact,  data = .,
+> >>                scales = list(cex = 1.4),
+> >>                par.settings = simpleTheme(pch = 16:17, cex = 1.8),
+> >>                auto.key = TRUE)
+> >>
+> >> produces the desired result.
+> >>
+> >> Why does key = list(points = 16:17)  not work?  Below is a MWE:
+> >>
+> >> ================================
+> >>
+> >> library(lattice)
+> >> library(dplyr)
+> >> dd <- structure(list(impact = structure(c(1L, 1L, 1L, 1L, 2L, 2L, 2L,
+> >> 2L), levels = c("impaction", "no impaction"), class = "factor"),
+> >>     segment = structure(c(4L, 2L, 1L, 3L, 4L, 2L, 1L, 3L), levels =
+> >> c("left", "right", "rectosigmoid", "total"), class = c("ordered",
+> >> "factor" )), transit_time = c(70, 10, 20, 32, 42, 10, 12, 18)),
+> >> class = "data.frame", row.names = c(NA, -8L))
+> >>
+> >> dd %>% dotplot( segment ~ transit_time, groups = impact,  data = .,
+> >>                pch = 16:17,
+> >>                cex = 1.8,
+> >>                scales = list(cex = 1.4),
+> >>                key = list(points = 16:17) )
+> >>
+> >> =================================
+> >>
+> >>
+> >> Thanks.
+> >>
+> >> --Chris Ryan
+> >> --
+> >> Agency Statistical Consulting, LLC
+> >> Helping those in public service get the most from their data.
+> >> www.agencystatistical.com
+> >>
+> >> Public GnuPG email encryption key at
+> >> https://keys.openpgp.org
+> >> 9E53101D261BEC070CFF1A0DC8BC50E715A672A0
+> >>
+> >>
+> >> On Fri, 13 Sep 2024 08:29:20 +0100, CALUM POLWART wrote:
+> >>
+> >> >Add:
+> >> >
+> >> >key = list(points=16:17)
+> >> >
+> >> >Into the dotplot section possibly without the autokey
+> >> >
+> >> >On Fri, 13 Sep 2024, 08:19 Christopher W. Ryan,
+> >> ><cwr at agencystatistical.com> wrote:
+> >> >
+> >> >> I am making a dotplot with lattice, as follows:
+> >> >>
+> >> >> dd %>% dotplot( segment ~ transit_time, groups = impact,  data =
+> >> >> ., as.table = TRUE,
+> >> >>                 pch = 16:17,
+> >> >>                 cex = 1.8,
+> >> >>                 scales = list(cex = 1.4),
+> >> >>                auto.key = TRUE)
+> >> >>
+> >> >> impact is a factor with two levels.
+> >> >>
+> >> >> They key shows 2 open circles, one of each color of my two
+> >> >> plotting symbols, one for each group. I would like the
+> >> >> symbols in the key to match the plotting characters in the graph:
+> >> >> 16 (filled circle) for one group and 17 (filled triangle) for the
+> >> >> second group.  How would I do that? I have not had any success
+> >> >> with supplying arguments to auto.key, simpleKey, or key. Guess
+> >> >> I'm not understanding the syntax.
+> >> >>
+> >> >> Thanks.
+> >> >>
+> >> >> --Chris Ryan
+> >> >>
+> >> >> --
+> >> >> Agency Statistical Consulting, LLC
+> >> >> Helping those in public service get the most from their data.
+> >> >> www.agencystatistical.com
+> >> >>
+> >> >> Public GnuPG email encryption key at
+> >> >> https://keys.openpgp.org
+> >> >> 9E53101D261BEC070CFF1A0DC8BC50E715A672A0
+> >> >>
+> >> >> ______________________________________________
+> >> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> >> PLEASE do read the posting guide
+> >> >> https://www.R-project.org/posting-guide.html
+> >> >> and provide commented, minimal, self-contained, reproducible code.
+> >> >>
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide
+> >> https://www.R-project.org/posting-guide.html and provide commented,
+> >> minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From cwr @end|ng |rom @gency@t@t|@t|c@|@com  Sat Sep 14 22:32:34 2024
+From: cwr @end|ng |rom @gency@t@t|@t|c@|@com (Christopher W. Ryan)
+Date: Sat, 14 Sep 2024 16:32:34 -0400
+Subject: [R] 
+ how to specify point symbols in the key on a lattice dotplot
+In-Reply-To: <CADfFDC6nPvd09TOPEjqX-gaibXZoio4Wj1+yjK_-ymiN7egDNw@mail.gmail.com>
+References: <20240912211053.17549527@rcw-lm203c>
+ <CA+etgP=xyPBFv=pkkaFBrwT6aeZ7tj-Sgb2+Q9K+NX+LArNwvw@mail.gmail.com>
+ <20240913115850.03bbed1d@rcw-lm203c>
+ <CAGxFJbRSkDWuTj9ujEfdg7pK4544LeMQWsA1kqUduakKVCmcwg@mail.gmail.com>
+ <20240913140605.51a11cb6@rcw-lm203c>
+ <CADfFDC6nPvd09TOPEjqX-gaibXZoio4Wj1+yjK_-ymiN7egDNw@mail.gmail.com>
+Message-ID: <20240914163234.0c77cd65@rcw-lm203c>
+
+Thanks Deepayan. This is an excellent review. I found it very helpful.
+
+--Chris Ryan
+
+
+-- 
+Agency Statistical Consulting, LLC
+Helping those in public service get the most from their data.
+www.agencystatistical.com
+
+Public GnuPG email encryption key at
+https://keys.openpgp.org
+9E53101D261BEC070CFF1A0DC8BC50E715A672A0
+
+
+On Sat, 14 Sep 2024 13:27:23 +0530, Deepayan Sarkar wrote:
+
+>On Fri, 13 Sept 2024 at 23:36, Christopher W. Ryan
+><cwr at agencystatistical.com> wrote:
+>>
+>> For me, Bert's suggestion produces a plot with two black symbols
+>> above the plotting region, a circle and a triangle, both filled, and
+>> no text.
+>>
+>> This, in which I specify several features of the symbols in the key,
+>>
+>> dd %>%  dotplot( segment ~ transit_time, groups = impact,  data = .,
+>>                 pch = 16:17,
+>>                 col = 1:2,
+>>                 cex = 1.8,
+>>                 scales = list(cex = 1.4),
+>>                 key = list(text = list(c("impaction", "no
+>> impaction")), points = list(pch =16:17, col = 1:2) ))
+>>
+>> gets me what I want.
+>>
+>> When using key = (), is it necessary to specify all features of the
+>> plotting symbols and the text? I was under the impression that
+>> auto.key and/or simpleKey (which I'd also tried) had certain
+>> defaults, but one or more of those defaults could be changed by
+>> providing arguments, with all unspecified features remaining at
+>> their respective defaults.  
+>
+>Here is a very brief review:
+>
+>- To use key = list(...) you need to be very verbose, specifying
+>everything you need. It will not "guess" anything. E.g.,
+>
+>dotplot(1 ~ 1, key = list(text = list(c("one", "two")), points =
+>list(pch = 16:17, col = 3:4), lines = list(lwd = 2:3, lty = 2:3)))
+>
+>This used to be the only option in the original Trellis implementation
+>in S-PLUS.
+>
+>- simpleKey() produces a key with parameters taken from the current
+>settings, but you still need to explicitly specify the text labels,
+>and which components you want. E.g.,
+>
+>dotplot(1 ~ 1, key = simpleKey(text = c("one", "two"), points = TRUE,
+>lines = TRUE))
+>
+>- The result will change if you change the current settings _before_
+>calling simpleKey(). E.g.,
+>
+>trellis.par.set(simpleTheme(pch = 16:17))
+>dotplot(1 ~ 1, key = simpleKey(text = c("one", "two"), points = TRUE,
+>lines = TRUE))
+>
+>- auto.key goes one step further and tries to guess the text (and
+>which components should be included) from the context and the levels
+>of the 'groups' argument. E.g.,
+>
+>dotplot(1:10 ~ 1:10, groups = gl(2, 5), auto.key = TRUE)
+>
+>It also delays the call to simpleKey() to the point when the plot is
+>actually drawn, in case the settings have changed before then. One way
+>to do so is to attach a list of settings (as supplied to
+>trellis.par.set()) as the par.settings argument. Hence,
+>
+>dotplot(1:10 ~ 1:10, groups = gl(2, 5), auto.key = TRUE, par.settings
+>= simpleTheme(pch = 3:4))
+>
+>Hope this helps.
+>
+>Best,
+>-Deepayan
+>
+>
+>> Thanks.
+>>
+>> --Chris Ryan
+>>
+>>
+>>
+>>
+>> On Fri, 13 Sep 2024 10:45:08 -0700, Bert Gunter wrote:
+>>  
+>> >"Why does key = list(points = 16:17)  not work? "
+>> >
+>> >Because, from the "key" section of ?xyplot
+>> >" The contents of the key are determined by (possibly repeated)
+>> >components named "rectangles", "lines", "points" or "text". Each of
+>> >these must be **lists** with relevant graphical parameters (see
+>> >later) controlling their appearance."
+>> >
+>> >Ergo, try:
+>> >
+>> >dd |> dotplot( segment ~ transit_time, groups = impact,  data = .,
+>> >                pch = 16:17,
+>> >                cex = 1.8,
+>> >                scales = list(cex = 1.4),
+>> >                key = list(points = list(pch =16:17) ))
+>> >
+>> >Cheers,
+>> >Bert
+>> >
+>> >
+>> >On Fri, Sep 13, 2024 at 9:53?AM Christopher W. Ryan
+>> ><cwr at agencystatistical.com> wrote:  
+>> >>
+>> >>
+>> >> dd %>% dotplot( segment ~ transit_time, groups = impact,  data =
+>> >> ., pch = 16:17,
+>> >>                cex = 1.8,
+>> >>                scales = list(cex = 1.4),
+>> >>                key = list(points = 16:17) )
+>> >>
+>> >> produces a graph with no discernible key, but with an asterisk at
+>> >> the top, above the plotting region.
+>> >>
+>> >> Same result from
+>> >>
+>> >> dd %>% dotplot( segment ~ transit_time, groups = impact,  data =
+>> >> ., pch = 16:17,
+>> >>                cex = 1.8,
+>> >>                scales = list(cex = 1.4),
+>> >>                key = list(points = 16:17),
+>> >>                auto.key = TRUE )
+>> >>
+>> >>
+>> >>
+>> >>
+>> >> dd %>% dotplot( segment ~ transit_time, groups = impact,  data =
+>> >> ., scales = list(cex = 1.4),
+>> >>                par.settings = simpleTheme(pch = 16:17, cex = 1.8),
+>> >>                auto.key = TRUE)
+>> >>
+>> >> produces the desired result.
+>> >>
+>> >> Why does key = list(points = 16:17)  not work?  Below is a MWE:
+>> >>
+>> >> ================================
+>> >>
+>> >> library(lattice)
+>> >> library(dplyr)
+>> >> dd <- structure(list(impact = structure(c(1L, 1L, 1L, 1L, 2L, 2L,
+>> >> 2L, 2L), levels = c("impaction", "no impaction"), class =
+>> >> "factor"), segment = structure(c(4L, 2L, 1L, 3L, 4L, 2L, 1L, 3L),
+>> >> levels = c("left", "right", "rectosigmoid", "total"), class =
+>> >> c("ordered", "factor" )), transit_time = c(70, 10, 20, 32, 42,
+>> >> 10, 12, 18)), class = "data.frame", row.names = c(NA, -8L))
+>> >>
+>> >> dd %>% dotplot( segment ~ transit_time, groups = impact,  data =
+>> >> ., pch = 16:17,
+>> >>                cex = 1.8,
+>> >>                scales = list(cex = 1.4),
+>> >>                key = list(points = 16:17) )
+>> >>
+>> >> =================================
+>> >>
+>> >>
+>> >> Thanks.
+>> >>
+>> >> --Chris Ryan
+>> >> --
+>> >> Agency Statistical Consulting, LLC
+>> >> Helping those in public service get the most from their data.
+>> >> www.agencystatistical.com
+>> >>
+>> >> Public GnuPG email encryption key at
+>> >> https://keys.openpgp.org
+>> >> 9E53101D261BEC070CFF1A0DC8BC50E715A672A0
+>> >>
+>> >>
+>> >> On Fri, 13 Sep 2024 08:29:20 +0100, CALUM POLWART wrote:
+>> >>  
+>> >> >Add:
+>> >> >
+>> >> >key = list(points=16:17)
+>> >> >
+>> >> >Into the dotplot section possibly without the autokey
+>> >> >
+>> >> >On Fri, 13 Sep 2024, 08:19 Christopher W. Ryan,
+>> >> ><cwr at agencystatistical.com> wrote:
+>> >> >  
+>> >> >> I am making a dotplot with lattice, as follows:
+>> >> >>
+>> >> >> dd %>% dotplot( segment ~ transit_time, groups = impact,  data
+>> >> >> = ., as.table = TRUE,
+>> >> >>                 pch = 16:17,
+>> >> >>                 cex = 1.8,
+>> >> >>                 scales = list(cex = 1.4),
+>> >> >>                auto.key = TRUE)
+>> >> >>
+>> >> >> impact is a factor with two levels.
+>> >> >>
+>> >> >> They key shows 2 open circles, one of each color of my two
+>> >> >> plotting symbols, one for each group. I would like the
+>> >> >> symbols in the key to match the plotting characters in the
+>> >> >> graph: 16 (filled circle) for one group and 17 (filled
+>> >> >> triangle) for the second group.  How would I do that? I have
+>> >> >> not had any success with supplying arguments to auto.key,
+>> >> >> simpleKey, or key. Guess I'm not understanding the syntax.
+>> >> >>
+>> >> >> Thanks.
+>> >> >>
+>> >> >> --Chris Ryan
+>> >> >>
+>> >> >> --
+>> >> >> Agency Statistical Consulting, LLC
+>> >> >> Helping those in public service get the most from their data.
+>> >> >> www.agencystatistical.com
+>> >> >>
+>> >> >> Public GnuPG email encryption key at
+>> >> >> https://keys.openpgp.org
+>> >> >> 9E53101D261BEC070CFF1A0DC8BC50E715A672A0
+>> >> >>
+>> >> >> ______________________________________________
+>> >> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more,
+>> >> >> see https://stat.ethz.ch/mailman/listinfo/r-help
+>> >> >> PLEASE do read the posting guide
+>> >> >> https://www.R-project.org/posting-guide.html
+>> >> >> and provide commented, minimal, self-contained, reproducible
+>> >> >> code. 
+>> >>
+>> >> ______________________________________________
+>> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> >> https://stat.ethz.ch/mailman/listinfo/r-help
+>> >> PLEASE do read the posting guide
+>> >> https://www.R-project.org/posting-guide.html and provide
+>> >> commented, minimal, self-contained, reproducible code.  
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> https://www.R-project.org/posting-guide.html and provide commented,
+>> minimal, self-contained, reproducible code.  
+
+
