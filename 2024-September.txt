@@ -11281,3 +11281,186 @@ Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a 
 www.avg.com
 
 
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Sat Sep 21 23:25:03 2024
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Sat, 21 Sep 2024 17:25:03 -0400
+Subject: [R] store list objects in data.table
+Message-ID: <IA1P223MB0499F0305846AD419F820295FA6D2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+
+I am trying to store regression objects in a data.table
+
+df <- data.frame(x = rnorm(20))
+df[, "y"] <- with(df, x + 0.1 * x^2 + 0.2 * rnorm(20))
+
+mydt <- data.table(mypower = c(1, 2), myreg = list(lm(y ~ x, data = df),
+lm(y ~ x + I(x^2), data = df)))
+
+mydt
+#?? mypower??? myreg
+#???? <num>?? <list>
+#1:?????? 1 <lm[12]>
+#2:?????? 2 <lm[12]>
+
+But mydt[1, 2] has only the coeffients of the first regression. mydt[2,
+2] has residuals of the first regression.? These are the first two
+components of "lm" object.
+
+mydt[1, myreg[[1]]]
+#(Intercept)?????????? x
+#?? 0.107245??? 1.034110
+
+Is there a way to put full "lm" object in each row?
+
+Thanks,
+Naresh
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sun Sep 22 00:33:53 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sat, 21 Sep 2024 23:33:53 +0100
+Subject: [R] store list objects in data.table
+In-Reply-To: <IA1P223MB0499F0305846AD419F820295FA6D2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+References: <IA1P223MB0499F0305846AD419F820295FA6D2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+Message-ID: <09e2455f-8a20-4a4e-bcba-4a71ab5a6c5b@sapo.pt>
+
+?s 22:25 de 21/09/2024, Naresh Gurbuxani escreveu:
+> I am trying to store regression objects in a data.table
+> 
+> df <- data.frame(x = rnorm(20))
+> df[, "y"] <- with(df, x + 0.1 * x^2 + 0.2 * rnorm(20))
+> 
+> mydt <- data.table(mypower = c(1, 2), myreg = list(lm(y ~ x, data = df),
+> lm(y ~ x + I(x^2), data = df)))
+> 
+> mydt
+> #?? mypower??? myreg
+> #???? <num>?? <list>
+> #1:?????? 1 <lm[12]>
+> #2:?????? 2 <lm[12]>
+> 
+> But mydt[1, 2] has only the coeffients of the first regression. mydt[2,
+> 2] has residuals of the first regression.? These are the first two
+> components of "lm" object.
+> 
+> mydt[1, myreg[[1]]]
+> #(Intercept)?????????? x
+> #?? 0.107245??? 1.034110
+> 
+> Is there a way to put full "lm" object in each row?
+> 
+> Thanks,
+> Naresh
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Yes, there are ways of pulling the full lm objects from the list column. 
+It's a matter of using the right indexing.
+
+mydt[[2L]][1L] extracts a list whose element is a lm object.
+mydt[[2L]][[1L]] extracts yhe lm object, this is the one you want.
+
+See the two examples below.
+
+
+
+library(data.table)
+
+df <- data.frame(x = rnorm(20))
+df[, "y"] <- with(df, x + 0.1 * x^2 + 0.2 * rnorm(20))
+
+mydt <- data.table(
+   mypower = c(1, 2),
+   myreg = list(lm(y ~ x, data = df),
+                lm(y ~ x + I(x^2), data = df)))
+
+mydt[[2L]][1L] |> class()
+#> [1] "list"
+
+mydt[[2L]][[1L]] |> class()
+#> [1] "lm"
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From po|c1410 @end|ng |rom gm@||@com  Sun Sep 22 00:56:27 2024
+From: po|c1410 @end|ng |rom gm@||@com (CALUM POLWART)
+Date: Sat, 21 Sep 2024 23:56:27 +0100
+Subject: [R] store list objects in data.table
+In-Reply-To: <IA1P223MB0499F0305846AD419F820295FA6D2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+References: <IA1P223MB0499F0305846AD419F820295FA6D2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+Message-ID: <CA+etgPk=jGe=aVjF75GzvVx7HYE1OWdG61BJGDFZ4E4R3WvC-Q@mail.gmail.com>
+
+I think there is a typo in your reprex l(x^2) ??
+
+mydt[1,2] contains a list. Which when unlisted contains a load of data.
+
+I'm not sure what you are asking for? Are you trying to unlist that and
+have it as a row? Sort of pivot.wider if you like or unnest in tidyverse
+concepts?
+
+I think the data.table verbs are rbindlist
+
+But I haven't really understood what your end "product" looks like.
+
+I think it's a two row table, with 20 intercepts and 20 gradients, repeated
+a second time?
+
+I'd have made that a 20 row table with x, y and then 4 columns for the two
+versions?
+
+On Sat, 21 Sep 2024, 22:25 Naresh Gurbuxani, <naresh_gurbuxani at hotmail.com>
+wrote:
+
+> I am trying to store regression objects in a data.table
+>
+> df <- data.frame(x = rnorm(20))
+> df[, "y"] <- with(df, x + 0.1 * x^2 + 0.2 * rnorm(20))
+>
+> mydt <- data.table(mypower = c(1, 2), myreg = list(lm(y ~ x, data = df),
+> lm(y ~ x + I(x^2), data = df)))
+>
+> mydt
+> #   mypower    myreg
+> #     <num>   <list>
+> #1:       1 <lm[12]>
+> #2:       2 <lm[12]>
+>
+> But mydt[1, 2] has only the coeffients of the first regression. mydt[2,
+> 2] has residuals of the first regression.  These are the first two
+> components of "lm" object.
+>
+> mydt[1, myreg[[1]]]
+> #(Intercept)           x
+> #   0.107245    1.034110
+>
+> Is there a way to put full "lm" object in each row?
+>
+> Thanks,
+> Naresh
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
