@@ -11464,3 +11464,408 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From bgunter@4567 @end|ng |rom gm@||@com  Sun Sep 22 08:00:57 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 21 Sep 2024 23:00:57 -0700
+Subject: [R] store list objects in data.table
+In-Reply-To: <IA1P223MB0499F0305846AD419F820295FA6D2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+References: <IA1P223MB0499F0305846AD419F820295FA6D2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+Message-ID: <CAGxFJbQfrECatiMG7v+6kfX+3qwUHO1XPMtn+xzB6Z4WZX0JXg@mail.gmail.com>
+
+Well, you may have good reasons to do things this way -- and you
+certainly do not have to explain them here.
+
+But you might wish to consider using R's poly() function and a basic
+nested list structure to do something quite similar that seems much
+simpler to me, anyway:
+
+x <- rnorm(20)
+df <- data.frame(x = x, y = x + .1*x^2 + rnorm(20, sd = .2))
+result <-
+   with(df,
+          lapply(1:2, \(i)
+                 list(
+                     degree = i, reg =lm(y ~ poly(x, i, raw = TRUE))
+                    )
+          )
+   )
+
+As you can see, 'result' is a list, each component of which is a list
+of two with names "degree" and "reg" giving the same info as each row
+of your 'mydt'. You can use lapply() and friends to access these
+results and fiddle with them as you like, such as: "extract the
+coefficients from the second degree fits only", and so forth. Also
+note that individual components of nested lists can be extracted by
+giving a vector to [[ instead of repeated [['s. For example:
+result[[2]][[2]]  ## the reg component of the degree 2 polynomial
+## is the same as
+result[[c(2,2)]] ## this is a bit easier for me to groc.
+
+Again, feel free to ignore without replying if my gratuitous remarks
+are unhelpful.
+
+Cheers,
+Bert
+
+
+On Sat, Sep 21, 2024 at 2:25?PM Naresh Gurbuxani
+<naresh_gurbuxani at hotmail.com> wrote:
+>
+> I am trying to store regression objects in a data.table
+>
+> df <- data.frame(x = rnorm(20))
+> df[, "y"] <- with(df, x + 0.1 * x^2 + 0.2 * rnorm(20))
+>
+> mydt <- data.table(mypower = c(1, 2), myreg = list(lm(y ~ x, data = df),
+> lm(y ~ x + I(x^2), data = df)))
+>
+> mydt
+> #   mypower    myreg
+> #     <num>   <list>
+> #1:       1 <lm[12]>
+> #2:       2 <lm[12]>
+>
+> But mydt[1, 2] has only the coeffients of the first regression. mydt[2,
+> 2] has residuals of the first regression.  These are the first two
+> components of "lm" object.
+>
+> mydt[1, myreg[[1]]]
+> #(Intercept)           x
+> #   0.107245    1.034110
+>
+> Is there a way to put full "lm" object in each row?
+>
+> Thanks,
+> Naresh
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Sun Sep 22 13:44:16 2024
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Sun, 22 Sep 2024 07:44:16 -0400
+Subject: [R] store list objects in data.table
+In-Reply-To: <CAGxFJbQfrECatiMG7v+6kfX+3qwUHO1XPMtn+xzB6Z4WZX0JXg@mail.gmail.com>
+References: <IA1P223MB0499F0305846AD419F820295FA6D2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+ <CAGxFJbQfrECatiMG7v+6kfX+3qwUHO1XPMtn+xzB6Z4WZX0JXg@mail.gmail.com>
+Message-ID: <IA1P223MB049997F5E090D82443D98C70FA6E2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+
+Thanks everyone for their responses.
+
+My data is organized in a data.table.? My goal is to perform analyses 
+according to some groups.? The results of analysis are objects.? If 
+these objects could be stored as elements of a data.table, this would 
+help downstream summarizing of results.
+
+Let me try another example.
+
+carsdt <- setDT(copy(mtcars))
+
+carsdt[, unique(cyl) |> length()]
+#[1] 3
+
+carsreg <- carsdt[, .(fit = lm(mpg ~ disp + hp + wt)), by = .(cyl)]
+
+#I would like a data.table with three rows, one each for "lm" object 
+corresponding to cyl value
+
+carsreg[, .N]
+#[1] 36
+
+#Here each component of "lm" object is stored in a separate row.
+
+carsreg[1]
+#???? cyl???????????????????????????????????????????? fit
+#?? <num> <lm>
+#1:???? 6 30.27790680, 0.01610061,-0.01097072,-3.89618307
+
+lm(mpg ~ disp + hp + wt, data = mtcars, subset = (cyl == 6)) |> coef()
+#(Intercept)??????? disp????????? hp????????? wt
+#30.27790680? 0.01610061 -0.01097072 -3.89618307
+
+A less satisfactory solution is to extract desired components and store 
+them in data.table.? But this requires multiple calls to lm().
+
+carsreg2 <- carsdt[, .(coef = list(coef(lm(mpg ~ disp + hp + wt))), rsq 
+= summary(lm(mpg ~ disp + hp + wt))$r.squared), by = .(cyl)]
+
+Now if I want to also include F-statistic, it would require an 
+additional call to lm() and adding a column to above data.table.? Is 
+there a way to avoid this?
+
+Naresh
+
+On 9/22/24 2:00 AM, Bert Gunter wrote:
+> Well, you may have good reasons to do things this way -- and you
+> certainly do not have to explain them here.
+>
+> But you might wish to consider using R's poly() function and a basic
+> nested list structure to do something quite similar that seems much
+> simpler to me, anyway:
+>
+> x <- rnorm(20)
+> df <- data.frame(x = x, y = x + .1*x^2 + rnorm(20, sd = .2))
+> result <-
+>     with(df,
+>            lapply(1:2, \(i)
+>                   list(
+>                       degree = i, reg =lm(y ~ poly(x, i, raw = TRUE))
+>                      )
+>            )
+>     )
+>
+> As you can see, 'result' is a list, each component of which is a list
+> of two with names "degree" and "reg" giving the same info as each row
+> of your 'mydt'. You can use lapply() and friends to access these
+> results and fiddle with them as you like, such as: "extract the
+> coefficients from the second degree fits only", and so forth. Also
+> note that individual components of nested lists can be extracted by
+> giving a vector to [[ instead of repeated [['s. For example:
+> result[[2]][[2]]  ## the reg component of the degree 2 polynomial
+> ## is the same as
+> result[[c(2,2)]] ## this is a bit easier for me to groc.
+>
+> Again, feel free to ignore without replying if my gratuitous remarks
+> are unhelpful.
+>
+> Cheers,
+> Bert
+>
+>
+> On Sat, Sep 21, 2024 at 2:25?PM Naresh Gurbuxani
+> <naresh_gurbuxani at hotmail.com> wrote:
+>> I am trying to store regression objects in a data.table
+>>
+>> df <- data.frame(x = rnorm(20))
+>> df[, "y"] <- with(df, x + 0.1 * x^2 + 0.2 * rnorm(20))
+>>
+>> mydt <- data.table(mypower = c(1, 2), myreg = list(lm(y ~ x, data = df),
+>> lm(y ~ x + I(x^2), data = df)))
+>>
+>> mydt
+>> #   mypower    myreg
+>> #     <num>   <list>
+>> #1:       1 <lm[12]>
+>> #2:       2 <lm[12]>
+>>
+>> But mydt[1, 2] has only the coeffients of the first regression. mydt[2,
+>> 2] has residuals of the first regression.  These are the first two
+>> components of "lm" object.
+>>
+>> mydt[1, myreg[[1]]]
+>> #(Intercept)           x
+>> #   0.107245    1.034110
+>>
+>> Is there a way to put full "lm" object in each row?
+>>
+>> Thanks,
+>> Naresh
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+
+
+From |kry|ov @end|ng |rom d|@root@org  Sun Sep 22 14:09:46 2024
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Sun, 22 Sep 2024 15:09:46 +0300
+Subject: [R] store list objects in data.table
+In-Reply-To: <IA1P223MB049997F5E090D82443D98C70FA6E2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+References: <IA1P223MB0499F0305846AD419F820295FA6D2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+ <CAGxFJbQfrECatiMG7v+6kfX+3qwUHO1XPMtn+xzB6Z4WZX0JXg@mail.gmail.com>
+ <IA1P223MB049997F5E090D82443D98C70FA6E2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+Message-ID: <20240922150946.20633a6f@trisector>
+
+? Sun, 22 Sep 2024 07:44:16 -0400
+Naresh Gurbuxani <naresh_gurbuxani at hotmail.com> ?????:
+
+> carsreg <- carsdt[, .(fit = lm(mpg ~ disp + hp + wt)), by = .(cyl)]
+> 
+> #I would like a data.table with three rows, one each for "lm" object 
+> corresponding to cyl value
+> 
+> carsreg[, .N]
+> #[1] 36
+
+Try wrapping the lm() expression in an extra list():
+
+carsreg <- carsdt[, .(fit = list(lm(mpg ~ disp + hp + wt))), by = .(cyl)]
+# [1] 3
+carsreg
+#      cyl      fit
+#    <num>   <list>
+# 1:     6 <lm[12]>
+# 2:     4 <lm[12]>
+# 3:     8 <lm[12]>
+
+-- 
+Best regards,
+Ivan
+
+
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Sun Sep 22 14:39:14 2024
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Sun, 22 Sep 2024 08:39:14 -0400
+Subject: [R] store list objects in data.table
+In-Reply-To: <IA1P223MB049997F5E090D82443D98C70FA6E2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+References: <IA1P223MB0499F0305846AD419F820295FA6D2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+ <CAGxFJbQfrECatiMG7v+6kfX+3qwUHO1XPMtn+xzB6Z4WZX0JXg@mail.gmail.com>
+ <IA1P223MB049997F5E090D82443D98C70FA6E2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+Message-ID: <IA1P223MB04999CF74853C2FDA441E299FA6E2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+
+After rereading Rui Barrades's reply, I was able to get "lm" object from 
+data.table
+
+carsreg3 <- carsdt[, .(fit = list(lm(mpg ~ disp + hp + wt))), by = .(cyl)]
+carsreg3[, .N]
+#[1] 3
+carsreg3[(cyl == 6), .(fit)][[1]][[1]] |> class()
+#[1] "lm"
+carsreg3[(cyl == 6), .(fit)][[1]][[1]] |> summary()
+carsreg3[, .(rsq = summary(fit[[1]])$r.squared), by = .(cyl)]
+#?? cyl?????? rsq
+#1:?? 6 0.7217114
+#2:?? 4 0.7080702
+#3:?? 8 0.4970692
+
+data.table is a fantastic tool.
+
+Thanks again,
+
+Naresh
+
+
+On 9/22/24 07:44, Naresh Gurbuxani wrote:
+> Thanks everyone for their responses.
+>
+> My data is organized in a data.table.? My goal is to perform analyses 
+> according to some groups.? The results of analysis are objects.? If 
+> these objects could be stored as elements of a data.table, this would 
+> help downstream summarizing of results.
+>
+> Let me try another example.
+>
+> carsdt <- setDT(copy(mtcars))
+>
+> carsdt[, unique(cyl) |> length()]
+> #[1] 3
+>
+> carsreg <- carsdt[, .(fit = lm(mpg ~ disp + hp + wt)), by = .(cyl)]
+>
+> #I would like a data.table with three rows, one each for "lm" object 
+> corresponding to cyl value
+>
+> carsreg[, .N]
+> #[1] 36
+>
+> #Here each component of "lm" object is stored in a separate row.
+>
+> carsreg[1]
+> #???? cyl???????????????????????????????????????????? fit
+> #?? <num> <lm>
+> #1:???? 6 30.27790680, 0.01610061,-0.01097072,-3.89618307
+>
+> lm(mpg ~ disp + hp + wt, data = mtcars, subset = (cyl == 6)) |> coef()
+> #(Intercept)??????? disp????????? hp????????? wt
+> #30.27790680? 0.01610061 -0.01097072 -3.89618307
+>
+> A less satisfactory solution is to extract desired components and 
+> store them in data.table.? But this requires multiple calls to lm().
+>
+> carsreg2 <- carsdt[, .(coef = list(coef(lm(mpg ~ disp + hp + wt))), 
+> rsq = summary(lm(mpg ~ disp + hp + wt))$r.squared), by = .(cyl)]
+>
+> Now if I want to also include F-statistic, it would require an 
+> additional call to lm() and adding a column to above data.table. Is 
+> there a way to avoid this?
+>
+> Naresh
+>
+> On 9/22/24 2:00 AM, Bert Gunter wrote:
+>> Well, you may have good reasons to do things this way -- and you
+>> certainly do not have to explain them here.
+>>
+>> But you might wish to consider using R's poly() function and a basic
+>> nested list structure to do something quite similar that seems much
+>> simpler to me, anyway:
+>>
+>> x <- rnorm(20)
+>> df <- data.frame(x = x, y = x + .1*x^2 + rnorm(20, sd = .2))
+>> result <-
+>> ??? with(df,
+>> ?????????? lapply(1:2, \(i)
+>> ????????????????? list(
+>> ????????????????????? degree = i, reg =lm(y ~ poly(x, i, raw = TRUE))
+>> ???????????????????? )
+>> ?????????? )
+>> ??? )
+>>
+>> As you can see, 'result' is a list, each component of which is a list
+>> of two with names "degree" and "reg" giving the same info as each row
+>> of your 'mydt'. You can use lapply() and friends to access these
+>> results and fiddle with them as you like, such as: "extract the
+>> coefficients from the second degree fits only", and so forth. Also
+>> note that individual components of nested lists can be extracted by
+>> giving a vector to [[ instead of repeated [['s. For example:
+>> result[[2]][[2]]? ## the reg component of the degree 2 polynomial
+>> ## is the same as
+>> result[[c(2,2)]] ## this is a bit easier for me to groc.
+>>
+>> Again, feel free to ignore without replying if my gratuitous remarks
+>> are unhelpful.
+>>
+>> Cheers,
+>> Bert
+>>
+>>
+>> On Sat, Sep 21, 2024 at 2:25?PM Naresh Gurbuxani
+>> <naresh_gurbuxani at hotmail.com> wrote:
+>>> I am trying to store regression objects in a data.table
+>>>
+>>> df <- data.frame(x = rnorm(20))
+>>> df[, "y"] <- with(df, x + 0.1 * x^2 + 0.2 * rnorm(20))
+>>>
+>>> mydt <- data.table(mypower = c(1, 2), myreg = list(lm(y ~ x, data = 
+>>> df),
+>>> lm(y ~ x + I(x^2), data = df)))
+>>>
+>>> mydt
+>>> #?? mypower??? myreg
+>>> #???? <num>?? <list>
+>>> #1:?????? 1 <lm[12]>
+>>> #2:?????? 2 <lm[12]>
+>>>
+>>> But mydt[1, 2] has only the coeffients of the first regression. mydt[2,
+>>> 2] has residuals of the first regression.? These are the first two
+>>> components of "lm" object.
+>>>
+>>> mydt[1, myreg[[1]]]
+>>> #(Intercept)?????????? x
+>>> #?? 0.107245??? 1.034110
+>>>
+>>> Is there a way to put full "lm" object in each row?
+>>>
+>>> Thanks,
+>>> Naresh
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide 
+>>> https://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
