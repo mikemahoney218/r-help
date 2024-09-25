@@ -12121,3 +12121,442 @@ Director, School of Computational Science and Engineering
 working hours.
 
 
+From j@b@y@t194 @end|ng |rom gm@||@com  Tue Sep 24 08:31:22 2024
+From: j@b@y@t194 @end|ng |rom gm@||@com (javad bayat)
+Date: Tue, 24 Sep 2024 10:01:22 +0330
+Subject: [R] Problem with converting grib file to excel
+Message-ID: <CANTxAmLoVGTLFum98dufmWtO6yHaBj35j6=AskUPuJALs0k6AA@mail.gmail.com>
+
+Dear R users;
+I have downloaded a grib file format (Met.grib) and I want to export its
+data to excel file. Also I want to do some mathematic on some columns. But
+I got error. I would be more than happy if anyone can help me to do this. I
+have provided the codes and the Met.grib file in this email.
+Sincerely yours
+
+# Load the necessary libraries
+>  library(raster)      # For reading GRIB files
+>  library(dplyr)       # For data manipulation
+>  library(lubridate)   # For date manipulation
+>  library(openxlsx)    # For writing Excel files
+
+# Specify the file paths
+>  grib_file_path <- "C:/Users/Omrab_Lab/Downloads/Met.grib"
+>  excel_file_path <- "C:/Users/Omrab_Lab/Downloads/Met_updated.xlsx"
+
+# Open the GRIB file
+>  raster_data <- stack(grib_file_path)
+
+# Check the names of the layers to identify which ones to extract
+>  layer_names <- names(raster_data)
+> print(layer_names)  # Prints
+
+
+> # Extract layers based on layer names - adjust as necessary
+> t2m <- raster_data[[grep("t2m", layer_names)]]
+> d2m <- raster_data[[grep("d2m", layer_names)]]
+> tcc <- raster_data[[grep("tcc", layer_names)]]
+> valid_time <- raster_data[[grep("valid_time", layer_names)]]
+> t2m
+class      : RasterStack
+nlayers    : 0
+
+> # Check if the raster layers are loaded correctly
+> if (is.null(t2m) || is.null(d2m) || is.null(tcc) || is.null(valid_time))
+{
++     stop("One or more raster layers could not be loaded. Please check the
+layer names.")
++ }
+
+> # Convert raster values to vectors
+> t2m_values <- values(t2m)
+Error in dimnames(x) <- dn :
+  length of 'dimnames' [2] not equal to array extent
+> d2m_values <- values(d2m)
+Error in dimnames(x) <- dn :
+  length of 'dimnames' [2] not equal to array extent
+> tcc_values <- values(tcc)
+Error in dimnames(x) <- dn :
+  length of 'dimnames' [2] not equal to array extent
+> valid_time_values <- values(valid_time)
+Error in dimnames(x) <- dn :
+  length of 'dimnames' [2] not equal to array extent
+
+# Check for NA values and dimensions
+if (any(is.na(t2m_values)) || any(is.na(d2m_values)) || any(is.na(tcc_values))
+|| any(is.na(valid_time_values))) {
+  warning("One or more layers contain NA values. These will be removed.")
+}
+
+# Create the data frame, ensuring no NA values are included
+df <- data.frame(
+  t2m = t2m_values,
+  d2m = d2m_values,
+  tcc = tcc_values,
+  valid_time = valid_time_values,
+  stringsAsFactors = FALSE
+)
+
+# Remove rows with NA values
+df <- na.omit(df)
+
+# Convert temperatures from Kelvin to Celsius
+df$t2m <- df$t2m - 273.15
+df$d2m <- df$d2m - 273.15
+
+# Calculate relative humidity
+calculate_relative_humidity <- function(t2m, d2m) {
+  es <- 6.112 * exp((17.67 * t2m) / (t2m + 243.5))
+  e <- 6.112 * exp((17.67 * d2m) / (d2m + 243.5))
+  rh <- (e / es) * 100
+  return(rh)
+}
+df$RH <- calculate_relative_humidity(df$t2m, df$d2m)
+
+# Convert valid_time from numeric to POSIXct assuming it's in seconds since
+the epoch
+df$valid_time <- as.POSIXct(df$valid_time, origin = "1970-01-01")
+
+# Extract year, month, day, and hour from valid_time
+df$Year <- year(df$valid_time)
+df$Month <- month(df$valid_time)
+df$Day <- day(df$valid_time)
+df$Hour <- hour(df$valid_time)
+
+# Select only the desired columns
+df_selected <- df %>% select(Year, Month, Day, Hour, tcc, t2m, RH)
+
+# Save the updated DataFrame to an Excel file
+write.xlsx(df_selected, excel_file_path, row.names = FALSE)
+
+
+
+
+
+
+-- 
+Best Regards
+Javad Bayat
+M.Sc. Environment Engineering
+Alternative Mail: bayat194 at yahoo.com
+
+	[[alternative HTML version deleted]]
+
+
+From jen@@oeh|@ch|@ege| @end|ng |rom truec|u@ter@com  Mon Sep 23 22:45:10 2024
+From: jen@@oeh|@ch|@ege| @end|ng |rom truec|u@ter@com (=?UTF-8?Q?Jens_Oehlschl=C3=A4gel?=)
+Date: Mon, 23 Sep 2024 22:45:10 +0200
+Subject: [R] [R-pkgs] bit, bit64, ff and greeNsort
+Message-ID: <b11255da-dd8d-4731-8b3c-0e8a2bdab5e0@truecluster.com>
+
+Dear package maintainers,
+
+Dear users of packages `bit`, `bit64`, `ff`,
+
+Everyone interested in sustainable sorting algorithms,
+
+I submitted updated versions for the upcoming R 4.5.0. The are only 
+minor changes (see the NEWS files) but there is one important change in 
+bit64:
+
+ ??? o setting options(integer64_semantics="new")
+ ????? gives the better semantics suggested by Ofek Shilon.
+ ????? Downstream package authors: please test and adjust to the new 
+semantics,
+ ????? we plan to make that the default.
+
+After 25 years volunteer work for the R community, that was my last 
+combined submission for packages `bit`, `bit64` and `ff`.
+
+I learned S+ in 1996 and supported R's 1.0 release in 2000 with bug 
+testing, a small code contribution to `pairs` and motivating the 
+core-team to replace 'NA' with NA_character_.
+
+In 2007 Daniel Adler and I published `ff`: the first R package allowing 
+big out of memory data.frames was a nail in the coffin of SAS dominance 
+and helped R into the big data era.
+
+2009 and 2012 followed `bit`, `bit64` to enhance R's data types somewhat 
+with `bit` vectors and signed `integer64`. Package `bit` supported 
+efficient selection in `ff`. Package `bit64` was an emergency 
+development in order to establish rather `integer64' than another 
+`int64` package that had too expensive performance.
+
+Since 2011 I work for an employer that does not use R, and maintenance 
+of R packages is a little rewarded burden.
+
+Since 2010 my priorities shifted to fighting global heating by 
+developing more sustainable sorting algorithms that provide better 
+trade-offs between memory investments, compute costs and adaptivity to 
+easier input patterns. My R&D project was successfully completed 2024 
+with theory and design of new symmetric sorting algorithms that can 
+replace Quicksort, Mergesort and Timsort. Lots of info at greeNsort.org. 
+I have an R package `greeNsort` on github with a research testbed that 
+can measure RAM, CPU and RAPL energy for ?150 equally tuned sorting 
+algorithms on multiple test patterns.
+
+Since 24.2.2022 my priorities are on strengthening resilience of 
+European civil society.
+
+Hence I happily accept the generous offer of Michael Chirico to carry 
+forward the maintenance of packages `bit` and `bit64`. Please support 
+him in the difficult task of developing very close to the core as a 
+normal package author.
+
+I will continue bug-fixing `ff` as time permits, although a modern C++ 
+rewrite would be preferable, which
+
+1) supports long vectors
+
+2) avoids copying between Mapped Memory and R's memory
+
+3) simplifies the package, particularly removes the "virtual window" 
+complexity
+
+All the best
+
+
+Jens Oehlschl?gel
+
+_______________________________________________
+R-packages mailing list
+R-packages at r-project.org
+https://stat.ethz.ch/mailman/listinfo/r-packages
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Tue Sep 24 22:26:12 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Tue, 24 Sep 2024 13:26:12 -0700
+Subject: [R] Problem with converting grib file to excel
+In-Reply-To: <CANTxAmLoVGTLFum98dufmWtO6yHaBj35j6=AskUPuJALs0k6AA@mail.gmail.com>
+References: <CANTxAmLoVGTLFum98dufmWtO6yHaBj35j6=AskUPuJALs0k6AA@mail.gmail.com>
+Message-ID: <CAGxFJbQ=kRFYFpsOD0VY84fz24enHnqjDVMWqsWpSFTDKkCSfA@mail.gmail.com>
+
+You might try posting on r-sig-geo if you don't get a satisfactory
+response here. I assume there's a lot of expertise there on handling
+raster-type data.
+
+Cheers,
+Bert
+
+On Mon, Sep 23, 2024 at 11:31?PM javad bayat <j.bayat194 at gmail.com> wrote:
+>
+> Dear R users;
+> I have downloaded a grib file format (Met.grib) and I want to export its
+> data to excel file. Also I want to do some mathematic on some columns. But
+> I got error. I would be more than happy if anyone can help me to do this. I
+> have provided the codes and the Met.grib file in this email.
+> Sincerely yours
+>
+> # Load the necessary libraries
+> >  library(raster)      # For reading GRIB files
+> >  library(dplyr)       # For data manipulation
+> >  library(lubridate)   # For date manipulation
+> >  library(openxlsx)    # For writing Excel files
+>
+> # Specify the file paths
+> >  grib_file_path <- "C:/Users/Omrab_Lab/Downloads/Met.grib"
+> >  excel_file_path <- "C:/Users/Omrab_Lab/Downloads/Met_updated.xlsx"
+>
+> # Open the GRIB file
+> >  raster_data <- stack(grib_file_path)
+>
+> # Check the names of the layers to identify which ones to extract
+> >  layer_names <- names(raster_data)
+> > print(layer_names)  # Prints
+>
+>
+> > # Extract layers based on layer names - adjust as necessary
+> > t2m <- raster_data[[grep("t2m", layer_names)]]
+> > d2m <- raster_data[[grep("d2m", layer_names)]]
+> > tcc <- raster_data[[grep("tcc", layer_names)]]
+> > valid_time <- raster_data[[grep("valid_time", layer_names)]]
+> > t2m
+> class      : RasterStack
+> nlayers    : 0
+>
+> > # Check if the raster layers are loaded correctly
+> > if (is.null(t2m) || is.null(d2m) || is.null(tcc) || is.null(valid_time))
+> {
+> +     stop("One or more raster layers could not be loaded. Please check the
+> layer names.")
+> + }
+>
+> > # Convert raster values to vectors
+> > t2m_values <- values(t2m)
+> Error in dimnames(x) <- dn :
+>   length of 'dimnames' [2] not equal to array extent
+> > d2m_values <- values(d2m)
+> Error in dimnames(x) <- dn :
+>   length of 'dimnames' [2] not equal to array extent
+> > tcc_values <- values(tcc)
+> Error in dimnames(x) <- dn :
+>   length of 'dimnames' [2] not equal to array extent
+> > valid_time_values <- values(valid_time)
+> Error in dimnames(x) <- dn :
+>   length of 'dimnames' [2] not equal to array extent
+>
+> # Check for NA values and dimensions
+> if (any(is.na(t2m_values)) || any(is.na(d2m_values)) || any(is.na(tcc_values))
+> || any(is.na(valid_time_values))) {
+>   warning("One or more layers contain NA values. These will be removed.")
+> }
+>
+> # Create the data frame, ensuring no NA values are included
+> df <- data.frame(
+>   t2m = t2m_values,
+>   d2m = d2m_values,
+>   tcc = tcc_values,
+>   valid_time = valid_time_values,
+>   stringsAsFactors = FALSE
+> )
+>
+> # Remove rows with NA values
+> df <- na.omit(df)
+>
+> # Convert temperatures from Kelvin to Celsius
+> df$t2m <- df$t2m - 273.15
+> df$d2m <- df$d2m - 273.15
+>
+> # Calculate relative humidity
+> calculate_relative_humidity <- function(t2m, d2m) {
+>   es <- 6.112 * exp((17.67 * t2m) / (t2m + 243.5))
+>   e <- 6.112 * exp((17.67 * d2m) / (d2m + 243.5))
+>   rh <- (e / es) * 100
+>   return(rh)
+> }
+> df$RH <- calculate_relative_humidity(df$t2m, df$d2m)
+>
+> # Convert valid_time from numeric to POSIXct assuming it's in seconds since
+> the epoch
+> df$valid_time <- as.POSIXct(df$valid_time, origin = "1970-01-01")
+>
+> # Extract year, month, day, and hour from valid_time
+> df$Year <- year(df$valid_time)
+> df$Month <- month(df$valid_time)
+> df$Day <- day(df$valid_time)
+> df$Hour <- hour(df$valid_time)
+>
+> # Select only the desired columns
+> df_selected <- df %>% select(Year, Month, Day, Hour, tcc, t2m, RH)
+>
+> # Save the updated DataFrame to an Excel file
+> write.xlsx(df_selected, excel_file_path, row.names = FALSE)
+>
+>
+>
+>
+>
+>
+> --
+> Best Regards
+> Javad Bayat
+> M.Sc. Environment Engineering
+> Alternative Mail: bayat194 at yahoo.com
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bekzod@@khmur@tov @end|ng |rom gm@||@com  Tue Sep 24 07:04:46 2024
+From: bekzod@@khmur@tov @end|ng |rom gm@||@com (Bekzod Akhmuratov)
+Date: Tue, 24 Sep 2024 00:04:46 -0500
+Subject: [R] Help needed! Pre-processing the dataset before splitting -
+ model building - model tuning - performance evaluation
+Message-ID: <CA+vithjq8CegZSSFG=HOjEGrnU_4_3k_+_D6_ZbiyBtDR1-4QA@mail.gmail.com>
+
+Below is the link for a dataset on focus. I want to split the dataset into
+training and test set, use training set to build the model and model tune,
+use test set to evaluate performance. But before doing that I want to make
+sure that original dataset doesn't have noise, collinearity to address, no
+major outliers so that I have to transform the data using techniques like
+Box-Cox and looking at VIF to eliminate highly correlated predictors.
+
+https://www.kaggle.com/datasets/joaofilipemarques/google-advanced-data-analytics-waze-user-data
+
+When I fit the original dataset into regression model with Minitab, I get
+attached result for residuals. It doesn't look normal. Does it mean there
+is high correlation or the dataset in have nonlinear response and
+predictors? How should I approach this? What would be my strategy if I use
+in Python, Minitab, and R. Explaining it in all softwares are appraciated
+if possible.
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: Residual Plots for Response.png
+Type: image/png
+Size: 17679 bytes
+Desc: not available
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20240924/8046d3c5/attachment.png>
+
+From |uc@@br|nkm@nn @end|ng |rom gmx@de  Tue Sep 24 16:10:13 2024
+From: |uc@@br|nkm@nn @end|ng |rom gmx@de (Luca Brinkmann)
+Date: Tue, 24 Sep 2024 16:10:13 +0200
+Subject: [R] Question about Date Object and time zones
+Message-ID: <2d16ff91-266a-4b64-8b1c-20929fb28cb6@gmx.de>
+
+Hello,
+
+I have a question regarding the date objects and timezones. My current
+understanding is, that a Date object does only save the days from the
+origin and no more information about timezones or other information
+(please correct me if I am wrong).
+But if I use
+d = as.Date("2024-11-11")
+or
+d = as.Date("2024-11-11", tz="America/New_York")
+the date object is displayed in my RStudio environment as "2024-11-11
+UTC". If I try to read the timezone information from the date object in
+the ways possible for POSIX, I will get NULL as return:
+
+ > attr(d, "tzone")
+NULL
+
+Also unclassing the object does not reveal any information about the
+timezone, unlike for POSIX objects
+ > unclass(d)
+[1] 20038
+
+In contrast, getting the timezone information with base::format will
+yield the timezone information
+ > base::format(d, format="%Z")
+[1] "UTC"
+
+As for my current understanding, setting the tz Argument in as.Date will
+only have an effect if the input is a date-time such as POSIX and else
+it has no effect and it is not possible to set a timezone for an Date
+object. But is this the case if there is some timezone information
+present when using base::format or in the display in the RStudio
+environment? Is there any way to add timezone information to an Date
+object (other than UTC) and keeping it a Date object? And if not how is
+the Date object internally structured, so that it will return "UTC" when
+using base::format or in the RStudio environment? Is this due to some
+default behavior of R?
+
+Best regards,
+
+Luca
+
+
+My Session Info:
+R version 4.3.2 (2023-10-31 ucrt)
+Platform: x86_64-w64-mingw32/x64 (64-bit)
+Running under: Windows 11 x64 (build 22631)
+
+Matrix products: default
+
+
+locale:
+[1] LC_COLLATE=German_Germany.utf8 LC_CTYPE=German_Germany.utf8???
+LC_MONETARY=German_Germany.utf8
+[4] LC_NUMERIC=C??????????????????? LC_TIME=German_Germany.utf8
+
+time zone: Europe/Berlin
+tzcode source: internal
+
+
