@@ -16216,3 +16216,2033 @@ On Fri, Sep 27, 2024 at 1:39?AM Mark Leeds <markleeds2 at gmail.com> wrote:
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat Sep 28 04:48:22 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Fri, 27 Sep 2024 22:48:22 -0400
+Subject: [R] Is there a sexy way ...?
+In-Reply-To: <20240927155551.21b754c8@elderly-dell>
+References: <20240927155551.21b754c8@elderly-dell>
+Message-ID: <040101db1150$e2566410$a7032c30$@gmail.com>
+
+Rold,
+
+We need to be clear on what makes an answer sexy! LOL!
+
+I decided it was sexy to do it in a way that nobody (normal) would and had
+not suggested yet.
+
+Here is an original version I will explain in a minute. Or, maybe best a bit
+before. Hee is the unformatted result whicvh is a tad hard to read but will
+be made readable soon:
+
+x <- list(`1` = c(7, 13, 1, 4, 10),
+          `2` = c(2, 5,  14, 8, 11),
+          `3` = c(6, 9, 15, 12, 3))
+
+as.integer(unlist(strsplit(as.vector(paste(paste(x$`1`, x$`2`, x$`3`,
+sep=","), collapse=",")), split=",")))
+
+The result is: 7  2  6 13  5  9  1 14 15  4  8 12 10 11  3
+
+After reading what others wrote, the following is more general one where any
+number of vectors in a list can be handled:
+
+as.integer(unlist(strsplit(as.vector(paste(do.call(paste, c(x, sep=",")),
+collapse=",")), split=",")))
+
+Perhaps a tad more readable is a version using the new pipe but for obvious
+reasons, the dplyr/magrittr pipe works better for me than having to create
+silly anonymous functions instead of using a period. You now have a
+pipeline:
+
+library(dplyr)
+
+x %>%
+  c(sep=",") %>%
+  do.call(paste, .) %>%
+  paste(collapse=",") %>%
+  as.vector() %>%
+  strsplit(split=",") %>%
+  unlist() %>%
+  as.integer()
+
+And it returns the right answer!
+
+- You start with x and pipe it as 
+
+- the first argument to c() and the second argument already in place is an
+option to later use comma as a separator
+
+- that is piped to a do.call() which takes that c() tuple and replaces the
+second argument of period with it. You now have taken the original data and
+made three text strings like so:
+"7,2,6"   "13,5,9"  "1,14,15" "4,8,12"  "10,11,3"
+
+- But you want all those strings collapsed into a single long string with
+commas between the parts. Do another paste this time putting the substrings
+together and collapsing with a comma. The results is:
+"7,2,6,13,5,9,1,14,15,4,8,12,10,11,3"
+
+- But that is not a vector and don't ask why!
+
+- Now split that string at commas:
+"7"  "2"  "6"  "13" "5"  "9"  "1"  "14" "15" "4"  "8"  "12" "10" "11" "3"
+
+- and undo the odd list format it returns to flatten it back into a
+character vector:
+"7"  "2"  "6"  "13" "5"  "9"  "1"  "14" "15" "4"  "8"  "12" "10" "11" "3"
+
+- Yep it looks the same but is subtly different. Time to make it into
+integers or whatever:
+7  2  6 13  5  9  1 14 15  4  8 12 10 11  3
+
+Looked at after the fact, it seems so bloody obvious! And the chance of
+someone else trying this approach, justifiably, is low, LOL!
+
+One nice feature of the do.call is this can be extended like so:
+
+x <- list(`1` = c(7, 13, 1, 4, 10),
+          `2` = c(2, 5,  14, 8, 11),
+          `3` = c(6, 9, 15, 12, 3),
+          `4` = c( 101, 102, 103, 104, 105),
+          `5` = c(-105, -104, -103, -102, -101))
+
+Works fine and does this for the now five columns:
+
+[1]    7    2    6  101 -105   13    5    9  102 -104    1   14   15  103
+-103    4    8   12  104 -102
+[21]   10   11    3  105 -101
+
+My apologies to all who expected a more serious post. I have been focusing
+on Python lately and over there, some things are done differently albeit I
+probably would be using the numpy and pandas packages to do this or even a
+simple list comprehension using zip:
+
+# Python, not R.
+ [ (first, second, third) for first, second, third in zip(*x)]
+
+[(7, 2, 6), (13, 5, 9), (1, 14, 15), (4, 8, 12), (10, 11, 3)]
+
+And, of course, that needs to be made into a list of individual items 
+
+# Python, not R.
+[num 
+ for elem in [(first, second, third) for first, second, third in zip(*x)] 
+ for num in elem]
+
+[7, 2, 6, 13, 5, 9, 1, 14, 15, 4, 8, 12, 10, 11, 3]
+
+For any interested, you can combine python and R in the same program back
+and forth on the same data inside what is still called RSTUDIO and if there
+are times one allows a better or at least easier for you, way to do a
+transformation, you can often mix and match.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Rolf Turner
+Sent: Thursday, September 26, 2024 11:56 PM
+To: r-help at r-project.org
+Subject: [R] Is there a sexy way ...?
+
+
+I have (toy example):
+
+x <- list(`1` = c(7, 13, 1, 4, 10),
+          `2` = c(2, 5,  14, 8, 11),
+          `3` = c(6, 9, 15, 12, 3)) 
+and
+
+f <- factor(rep(1:3,5))
+
+I want to create a vector v of length 15 such that the entries of v,
+corresponding to level l of f are the entries of x[[l]].  I.e. I want
+v to equal
+
+    c(7, 2, 6, 13, 5, 9, 1, 14, 15, 4, 8, 12, 10, 11, 3)
+
+I can create v "easily enough", using say, a for-loop.  It seems to me,
+though, that there should be sexier (single command) way of achieving
+the desired result.  However I cannot devise one.
+
+Can anyone point me in the right direction?  Thanks.
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide
+https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Sat Sep 28 06:01:12 2024
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Sat, 28 Sep 2024 04:01:12 +0000
+Subject: [R] Is there a sexy way ...?
+In-Reply-To: <040101db1150$e2566410$a7032c30$@gmail.com>
+References: <20240927155551.21b754c8@elderly-dell>
+ <040101db1150$e2566410$a7032c30$@gmail.com>
+Message-ID: <DM6PR03MB5049DDD8E265D34C3CA6BEF5E2742@DM6PR03MB5049.namprd03.prod.outlook.com>
+
+"Sexy code" may get a job done and demonstrate the code's knowledge of a programming language, but it often does this at the expense of clear, easy to document (i.e. annotate what the code does), easy to read, and easy to understand code. I fear that this is what this thread has developed "sexy" but not easily understandable code. While I send kudos to all of you, remember that sometimes simpler, while not as sexy can be better in the long run. ;)
+
+John David Sorkin M.D., Ph.D.
+Professor of Medicine, University of Maryland School of Medicine;
+Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+PI Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+Senior Statistician University of Maryland Center for Vascular Research;
+
+Division of Gerontology and Paliative Care,
+10 North Greene Street
+GRECC (BT/18/GR)
+Baltimore, MD 21201-1524
+Cell phone 443-418-5382
+
+
+
+
+________________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of avi.e.gross at gmail.com <avi.e.gross at gmail.com>
+Sent: Friday, September 27, 2024 10:48 PM
+To: 'Rolf Turner'; r-help at r-project.org
+Subject: Re: [R] Is there a sexy way ...?
+
+Rold,
+
+We need to be clear on what makes an answer sexy! LOL!
+
+I decided it was sexy to do it in a way that nobody (normal) would and had
+not suggested yet.
+
+Here is an original version I will explain in a minute. Or, maybe best a bit
+before. Hee is the unformatted result whicvh is a tad hard to read but will
+be made readable soon:
+
+x <- list(`1` = c(7, 13, 1, 4, 10),
+          `2` = c(2, 5,  14, 8, 11),
+          `3` = c(6, 9, 15, 12, 3))
+
+as.integer(unlist(strsplit(as.vector(paste(paste(x$`1`, x$`2`, x$`3`,
+sep=","), collapse=",")), split=",")))
+
+The result is: 7  2  6 13  5  9  1 14 15  4  8 12 10 11  3
+
+After reading what others wrote, the following is more general one where any
+number of vectors in a list can be handled:
+
+as.integer(unlist(strsplit(as.vector(paste(do.call(paste, c(x, sep=",")),
+collapse=",")), split=",")))
+
+Perhaps a tad more readable is a version using the new pipe but for obvious
+reasons, the dplyr/magrittr pipe works better for me than having to create
+silly anonymous functions instead of using a period. You now have a
+pipeline:
+
+library(dplyr)
+
+x %>%
+  c(sep=",") %>%
+  do.call(paste, .) %>%
+  paste(collapse=",") %>%
+  as.vector() %>%
+  strsplit(split=",") %>%
+  unlist() %>%
+  as.integer()
+
+And it returns the right answer!
+
+- You start with x and pipe it as
+
+- the first argument to c() and the second argument already in place is an
+option to later use comma as a separator
+
+- that is piped to a do.call() which takes that c() tuple and replaces the
+second argument of period with it. You now have taken the original data and
+made three text strings like so:
+"7,2,6"   "13,5,9"  "1,14,15" "4,8,12"  "10,11,3"
+
+- But you want all those strings collapsed into a single long string with
+commas between the parts. Do another paste this time putting the substrings
+together and collapsing with a comma. The results is:
+"7,2,6,13,5,9,1,14,15,4,8,12,10,11,3"
+
+- But that is not a vector and don't ask why!
+
+- Now split that string at commas:
+"7"  "2"  "6"  "13" "5"  "9"  "1"  "14" "15" "4"  "8"  "12" "10" "11" "3"
+
+- and undo the odd list format it returns to flatten it back into a
+character vector:
+"7"  "2"  "6"  "13" "5"  "9"  "1"  "14" "15" "4"  "8"  "12" "10" "11" "3"
+
+- Yep it looks the same but is subtly different. Time to make it into
+integers or whatever:
+7  2  6 13  5  9  1 14 15  4  8 12 10 11  3
+
+Looked at after the fact, it seems so bloody obvious! And the chance of
+someone else trying this approach, justifiably, is low, LOL!
+
+One nice feature of the do.call is this can be extended like so:
+
+x <- list(`1` = c(7, 13, 1, 4, 10),
+          `2` = c(2, 5,  14, 8, 11),
+          `3` = c(6, 9, 15, 12, 3),
+          `4` = c( 101, 102, 103, 104, 105),
+          `5` = c(-105, -104, -103, -102, -101))
+
+Works fine and does this for the now five columns:
+
+[1]    7    2    6  101 -105   13    5    9  102 -104    1   14   15  103
+-103    4    8   12  104 -102
+[21]   10   11    3  105 -101
+
+My apologies to all who expected a more serious post. I have been focusing
+on Python lately and over there, some things are done differently albeit I
+probably would be using the numpy and pandas packages to do this or even a
+simple list comprehension using zip:
+
+# Python, not R.
+ [ (first, second, third) for first, second, third in zip(*x)]
+
+[(7, 2, 6), (13, 5, 9), (1, 14, 15), (4, 8, 12), (10, 11, 3)]
+
+And, of course, that needs to be made into a list of individual items
+
+# Python, not R.
+[num
+ for elem in [(first, second, third) for first, second, third in zip(*x)]
+ for num in elem]
+
+[7, 2, 6, 13, 5, 9, 1, 14, 15, 4, 8, 12, 10, 11, 3]
+
+For any interested, you can combine python and R in the same program back
+and forth on the same data inside what is still called RSTUDIO and if there
+are times one allows a better or at least easier for you, way to do a
+transformation, you can often mix and match.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Rolf Turner
+Sent: Thursday, September 26, 2024 11:56 PM
+To: r-help at r-project.org
+Subject: [R] Is there a sexy way ...?
+
+
+I have (toy example):
+
+x <- list(`1` = c(7, 13, 1, 4, 10),
+          `2` = c(2, 5,  14, 8, 11),
+          `3` = c(6, 9, 15, 12, 3))
+and
+
+f <- factor(rep(1:3,5))
+
+I want to create a vector v of length 15 such that the entries of v,
+corresponding to level l of f are the entries of x[[l]].  I.e. I want
+v to equal
+
+    c(7, 2, 6, 13, 5, 9, 1, 14, 15, 4, 8, 12, 10, 11, 3)
+
+I can create v "easily enough", using say, a for-loop.  It seems to me,
+though, that there should be sexier (single command) way of achieving
+the desired result.  However I cannot devise one.
+
+Can anyone point me in the right direction?  Thanks.
+
+cheers,
+
+Rolf Turner
+
+--
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide
+https://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat Sep 28 07:48:31 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 28 Sep 2024 01:48:31 -0400
+Subject: [R] Is there a sexy way ...?
+In-Reply-To: <DM6PR03MB5049DDD8E265D34C3CA6BEF5E2742@DM6PR03MB5049.namprd03.prod.outlook.com>
+References: <20240927155551.21b754c8@elderly-dell>
+ <040101db1150$e2566410$a7032c30$@gmail.com>
+ <DM6PR03MB5049DDD8E265D34C3CA6BEF5E2742@DM6PR03MB5049.namprd03.prod.outlook.com>
+Message-ID: <046301db116a$0d002340$270069c0$@gmail.com>
+
+You are, of course, correct, John. But in a strange way, many people end up
+finding their wife or husband not so sexy after many years and find others
+now seem to be.
+
+R is not about sex and it was not the ideal choice of words.
+
+I think what was wanted was something brief rather than taking many lines as
+my second somewhat joking solution was. Even that, was written off the top
+of my head and I now have thought a bit about ways to really simplify it.
+For example, forget my commas and use spaces. Break the one long sentence up
+without using regular expressions and showing a result already as a vector. 
+
+And, frankly, often the best code involves writing one or more fairly small
+functions with each being easy to understand. Add a few comments. And,
+although it may not be the most efficient, it may LOOK somewhat simple and
+direct.
+
+Rolf did explain a bit more and clearly many of us solved a different
+problem. But I note that using named lists may not have been the best choice
+for working on his problem and choosing another form of data that allows
+transposition of dimensions might have been a simpler task if that is what
+he wanted.
+
+Rolf suggested he did not already know some of the gimmicks used and he has
+a point. He may want to learn more because of code like this and somewhat
+similar but different for data.frames. This may not be useful for this app
+with a requirement about factors but may motivate using other data formats
+when useful.
+
+> numbers <- 1:24
+> print(numbers)
+ [1]  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
+> mat <- matrix(numbers, nrow=6, byrow=TRUE)
+> print(mat)
+     [,1] [,2] [,3] [,4]
+[1,]    1    2    3    4
+[2,]    5    6    7    8
+[3,]    9   10   11   12
+[4,]   13   14   15   16
+[5,]   17   18   19   20
+[6,]   21   22   23   24
+> print(as.vector(mat))
+ [1]  1  5  9 13 17 21  2  6 10 14 18 22  3  7 11 15 19 23  4  8 12 16 20 24
+> mat <- matrix(numbers, nrow=6, byrow=FALSE)
+> print(mat)
+     [,1] [,2] [,3] [,4]
+[1,]    1    7   13   19
+[2,]    2    8   14   20
+[3,]    3    9   15   21
+[4,]    4   10   16   22
+[5,]    5   11   17   23
+[6,]    6   12   18   24
+> print(as.vector(mat))
+ [1]  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
+> mat <- matrix(numbers, ncol=6, byrow=TRUE)
+> print(mat)
+     [,1] [,2] [,3] [,4] [,5] [,6]
+[1,]    1    2    3    4    5    6
+[2,]    7    8    9   10   11   12
+[3,]   13   14   15   16   17   18
+[4,]   19   20   21   22   23   24
+> print(as.vector(mat))
+ [1]  1  7 13 19  2  8 14 20  3  9 15 21  4 10 16 22  5 11 17 23  6 12 18 24
+> mat <- matrix(numbers, ncol=6, byrow=FALSE)
+> print(mat)
+     [,1] [,2] [,3] [,4] [,5] [,6]
+[1,]    1    5    9   13   17   21
+[2,]    2    6   10   14   18   22
+[3,]    3    7   11   15   19   23
+[4,]    4    8   12   16   20   24
+> print(as.vector(mat))
+ [1]  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24
+> t(mat)
+     [,1] [,2] [,3] [,4]
+[1,]    1    2    3    4
+[2,]    5    6    7    8
+[3,]    9   10   11   12
+[4,]   13   14   15   16
+[5,]   17   18   19   20
+[6,]   21   22   23   24
+> mat <- matrix(numbers, nrow=6, byrow=TRUE)
+> mat2 <- matrix(mat, nrow=4)
+> print(mat)
+     [,1] [,2] [,3] [,4]
+[1,]    1    2    3    4
+[2,]    5    6    7    8
+[3,]    9   10   11   12
+[4,]   13   14   15   16
+[5,]   17   18   19   20
+[6,]   21   22   23   24
+> print(mat2)
+     [,1] [,2] [,3] [,4] [,5] [,6]
+[1,]    1   17   10    3   19   12
+[2,]    5   21   14    7   23   16
+[3,]    9    2   18   11    4   20
+[4,]   13    6   22   15    8   24
+> df <- data.frame(a=1:6, b=7:12, c=13:18, d=19:24)
+> print(df)
+  a  b  c  d
+1 1  7 13 19
+2 2  8 14 20
+3 3  9 15 21
+4 4 10 16 22
+5 5 11 17 23
+6 6 12 18 24
+> print(t(df))
+  [,1] [,2] [,3] [,4] [,5] [,6]
+a    1    2    3    4    5    6
+b    7    8    9   10   11   12
+c   13   14   15   16   17   18
+d   19   20   21   22   23   24
+
+-----Original Message-----
+From: Sorkin, John <jsorkin at som.umaryland.edu> 
+Sent: Saturday, September 28, 2024 12:01 AM
+To: avi.e.gross at gmail.com; 'Rolf Turner' <rolfturner at posteo.net>;
+r-help at r-project.org
+Subject: Re: [R] Is there a sexy way ...?
+
+"Sexy code" may get a job done and demonstrate the code's knowledge of a
+programming language, but it often does this at the expense of clear, easy
+to document (i.e. annotate what the code does), easy to read, and easy to
+understand code. I fear that this is what this thread has developed "sexy"
+but not easily understandable code. While I send kudos to all of you,
+remember that sometimes simpler, while not as sexy can be better in the long
+run. ;)
+
+John David Sorkin M.D., Ph.D.
+Professor of Medicine, University of Maryland School of Medicine;
+Associate Director for Biostatistics and Informatics, Baltimore VA Medical
+Center Geriatrics Research, Education, and Clinical Center;
+PI Biostatistics and Informatics Core, University of Maryland School of
+Medicine Claude D. Pepper Older Americans Independence Center;
+Senior Statistician University of Maryland Center for Vascular Research;
+
+Division of Gerontology and Paliative Care,
+10 North Greene Street
+GRECC (BT/18/GR)
+Baltimore, MD 21201-1524
+Cell phone 443-418-5382
+
+
+
+
+________________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of
+avi.e.gross at gmail.com <avi.e.gross at gmail.com>
+Sent: Friday, September 27, 2024 10:48 PM
+To: 'Rolf Turner'; r-help at r-project.org
+Subject: Re: [R] Is there a sexy way ...?
+
+Rold,
+
+We need to be clear on what makes an answer sexy! LOL!
+
+I decided it was sexy to do it in a way that nobody (normal) would and had
+not suggested yet.
+
+Here is an original version I will explain in a minute. Or, maybe best a bit
+before. Hee is the unformatted result whicvh is a tad hard to read but will
+be made readable soon:
+
+x <- list(`1` = c(7, 13, 1, 4, 10),
+          `2` = c(2, 5,  14, 8, 11),
+          `3` = c(6, 9, 15, 12, 3))
+
+as.integer(unlist(strsplit(as.vector(paste(paste(x$`1`, x$`2`, x$`3`,
+sep=","), collapse=",")), split=",")))
+
+The result is: 7  2  6 13  5  9  1 14 15  4  8 12 10 11  3
+
+After reading what others wrote, the following is more general one where any
+number of vectors in a list can be handled:
+
+as.integer(unlist(strsplit(as.vector(paste(do.call(paste, c(x, sep=",")),
+collapse=",")), split=",")))
+
+Perhaps a tad more readable is a version using the new pipe but for obvious
+reasons, the dplyr/magrittr pipe works better for me than having to create
+silly anonymous functions instead of using a period. You now have a
+pipeline:
+
+library(dplyr)
+
+x %>%
+  c(sep=",") %>%
+  do.call(paste, .) %>%
+  paste(collapse=",") %>%
+  as.vector() %>%
+  strsplit(split=",") %>%
+  unlist() %>%
+  as.integer()
+
+And it returns the right answer!
+
+- You start with x and pipe it as
+
+- the first argument to c() and the second argument already in place is an
+option to later use comma as a separator
+
+- that is piped to a do.call() which takes that c() tuple and replaces the
+second argument of period with it. You now have taken the original data and
+made three text strings like so:
+"7,2,6"   "13,5,9"  "1,14,15" "4,8,12"  "10,11,3"
+
+- But you want all those strings collapsed into a single long string with
+commas between the parts. Do another paste this time putting the substrings
+together and collapsing with a comma. The results is:
+"7,2,6,13,5,9,1,14,15,4,8,12,10,11,3"
+
+- But that is not a vector and don't ask why!
+
+- Now split that string at commas:
+"7"  "2"  "6"  "13" "5"  "9"  "1"  "14" "15" "4"  "8"  "12" "10" "11" "3"
+
+- and undo the odd list format it returns to flatten it back into a
+character vector:
+"7"  "2"  "6"  "13" "5"  "9"  "1"  "14" "15" "4"  "8"  "12" "10" "11" "3"
+
+- Yep it looks the same but is subtly different. Time to make it into
+integers or whatever:
+7  2  6 13  5  9  1 14 15  4  8 12 10 11  3
+
+Looked at after the fact, it seems so bloody obvious! And the chance of
+someone else trying this approach, justifiably, is low, LOL!
+
+One nice feature of the do.call is this can be extended like so:
+
+x <- list(`1` = c(7, 13, 1, 4, 10),
+          `2` = c(2, 5,  14, 8, 11),
+          `3` = c(6, 9, 15, 12, 3),
+          `4` = c( 101, 102, 103, 104, 105),
+          `5` = c(-105, -104, -103, -102, -101))
+
+Works fine and does this for the now five columns:
+
+[1]    7    2    6  101 -105   13    5    9  102 -104    1   14   15  103
+-103    4    8   12  104 -102
+[21]   10   11    3  105 -101
+
+My apologies to all who expected a more serious post. I have been focusing
+on Python lately and over there, some things are done differently albeit I
+probably would be using the numpy and pandas packages to do this or even a
+simple list comprehension using zip:
+
+# Python, not R.
+ [ (first, second, third) for first, second, third in zip(*x)]
+
+[(7, 2, 6), (13, 5, 9), (1, 14, 15), (4, 8, 12), (10, 11, 3)]
+
+And, of course, that needs to be made into a list of individual items
+
+# Python, not R.
+[num
+ for elem in [(first, second, third) for first, second, third in zip(*x)]
+ for num in elem]
+
+[7, 2, 6, 13, 5, 9, 1, 14, 15, 4, 8, 12, 10, 11, 3]
+
+For any interested, you can combine python and R in the same program back
+and forth on the same data inside what is still called RSTUDIO and if there
+are times one allows a better or at least easier for you, way to do a
+transformation, you can often mix and match.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Rolf Turner
+Sent: Thursday, September 26, 2024 11:56 PM
+To: r-help at r-project.org
+Subject: [R] Is there a sexy way ...?
+
+
+I have (toy example):
+
+x <- list(`1` = c(7, 13, 1, 4, 10),
+          `2` = c(2, 5,  14, 8, 11),
+          `3` = c(6, 9, 15, 12, 3))
+and
+
+f <- factor(rep(1:3,5))
+
+I want to create a vector v of length 15 such that the entries of v,
+corresponding to level l of f are the entries of x[[l]].  I.e. I want
+v to equal
+
+    c(7, 2, 6, 13, 5, 9, 1, 14, 15, 4, 8, 12, 10, 11, 3)
+
+I can create v "easily enough", using say, a for-loop.  It seems to me,
+though, that there should be sexier (single command) way of achieving
+the desired result.  However I cannot devise one.
+
+Can anyone point me in the right direction?  Thanks.
+
+cheers,
+
+Rolf Turner
+
+--
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide
+https://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide
+https://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From |enn@rt@k@@@err@ @end|ng |rom gm@||@com  Sat Sep 28 07:52:07 2024
+From: |enn@rt@k@@@err@ @end|ng |rom gm@||@com (Lennart Kasserra)
+Date: Sat, 28 Sep 2024 07:52:07 +0200
+Subject: [R] Is there a sexy way ...?
+In-Reply-To: <20240927155551.21b754c8@elderly-dell>
+References: <20240927155551.21b754c8@elderly-dell>
+Message-ID: <25b991d3-fe29-4d9b-9aad-0e40c3eb8a56@gmail.com>
+
+Hi Rolf,
+
+this topic is probably already saturated, but here is a tidyverse solution:
+
+```
+
+library(purrr)
+
+x <- list(
+ ? `1` = c(7, 13, 1, 4, 10),
+ ? `2` = c(2, 5,? 14, 8, 11),
+ ? `3` = c(6, 9, 15, 12, 3)
+)
+
+x |>
+ ? pmap(~ c(..1, ..2, ..3)) |>
+ ? reduce(c)
+
+#> [1]? 7? 2? 6 13? 5? 9? 1 14 15? 4? 8 12 10 11? 3
+
+```
+
+Here, we map over the elements of the list in parallel (hence pmap), 
+always combining the elements at the current position into a vector, 
+which will result in a list like this:
+
+```
+
+[[1]]
+[1] 7 2 6
+
+[[2]]
+[1] 13? 5? 9
+
+...
+
+```
+
+And then we reduce this resulting list into a vector by successively 
+combining its elements with `c()`. I think the formula syntax is a bit 
+idiosyncratic, you could also do this with an anonymous function like 
+pmap(\(`1`, `2`, `3`) c(`1`, `2`, `3`)), or if the list was unnamed as 
+pmap(\(x, y, z) c(x, y, z)).
+
+I personally find the tidyverse-esque code to be very explicit & 
+readable, but given base R can do this very concisely one might argue 
+that it is superfluous to bring in an extra library for this. I think 
+Bert's solution (
+`c(do.call(rbind, x))`) is great if `f` has no substantive meaning, and 
+Deepayan's solution (`unsplit(x, f)`) is perfect in case it does - does 
+not get much sexier than that, I am afraid.
+
+Best,
+
+Lennart
+
+
+Am 27.09.24 um 05:55 schrieb Rolf Turner:
+> I have (toy example):
+>
+> x <- list(`1` = c(7, 13, 1, 4, 10),
+>            `2` = c(2, 5,  14, 8, 11),
+>            `3` = c(6, 9, 15, 12, 3))
+> and
+>
+> f <- factor(rep(1:3,5))
+>
+> I want to create a vector v of length 15 such that the entries of v,
+> corresponding to level l of f are the entries of x[[l]].  I.e. I want
+> v to equal
+>
+>      c(7, 2, 6, 13, 5, 9, 1, 14, 15, 4, 8, 12, 10, 11, 3)
+>
+> I can create v "easily enough", using say, a for-loop.  It seems to me,
+> though, that there should be sexier (single command) way of achieving
+> the desired result.  However I cannot devise one.
+>
+> Can anyone point me in the right direction?  Thanks.
+>
+> cheers,
+>
+> Rolf Turner
+>
+
+
+From |enn@rt@k@@@err@ @end|ng |rom gm@||@com  Sat Sep 28 07:58:37 2024
+From: |enn@rt@k@@@err@ @end|ng |rom gm@||@com (Lennart Kasserra)
+Date: Sat, 28 Sep 2024 07:58:37 +0200
+Subject: [R] Is there a sexy way ...?
+In-Reply-To: <25b991d3-fe29-4d9b-9aad-0e40c3eb8a56@gmail.com>
+References: <20240927155551.21b754c8@elderly-dell>
+ <25b991d3-fe29-4d9b-9aad-0e40c3eb8a56@gmail.com>
+Message-ID: <317337e8-45be-4c60-85ab-b771006129cf@gmail.com>
+
+Sorry to append, but I just realised that of course
+
+```
+
+x |>
+ ? pmap(c) |>
+ ? reduce(c) |>
+ ? unname()
+
+```
+
+also works and is a general solution in case your list has more than 
+three elements. Here, we map in parallel over all elements of the list, 
+always combining the current set of elements into a vector, and then 
+reduce the resulting list into a vector by combining the elements in 
+order. This yields a named vector which we can un-name given this was 
+not desired.n
+
+All the best,
+
+Lennart
+
+Am 28.09.24 um 07:52 schrieb Lennart Kasserra:
+> Hi Rolf,
+>
+> this topic is probably already saturated, but here is a tidyverse 
+> solution:
+>
+> ```
+>
+> library(purrr)
+>
+> x <- list(
+> ? `1` = c(7, 13, 1, 4, 10),
+> ? `2` = c(2, 5,? 14, 8, 11),
+> ? `3` = c(6, 9, 15, 12, 3)
+> )
+>
+> x |>
+> ? pmap(~ c(..1, ..2, ..3)) |>
+> ? reduce(c)
+>
+> #> [1]? 7? 2? 6 13? 5? 9? 1 14 15? 4? 8 12 10 11? 3
+>
+> ```
+>
+> Here, we map over the elements of the list in parallel (hence pmap), 
+> always combining the elements at the current position into a vector, 
+> which will result in a list like this:
+>
+> ```
+>
+> [[1]]
+> [1] 7 2 6
+>
+> [[2]]
+> [1] 13? 5? 9
+>
+> ...
+>
+> ```
+>
+> And then we reduce this resulting list into a vector by successively 
+> combining its elements with `c()`. I think the formula syntax is a bit 
+> idiosyncratic, you could also do this with an anonymous function like 
+> pmap(\(`1`, `2`, `3`) c(`1`, `2`, `3`)), or if the list was unnamed as 
+> pmap(\(x, y, z) c(x, y, z)).
+>
+> I personally find the tidyverse-esque code to be very explicit & 
+> readable, but given base R can do this very concisely one might argue 
+> that it is superfluous to bring in an extra library for this. I think 
+> Bert's solution (
+> `c(do.call(rbind, x))`) is great if `f` has no substantive meaning, 
+> and Deepayan's solution (`unsplit(x, f)`) is perfect in case it does - 
+> does not get much sexier than that, I am afraid.
+>
+> Best,
+>
+> Lennart
+>
+>
+> Am 27.09.24 um 05:55 schrieb Rolf Turner:
+>> I have (toy example):
+>>
+>> x <- list(`1` = c(7, 13, 1, 4, 10),
+>> ?????????? `2` = c(2, 5,? 14, 8, 11),
+>> ?????????? `3` = c(6, 9, 15, 12, 3))
+>> and
+>>
+>> f <- factor(rep(1:3,5))
+>>
+>> I want to create a vector v of length 15 such that the entries of v,
+>> corresponding to level l of f are the entries of x[[l]].? I.e. I want
+>> v to equal
+>>
+>> ???? c(7, 2, 6, 13, 5, 9, 1, 14, 15, 4, 8, 12, 10, 11, 3)
+>>
+>> I can create v "easily enough", using say, a for-loop.? It seems to me,
+>> though, that there should be sexier (single command) way of achieving
+>> the desired result.? However I cannot devise one.
+>>
+>> Can anyone point me in the right direction?? Thanks.
+>>
+>> cheers,
+>>
+>> Rolf Turner
+>>
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat Sep 28 08:15:13 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 28 Sep 2024 02:15:13 -0400
+Subject: [R] Is there a sexy way ...?
+In-Reply-To: <317337e8-45be-4c60-85ab-b771006129cf@gmail.com>
+References: <20240927155551.21b754c8@elderly-dell>
+ <25b991d3-fe29-4d9b-9aad-0e40c3eb8a56@gmail.com>
+ <317337e8-45be-4c60-85ab-b771006129cf@gmail.com>
+Message-ID: <047c01db116d$c7d3b710$577b2530$@gmail.com>
+
+I see a book coming:
+	"666 ways to do the same thing in R ranked by sexiness."
+
+Kidding aside, if you look under the covers of some of the functions we are using, we may find we are taking steps back as some of them use others and perhaps more functionality than we need.
+
+But for a new reader , looking at many approaches may open up other ways and ideas and see the problem space as quite vast.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Lennart Kasserra
+Sent: Saturday, September 28, 2024 1:59 AM
+To: Rolf Turner <rolfturner at posteo.net>; r-help at r-project.org; lennart.kasserra at gmail.com
+Subject: Re: [R] Is there a sexy way ...?
+
+Sorry to append, but I just realised that of course
+
+```
+
+x |>
+   pmap(c) |>
+   reduce(c) |>
+   unname()
+
+```
+
+also works and is a general solution in case your list has more than 
+three elements. Here, we map in parallel over all elements of the list, 
+always combining the current set of elements into a vector, and then 
+reduce the resulting list into a vector by combining the elements in 
+order. This yields a named vector which we can un-name given this was 
+not desired.n
+
+All the best,
+
+Lennart
+
+Am 28.09.24 um 07:52 schrieb Lennart Kasserra:
+> Hi Rolf,
+>
+> this topic is probably already saturated, but here is a tidyverse 
+> solution:
+>
+> ```
+>
+> library(purrr)
+>
+> x <- list(
+>   `1` = c(7, 13, 1, 4, 10),
+>   `2` = c(2, 5,  14, 8, 11),
+>   `3` = c(6, 9, 15, 12, 3)
+> )
+>
+> x |>
+>   pmap(~ c(..1, ..2, ..3)) |>
+>   reduce(c)
+>
+> #> [1]  7  2  6 13  5  9  1 14 15  4  8 12 10 11  3
+>
+> ```
+>
+> Here, we map over the elements of the list in parallel (hence pmap), 
+> always combining the elements at the current position into a vector, 
+> which will result in a list like this:
+>
+> ```
+>
+> [[1]]
+> [1] 7 2 6
+>
+> [[2]]
+> [1] 13  5  9
+>
+> ...
+>
+> ```
+>
+> And then we reduce this resulting list into a vector by successively 
+> combining its elements with `c()`. I think the formula syntax is a bit 
+> idiosyncratic, you could also do this with an anonymous function like 
+> pmap(\(`1`, `2`, `3`) c(`1`, `2`, `3`)), or if the list was unnamed as 
+> pmap(\(x, y, z) c(x, y, z)).
+>
+> I personally find the tidyverse-esque code to be very explicit & 
+> readable, but given base R can do this very concisely one might argue 
+> that it is superfluous to bring in an extra library for this. I think 
+> Bert's solution (
+> `c(do.call(rbind, x))`) is great if `f` has no substantive meaning, 
+> and Deepayan's solution (`unsplit(x, f)`) is perfect in case it does - 
+> does not get much sexier than that, I am afraid.
+>
+> Best,
+>
+> Lennart
+>
+>
+> Am 27.09.24 um 05:55 schrieb Rolf Turner:
+>> I have (toy example):
+>>
+>> x <- list(`1` = c(7, 13, 1, 4, 10),
+>>            `2` = c(2, 5,  14, 8, 11),
+>>            `3` = c(6, 9, 15, 12, 3))
+>> and
+>>
+>> f <- factor(rep(1:3,5))
+>>
+>> I want to create a vector v of length 15 such that the entries of v,
+>> corresponding to level l of f are the entries of x[[l]].  I.e. I want
+>> v to equal
+>>
+>>      c(7, 2, 6, 13, 5, 9, 1, 14, 15, 4, 8, 12, 10, 11, 3)
+>>
+>> I can create v "easily enough", using say, a for-loop.  It seems to me,
+>> though, that there should be sexier (single command) way of achieving
+>> the desired result.  However I cannot devise one.
+>>
+>> Can anyone point me in the right direction?  Thanks.
+>>
+>> cheers,
+>>
+>> Rolf Turner
+>>
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From po|c1410 @end|ng |rom gm@||@com  Sat Sep 28 11:26:31 2024
+From: po|c1410 @end|ng |rom gm@||@com (CALUM POLWART)
+Date: Sat, 28 Sep 2024 10:26:31 +0100
+Subject: [R] Is there a sexy way ...?
+In-Reply-To: <047c01db116d$c7d3b710$577b2530$@gmail.com>
+References: <20240927155551.21b754c8@elderly-dell>
+ <25b991d3-fe29-4d9b-9aad-0e40c3eb8a56@gmail.com>
+ <317337e8-45be-4c60-85ab-b771006129cf@gmail.com>
+ <047c01db116d$c7d3b710$577b2530$@gmail.com>
+Message-ID: <CA+etgPnOkThGyQiht5cMp1a3uXjQkCTHAUPyZkdo_ZueG5X1UQ@mail.gmail.com>
+
+Avi
+
+I fear this was all a huge social experiment.
+
+Testing if a post titled "sexy way" would increase engagement...
+
+On Sat, 28 Sep 2024, 07:21 , <avi.e.gross at gmail.com> wrote:
+
+> I see a book coming:
+>         "666 ways to do the same thing in R ranked by sexiness."
+>
+> Kidding aside, if you look under the covers of some of the functions we
+> are using, we may find we are taking steps back as some of them use others
+> and perhaps more functionality than we need.
+>
+> But for a new reader , looking at many approaches may open up other ways
+> and ideas and see the problem space as quite vast.
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Lennart Kasserra
+> Sent: Saturday, September 28, 2024 1:59 AM
+> To: Rolf Turner <rolfturner at posteo.net>; r-help at r-project.org;
+> lennart.kasserra at gmail.com
+> Subject: Re: [R] Is there a sexy way ...?
+>
+> Sorry to append, but I just realised that of course
+>
+> ```
+>
+> x |>
+>    pmap(c) |>
+>    reduce(c) |>
+>    unname()
+>
+> ```
+>
+> also works and is a general solution in case your list has more than
+> three elements. Here, we map in parallel over all elements of the list,
+> always combining the current set of elements into a vector, and then
+> reduce the resulting list into a vector by combining the elements in
+> order. This yields a named vector which we can un-name given this was
+> not desired.n
+>
+> All the best,
+>
+> Lennart
+>
+> Am 28.09.24 um 07:52 schrieb Lennart Kasserra:
+> > Hi Rolf,
+> >
+> > this topic is probably already saturated, but here is a tidyverse
+> > solution:
+> >
+> > ```
+> >
+> > library(purrr)
+> >
+> > x <- list(
+> >   `1` = c(7, 13, 1, 4, 10),
+> >   `2` = c(2, 5,  14, 8, 11),
+> >   `3` = c(6, 9, 15, 12, 3)
+> > )
+> >
+> > x |>
+> >   pmap(~ c(..1, ..2, ..3)) |>
+> >   reduce(c)
+> >
+> > #> [1]  7  2  6 13  5  9  1 14 15  4  8 12 10 11  3
+> >
+> > ```
+> >
+> > Here, we map over the elements of the list in parallel (hence pmap),
+> > always combining the elements at the current position into a vector,
+> > which will result in a list like this:
+> >
+> > ```
+> >
+> > [[1]]
+> > [1] 7 2 6
+> >
+> > [[2]]
+> > [1] 13  5  9
+> >
+> > ...
+> >
+> > ```
+> >
+> > And then we reduce this resulting list into a vector by successively
+> > combining its elements with `c()`. I think the formula syntax is a bit
+> > idiosyncratic, you could also do this with an anonymous function like
+> > pmap(\(`1`, `2`, `3`) c(`1`, `2`, `3`)), or if the list was unnamed as
+> > pmap(\(x, y, z) c(x, y, z)).
+> >
+> > I personally find the tidyverse-esque code to be very explicit &
+> > readable, but given base R can do this very concisely one might argue
+> > that it is superfluous to bring in an extra library for this. I think
+> > Bert's solution (
+> > `c(do.call(rbind, x))`) is great if `f` has no substantive meaning,
+> > and Deepayan's solution (`unsplit(x, f)`) is perfect in case it does -
+> > does not get much sexier than that, I am afraid.
+> >
+> > Best,
+> >
+> > Lennart
+> >
+> >
+> > Am 27.09.24 um 05:55 schrieb Rolf Turner:
+> >> I have (toy example):
+> >>
+> >> x <- list(`1` = c(7, 13, 1, 4, 10),
+> >>            `2` = c(2, 5,  14, 8, 11),
+> >>            `3` = c(6, 9, 15, 12, 3))
+> >> and
+> >>
+> >> f <- factor(rep(1:3,5))
+> >>
+> >> I want to create a vector v of length 15 such that the entries of v,
+> >> corresponding to level l of f are the entries of x[[l]].  I.e. I want
+> >> v to equal
+> >>
+> >>      c(7, 2, 6, 13, 5, 9, 1, 14, 15, 4, 8, 12, 10, 11, 3)
+> >>
+> >> I can create v "easily enough", using say, a for-loop.  It seems to me,
+> >> though, that there should be sexier (single command) way of achieving
+> >> the desired result.  However I cannot devise one.
+> >>
+> >> Can anyone point me in the right direction?  Thanks.
+> >>
+> >> cheers,
+> >>
+> >> Rolf Turner
+> >>
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Sat Sep 28 15:34:22 2024
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Sat, 28 Sep 2024 13:34:22 +0000
+Subject: [R] lattice xyplot with cumsum() function inside
+Message-ID: <83B16ACC-9099-447B-AFA4-392DC9E30CAF@hotmail.com>
+
+
+This code gives unexpected result.
+
+library(data.table)
+library(lattice)
+
+set.seed(123)
+mydt <- data.table(date = seq.Date(as.IDate("2024-01-01"), by = 1,
+length.out = 50), xgroup = "A", x = runif(50, 0, 1))
+mydt <- rbindlist(list(mydt, data.table(date = mydt$date, xgroup = "B", x = runif(50, 0, 3))))
+mydt[, `:=`(xcumsum = cumsum(x)), by = .(xgroup)]
+mydt[, lapply(.SD, sum), by = .(xgroup), .SDcols = c("x")]
+#   xgroup        x
+#   <char>    <num>
+#1:      A 26.00455
+#2:      B 71.55405
+
+#For xgroup = "B", line starts at the sum of all previous x values
+including xgroup = "A"
+#Intended result is to separate cumsum(x) for groups "A" and "B"
+mydt[, xyplot(cumsum(x) ~ date, groups = xgroup, type = c("l", "g"))]
+
+mydf <- as.data.frame(mydt)
+xyplot(cumsum(x) ~ date, groups = xgroup, type = c("l", "g"), data =
+mydf)
+#Same graph
+
+aggregate(x ~ xgroup, FUN = sum, data = mydf)
+#  xgroup        x
+#1      A 26.00455
+#2      B 71.55405
+
+#In graph, group "A" goes up to 26.  But group "B" goes up to 26 + 71.55
+
+#I can get intended graph in this way
+mydt[, xyplot(xcumsum ~ date, groups = xgroup, type = c("l", "g"),
+auto.key = list(columns = 2, space = "bottom"))]
+
+Is this a bug or incorrect use of function?
+
+Thanks,
+Naresh
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat Sep 28 19:57:51 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 28 Sep 2024 13:57:51 -0400
+Subject: [R] Is there a sexy way ...?
+In-Reply-To: <CA+etgPnOkThGyQiht5cMp1a3uXjQkCTHAUPyZkdo_ZueG5X1UQ@mail.gmail.com>
+References: <20240927155551.21b754c8@elderly-dell>
+ <25b991d3-fe29-4d9b-9aad-0e40c3eb8a56@gmail.com>
+ <317337e8-45be-4c60-85ab-b771006129cf@gmail.com>
+ <047c01db116d$c7d3b710$577b2530$@gmail.com>
+ <CA+etgPnOkThGyQiht5cMp1a3uXjQkCTHAUPyZkdo_ZueG5X1UQ@mail.gmail.com>
+Message-ID: <00c001db11cf$efbc9e60$cf35db20$@gmail.com>
+
+Calum,
+
+ 
+
+I know Rolf for a while so I will not accept any calumny about his intentions. He stated what he wanted, albeit imperfectly, and interacted with us as we came up with ideas.
+
+ 
+
+I have seen others who ask some open-ended question, often using a brand new idea, and do not interact. Some rumors have it that there may be motives ranging from wasting everyone?s time to gathering the best ideas into a book or something.
+
+ 
+
+It is amusing that Rolf chose ?sexy? so what would be acceptable?
+
+ 
+
+I think it is often fair to ask for a more efficient way, or to ask if there is a package that does it or makes it easier or to ask how to do it in the base language or how to make it handle errors and so on.
+
+ 
+
+In some languages, people talk about whether some code conforms to the goals and ideas of a language. Python users often ask if a solution is ?pythonic?. But I am not aware of R users having any special name like ?R-thritic? and that may be a good thing.
+
+ 
+
+ 
+
+From: CALUM POLWART <polc1410 at gmail.com> 
+Sent: Saturday, September 28, 2024 5:27 AM
+To: avi.e.gross at gmail.com
+Cc: Lennart Kasserra <lennart.kasserra at gmail.com>; Rolf Turner <rolfturner at posteo.net>; r-help at r-project.org
+Subject: Re: [R] Is there a sexy way ...?
+
+ 
+
+Avi
+
+I fear this was all a huge social experiment.
+
+Testing if a post titled "sexy way" would increase engagement...
+
+ 
+
+On Sat, 28 Sep 2024, 07:21 , <avi.e.gross at gmail.com <mailto:avi.e.gross at gmail.com> > wrote:
+
+I see a book coming:
+        "666 ways to do the same thing in R ranked by sexiness."
+
+Kidding aside, if you look under the covers of some of the functions we are using, we may find we are taking steps back as some of them use others and perhaps more functionality than we need.
+
+But for a new reader , looking at many approaches may open up other ways and ideas and see the problem space as quite vast.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org <mailto:r-help-bounces at r-project.org> > On Behalf Of Lennart Kasserra
+Sent: Saturday, September 28, 2024 1:59 AM
+To: Rolf Turner <rolfturner at posteo.net <mailto:rolfturner at posteo.net> >; r-help at r-project.org <mailto:r-help at r-project.org> ; lennart.kasserra at gmail.com <mailto:lennart.kasserra at gmail.com> 
+Subject: Re: [R] Is there a sexy way ...?
+
+Sorry to append, but I just realised that of course
+
+```
+
+x |>
+   pmap(c) |>
+   reduce(c) |>
+   unname()
+
+```
+
+also works and is a general solution in case your list has more than 
+three elements. Here, we map in parallel over all elements of the list, 
+always combining the current set of elements into a vector, and then 
+reduce the resulting list into a vector by combining the elements in 
+order. This yields a named vector which we can un-name given this was 
+not desired.n
+
+All the best,
+
+Lennart
+
+Am 28.09.24 um 07:52 schrieb Lennart Kasserra:
+> Hi Rolf,
+>
+> this topic is probably already saturated, but here is a tidyverse 
+> solution:
+>
+> ```
+>
+> library(purrr)
+>
+> x <- list(
+>   `1` = c(7, 13, 1, 4, 10),
+>   `2` = c(2, 5,  14, 8, 11),
+>   `3` = c(6, 9, 15, 12, 3)
+> )
+>
+> x |>
+>   pmap(~ c(..1, ..2, ..3)) |>
+>   reduce(c)
+>
+> #> [1]  7  2  6 13  5  9  1 14 15  4  8 12 10 11  3
+>
+> ```
+>
+> Here, we map over the elements of the list in parallel (hence pmap), 
+> always combining the elements at the current position into a vector, 
+> which will result in a list like this:
+>
+> ```
+>
+> [[1]]
+> [1] 7 2 6
+>
+> [[2]]
+> [1] 13  5  9
+>
+> ...
+>
+> ```
+>
+> And then we reduce this resulting list into a vector by successively 
+> combining its elements with `c()`. I think the formula syntax is a bit 
+> idiosyncratic, you could also do this with an anonymous function like 
+> pmap(\(`1`, `2`, `3`) c(`1`, `2`, `3`)), or if the list was unnamed as 
+> pmap(\(x, y, z) c(x, y, z)).
+>
+> I personally find the tidyverse-esque code to be very explicit & 
+> readable, but given base R can do this very concisely one might argue 
+> that it is superfluous to bring in an extra library for this. I think 
+> Bert's solution (
+> `c(do.call(rbind, x))`) is great if `f` has no substantive meaning, 
+> and Deepayan's solution (`unsplit(x, f)`) is perfect in case it does - 
+> does not get much sexier than that, I am afraid.
+>
+> Best,
+>
+> Lennart
+>
+>
+> Am 27.09.24 um 05:55 schrieb Rolf Turner:
+>> I have (toy example):
+>>
+>> x <- list(`1` = c(7, 13, 1, 4, 10),
+>>            `2` = c(2, 5,  14, 8, 11),
+>>            `3` = c(6, 9, 15, 12, 3))
+>> and
+>>
+>> f <- factor(rep(1:3,5))
+>>
+>> I want to create a vector v of length 15 such that the entries of v,
+>> corresponding to level l of f are the entries of x[[l]].  I.e. I want
+>> v to equal
+>>
+>>      c(7, 2, 6, 13, 5, 9, 1, 14, 15, 4, 8, 12, 10, 11, 3)
+>>
+>> I can create v "easily enough", using say, a for-loop.  It seems to me,
+>> though, that there should be sexier (single command) way of achieving
+>> the desired result.  However I cannot devise one.
+>>
+>> Can anyone point me in the right direction?  Thanks.
+>>
+>> cheers,
+>>
+>> Rolf Turner
+>>
+
+______________________________________________
+R-help at r-project.org <mailto:R-help at r-project.org>  mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org <mailto:R-help at r-project.org>  mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+	[[alternative HTML version deleted]]
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Sat Sep 28 20:03:02 2024
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Sat, 28 Sep 2024 14:03:02 -0400
+Subject: [R] Is there a sexy way ...? Fortune nomination
+In-Reply-To: <00c001db11cf$efbc9e60$cf35db20$@gmail.com>
+References: <20240927155551.21b754c8@elderly-dell>
+ <25b991d3-fe29-4d9b-9aad-0e40c3eb8a56@gmail.com>
+ <317337e8-45be-4c60-85ab-b771006129cf@gmail.com>
+ <047c01db116d$c7d3b710$577b2530$@gmail.com>
+ <CA+etgPnOkThGyQiht5cMp1a3uXjQkCTHAUPyZkdo_ZueG5X1UQ@mail.gmail.com>
+ <00c001db11cf$efbc9e60$cf35db20$@gmail.com>
+Message-ID: <d5db2171-598f-4774-a7ac-58148c61e32b@gmail.com>
+
+
+
+On 2024-09-28 13:57, avi.e.gross at gmail.com wrote:
+> Python users often ask if a solution is ?pythonic?. But I am not aware
+> of R users having any special name like ?R-thritic? and that may be a
+> good thing.
+
+
+From Ach|m@Ze||e|@ @end|ng |rom u|bk@@c@@t  Sat Sep 28 20:32:51 2024
+From: Ach|m@Ze||e|@ @end|ng |rom u|bk@@c@@t (Achim Zeileis)
+Date: Sat, 28 Sep 2024 20:32:51 +0200 (CEST)
+Subject: [R] Is there a sexy way ...? Fortune nomination
+In-Reply-To: <d5db2171-598f-4774-a7ac-58148c61e32b@gmail.com>
+References: <20240927155551.21b754c8@elderly-dell>
+ <25b991d3-fe29-4d9b-9aad-0e40c3eb8a56@gmail.com>
+ <317337e8-45be-4c60-85ab-b771006129cf@gmail.com>
+ <047c01db116d$c7d3b710$577b2530$@gmail.com>
+ <CA+etgPnOkThGyQiht5cMp1a3uXjQkCTHAUPyZkdo_ZueG5X1UQ@mail.gmail.com>
+ <00c001db11cf$efbc9e60$cf35db20$@gmail.com>
+ <d5db2171-598f-4774-a7ac-58148c61e32b@gmail.com>
+Message-ID: <7d91030b-ce80-fce2-782e-19765d2b5093@uibk.ac.at>
+
+On Sat, 28 Sep 2024, J C Nash wrote:
+
+> On 2024-09-28 13:57, avi.e.gross at gmail.com wrote:
+>> Python users often ask if a solution is ?pythonic?. But I am not aware
+>> of R users having any special name like ?R-thritic? and that may be a
+>> good thing.
+
+Nice, added on R-Forge :-)
+Achim
+
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat Sep 28 20:58:25 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 28 Sep 2024 14:58:25 -0400
+Subject: [R] Is there a sexy way ...?
+In-Reply-To: <DM6PR03MB5049DDD8E265D34C3CA6BEF5E2742@DM6PR03MB5049.namprd03.prod.outlook.com>
+References: <20240927155551.21b754c8@elderly-dell>
+ <040101db1150$e2566410$a7032c30$@gmail.com>
+ <DM6PR03MB5049DDD8E265D34C3CA6BEF5E2742@DM6PR03MB5049.namprd03.prod.outlook.com>
+Message-ID: <00ed01db11d8$662d8930$32889b90$@gmail.com>
+
+John,
+
+I thought some more about the topic overnight. Of course, "sexy" is not a
+great analogy.
+
+But consider a concept of how to do something cleverly or creatively or in
+ways others might not easily come up with as the standard way(s) are
+commonly used.
+
+I threw something together in middle of the night that violated some rules
+of sorts but maybe not. I mean the standard ways of dealing with what looked
+like integers or at least of type numeric, is to leave them as integers. My
+earlier attempt did that as it converted a list of vectors into something
+else like a data.frame or matrix.
+
+My later attempt jumped out of the box. This time I focused on the concept
+of the python zip function that takes multiple iterables and weaves them
+into an iterable of n-tuples. 
+
+My first though was that among many other things, paste/paste0 does that.
+There is also a family of functions in the map family and one called pmap
+that takes multiple vectors and applies a function to them. An example
+calculates the rowwise sum, of sorts, not that we need this way:
+
+> pmap(.l = list(1:4, 2:5, 3:6), .f=sum)
+[[1]]
+[1] 6
+
+[[2]]
+[1] 9
+
+[[3]]
+[1] 12
+
+[[4]]
+[1] 15
+
+If what you want is to refer to the arguments directly, as someone pointed
+out, you can use an anonymous function like so to produce a 3-tuple:
+
+> pmap(.l = list(1:4, 2:5, 3:6), .f=\(a, b, c) c(a, b, c))
+[[1]]
+[1] 1 2 3
+
+[[2]]
+[1] 2 3 4
+
+[[3]]
+[1] 3 4 5
+
+[[4]]
+[1] 4 5 6
+
+
+Or use a formula with positional notation that gets the same output:
+
+pmap(.l = list(1:4, 2:5, 3:6), ~ c(..1, ..2, ..3))
+
+I have mostly used pmap directly on dataframes but it works fine on any list
+of vectors. So, since the x we have been using is a list of vectors, this
+works:
+
+x <- list(`1` = c(7, 13, 1, 4, 10),
+          `2` = c(2, 5,  14, 8, 11),
+          `3` = c(6, 9, 15, 12, 3))
+
+pmap(.l = x, ~ c(..1, ..2, ..3))
+
+The result though is not flat, so unlist it:
+
+> pmap(.l = x, ~ c(..1, ..2, ..3)) |> unlist()
+ [1]  7  2  6 13  5  9  1 14 15  4  8 12 10 11  3
+
+I would consider this a relatively direct and simple answer, except it does
+not deal with the factor issue that was later explained. A problem is that
+the above has three items hard-coded and needs changes to work with an
+arbitrary number of columns of data. It can be done, just less elegantly. 
+
+But I was not thinking about pmap at night, I was thinking about paste and
+unfortunately, paste is really more about TEXT. Everything is converted to
+text so the operations I would need to do would be manipulating text.
+
+I later realized my earlier work was too elaborate. Paste allows you to both
+make comma separated parts and then combine them into one big string with a
+separator. In this case, comma.
+
+So here is the new and hopefully shorter and more efficient version instead
+of two paste statements in a row:
+
+> paste(x$`1`, x$`2`, x$`3`, sep=",", collapse=",")
+[1] "7,2,6,13,5,9,1,14,15,4,8,12,10,11,3"
+
+Of course, to accommodate any number of vectors to combine, and without
+needing to know their names or specify positions, the do.call concept that
+expands the contents into individual arguments, is great:
+
+do.call(paste, c(x, sep=",", collapse=","))
+
+All that is needed is to deal taking a string with lots of commas and
+resurrecting it:
+
+do.call(paste, c(x, sep=",", collapse=",")) |>
+  strsplit(",") |>
+  unlist() |>
+  as.integer()
+
+Or without the new R pipe:
+
+as.integer(unlist(strsplit(do.call(paste, 
+                                   c(x, 
+                                     sep=",", 
+                                     collapse=",")),
+                           ",")))
+
+The above looks better in a constant width font, LOL!
+
+I will say it is annoying why a version of strsplit is not easily available
+that does something more trivial. Given a single string and a fixed
+separator such as a space or comma, meaning no regular expression, break it
+up into a vector containing the parts. No need to unlist. Just take the
+result and make it integer or whatever you need. It looks like a fairly
+trivial function to make.
+
+I will add one last idea and perhaps let this thread wane. Some things are a
+bit like religion to people or a matter of taste. There are arguments
+ranging in another forum on why a language does not have some form of loop
+like DO ... UNTIL because some people HATE using break statements even when
+they make perfect sense. Others are happier with a while(True) construct
+that makes clear the contents will decide when to break out. To expect
+people to agree on what is "sexy" is not a reasonable expectation. LOL!
+
+
+-----Original Message-----
+From: Sorkin, John <jsorkin at som.umaryland.edu> 
+Sent: Saturday, September 28, 2024 12:01 AM
+To: avi.e.gross at gmail.com; 'Rolf Turner' <rolfturner at posteo.net>;
+r-help at r-project.org
+Subject: Re: [R] Is there a sexy way ...?
+
+"Sexy code" may get a job done and demonstrate the code's knowledge of a
+programming language, but it often does this at the expense of clear, easy
+to document (i.e. annotate what the code does), easy to read, and easy to
+understand code. I fear that this is what this thread has developed "sexy"
+but not easily understandable code. While I send kudos to all of you,
+remember that sometimes simpler, while not as sexy can be better in the long
+run. ;)
+
+John David Sorkin M.D., Ph.D.
+Professor of Medicine, University of Maryland School of Medicine;
+Associate Director for Biostatistics and Informatics, Baltimore VA Medical
+Center Geriatrics Research, Education, and Clinical Center;
+PI Biostatistics and Informatics Core, University of Maryland School of
+Medicine Claude D. Pepper Older Americans Independence Center;
+Senior Statistician University of Maryland Center for Vascular Research;
+
+Division of Gerontology and Paliative Care,
+10 North Greene Street
+GRECC (BT/18/GR)
+Baltimore, MD 21201-1524
+Cell phone 443-418-5382
+
+
+
+
+________________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of
+avi.e.gross at gmail.com <avi.e.gross at gmail.com>
+Sent: Friday, September 27, 2024 10:48 PM
+To: 'Rolf Turner'; r-help at r-project.org
+Subject: Re: [R] Is there a sexy way ...?
+
+Rold,
+
+We need to be clear on what makes an answer sexy! LOL!
+
+I decided it was sexy to do it in a way that nobody (normal) would and had
+not suggested yet.
+
+Here is an original version I will explain in a minute. Or, maybe best a bit
+before. Hee is the unformatted result whicvh is a tad hard to read but will
+be made readable soon:
+
+x <- list(`1` = c(7, 13, 1, 4, 10),
+          `2` = c(2, 5,  14, 8, 11),
+          `3` = c(6, 9, 15, 12, 3))
+
+as.integer(unlist(strsplit(as.vector(paste(paste(x$`1`, x$`2`, x$`3`,
+sep=","), collapse=",")), split=",")))
+
+The result is: 7  2  6 13  5  9  1 14 15  4  8 12 10 11  3
+
+After reading what others wrote, the following is more general one where any
+number of vectors in a list can be handled:
+
+as.integer(unlist(strsplit(as.vector(paste(do.call(paste, c(x, sep=",")),
+collapse=",")), split=",")))
+
+Perhaps a tad more readable is a version using the new pipe but for obvious
+reasons, the dplyr/magrittr pipe works better for me than having to create
+silly anonymous functions instead of using a period. You now have a
+pipeline:
+
+library(dplyr)
+
+x %>%
+  c(sep=",") %>%
+  do.call(paste, .) %>%
+  paste(collapse=",") %>%
+  as.vector() %>%
+  strsplit(split=",") %>%
+  unlist() %>%
+  as.integer()
+
+And it returns the right answer!
+
+- You start with x and pipe it as
+
+- the first argument to c() and the second argument already in place is an
+option to later use comma as a separator
+
+- that is piped to a do.call() which takes that c() tuple and replaces the
+second argument of period with it. You now have taken the original data and
+made three text strings like so:
+"7,2,6"   "13,5,9"  "1,14,15" "4,8,12"  "10,11,3"
+
+- But you want all those strings collapsed into a single long string with
+commas between the parts. Do another paste this time putting the substrings
+together and collapsing with a comma. The results is:
+"7,2,6,13,5,9,1,14,15,4,8,12,10,11,3"
+
+- But that is not a vector and don't ask why!
+
+- Now split that string at commas:
+"7"  "2"  "6"  "13" "5"  "9"  "1"  "14" "15" "4"  "8"  "12" "10" "11" "3"
+
+- and undo the odd list format it returns to flatten it back into a
+character vector:
+"7"  "2"  "6"  "13" "5"  "9"  "1"  "14" "15" "4"  "8"  "12" "10" "11" "3"
+
+- Yep it looks the same but is subtly different. Time to make it into
+integers or whatever:
+7  2  6 13  5  9  1 14 15  4  8 12 10 11  3
+
+Looked at after the fact, it seems so bloody obvious! And the chance of
+someone else trying this approach, justifiably, is low, LOL!
+
+One nice feature of the do.call is this can be extended like so:
+
+x <- list(`1` = c(7, 13, 1, 4, 10),
+          `2` = c(2, 5,  14, 8, 11),
+          `3` = c(6, 9, 15, 12, 3),
+          `4` = c( 101, 102, 103, 104, 105),
+          `5` = c(-105, -104, -103, -102, -101))
+
+Works fine and does this for the now five columns:
+
+[1]    7    2    6  101 -105   13    5    9  102 -104    1   14   15  103
+-103    4    8   12  104 -102
+[21]   10   11    3  105 -101
+
+My apologies to all who expected a more serious post. I have been focusing
+on Python lately and over there, some things are done differently albeit I
+probably would be using the numpy and pandas packages to do this or even a
+simple list comprehension using zip:
+
+# Python, not R.
+ [ (first, second, third) for first, second, third in zip(*x)]
+
+[(7, 2, 6), (13, 5, 9), (1, 14, 15), (4, 8, 12), (10, 11, 3)]
+
+And, of course, that needs to be made into a list of individual items
+
+# Python, not R.
+[num
+ for elem in [(first, second, third) for first, second, third in zip(*x)]
+ for num in elem]
+
+[7, 2, 6, 13, 5, 9, 1, 14, 15, 4, 8, 12, 10, 11, 3]
+
+For any interested, you can combine python and R in the same program back
+and forth on the same data inside what is still called RSTUDIO and if there
+are times one allows a better or at least easier for you, way to do a
+transformation, you can often mix and match.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Rolf Turner
+Sent: Thursday, September 26, 2024 11:56 PM
+To: r-help at r-project.org
+Subject: [R] Is there a sexy way ...?
+
+
+I have (toy example):
+
+x <- list(`1` = c(7, 13, 1, 4, 10),
+          `2` = c(2, 5,  14, 8, 11),
+          `3` = c(6, 9, 15, 12, 3))
+and
+
+f <- factor(rep(1:3,5))
+
+I want to create a vector v of length 15 such that the entries of v,
+corresponding to level l of f are the entries of x[[l]].  I.e. I want
+v to equal
+
+    c(7, 2, 6, 13, 5, 9, 1, 14, 15, 4, 8, 12, 10, 11, 3)
+
+I can create v "easily enough", using say, a for-loop.  It seems to me,
+though, that there should be sexier (single command) way of achieving
+the desired result.  However I cannot devise one.
+
+Can anyone point me in the right direction?  Thanks.
+
+cheers,
+
+Rolf Turner
+
+--
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide
+https://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide
+https://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From cwr @end|ng |rom @gency@t@t|@t|c@|@com  Sun Sep 29 00:05:08 2024
+From: cwr @end|ng |rom @gency@t@t|@t|c@|@com (Christopher W. Ryan)
+Date: Sat, 28 Sep 2024 18:05:08 -0400
+Subject: [R] when installing packages for R on Linux,
+ is it better to use my distro's package manager, or install.packages()?
+Message-ID: <20240928180508.71e4c774@rcw-lm203c>
+
+I'm running R (currently 4.4.1) on Linux Mint
+
+> sessionInfo()
+R version 4.4.1 (2024-06-14)
+Platform: x86_64-pc-linux-gnu
+Running under: Linux Mint 20.3
+...truncated...
+
+To install a new R package, is it better to use Linux Mint's pacakge
+manager (e.g. synaptic, apt-get, or similar), or to install it within R
+with install.packages("some_new_package")?
+
+I've done both over the years (perhaps a mistake that I will some day
+regret.)
+
+Pros and cons of these two methods?
+
+Thanks.
+
+--Chris Ryan
+
+-- 
+Agency Statistical Consulting, LLC
+Helping those in public service get the most from their data.
+www.agencystatistical.com
+
+Public GnuPG email encryption key at
+https://keys.openpgp.org
+9E53101D261BEC070CFF1A0DC8BC50E715A672A0
+
+
+From @erv|ce @end|ng |rom @hd@w@on@com  Sun Sep 29 00:10:20 2024
+From: @erv|ce @end|ng |rom @hd@w@on@com (Stephen H. Dawson, DSL)
+Date: Sat, 28 Sep 2024 18:10:20 -0400
+Subject: [R] when installing packages for R on Linux,
+ is it better to use my distro's package manager, or install.packages()?
+In-Reply-To: <20240928180508.71e4c774@rcw-lm203c>
+References: <20240928180508.71e4c774@rcw-lm203c>
+Message-ID: <8cf6fbb6-cb33-7721-f090-5589f8f03d10@shdawson.com>
+
+Distribution package manger, always.
+
+*Stephen Dawson, DSL*
+/Executive Strategy Consultant/
+Business & Technology
++1 (865) 804-3454
+http://www.shdawson.com
+
+
+On 9/28/24 18:05, Christopher W. Ryan wrote:
+> I'm running R (currently 4.4.1) on Linux Mint
+>
+>> sessionInfo()
+> R version 4.4.1 (2024-06-14)
+> Platform: x86_64-pc-linux-gnu
+> Running under: Linux Mint 20.3
+> ...truncated...
+>
+> To install a new R package, is it better to use Linux Mint's pacakge
+> manager (e.g. synaptic, apt-get, or similar), or to install it within R
+> with install.packages("some_new_package")?
+>
+> I've done both over the years (perhaps a mistake that I will some day
+> regret.)
+>
+> Pros and cons of these two methods?
+>
+> Thanks.
+>
+> --Chris Ryan
+>
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sun Sep 29 00:45:23 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Sat, 28 Sep 2024 18:45:23 -0400
+Subject: [R] when installing packages for R on Linux,
+ is it better to use my distro's package manager, or install.packages()?
+In-Reply-To: <8cf6fbb6-cb33-7721-f090-5589f8f03d10@shdawson.com>
+References: <20240928180508.71e4c774@rcw-lm203c>
+ <8cf6fbb6-cb33-7721-f090-5589f8f03d10@shdawson.com>
+Message-ID: <CABghstQS3SB5j8cHXkqxZ35oHb8kgzuf1eHJSxgbXzxRO-Kjqg@mail.gmail.com>
+
+Use Dirk Eddelbuettel's r2u repo with bspm package
+
+On Sat, Sep 28, 2024, 6:15 PM Stephen H. Dawson, DSL via R-help <
+r-help at r-project.org> wrote:
+
+> Distribution package manger, always.
+>
+> *Stephen Dawson, DSL*
+> /Executive Strategy Consultant/
+> Business & Technology
+> +1 (865) 804-3454
+> http://www.shdawson.com
+>
+>
+> On 9/28/24 18:05, Christopher W. Ryan wrote:
+> > I'm running R (currently 4.4.1) on Linux Mint
+> >
+> >> sessionInfo()
+> > R version 4.4.1 (2024-06-14)
+> > Platform: x86_64-pc-linux-gnu
+> > Running under: Linux Mint 20.3
+> > ...truncated...
+> >
+> > To install a new R package, is it better to use Linux Mint's pacakge
+> > manager (e.g. synaptic, apt-get, or similar), or to install it within R
+> > with install.packages("some_new_package")?
+> >
+> > I've done both over the years (perhaps a mistake that I will some day
+> > regret.)
+> >
+> > Pros and cons of these two methods?
+> >
+> > Thanks.
+> >
+> > --Chris Ryan
+> >
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sun Sep 29 01:27:34 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sat, 28 Sep 2024 16:27:34 -0700
+Subject: [R] when installing packages for R on Linux,
+ is it better to use my distro's package manager, or install.packages()?
+In-Reply-To: <20240928180508.71e4c774@rcw-lm203c>
+References: <20240928180508.71e4c774@rcw-lm203c>
+Message-ID: <2078AD10-005B-4A7D-B1E1-A724836696D3@dcn.davis.ca.us>
+
+I always use a user library on all platforms. The renv package takes this to the next level and lets you setup per-project libraries. 
+
+To be reproducible a data analysis needs to use the same user packages, and even different versions of R can give different results. It should be up to the analyst to decide when to use upgraded software, and system package managers are a poor choice for supporting that, even on a single-user machine.
+
+On September 28, 2024 3:05:08 PM PDT, "Christopher W. Ryan" <cwr at agencystatistical.com> wrote:
+>I'm running R (currently 4.4.1) on Linux Mint
+>
+>> sessionInfo()
+>R version 4.4.1 (2024-06-14)
+>Platform: x86_64-pc-linux-gnu
+>Running under: Linux Mint 20.3
+>...truncated...
+>
+>To install a new R package, is it better to use Linux Mint's pacakge
+>manager (e.g. synaptic, apt-get, or similar), or to install it within R
+>with install.packages("some_new_package")?
+>
+>I've done both over the years (perhaps a mistake that I will some day
+>regret.)
+>
+>Pros and cons of these two methods?
+>
+>Thanks.
+>
+>--Chris Ryan
+>
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
