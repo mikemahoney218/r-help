@@ -1,0 +1,680 @@
+From roy@mende|@@ohn @end|ng |rom no@@@gov  Tue Oct  1 01:52:18 2024
+From: roy@mende|@@ohn @end|ng |rom no@@@gov (Roy Mendelssohn - NOAA Federal)
+Date: Mon, 30 Sep 2024 16:52:18 -0700
+Subject: [R] Problem with converting grib file to excel
+In-Reply-To: <CANTxAmLoVGTLFum98dufmWtO6yHaBj35j6=AskUPuJALs0k6AA@mail.gmail.com>
+References: <CANTxAmLoVGTLFum98dufmWtO6yHaBj35j6=AskUPuJALs0k6AA@mail.gmail.com>
+Message-ID: <2DF4E95A-57B3-41FC-B082-7260C7E98F34@noaa.gov>
+
+I have corresponded with Javad off-line,  posting this as a follow-up, to close the issue.  There are two separate questions here.  The first is why did the posted code below fail.  The second is there an easy way to read in the values, given the oddities of his file  (more on that), and yes it turns out "terra" performs much better than "raster".
+
+First a little about GRIB files in general,  and this file in particular.  GRIB files were design to store grids in files with very small footprints,  usually from model output.  GRIB files have the characteristic that if I "cat" a bunch of  GRIB files,  I still have a valid GRIB file.  So a given GRIB file often contains multiple parameters,  and each of those through time.  To translate into terms used by R spatial packages,  each variable grid,  at each time period will be seen as a  "band" or a "layer" in the dataset.  Thus if I have 3 parameters,  say temperature,  dew point and cloud cover at  8670 time periods,  R spatial packages will see 3*8670 layers or bands.
+
+However this GRIB file is clearly not a raw GRIB file made by a data provider,  but rather an extract made with some tool.  In this file there are 3 underlying time series. temperature,  dew point and cloud cover,  each of dimension (1, 1, 8670),  that is because it is defined at one spatial point only.
+
+So why did the code below fail?  raster::stack()  read the file just fine,  and the layer_names are correct,  all 3*8670 of them.  The next steps:
+
+>> # Extract layers based on layer names - adjust as necessary
+>> t2m <- raster_data[[grep("t2m", layer_names)]]
+>> d2m <- raster_data[[grep("d2m", layer_names)]]
+>> tcc <- raster_data[[grep("tcc", layer_names)]]
+>> valid_time <- raster_data[[grep("valid_time", layer_names)]]
+>> t2m
+
+which are aimed at subsetting the raster stack based on the variable name all fail because ""t2m" , "d2m" and "tcc" are not in the layer_names. So then of course everything else fails.
+
+So the next question is how to read the file and get a data frame.  A first pass would be:
+
+raster_stack <- raster::stack("Met.grib")
+raster_data <- raster::getValues(raster_stack).
+
+but you do not want to do that.  For whatever reason,  the raster_stack created above is enormous,  and the raster::getValues() takes forever,  I aborted after about an hour.  However,  if you use 'terra" instead:
+
+raster_stack <-terra::rast("Met.grib")
+raster_data <-terra::values(raster_stack).
+
+it finishes in a flash.  raster_data is now one long array that needs to be reshaped:
+
+raster_data <- array(raster_data, dim = c(3, 8670)
+
+now raster_data[1, ] contains the temperature series,  raster_data[2, ] contains the dew point data,  and raster_data[3, ] contains the cloud cover data.
+
+HTH,
+
+-Roy
+
+PS - GRIB files can be a bear.  The best GRIB readers in R are just front ends for either eccodes or wgrib2,    and  while they work very well,  installation for eccodes and wgrib2 can be non-trivial,  so I didn't want to use them as a solution.  Also for quick viewing of GRIB files there is NASA's Panoply (https://www.giss.nasa.gov/tools/panoply/) but that requires a Java installation.
+
+> On Sep 23, 2024, at 11:31 PM, javad bayat <j.bayat194 at gmail.com> wrote:
+> 
+> Dear R users;
+> I have downloaded a grib file format (Met.grib) and I want to export its
+> data to excel file. Also I want to do some mathematic on some columns. But
+> I got error. I would be more than happy if anyone can help me to do this. I
+> have provided the codes and the Met.grib file in this email.
+> Sincerely yours
+> 
+> # Load the necessary libraries
+>> library(raster)      # For reading GRIB files
+>> library(dplyr)       # For data manipulation
+>> library(lubridate)   # For date manipulation
+>> library(openxlsx)    # For writing Excel files
+> 
+> # Specify the file paths
+>> grib_file_path <- "C:/Users/Omrab_Lab/Downloads/Met.grib"
+>> excel_file_path <- "C:/Users/Omrab_Lab/Downloads/Met_updated.xlsx"
+> 
+> # Open the GRIB file
+>> raster_data <- stack(grib_file_path)
+> 
+> # Check the names of the layers to identify which ones to extract
+>> layer_names <- names(raster_data)
+>> print(layer_names)  # Prints
+> 
+> 
+>> # Extract layers based on layer names - adjust as necessary
+>> t2m <- raster_data[[grep("t2m", layer_names)]]
+>> d2m <- raster_data[[grep("d2m", layer_names)]]
+>> tcc <- raster_data[[grep("tcc", layer_names)]]
+>> valid_time <- raster_data[[grep("valid_time", layer_names)]]
+>> t2m
+> class      : RasterStack
+> nlayers    : 0
+> 
+>> # Check if the raster layers are loaded correctly
+>> if (is.null(t2m) || is.null(d2m) || is.null(tcc) || is.null(valid_time))
+> {
+> +     stop("One or more raster layers could not be loaded. Please check the
+> layer names.")
+> + }
+> 
+>> # Convert raster values to vectors
+>> t2m_values <- values(t2m)
+> Error in dimnames(x) <- dn :
+>  length of 'dimnames' [2] not equal to array extent
+>> d2m_values <- values(d2m)
+> Error in dimnames(x) <- dn :
+>  length of 'dimnames' [2] not equal to array extent
+>> tcc_values <- values(tcc)
+> Error in dimnames(x) <- dn :
+>  length of 'dimnames' [2] not equal to array extent
+>> valid_time_values <- values(valid_time)
+> Error in dimnames(x) <- dn :
+>  length of 'dimnames' [2] not equal to array extent
+> 
+> # Check for NA values and dimensions
+> if (any(is.na(t2m_values)) || any(is.na(d2m_values)) || any(is.na(tcc_values))
+> || any(is.na(valid_time_values))) {
+>  warning("One or more layers contain NA values. These will be removed.")
+> }
+> 
+> # Create the data frame, ensuring no NA values are included
+> df <- data.frame(
+>  t2m = t2m_values,
+>  d2m = d2m_values,
+>  tcc = tcc_values,
+>  valid_time = valid_time_values,
+>  stringsAsFactors = FALSE
+> )
+> 
+> # Remove rows with NA values
+> df <- na.omit(df)
+> 
+> # Convert temperatures from Kelvin to Celsius
+> df$t2m <- df$t2m - 273.15
+> df$d2m <- df$d2m - 273.15
+> 
+> # Calculate relative humidity
+> calculate_relative_humidity <- function(t2m, d2m) {
+>  es <- 6.112 * exp((17.67 * t2m) / (t2m + 243.5))
+>  e <- 6.112 * exp((17.67 * d2m) / (d2m + 243.5))
+>  rh <- (e / es) * 100
+>  return(rh)
+> }
+> df$RH <- calculate_relative_humidity(df$t2m, df$d2m)
+> 
+> # Convert valid_time from numeric to POSIXct assuming it's in seconds since
+> the epoch
+> df$valid_time <- as.POSIXct(df$valid_time, origin = "1970-01-01")
+> 
+> # Extract year, month, day, and hour from valid_time
+> df$Year <- year(df$valid_time)
+> df$Month <- month(df$valid_time)
+> df$Day <- day(df$valid_time)
+> df$Hour <- hour(df$valid_time)
+> 
+> # Select only the desired columns
+> df_selected <- df %>% select(Year, Month, Day, Hour, tcc, t2m, RH)
+> 
+> # Save the updated DataFrame to an Excel file
+> write.xlsx(df_selected, excel_file_path, row.names = FALSE)
+> 
+> 
+> 
+> 
+> 
+> 
+> -- 
+> Best Regards
+> Javad Bayat
+> M.Sc. Environment Engineering
+> Alternative Mail: bayat194 at yahoo.com
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+**********************
+"The contents of this message do not reflect any position of the U.S. Government or NOAA."
+**********************
+Roy Mendelssohn
+Supervisory Operations Research Analyst
+NOAA/NMFS
+Environmental Research Division
+Southwest Fisheries Science Center
+***Note new street address***
+110 McAllister Way
+Santa Cruz, CA 95060
+Phone: (831)-420-3666
+Fax: (831) 420-3980
+e-mail: Roy.Mendelssohn at noaa.gov www: https://www.pfeg.noaa.gov/
+
+"Old age and treachery will overcome youth and skill."
+"From those who have been given much, much will be expected" 
+"the arc of the moral universe is long, but it bends toward justice" -MLK Jr.
+
+
+From e@ @end|ng |rom enr|co@chum@nn@net  Tue Oct  1 13:29:57 2024
+From: e@ @end|ng |rom enr|co@chum@nn@net (Enrico Schumann)
+Date: Tue, 01 Oct 2024 13:29:57 +0200
+Subject: [R] How to install this package
+In-Reply-To: <CA+dpOJmV07zMxbeMon6yOGpbNRLeYVr4hMJYhKoGsVcG0S9DAg@mail.gmail.com>
+ (Christofer Bogaso's message of "Wed, 25 Sep 2024 18:53:02 +0530")
+References: <CA+dpOJmV07zMxbeMon6yOGpbNRLeYVr4hMJYhKoGsVcG0S9DAg@mail.gmail.com>
+Message-ID: <87frpgysay.fsf@enricoschumann.net>
+
+On Wed, 25 Sep 2024, Christofer Bogaso writes:
+
+> Hi,
+>
+> I would like to install an R library from
+> https://cran.r-project.org/src/contrib/Archive/termstrc/
+>
+> I executed below code without success.
+>
+> Any help would be appreciated.
+>
+>> install.packages('/Users/termstrc_1.3.tar.gz', repos = NULL, type="source")
+>
+> * installing *source* package ?termstrc? ...
+>
+> ** using staged installation
+>
+> ** libs
+>
+> using C++ compiler: ?Apple clang version 16.0.0 (clang-1600.0.26.3)?
+>
+> using SDK: ?MacOSX15.0.sdk?
+>
+> clang++ -arch arm64 -std=gnu++17
+> -I"/Library/Frameworks/R.framework/Resources/include" -DNDEBUG
+> -I'/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/Rcpp/include'
+> -I/opt/R/arm64/include    -fPIC  -falign-functions=64 -Wall -g -O2
+> -c objfcts.cpp -o objfcts.o
+>
+> clang++ -arch arm64 -std=gnu++17 -dynamiclib
+> -Wl,-headerpad_max_install_names -undefined dynamic_lookup
+> -L/Library/Frameworks/R.framework/Resources/lib -L/opt/R/arm64/lib -o
+> termstrc.so objfcts.o -F/Library/Frameworks/R.framework/.. -framework
+> R -Wl,-framework -Wl,CoreFoundation
+>
+> installing to /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/00LOCK-termstrc/00new/termstrc/libs
+>
+> ** R
+>
+> ** data
+>
+> ** demo
+>
+> ** byte-compile and prepare package for lazy loading
+>
+> Error in dyn.load(dynlib <- getDynlib(dir)) :
+>
+>   unable to load shared object
+> '/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/rgl/libs/rgl.so':
+>
+>   dlopen(/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/rgl/libs/rgl.so,
+> 0x0006): Library not loaded: /opt/X11/lib/libGLU.1.dylib
+>
+>   Referenced from: <C90BFE0D-3008-3759-8DC8-B7FD5F3D934B>
+> /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/rgl/libs/rgl.so
+>
+>   Reason: tried: '/opt/X11/lib/libGLU.1.dylib' (no such file),
+> '/System/Volumes/Preboot/Cryptexes/OS/opt/X11/lib/libGLU.1.dylib' (no
+> such file), '/opt/X11/lib/libGLU.1.dylib' (no such file),
+> '/Library/Frameworks/R.framework/Resources/lib/libGLU.1.dylib' (no
+> such file), '/Library/Java/JavaVirtualMachines/jdk-11.0.18+10/Contents/Home/lib/server/libGLU.1.dylib'
+> (no such file)
+>
+> ERROR: lazy loading failed for package ?termstrc?
+>
+> * removing ?/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/termstrc?
+>
+> Warning message:
+>
+> In install.packages("/Users/termstrc_1.3.tar.gz",  :
+>
+>   installation of package ?/Users/termstrc_1.3.tar.gz? had non-zero exit status
+>
+
+Is there a reason why you want version 1.3, when a (newer)
+version 1.3.7 is available (in the sense of "archived on
+CRAN") as well?  This "newer" version is still more than 10
+years old.  But for what it is worth, I can install this
+version on Ubuntu 24.04, with R 4.4.1.
+
+In case you need only specific functionality from the
+package, you might be able to extract those bits either from
+the archived tarball, or from the source code at
+
+  https://r-forge.r-project.org/scm/viewvc.php/pkg/?root=termstrc
+
+
+good luck!
+
+-- 
+Enrico Schumann
+Lucerne, Switzerland
+https://enricoschumann.net
+
+
+From |zm|r||g @end|ng |rom m@||@n|h@gov  Tue Oct  1 13:53:59 2024
+From: |zm|r||g @end|ng |rom m@||@n|h@gov (Izmirlian, Grant (NIH/NCI) [E])
+Date: Tue, 1 Oct 2024 11:53:59 +0000
+Subject: [R] (no subject)
+Message-ID: <w804sdrqrb0d6p4d40sagyxs.1727783543973@email.android.com>
+
+I would go with unlist on x,single bracket subsetted on f
+
+
+x <- list(`1` = c(7, 13, 1, 4, 10),
+          `2` = c(2, 5,  14, 8, 11),
+          `3` = c(6, 9, 15, 12, 3))
+f <- factor(rep(1:3,5))
+
+unlist(x[f])
+
+
+Yes, unsplit() it is. I was messing around with ave() (which can be hammered into submission, sort of).
+
+My overlooking unsplit() is somewhat impressive in view of "svn diff -c 18591"....
+
+-pd
+
+> On 27 Sep 2024, at 17:08 , Martin Maechler <maechler at stat.math.ethz.ch> wrote:
+
+>
+>>>>>> Chris Evans via R-help
+>>>>>>    on Fri, 27 Sep 2024 12:20:47 +0200 writes:
+>
+>> Oh glorious!  Thanks Duncan.
+>> Fortune cookie nomination!
+>
+> I don't  disagree with the nomination -- thank you, Duncan!
+>
+> However, please note that I'm sure Rolf's was challenged /
+> question was ment to work correctly for all  factors `f`  with
+> levels "1", "2", "3".
+>
+> Almost all solution were simply assuming that the toy example
+> `f` was the real `f`, but that's not realistic.
+>
+> Consequently, in my view, the only valid proposition and a very
+> nice one, indeed, was  Deepayan's (well, he's "R core", ...)
+>
+>   unsplit(x, f)
+>
+> Martin
+>
+>> On 27/09/2024 11:13, Duncan Murdoch wrote:
+>>> On 2024-09-26 11:55 p.m., Rolf Turner wrote:
+>>>>
+>>>> I have (toy example):
+>>>>
+>>>> x <- list(`1` = c(7, 13, 1, 4, 10),
+>>>>            `2` = c(2, 5,  14, 8, 11),
+>>>>            `3` = c(6, 9, 15, 12, 3))
+>>>> and
+>>>>
+>>>> f <- factor(rep(1:3,5))
+>>>>
+>>>> I want to create a vector v of length 15 such that the entries of v,
+>>>> corresponding to level l of f are the entries of x[[l]].  I.e. I want
+>>>> v to equal
+>>>>
+>>>>      c(7, 2, 6, 13, 5, 9, 1, 14, 15, 4, 8, 12, 10, 11, 3)
+>>>>
+>>>> I can create v "easily enough", using say, a for-loop.  It seems to me,
+>>>> though, that there should be sexier (single command) way of achieving
+>>>> the desired result.  However I cannot devise one.
+>>>>
+>>>
+>>> Don't you find a for loop's naked display of intention to be sexy?
+>>>
+>>> Duncan Murdoch
+>>>
+>> --
+>> Chris Evans (he/him)
+>> Visiting Professor, UDLA, Quito, Ecuador & Honorary Professor,
+>> University of Roehampton, London, UK.
+>> CORE site: http://www.coresystemtrust.org.uk<http://www.coresystemtrust.org.uk/>
+>> Other work web site: https://www.psyctc.org/psyctc/
+>> Personal site: https://www.psyctc.org/pelerinage2016/
+>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html<https://www.r-project.org/posting-guide.html>
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html<https://www.r-project.org/posting-guide.html>
+> and provide commented, minimal, self-contained, reproducible code.
+
+--
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes<http://pd.mes/>@cbs.dk  Priv: PDalgd at gmail.com
+
+
+	[[alternative HTML version deleted]]
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Tue Oct  1 22:23:11 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Tue, 1 Oct 2024 16:23:11 -0400
+Subject: [R] (no subject)
+In-Reply-To: <w804sdrqrb0d6p4d40sagyxs.1727783543973@email.android.com>
+References: <w804sdrqrb0d6p4d40sagyxs.1727783543973@email.android.com>
+Message-ID: <00e501db143f$bc88aad0$359a0070$@gmail.com>
+
+Grant, I think,
+
+Your NO SUBJECT message confused me as it seems a continuation of an earlier
+discussion of a new and likely irrelevant metric of the worthiness of R
+programs.
+
+Did you make a mistake here? I tried your code as well and the results did
+not look like what the OP asked for.
+
+It took me a bit to figure out why we needed factors to do what was asked,
+and I have concluded we did not but that a particular approach made use of
+it as a way to get unsplit to gather the right values together as in:
+
+  x <- list(`1` = c(7, 13, 1, 4, 10),
+            `2` = c(2, 5,  14, 8, 11),
+            `3` = c(6, 9, 15, 12, 3))
+  f <- factor(rep(1:3,5))
+
+  result <- unsplit(x, f)
+
+By inspection, what the code is doing is treating the three list elements
+like rows  stacked and then reading down the columns from left to right:
+
+  > x
+  $`1`
+  [1]  7 13  1  4 10
+
+  $`2`
+  [1]  2  5 14  8 11
+
+  $`3`
+  [1]  6  9 15 12  3
+
+  > unsplit(x, f)
+   [1]  7  2  6 13  5  9  1 14 15  4  8 12 10 11  3
+
+Your code offers, instead:
+
+unlist(x[f])
+
+I have no idea why that would work as it acts by taking indices (not really
+factors even if in factor form as it end up being integers from 1 to 3
+repeated 5 times) and thus simply repeats all of x five times and then
+gathers all the results in a pile of numbers that does not resemble what is
+wanted:
+
+> f
+ [1] 1 2 3 1 2 3 1 2 3 1 2 3 1 2 3
+Levels: 1 2 3
+> x[f]
+$`1`
+[1]  7 13  1  4 10
+
+$`2`
+[1]  2  5 14  8 11
+
+$`3`
+[1]  6  9 15 12  3
+
+$`1`
+[1]  7 13  1  4 10
+
+<<<LOTS OMITTED
+
+$`3`
+[1]  6  9 15 12  3
+
+> unlist(x[f])
+11 12 13 14 15 21 22 23 24 25 31 32 33 34 35 11 12 13 14 15 21 22 23 24 25
+31 32 33 34 35 11 12 13 14 15 
+ 7 13  1  4 10  2  5 14  8 11  6  9 15 12  3  7 13  1  4 10  2  5 14  8 11
+6  9 15 12  3  7 13  1  4 10 
+21 22 23 24 25 31 32 33 34 35 11 12 13 14 15 21 22 23 24 25 31 32 33 34 35
+11 12 13 14 15 21 22 23 24 25 
+ 2  5 14  8 11  6  9 15 12  3  7 13  1  4 10  2  5 14  8 11  6  9 15 12  3
+7 13  1  4 10  2  5 14  8 11 
+31 32 33 34 35 
+ 6  9 15 12  3
+
+I would like to hear if you meant something else or am I doing anything
+wrong.
+
+I was thinking of how to expand the request using the technique we now
+consider the Rexiest.
+
+If you declare x to be a list of Nrows vectors, all the same length, Mcols,
+then a generalized version might be working on something like this, where,
+names do not seem needed or even relevant as the various methods use have
+tossed them.
+
+x <- list(c(7, 13, 1, 4, 10, 12),
+          c(2, 5,  14, 8, 11, 13),
+          c(6, 9, 15, 12, 3, 14),
+          c( 101, 102, 103, 104, 105, 15),
+          c(-105, -104, -103, -102, -101, 16))
+
+I added one number at the end of each from above and added two rows.
+
+The number of items in the list is:
+
+Nrows <- length(x)
+
+In the above example, that happens to be five and in the original, 3.
+
+Assuming all the parts are the same length, you can just check one of them
+for a length as a vector:
+
+Mcols <- length(x[[1]])
+
+And you get 6 for the new version and 5 for the original.
+
+So, using the same technique, generalized, should work as:
+
+f <- factor(rep(1:Nrows,Mcols))
+
+And the result is:
+
+result <- unsplit(x, f)
+
+Comparing the new test of x versus results shows
+
+> x
+[[1]]
+[1]  7 13  1  4 10 12
+
+[[2]]
+[1]  2  5 14  8 11 13
+
+[[3]]
+[1]  6  9 15 12  3 14
+
+[[4]]
+[1] 101 102 103 104 105  15
+
+[[5]]
+[1] -105 -104 -103 -102 -101   16
+
+> result
+ [1]    7    2    6  101 -105   13    5    9  102 -104    1   14   15  103
+-103    4    8   12  104 -102
+[21]   10   11    3  105 -101   12   13   14   15   16
+
+Of course, many of the other techniques we discussed here also scale up to
+any size easily, if not as compactly.
+
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Izmirlian, Grant
+(NIH/NCI) [E] via R-help
+Sent: Tuesday, October 1, 2024 7:54 AM
+To: R-help at r-project.org
+Subject: [R] (no subject)
+
+I would go with unlist on x,single bracket subsetted on f
+
+
+x <- list(`1` = c(7, 13, 1, 4, 10),
+          `2` = c(2, 5,  14, 8, 11),
+          `3` = c(6, 9, 15, 12, 3))
+f <- factor(rep(1:3,5))
+
+unlist(x[f])
+
+
+Yes, unsplit() it is. I was messing around with ave() (which can be hammered
+into submission, sort of).
+
+My overlooking unsplit() is somewhat impressive in view of "svn diff -c
+18591"....
+
+-pd
+
+> On 27 Sep 2024, at 17:08 , Martin Maechler <maechler at stat.math.ethz.ch>
+wrote:
+
+>
+>>>>>> Chris Evans via R-help
+>>>>>>    on Fri, 27 Sep 2024 12:20:47 +0200 writes:
+>
+>> Oh glorious!  Thanks Duncan.
+>> Fortune cookie nomination!
+>
+> I don't  disagree with the nomination -- thank you, Duncan!
+>
+> However, please note that I'm sure Rolf's was challenged /
+> question was ment to work correctly for all  factors `f`  with
+> levels "1", "2", "3".
+>
+> Almost all solution were simply assuming that the toy example
+> `f` was the real `f`, but that's not realistic.
+>
+> Consequently, in my view, the only valid proposition and a very
+> nice one, indeed, was  Deepayan's (well, he's "R core", ...)
+>
+>   unsplit(x, f)
+>
+> Martin
+>
+>> On 27/09/2024 11:13, Duncan Murdoch wrote:
+>>> On 2024-09-26 11:55 p.m., Rolf Turner wrote:
+>>>>
+>>>> I have (toy example):
+>>>>
+>>>> x <- list(`1` = c(7, 13, 1, 4, 10),
+>>>>            `2` = c(2, 5,  14, 8, 11),
+>>>>            `3` = c(6, 9, 15, 12, 3))
+>>>> and
+>>>>
+>>>> f <- factor(rep(1:3,5))
+>>>>
+>>>> I want to create a vector v of length 15 such that the entries of v,
+>>>> corresponding to level l of f are the entries of x[[l]].  I.e. I want
+>>>> v to equal
+>>>>
+>>>>      c(7, 2, 6, 13, 5, 9, 1, 14, 15, 4, 8, 12, 10, 11, 3)
+>>>>
+>>>> I can create v "easily enough", using say, a for-loop.  It seems to me,
+>>>> though, that there should be sexier (single command) way of achieving
+>>>> the desired result.  However I cannot devise one.
+>>>>
+>>>
+>>> Don't you find a for loop's naked display of intention to be sexy?
+>>>
+>>> Duncan Murdoch
+>>>
+>> --
+>> Chris Evans (he/him)
+>> Visiting Professor, UDLA, Quito, Ecuador & Honorary Professor,
+>> University of Roehampton, London, UK.
+>> CORE site:
+http://www.coresystemtrust.org.uk<http://www.coresystemtrust.org.uk/>
+>> Other work web site: https://www.psyctc.org/psyctc/
+>> Personal site: https://www.psyctc.org/pelerinage2016/
+>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+https://www.R-project.org/posting-guide.html<https://www.r-project.org/posti
+ng-guide.html>
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+https://www.R-project.org/posting-guide.html<https://www.r-project.org/posti
+ng-guide.html>
+> and provide commented, minimal, self-contained, reproducible code.
+
+--
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes<http://pd.mes/>@cbs.dk  Priv: PDalgd at gmail.com
+
+
+	[[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide
+https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
