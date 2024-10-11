@@ -4535,3 +4535,672 @@ Is there an R package which can do this?
 Thomas Subia
 
 
+From |eo@m@d@ @end|ng |rom @yon|c@eu  Thu Oct 10 14:38:34 2024
+From: |eo@m@d@ @end|ng |rom @yon|c@eu (Leo Mada)
+Date: Thu, 10 Oct 2024 12:38:34 +0000
+Subject: [R] Discriminant of a cubic polynomial
+Message-ID: <DBAP192MB09560B71DF1C16DCD5685AF684782@DBAP192MB0956.EURP192.PROD.OUTLOOK.COM>
+
+Dear Thomas,
+
+Unfortunately, I do not know if any packages implement this functionality. Though, it is a topic that interests me.
+
+Unlike the "classic discriminant", I prefer to work with the reduced polynomial. This "discriminant" is generalizable to a superset of Chebysev polynomials (which I called Cardano-polynomials).
+
+x^3 - 3*c*x - 2*d = 0
+x^5 - 5*c*x^3 + 5*c^2*x - 2*d = 0
+x^7 - 7*c*x^5 + 14*c^2*x^3 - 7*c^3*x - 2*d = 0
+discr = d^2 - c^n, where n = 3 for the degree 3 polynomial;
+
+The beauty of this approach is that you can solve for all roots of these types of polynomials and the formula is much simpler. But you need to compute first the reduced polynomial. The order 3 polynomials always reduce to this type (which is not valid for higher orders).
+
+
+By the way, the roots are as follows:
+# intermediary quantities
+p = (d + sqrt(discr))^(1/n);
+q = (d - sqrt(discr))^(1/n);
+# Roots:
+p + q # Base-Root
+m = cos(2*pi/n) + 1i * sin(2*pi/n); # root of unity
+p * m^c(0, seq(n-1)) + q * m^c(0, rev(seq(n-1))); # All Roots
+
+See on my GitHub page:
+https://github.com/discoleo/R/blob/master/Math/Polynomials.CardanGeneralisation.R
+
+Sincerely,
+
+Leonard
+
+
+	[[alternative HTML version deleted]]
+
+
+From rhe|p @end|ng |rom eoo@@dd@@n|  Thu Oct 10 15:46:19 2024
+From: rhe|p @end|ng |rom eoo@@dd@@n| (Jan van der Laan)
+Date: Thu, 10 Oct 2024 15:46:19 +0200
+Subject: [R] Time zones in POSIClt objects
+Message-ID: <7c51d77b-4809-46fa-ab72-ad611a0e9e99@eoos.dds.nl>
+
+
+It is not completely clear to me how time zones work with POSIXlt 
+objects. For POSIXct, I can understand what happens: time is always 
+stored in GMT, the `tzone` attribute only affects how the times are 
+displayed. All computations etc. are done in GMT.
+
+POSIXlt objects have both a `tzone` attribute and a `zone` field. It 
+seems that the `zone` field is largely ignored. It only seems to be used 
+for displaying the times, but does not seem to play a role when doing 
+arithmetic and conversions of the times.
+
+For example below, we have the same times in two different time zones. 
+The following seems to do what I expect: when we subtract the two times 
+we get the difference in time between the two time zones:
+
+t1 <- as.POSIXlt(c("2024-01-01 12:30", "2024-01-01 12:30"), tz = "GMT")
+t1$zone
+# [1] "GMT" "GMT"
+
+t2 <- as.POSIXlt(c("2024-01-01 12:30", "2024-01-01 12:30"))
+t2$zone
+# [1] "CET" "CET"
+
+t1 - t2
+# Time differences in hours
+# [1] 1 1
+
+
+When I change the `tzone` attribute of t1 to that of t2:
+
+attr(t1, "tzone") <- attr(t2, "tzone")
+t1
+#[1] "2024-01-01 12:30:00 GMT" "2024-01-01 12:30:00 GMT"
+
+The times are still displayed as being in GMT, however when I take the 
+difference:
+
+t1 - t2
+#Time differences in secs
+#[1] 0 0
+
+We get a difference of 0. So it seems that the difference is only based 
+on the `tzone` attribute. The value of `zone` is completely ignored.
+
+I am aware of the following remark in ?POSIXlt on arithmetic operations
+| Be aware that ?"POSIXlt"? objects will be interpreted as being in
+| the current time zone for these operations unless a time zone has
+| been specified.
+
+but this does not explain this, I think.
+
+One of the reasons, I ask, is that I have (potentially) times in 
+different time zones. Using POXIXlt objects seems like they could 
+store/support this. But working with this seems unpractical as the 
+`zone` field does not seem to do anything:
+
+t1$zone <- c("CET", "GMT")
+t1 - t2
+#Time differences in secs
+#[1] 0 0
+
+Also the `gmtoff` field does not seem to do anything. For what/where is 
+this field used?
+
+t1$gmtoff <- c(3600, 0)
+t1
+#[1] "2024-01-01 12:30:00 CET" "2024-01-01 12:30:00 GMT"
+
+t1 - t2
+#Time differences in secs
+#[1] 0 0
+
+as.POSIXct(t1)
+#[1] "2024-01-01 12:30:00 CET" "2024-01-01 12:30:00 CET"
+
+So, I am not sure what purpose the zone and gmtoff fields have. Do they 
+have a purpose? Am I using them wrong? The reason I am asking, is that I 
+have some times in potentially different time zones. The data I get is 
+something like:
+
+times <- list(
+   year = c(2024L, 2024L),
+   month = c(1L, 1L),
+   day = c(1L, 1L),
+   hour = c(12L, 12L),
+   minutes = c(30L, 30L),
+   seconds = c(0, 0),
+   timezone = c("", "GMT")
+)
+
+I am looking for ways to convert this into a practical date format for 
+working with in R. Possible time zones are only local time or UTC/GMT. I 
+would be fine with either converting local time to GMT. What would be a 
+good way to convert these to a format R can work with?
+
+Thanks for the help.
+
+Jan
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Thu Oct 10 16:13:56 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Thu, 10 Oct 2024 07:13:56 -0700
+Subject: [R] Time zones in POSIClt objects
+In-Reply-To: <7c51d77b-4809-46fa-ab72-ad611a0e9e99@eoos.dds.nl>
+References: <7c51d77b-4809-46fa-ab72-ad611a0e9e99@eoos.dds.nl>
+Message-ID: <FA1B0835-0DE8-43AA-9BAF-D431F19255E8@dcn.davis.ca.us>
+
+POSIXt vectors do not support different time zones element-to-element.
+
+If you want to keep track of timezones per element, you have to create a vector of timestamps (I would recommend POSIXct using UTC) and a parallel vector of timezone strings. How you manipulate these depends on your use cases, but from R's perspective you will have to manipulate them element-by-element.
+
+I complained about this on this list a couple of decades ago, and was chastised for it. Evidently handling timezones per element was considered to be too impractically slow to be a standard feature.
+
+On October 10, 2024 6:46:19 AM PDT, Jan van der Laan <rhelp at eoos.dds.nl> wrote:
+>
+>It is not completely clear to me how time zones work with POSIXlt objects. For POSIXct, I can understand what happens: time is always stored in GMT, the `tzone` attribute only affects how the times are displayed. All computations etc. are done in GMT.
+>
+>POSIXlt objects have both a `tzone` attribute and a `zone` field. It seems that the `zone` field is largely ignored. It only seems to be used for displaying the times, but does not seem to play a role when doing arithmetic and conversions of the times.
+>
+>For example below, we have the same times in two different time zones. The following seems to do what I expect: when we subtract the two times we get the difference in time between the two time zones:
+>
+>t1 <- as.POSIXlt(c("2024-01-01 12:30", "2024-01-01 12:30"), tz = "GMT")
+>t1$zone
+># [1] "GMT" "GMT"
+>
+>t2 <- as.POSIXlt(c("2024-01-01 12:30", "2024-01-01 12:30"))
+>t2$zone
+># [1] "CET" "CET"
+>
+>t1 - t2
+># Time differences in hours
+># [1] 1 1
+>
+>
+>When I change the `tzone` attribute of t1 to that of t2:
+>
+>attr(t1, "tzone") <- attr(t2, "tzone")
+>t1
+>#[1] "2024-01-01 12:30:00 GMT" "2024-01-01 12:30:00 GMT"
+>
+>The times are still displayed as being in GMT, however when I take the difference:
+>
+>t1 - t2
+>#Time differences in secs
+>#[1] 0 0
+>
+>We get a difference of 0. So it seems that the difference is only based on the `tzone` attribute. The value of `zone` is completely ignored.
+>
+>I am aware of the following remark in ?POSIXlt on arithmetic operations
+>| Be aware that ?"POSIXlt"? objects will be interpreted as being in
+>| the current time zone for these operations unless a time zone has
+>| been specified.
+>
+>but this does not explain this, I think.
+>
+>One of the reasons, I ask, is that I have (potentially) times in different time zones. Using POXIXlt objects seems like they could store/support this. But working with this seems unpractical as the `zone` field does not seem to do anything:
+>
+>t1$zone <- c("CET", "GMT")
+>t1 - t2
+>#Time differences in secs
+>#[1] 0 0
+>
+>Also the `gmtoff` field does not seem to do anything. For what/where is this field used?
+>
+>t1$gmtoff <- c(3600, 0)
+>t1
+>#[1] "2024-01-01 12:30:00 CET" "2024-01-01 12:30:00 GMT"
+>
+>t1 - t2
+>#Time differences in secs
+>#[1] 0 0
+>
+>as.POSIXct(t1)
+>#[1] "2024-01-01 12:30:00 CET" "2024-01-01 12:30:00 CET"
+>
+>So, I am not sure what purpose the zone and gmtoff fields have. Do they have a purpose? Am I using them wrong? The reason I am asking, is that I have some times in potentially different time zones. The data I get is something like:
+>
+>times <- list(
+>  year = c(2024L, 2024L),
+>  month = c(1L, 1L),
+>  day = c(1L, 1L),
+>  hour = c(12L, 12L),
+>  minutes = c(30L, 30L),
+>  seconds = c(0, 0),
+>  timezone = c("", "GMT")
+>)
+>
+>I am looking for ways to convert this into a practical date format for working with in R. Possible time zones are only local time or UTC/GMT. I would be fine with either converting local time to GMT. What would be a good way to convert these to a format R can work with?
+>
+>Thanks for the help.
+>
+>Jan
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From rhe|p @end|ng |rom eoo@@dd@@n|  Thu Oct 10 17:16:52 2024
+From: rhe|p @end|ng |rom eoo@@dd@@n| (Jan van der Laan)
+Date: Thu, 10 Oct 2024 17:16:52 +0200
+Subject: [R] Time zones in POSIClt objects
+In-Reply-To: <FA1B0835-0DE8-43AA-9BAF-D431F19255E8@dcn.davis.ca.us>
+References: <7c51d77b-4809-46fa-ab72-ad611a0e9e99@eoos.dds.nl>
+ <FA1B0835-0DE8-43AA-9BAF-D431F19255E8@dcn.davis.ca.us>
+Message-ID: <2ebef1bf-60b3-4d8a-add6-2f89d36155cb@eoos.dds.nl>
+
+Thanks.
+
+On 10/10/24 16:13, Jeff Newmiller wrote:
+> POSIXt vectors do not support different time zones element-to-element.
+
+ > I complained about this on this list a couple of decades ago, and was 
+  chastised for it. Evidently handling timezones per element was 
+considered to be too impractically slow to be a standard feature.
+
+
+This is where it is unclear to me what the purpose is of the `zone` 
+element of the POSIXlt object. It does allow for registering a time zone 
+per element. It just seems to be ignored.
+
+> 
+> If you want to keep track of timezones per element, you have to create a vector of timestamps (I would recommend POSIXct using UTC) and a parallel vector of timezone strings. How you manipulate these depends on your use cases, but from R's perspective you will have to manipulate them element-by-element.
+
+As I mentioned, fortunately, I only have local time and GMT and it would 
+be fine to convert them to a single time zone if that is what it takes 
+to work with them in R. So, I guess, I could split the vector in two, 
+convert local time to GMT and combine them again (respecting the 
+original order).
+
+Jan
+
+
+
+
+> On October 10, 2024 6:46:19 AM PDT, Jan van der Laan <rhelp at eoos.dds.nl> wrote:
+>>
+>> It is not completely clear to me how time zones work with POSIXlt objects. For POSIXct, I can understand what happens: time is always stored in GMT, the `tzone` attribute only affects how the times are displayed. All computations etc. are done in GMT.
+>>
+>> POSIXlt objects have both a `tzone` attribute and a `zone` field. It seems that the `zone` field is largely ignored. It only seems to be used for displaying the times, but does not seem to play a role when doing arithmetic and conversions of the times.
+>>
+>> For example below, we have the same times in two different time zones. The following seems to do what I expect: when we subtract the two times we get the difference in time between the two time zones:
+>>
+>> t1 <- as.POSIXlt(c("2024-01-01 12:30", "2024-01-01 12:30"), tz = "GMT")
+>> t1$zone
+>> # [1] "GMT" "GMT"
+>>
+>> t2 <- as.POSIXlt(c("2024-01-01 12:30", "2024-01-01 12:30"))
+>> t2$zone
+>> # [1] "CET" "CET"
+>>
+>> t1 - t2
+>> # Time differences in hours
+>> # [1] 1 1
+>>
+>>
+>> When I change the `tzone` attribute of t1 to that of t2:
+>>
+>> attr(t1, "tzone") <- attr(t2, "tzone")
+>> t1
+>> #[1] "2024-01-01 12:30:00 GMT" "2024-01-01 12:30:00 GMT"
+>>
+>> The times are still displayed as being in GMT, however when I take the difference:
+>>
+>> t1 - t2
+>> #Time differences in secs
+>> #[1] 0 0
+>>
+>> We get a difference of 0. So it seems that the difference is only based on the `tzone` attribute. The value of `zone` is completely ignored.
+>>
+>> I am aware of the following remark in ?POSIXlt on arithmetic operations
+>> | Be aware that ?"POSIXlt"? objects will be interpreted as being in
+>> | the current time zone for these operations unless a time zone has
+>> | been specified.
+>>
+>> but this does not explain this, I think.
+>>
+>> One of the reasons, I ask, is that I have (potentially) times in different time zones. Using POXIXlt objects seems like they could store/support this. But working with this seems unpractical as the `zone` field does not seem to do anything:
+>>
+>> t1$zone <- c("CET", "GMT")
+>> t1 - t2
+>> #Time differences in secs
+>> #[1] 0 0
+>>
+>> Also the `gmtoff` field does not seem to do anything. For what/where is this field used?
+>>
+>> t1$gmtoff <- c(3600, 0)
+>> t1
+>> #[1] "2024-01-01 12:30:00 CET" "2024-01-01 12:30:00 GMT"
+>>
+>> t1 - t2
+>> #Time differences in secs
+>> #[1] 0 0
+>>
+>> as.POSIXct(t1)
+>> #[1] "2024-01-01 12:30:00 CET" "2024-01-01 12:30:00 CET"
+>>
+>> So, I am not sure what purpose the zone and gmtoff fields have. Do they have a purpose? Am I using them wrong? The reason I am asking, is that I have some times in potentially different time zones. The data I get is something like:
+>>
+>> times <- list(
+>>   year = c(2024L, 2024L),
+>>   month = c(1L, 1L),
+>>   day = c(1L, 1L),
+>>   hour = c(12L, 12L),
+>>   minutes = c(30L, 30L),
+>>   seconds = c(0, 0),
+>>   timezone = c("", "GMT")
+>> )
+>>
+>> I am looking for ways to convert this into a practical date format for working with in R. Possible time zones are only local time or UTC/GMT. I would be fine with either converting local time to GMT. What would be a good way to convert these to a format R can work with?
+>>
+>> Thanks for the help.
+>>
+>> Jan
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+From ggrothend|eck @end|ng |rom gm@||@com  Thu Oct 10 20:32:31 2024
+From: ggrothend|eck @end|ng |rom gm@||@com (Gabor Grothendieck)
+Date: Thu, 10 Oct 2024 14:32:31 -0400
+Subject: [R] Time zones in POSIClt objects
+In-Reply-To: <2ebef1bf-60b3-4d8a-add6-2f89d36155cb@eoos.dds.nl>
+References: <7c51d77b-4809-46fa-ab72-ad611a0e9e99@eoos.dds.nl>
+ <FA1B0835-0DE8-43AA-9BAF-D431F19255E8@dcn.davis.ca.us>
+ <2ebef1bf-60b3-4d8a-add6-2f89d36155cb@eoos.dds.nl>
+Message-ID: <CAP01uR=EFCbEoKXUZv_FsFK8nF0AgjOkXsfen=32wLgh954kFQ@mail.gmail.com>
+
+Sys.setenv(TZ = "GMT") will set the local time zone to GMT so there
+would only be one time
+zone regardless of whether local or GMT were used.
+
+On Thu, Oct 10, 2024 at 11:17?AM Jan van der Laan <rhelp at eoos.dds.nl> wrote:
+>
+> Thanks.
+>
+> On 10/10/24 16:13, Jeff Newmiller wrote:
+> > POSIXt vectors do not support different time zones element-to-element.
+>
+>  > I complained about this on this list a couple of decades ago, and was
+>   chastised for it. Evidently handling timezones per element was
+> considered to be too impractically slow to be a standard feature.
+>
+>
+> This is where it is unclear to me what the purpose is of the `zone`
+> element of the POSIXlt object. It does allow for registering a time zone
+> per element. It just seems to be ignored.
+>
+> >
+> > If you want to keep track of timezones per element, you have to create a vector of timestamps (I would recommend POSIXct using UTC) and a parallel vector of timezone strings. How you manipulate these depends on your use cases, but from R's perspective you will have to manipulate them element-by-element.
+>
+> As I mentioned, fortunately, I only have local time and GMT and it would
+> be fine to convert them to a single time zone if that is what it takes
+> to work with them in R. So, I guess, I could split the vector in two,
+> convert local time to GMT and combine them again (respecting the
+> original order).
+>
+> Jan
+>
+>
+>
+>
+> > On October 10, 2024 6:46:19 AM PDT, Jan van der Laan <rhelp at eoos.dds.nl> wrote:
+> >>
+> >> It is not completely clear to me how time zones work with POSIXlt objects. For POSIXct, I can understand what happens: time is always stored in GMT, the `tzone` attribute only affects how the times are displayed. All computations etc. are done in GMT.
+> >>
+> >> POSIXlt objects have both a `tzone` attribute and a `zone` field. It seems that the `zone` field is largely ignored. It only seems to be used for displaying the times, but does not seem to play a role when doing arithmetic and conversions of the times.
+> >>
+> >> For example below, we have the same times in two different time zones. The following seems to do what I expect: when we subtract the two times we get the difference in time between the two time zones:
+> >>
+> >> t1 <- as.POSIXlt(c("2024-01-01 12:30", "2024-01-01 12:30"), tz = "GMT")
+> >> t1$zone
+> >> # [1] "GMT" "GMT"
+> >>
+> >> t2 <- as.POSIXlt(c("2024-01-01 12:30", "2024-01-01 12:30"))
+> >> t2$zone
+> >> # [1] "CET" "CET"
+> >>
+> >> t1 - t2
+> >> # Time differences in hours
+> >> # [1] 1 1
+> >>
+> >>
+> >> When I change the `tzone` attribute of t1 to that of t2:
+> >>
+> >> attr(t1, "tzone") <- attr(t2, "tzone")
+> >> t1
+> >> #[1] "2024-01-01 12:30:00 GMT" "2024-01-01 12:30:00 GMT"
+> >>
+> >> The times are still displayed as being in GMT, however when I take the difference:
+> >>
+> >> t1 - t2
+> >> #Time differences in secs
+> >> #[1] 0 0
+> >>
+> >> We get a difference of 0. So it seems that the difference is only based on the `tzone` attribute. The value of `zone` is completely ignored.
+> >>
+> >> I am aware of the following remark in ?POSIXlt on arithmetic operations
+> >> | Be aware that ?"POSIXlt"? objects will be interpreted as being in
+> >> | the current time zone for these operations unless a time zone has
+> >> | been specified.
+> >>
+> >> but this does not explain this, I think.
+> >>
+> >> One of the reasons, I ask, is that I have (potentially) times in different time zones. Using POXIXlt objects seems like they could store/support this. But working with this seems unpractical as the `zone` field does not seem to do anything:
+> >>
+> >> t1$zone <- c("CET", "GMT")
+> >> t1 - t2
+> >> #Time differences in secs
+> >> #[1] 0 0
+> >>
+> >> Also the `gmtoff` field does not seem to do anything. For what/where is this field used?
+> >>
+> >> t1$gmtoff <- c(3600, 0)
+> >> t1
+> >> #[1] "2024-01-01 12:30:00 CET" "2024-01-01 12:30:00 GMT"
+> >>
+> >> t1 - t2
+> >> #Time differences in secs
+> >> #[1] 0 0
+> >>
+> >> as.POSIXct(t1)
+> >> #[1] "2024-01-01 12:30:00 CET" "2024-01-01 12:30:00 CET"
+> >>
+> >> So, I am not sure what purpose the zone and gmtoff fields have. Do they have a purpose? Am I using them wrong? The reason I am asking, is that I have some times in potentially different time zones. The data I get is something like:
+> >>
+> >> times <- list(
+> >>   year = c(2024L, 2024L),
+> >>   month = c(1L, 1L),
+> >>   day = c(1L, 1L),
+> >>   hour = c(12L, 12L),
+> >>   minutes = c(30L, 30L),
+> >>   seconds = c(0, 0),
+> >>   timezone = c("", "GMT")
+> >> )
+> >>
+> >> I am looking for ways to convert this into a practical date format for working with in R. Possible time zones are only local time or UTC/GMT. I would be fine with either converting local time to GMT. What would be a good way to convert these to a format R can work with?
+> >>
+> >> Thanks for the help.
+> >>
+> >> Jan
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+
+-- 
+Statistics & Software Consulting
+GKX Group, GKX Associates Inc.
+tel: 1-877-GKX-GROUP
+email: ggrothendieck at gmail.com
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Fri Oct 11 02:30:51 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Thu, 10 Oct 2024 17:30:51 -0700
+Subject: [R] Time zones in POSIClt objects
+In-Reply-To: <CAP01uR=EFCbEoKXUZv_FsFK8nF0AgjOkXsfen=32wLgh954kFQ@mail.gmail.com>
+References: <7c51d77b-4809-46fa-ab72-ad611a0e9e99@eoos.dds.nl>
+ <FA1B0835-0DE8-43AA-9BAF-D431F19255E8@dcn.davis.ca.us>
+ <2ebef1bf-60b3-4d8a-add6-2f89d36155cb@eoos.dds.nl>
+ <CAP01uR=EFCbEoKXUZv_FsFK8nF0AgjOkXsfen=32wLgh954kFQ@mail.gmail.com>
+Message-ID: <88FF3DF7-E42C-4D99-B5D0-2FD806198402@dcn.davis.ca.us>
+
+I am not sure what this has to do with timezones embedded in specific POSIXt vectors? Can you elaborate why this is relevant?
+
+On October 10, 2024 11:32:31 AM PDT, Gabor Grothendieck <ggrothendieck at gmail.com> wrote:
+>Sys.setenv(TZ = "GMT") will set the local time zone to GMT so there
+>would only be one time
+>zone regardless of whether local or GMT were used.
+>
+>On Thu, Oct 10, 2024 at 11:17?AM Jan van der Laan <rhelp at eoos.dds.nl> wrote:
+>>
+>> Thanks.
+>>
+>> On 10/10/24 16:13, Jeff Newmiller wrote:
+>> > POSIXt vectors do not support different time zones element-to-element.
+>>
+>>  > I complained about this on this list a couple of decades ago, and was
+>>   chastised for it. Evidently handling timezones per element was
+>> considered to be too impractically slow to be a standard feature.
+>>
+>>
+>> This is where it is unclear to me what the purpose is of the `zone`
+>> element of the POSIXlt object. It does allow for registering a time zone
+>> per element. It just seems to be ignored.
+>>
+>> >
+>> > If you want to keep track of timezones per element, you have to create a vector of timestamps (I would recommend POSIXct using UTC) and a parallel vector of timezone strings. How you manipulate these depends on your use cases, but from R's perspective you will have to manipulate them element-by-element.
+>>
+>> As I mentioned, fortunately, I only have local time and GMT and it would
+>> be fine to convert them to a single time zone if that is what it takes
+>> to work with them in R. So, I guess, I could split the vector in two,
+>> convert local time to GMT and combine them again (respecting the
+>> original order).
+>>
+>> Jan
+>>
+>>
+>>
+>>
+>> > On October 10, 2024 6:46:19 AM PDT, Jan van der Laan <rhelp at eoos.dds.nl> wrote:
+>> >>
+>> >> It is not completely clear to me how time zones work with POSIXlt objects. For POSIXct, I can understand what happens: time is always stored in GMT, the `tzone` attribute only affects how the times are displayed. All computations etc. are done in GMT.
+>> >>
+>> >> POSIXlt objects have both a `tzone` attribute and a `zone` field. It seems that the `zone` field is largely ignored. It only seems to be used for displaying the times, but does not seem to play a role when doing arithmetic and conversions of the times.
+>> >>
+>> >> For example below, we have the same times in two different time zones. The following seems to do what I expect: when we subtract the two times we get the difference in time between the two time zones:
+>> >>
+>> >> t1 <- as.POSIXlt(c("2024-01-01 12:30", "2024-01-01 12:30"), tz = "GMT")
+>> >> t1$zone
+>> >> # [1] "GMT" "GMT"
+>> >>
+>> >> t2 <- as.POSIXlt(c("2024-01-01 12:30", "2024-01-01 12:30"))
+>> >> t2$zone
+>> >> # [1] "CET" "CET"
+>> >>
+>> >> t1 - t2
+>> >> # Time differences in hours
+>> >> # [1] 1 1
+>> >>
+>> >>
+>> >> When I change the `tzone` attribute of t1 to that of t2:
+>> >>
+>> >> attr(t1, "tzone") <- attr(t2, "tzone")
+>> >> t1
+>> >> #[1] "2024-01-01 12:30:00 GMT" "2024-01-01 12:30:00 GMT"
+>> >>
+>> >> The times are still displayed as being in GMT, however when I take the difference:
+>> >>
+>> >> t1 - t2
+>> >> #Time differences in secs
+>> >> #[1] 0 0
+>> >>
+>> >> We get a difference of 0. So it seems that the difference is only based on the `tzone` attribute. The value of `zone` is completely ignored.
+>> >>
+>> >> I am aware of the following remark in ?POSIXlt on arithmetic operations
+>> >> | Be aware that ?"POSIXlt"? objects will be interpreted as being in
+>> >> | the current time zone for these operations unless a time zone has
+>> >> | been specified.
+>> >>
+>> >> but this does not explain this, I think.
+>> >>
+>> >> One of the reasons, I ask, is that I have (potentially) times in different time zones. Using POXIXlt objects seems like they could store/support this. But working with this seems unpractical as the `zone` field does not seem to do anything:
+>> >>
+>> >> t1$zone <- c("CET", "GMT")
+>> >> t1 - t2
+>> >> #Time differences in secs
+>> >> #[1] 0 0
+>> >>
+>> >> Also the `gmtoff` field does not seem to do anything. For what/where is this field used?
+>> >>
+>> >> t1$gmtoff <- c(3600, 0)
+>> >> t1
+>> >> #[1] "2024-01-01 12:30:00 CET" "2024-01-01 12:30:00 GMT"
+>> >>
+>> >> t1 - t2
+>> >> #Time differences in secs
+>> >> #[1] 0 0
+>> >>
+>> >> as.POSIXct(t1)
+>> >> #[1] "2024-01-01 12:30:00 CET" "2024-01-01 12:30:00 CET"
+>> >>
+>> >> So, I am not sure what purpose the zone and gmtoff fields have. Do they have a purpose? Am I using them wrong? The reason I am asking, is that I have some times in potentially different time zones. The data I get is something like:
+>> >>
+>> >> times <- list(
+>> >>   year = c(2024L, 2024L),
+>> >>   month = c(1L, 1L),
+>> >>   day = c(1L, 1L),
+>> >>   hour = c(12L, 12L),
+>> >>   minutes = c(30L, 30L),
+>> >>   seconds = c(0, 0),
+>> >>   timezone = c("", "GMT")
+>> >> )
+>> >>
+>> >> I am looking for ways to convert this into a practical date format for working with in R. Possible time zones are only local time or UTC/GMT. I would be fine with either converting local time to GMT. What would be a good way to convert these to a format R can work with?
+>> >>
+>> >> Thanks for the help.
+>> >>
+>> >> Jan
+>> >>
+>> >> ______________________________________________
+>> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> >> https://stat.ethz.ch/mailman/listinfo/r-help
+>> >> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+>> >> and provide commented, minimal, self-contained, reproducible code.
+>> >
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+>
+>
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
