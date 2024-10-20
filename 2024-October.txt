@@ -7049,3 +7049,313 @@ On Thu, Sep 19, 2024 at 1:42?PM Rui Barradas <ruipbarradas at sapo.pt> wrote:
 	[[alternative HTML version deleted]]
 
 
+From h@w|ckh@m @end|ng |rom gm@||@com  Sat Oct 19 19:41:24 2024
+From: h@w|ckh@m @end|ng |rom gm@||@com (Hadley Wickham)
+Date: Sat, 19 Oct 2024 12:41:24 -0500
+Subject: [R] DPLYR Multiple Mutate Statements On Same DataFrame
+In-Reply-To: <3f4b5c33-c0d5-4976-92c5-a474637a5dbc@sapo.pt>
+References: <CH2PR13MB3640ECABF88D8CBF5F2939CBFA472@CH2PR13MB3640.namprd13.prod.outlook.com>
+ <c548ba50-f000-4226-b92c-0b989b977bce@sapo.pt>
+ <3f4b5c33-c0d5-4976-92c5-a474637a5dbc@sapo.pt>
+Message-ID: <CABdHhvFWE6Js7UDQum59HR9GPCpjOVddtPabDAEvmwdVOCpEtw@mail.gmail.com>
+
+Out of interest, I asked chatGPT to take the original code, convert it to
+tidyverse style, use the base pipe, and collapse to a single mutate
+(interestingly I didn't need to explicitly ask to use across() and
+case_when), and I got code pretty similar to yours:
+
+df3 <- df0 |>
+  mutate(
+    across(starts_with('P'), ~ case_when(
+      .x == 0 ~ 0,
+      .x == 1 ~ 25,
+      .x == 2 ~ 75,
+      .x == 3 ~ 150,
+      .x == 4 ~ 350,
+      .x == 5 ~ 750,
+      .x == 6 ~ 3000,
+      .x == 7 ~ 7500,
+      .x == 8 ~ 15000,
+      .x == 9 ~ 30000,
+      TRUE ~ -99
+    )),
+    across(MRELGE:MSKC, ~ case_when(
+      .x == 0 ~ 0,
+      .x == 1 ~ 5,
+      TRUE ~ -99
+    )),
+    MGODRK = case_when(
+      MGODRK == 0 ~ 0,
+      MGODRK == 1 ~ 5,
+      TRUE ~ -99
+    )
+  )
+
+Hadley
+
+
+
+On Fri, Oct 18, 2024 at 2:56?AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+
+> ?s 08:27 de 18/10/2024, Rui Barradas escreveu:
+> > ?s 22:50 de 17/10/2024, Sparks, John escreveu:
+> >> Hi R Helpers,
+> >>
+> >> I have been looking for an example of how to execute different dplyr
+> >> mutate statements on the same dataframe in a single step.  I show how
+> >> to do what I want to do by going from df0 to df1 to df2 to df3 by
+> >> applying a mutate statement to each dataframe in sequence, but I would
+> >> like to know if there is a way to execute this in a single step; so
+> >> simply go from df0 to df1 while executing all the transformations.
+> >> See example below.
+> >>
+> >> Guidance would be appreciated.
+> >> --John J. Sparks, Ph.D.
+> >>
+> >> library(dplyr)
+> >> df0<-structure(list(SeqNum = c(1L, 2L, 3L, 4L, 5L, 6L, 8L, 9L, 10L,
+> >> 11L, 12L, 13L, 14L, 15L, 16L, 18L, 19L, 21L, 22L, 23L), MOSTYP = c(37L,
+> >> 41L, 41L, 13L, 3L, 27L, 37L, 37L, 15L, 14L, 13L, 37L, 4L, 27L,
+> >> 37L, 26L, 17L, 37L, 37L, 17L), MGEMOM = c(1L, 1L, 1L, 1L, 1L,
+> >> 1L, 1L, 1L, 2L, 1L, 1L, 1L, 1L, 1L, 1L, 2L, 1L, 1L, 2L, 1L),
+> >>      MGODRK = c(3L, 2L, 2L, 3L, 4L, 2L, 2L, 2L, 3L, 4L, 3L, 2L,
+> >>      3L, 1L, 2L, 3L, 4L, 4L, 3L, 3L), MOSHOO = c(7L, 7L, 7L, 2L,
+> >>      9L, 4L, 7L, 7L, 2L, 2L, 2L, 7L, 9L, 4L, 7L, 4L, 2L, 7L, 7L,
+> >>      2L), MRELGE = c(0L, 1L, 0L, 2L, 1L, 0L, 0L, 0L, 3L, 1L, 1L,
+> >>      1L, 0L, 0L, 0L, 0L, 2L, 0L, 0L, 1L), MSKB2 = c(5L, 4L, 4L,
+> >>      3L, 4L, 5L, 7L, 1L, 5L, 4L, 3L, 4L, 5L, 6L, 7L, 5L, 4L, 6L,
+> >>      4L, 7L), MFWEKI = c(1L, 1L, 2L, 2L, 1L, 0L, 0L, 3L, 0L, 1L,
+> >>      2L, 1L, 0L, 1L, 0L, 0L, 0L, 0L, 2L, 0L), MAANTH = c(3L, 4L,
+> >>      4L, 4L, 4L, 5L, 2L, 6L, 2L, 4L, 4L, 4L, 4L, 2L, 2L, 4L, 3L,
+> >>      3L, 3L, 2L), MHHUUR = c(2L, 2L, 4L, 2L, 2L, 3L, 0L, 3L, 2L,
+> >>      2L, 2L, 3L, 1L, 6L, 0L, 2L, 2L, 0L, 2L, 2L), MSKA = c(1L,
+> >>      0L, 4L, 2L, 2L, 3L, 0L, 3L, 2L, 0L, 2L, 3L, 1L, 5L, 0L, 0L,
+> >>      1L, 0L, 0L, 1L), MAUT2 = c(2L, 4L, 4L, 3L, 4L, 5L, 5L, 3L,
+> >>      2L, 3L, 3L, 4L, 4L, 3L, 5L, 2L, 3L, 3L, 2L, 3L), MFALLE = c(1L,
+> >>      0L, 0L, 3L, 5L, 0L, 0L, 0L, 0L, 4L, 1L, 1L, 2L, 2L, 0L, 2L,
+> >>      5L, 0L, 0L, 3L), MGEMLE = c(1L, 0L, 0L, 0L, 4L, 0L, 0L, 0L,
+> >>      0L, 0L, 0L, 0L, 1L, 0L, 0L, 0L, 0L, 3L, 2L, 0L), MAUT1 = c(2L,
+> >>      5L, 7L, 3L, 0L, 4L, 2L, 1L, 3L, 9L, 5L, 3L, 2L, 4L, 2L, 1L,
+> >>      3L, 0L, 4L, 2L), MINKGE = c(2L, 4L, 2L, 2L, 0L, 2L, 2L, 1L,
+> >>      3L, 0L, 1L, 4L, 2L, 2L, 2L, 5L, 1L, 0L, 3L, 1L), MOPLHO = c(1L,
+> >>      0L, 0L, 0L, 0L, 2L, 2L, 1L, 2L, 0L, 0L, 1L, 0L, 0L, 2L, 0L,
+> >>      0L, 0L, 0L, 0L), MGODPR = c(1L, 2L, 2L, 0L, 1L, 3L, 2L, 3L,
+> >>      2L, 1L, 2L, 3L, 0L, 3L, 2L, 2L, 2L, 0L, 2L, 1L), MAUT0 = c(8L,
+> >>      6L, 9L, 7L, 5L, 9L, 6L, 7L, 6L, 5L, 4L, 7L, 8L, 5L, 6L, 7L,
+> >>      5L, 9L, 9L, 5L), MSKB1 = c(0L, 2L, 4L, 1L, 0L, 5L, 2L, 7L,
+> >>      2L, 0L, 3L, 3L, 3L, 4L, 2L, 0L, 2L, 3L, 3L, 1L), MSKC = c(4L,
+> >>      5L, 3L, 4L, 6L, 3L, 3L, 2L, 4L, 8L, 3L, 3L, 4L, 3L, 3L, 4L,
+> >>      4L, 3L, 3L, 5L), PAANHA = c(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L,
+> >>      0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L), PWAPAR = c(0L,
+> >>      0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L,
+> >>      0L, 0L, 0L, 0L), PPERSA = c(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L,
+> >>      0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L), AMOTSC = c(0L,
+> >>      0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L,
+> >>      0L, 0L, 0L, 0L), APERSA = c(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L,
+> >>      0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L), AWAPAR = c(1L,
+> >>      1L, 1L, 1L, 1L, 0L, 0L, 0L, 1L, 0L, 1L, 0L, 0L, 1L, 1L, 1L,
+> >>      1L, 0L, 1L, 1L), Resp = c(0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L,
+> >>      0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L, 0L)), row.names = c(NA,
+> >> 20L), class = "data.frame")
+> >>
+> >>
+> >> df1<-df0 %>%
+> >>    mutate(across(starts_with('P'),~ifelse(.x==0,   0,
+> >>                                    ifelse(.x==1,   25,
+> >>   ifelse(.x==2,   75,
+> >>   ifelse(.x==3,  150,
+> >>   ifelse(.x==4,  350,
+> >>   ifelse(.x==5,  750,
+> >>   ifelse(.x==6, 3000,
+> >>   ifelse(.x==7, 7500,
+> >>   ifelse(.x==8,15000,
+> >>   ifelse(.x==9,30000,
+> >>   -99))))))))))))
+> >>
+> >> df2<-df1 %>%
+> >> mutate_at(vars(MRELGE:MSKC),~ifelse(.x==0,  0,
+> >>                               ifelse(.x==1,  5,
+> >> -99)))
+> >> df3<-df2 %>%
+> >> mutate_at(vars(MGODRK),~ifelse(.x==0,  0,
+> >>                          ifelse(.x==1,  5,
+> >> -99)))
+> >>
+> >>
+> >>
+> >>
+> >>     [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide https://www.R-project.org/posting-
+> >> guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+> > Hello,
+> >
+> > Use chained mutate() %>% mutate(). In the 2nd mutate I don't even have
+> > to pipe a third time, the final variable is changed in the same
+> > instruction.
+> >
+> > Also use mutate(across(...)), mutate_at is deprecated.
+> >
+> > And use ?case_when instead of nested ifelse's. It's much cleaner.
+> >
+> > As you can see, the result is identical to your code's result.
+> >
+> >
+> >
+> > library(dplyr)
+> >
+> > df3b <- df0 %>%
+> >    mutate(
+> >      across(starts_with('P'), ~case_when(
+> >        .x == 0 ~ 0,
+> >        .x == 1 ~ 25,
+> >        .x == 2 ~ 75,
+> >        .x == 3 ~ 150,
+> >        .x == 4 ~ 350,
+> >        .x == 5 ~ 750,
+> >        .x == 6 ~ 3000,
+> >        .x == 7 ~ 7500,
+> >        .x == 8 ~ 15000,
+> >        .x == 9 ~ 30000,
+> >        TRUE ~ -99
+> >      ))
+> >    ) %>%
+> >    mutate(
+> >      across(MRELGE:MSKC, ~case_when(
+> >        .x == 0 ~ 0,
+> >        .x == 1 ~ 5,
+> >        TRUE ~ -99
+> >      )),
+> >      MGODRK = case_when(
+> >        MGODRK == 0 ~ 0,
+> >        MGODRK == 1 ~ 5,
+> >        TRUE ~ -99
+> >      ))
+> >
+> > identical(df3, df3b)
+> > # [1] TRUE
+> >
+> >
+> > And you can have just one mutate, as long as you respect the order the
+> > variables are changed.
+> >
+> >
+> >
+> > df3c <- df0 %>%
+> >    mutate(
+> >      across(starts_with('P'), ~case_when(
+> >        .x == 0 ~ 0,
+> >        .x == 1 ~ 25,
+> >        .x == 2 ~ 75,
+> >        .x == 3 ~ 150,
+> >        .x == 4 ~ 350,
+> >        .x == 5 ~ 750,
+> >        .x == 6 ~ 3000,
+> >        .x == 7 ~ 7500,
+> >        .x == 8 ~ 15000,
+> >        .x == 9 ~ 30000,
+> >        TRUE ~ -99
+> >      )),
+> >      across(MRELGE:MSKC, ~case_when(
+> >        .x == 0 ~ 0,
+> >        .x == 1 ~ 5,
+> >        TRUE ~ -99
+> >      )),
+> >      MGODRK = case_when(
+> >        MGODRK == 0 ~ 0,
+> >        MGODRK == 1 ~ 5,
+> >        TRUE ~ -99
+> >      )
+> >    )
+> >
+> > identical(df3, df3c)
+> > # [1] TRUE
+> >
+> >
+> > Hope this helps,
+> >
+> > Rui Barradas
+> >
+> >
+> Hello,
+>
+> Two other simpler solutions.
+> In the pipes above you can put the two last case_when statements together.
+>
+>
+>
+> df3d <- df0 %>%
+>    mutate(
+>      across(starts_with('P'), ~case_when(
+>        .x == 0 ~ 0,
+>        .x == 1 ~ 25,
+>        .x == 2 ~ 75,
+>        .x == 3 ~ 150,
+>        .x == 4 ~ 350,
+>        .x == 5 ~ 750,
+>        .x == 6 ~ 3000,
+>        .x == 7 ~ 7500,
+>        .x == 8 ~ 15000,
+>        .x == 9 ~ 30000,
+>        TRUE ~ -99
+>      )),
+>      across(c(MGODRK, MRELGE:MSKC), ~case_when(
+>        .x == 0 ~ 0,
+>        .x == 1 ~ 5,
+>        TRUE ~ -99
+>      ))
+>    )
+>
+> identical(df3, df3d)
+> # [1] TRUE
+>
+>
+>
+> And this one combines ifelse with case_when. But you need to create an
+> auxiliary variable of the new values for the 'P' case.
+>
+>
+>
+> P_new_vals <- c(0, 25, 75, 150, 350, 750, 3000, 7500, 15000, 30000)
+> df3e <- df0 %>% mutate(
+>    across(starts_with('P'), ~ifelse(.x %in% 0:9, P_new_vals[.x + 1L],
+> -99)),
+>    across(c(MGODRK, MRELGE:MSKC), ~case_when(
+>      .x == 0 ~ 0,
+>      .x == 1 ~ 5,
+>      TRUE ~ -99
+>    ))
+> )
+> identical(df3, df3e)
+> # [1] TRUE
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+> --
+> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a
+> presen?a de v?rus.
+> www.avg.com
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+-- 
+http://hadley.nz
+
+	[[alternative HTML version deleted]]
+
+
