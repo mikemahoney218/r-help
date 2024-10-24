@@ -7450,3 +7450,172 @@ R-packages at r-project.org
 https://stat.ethz.ch/mailman/listinfo/r-packages
 
 
+From @tephen@peder@on@@u @end|ng |rom gm@||@com  Wed Oct 23 07:26:00 2024
+From: @tephen@peder@on@@u @end|ng |rom gm@||@com (Stevie Pederson)
+Date: Wed, 23 Oct 2024 15:56:00 +1030
+Subject: [R] OSX-specific Bug in randomForest
+Message-ID: <CAGCDhaXOMhreAUx=60twjtGhpRJ1NV5Xf5cdUJ7REBqn6zQ1TA@mail.gmail.com>
+
+Hi,
+
+It appears there is an OSX-specific bug in the function
+`randomForest.default()` Going by the source code at
+https://github.com/cran/randomForest/blob/master/R/randomForest.default.R
+the bug is on line 103
+
+If the vector `cutoff` is formed using `cutoff <- rep(1/9, 9)` (line #101)
+the test on line 103 will fail on OSX as the sum is greater than 1 due to
+machine precision errors.
+
+sum(rep(1 / 9, 9)) - 1
+# [1] 2.220446e-16
+
+This will actually occur for a scenario when the number of factor levels
+(nclass) is 9, 11, 18, 20 etc.The problem does not occur on Linux, and I
+haven't tested on WIndows.
+
+A suggestion may be to change the opening test
+
+if (sum(cutoff) > 1 || ...)
+
+to
+
+if (sum(cutoff) - 1  > .Machine$double.eps || ...
+
+however, I'm sure there's a more elegant way to do this
+
+Thanks in advance
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Oct 23 11:33:57 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 23 Oct 2024 05:33:57 -0400
+Subject: [R] OSX-specific Bug in randomForest
+In-Reply-To: <CAGCDhaXOMhreAUx=60twjtGhpRJ1NV5Xf5cdUJ7REBqn6zQ1TA@mail.gmail.com>
+References: <CAGCDhaXOMhreAUx=60twjtGhpRJ1NV5Xf5cdUJ7REBqn6zQ1TA@mail.gmail.com>
+Message-ID: <f466aab3-eacf-4447-924e-600b2b3dafbc@gmail.com>
+
+I've cc'd this to the package maintainer, Andy Liaw 
+<andy_liaw at merck.com>. I'm not sure he reads this list.
+
+Duncan Murdoch
+
+On 2024-10-23 1:26 a.m., Stevie Pederson wrote:
+> Hi,
+> 
+> It appears there is an OSX-specific bug in the function
+> `randomForest.default()` Going by the source code at
+> https://github.com/cran/randomForest/blob/master/R/randomForest.default.R
+> the bug is on line 103
+> 
+> If the vector `cutoff` is formed using `cutoff <- rep(1/9, 9)` (line #101)
+> the test on line 103 will fail on OSX as the sum is greater than 1 due to
+> machine precision errors.
+> 
+> sum(rep(1 / 9, 9)) - 1
+> # [1] 2.220446e-16
+> 
+> This will actually occur for a scenario when the number of factor levels
+> (nclass) is 9, 11, 18, 20 etc.The problem does not occur on Linux, and I
+> haven't tested on WIndows.
+> 
+> A suggestion may be to change the opening test
+> 
+> if (sum(cutoff) > 1 || ...)
+> 
+> to
+> 
+> if (sum(cutoff) - 1  > .Machine$double.eps || ...
+> 
+> however, I'm sure there's a more elegant way to do this
+> 
+> Thanks in advance
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Oct 23 12:28:45 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 23 Oct 2024 12:28:45 +0200
+Subject: [R] OSX-specific Bug in randomForest
+In-Reply-To: <f466aab3-eacf-4447-924e-600b2b3dafbc@gmail.com>
+References: <CAGCDhaXOMhreAUx=60twjtGhpRJ1NV5Xf5cdUJ7REBqn6zQ1TA@mail.gmail.com>
+ <f466aab3-eacf-4447-924e-600b2b3dafbc@gmail.com>
+Message-ID: <26392.53213.20941.440930@stat.math.ethz.ch>
+
+>>>>> Duncan Murdoch 
+>>>>>     on Wed, 23 Oct 2024 05:33:57 -0400 writes:
+
+    > I've cc'd this to the package maintainer, Andy Liaw
+    > <andy_liaw at merck.com>. I'm not sure he reads this list.
+
+    > Duncan Murdoch
+
+Also, note that you should check for absolute difference, i.e.,
+
+   if (abs(sum(cutoff) - 1) > .Machine$double.eps || ...
+
+and I'd really recommend
+
+   if (isTRUE(all.equal(1, sum(cutoff)))  || ....
+
+Martin Maechler
+
+
+    > On 2024-10-23 1:26 a.m., Stevie Pederson wrote:
+    >> Hi,
+    >> 
+    >> It appears there is an OSX-specific bug in the function
+    >> `randomForest.default()` Going by the source code at
+    >> https://github.com/cran/randomForest/blob/master/R/randomForest.default.R
+    >> the bug is on line 103
+    >> 
+    >> If the vector `cutoff` is formed using `cutoff <-
+    >> rep(1/9, 9)` (line #101) the test on line 103 will fail
+    >> on OSX as the sum is greater than 1 due to machine
+    >> precision errors.
+    >> 
+    >> sum(rep(1 / 9, 9)) - 1 # [1] 2.220446e-16
+    >> 
+    >> This will actually occur for a scenario when the number
+    >> of factor levels (nclass) is 9, 11, 18, 20 etc.The
+    >> problem does not occur on Linux, and I haven't tested on
+    >> WIndows.
+    >> 
+    >> A suggestion may be to change the opening test
+    >> 
+    >> if (sum(cutoff) > 1 || ...)
+    >> 
+    >> to
+    >> 
+    >> if (sum(cutoff) - 1 > .Machine$double.eps || ...
+    >> 
+    >> however, I'm sure there's a more elegant way to do this
+    >> 
+    >> Thanks in advance
+    >> 
+    >> [[alternative HTML version deleted]]
+    >> 
+    >> ______________________________________________
+    >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and
+    >> more, see https://stat.ethz.ch/mailman/listinfo/r-help
+    >> PLEASE do read the posting guide
+    >> https://www.R-project.org/posting-guide.html and provide
+    >> commented, minimal, self-contained, reproducible code.
+
+    > ______________________________________________
+    > R-help at r-project.org mailing list -- To UNSUBSCRIBE and
+    > more, see https://stat.ethz.ch/mailman/listinfo/r-help
+    > PLEASE do read the posting guide
+    > https://www.R-project.org/posting-guide.html and provide
+    > commented, minimal, self-contained, reproducible code.
+
+
