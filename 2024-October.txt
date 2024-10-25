@@ -7619,3 +7619,634 @@ Martin Maechler
     > commented, minimal, self-contained, reproducible code.
 
 
+From pd@|gd @end|ng |rom gm@||@com  Thu Oct 24 11:00:25 2024
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Thu, 24 Oct 2024 11:00:25 +0200
+Subject: [R] OSX-specific Bug in randomForest
+In-Reply-To: <CAGCDhaXOMhreAUx=60twjtGhpRJ1NV5Xf5cdUJ7REBqn6zQ1TA@mail.gmail.com>
+References: <CAGCDhaXOMhreAUx=60twjtGhpRJ1NV5Xf5cdUJ7REBqn6zQ1TA@mail.gmail.com>
+Message-ID: <41B76FCD-DE32-4759-B50C-E6EB20142CFF@gmail.com>
+
+This is probably Apple Silicon specific, not OSX per se:
+
+> sum(rep(1 / 9, 9)) - 1
+[1] 0
+
+> On 23 Oct 2024, at 07:26 , Stevie Pederson <stephen.pederson.au at gmail.com> wrote:
+> 
+> sum(rep(1 / 9, 9)) - 1
+> # [1] 2.220446e-16
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Oct 24 12:04:51 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 24 Oct 2024 12:04:51 +0200
+Subject: [R] OSX-specific Bug in randomForest
+In-Reply-To: <41B76FCD-DE32-4759-B50C-E6EB20142CFF@gmail.com>
+References: <CAGCDhaXOMhreAUx=60twjtGhpRJ1NV5Xf5cdUJ7REBqn6zQ1TA@mail.gmail.com>
+ <41B76FCD-DE32-4759-B50C-E6EB20142CFF@gmail.com>
+Message-ID: <26394.7107.519883.806173@stat.math.ethz.ch>
+
+>>>>> "pd" == peter dalgaard 
+>>>>>     on Thu, 24 Oct 2024 11:00:25 +0200 writes:
+
+    pd> This is probably Apple Silicon specific, not OSX per se:
+    >> sum(rep(1 / 9, 9)) - 1
+    pd> [1] 0
+
+    >> On 23 Oct 2024, at 07:26 , Stevie Pederson
+    >> <stephen.pederson.au at gmail.com> wrote:
+    >> 
+    >> sum(rep(1 / 9, 9)) - 1 # [1] 2.220446e-16
+
+But indeed, it *is* a bug *always* to assume that double
+precision arithmetic is exact be it in R or not 
+(unless you *know* that all the numbers involved are of the form
+  <integer> * 2^k ; k in "around" (-1000):1000 )
+
+Martin Maechler
+
+
+From b@de@reuver @end|ng |rom umcg@n|  Wed Oct 23 10:11:50 2024
+From: b@de@reuver @end|ng |rom umcg@n| (Reuver, B de (epi))
+Date: Wed, 23 Oct 2024 08:11:50 +0000
+Subject: [R] Outputting a difftime object in PASTE or AS.CHARACTER is
+ missing the unit + expand the format options?
+Message-ID: <AS8PR09MB6257C9677CFDD19C307670C7AA4D2@AS8PR09MB6257.eurprd09.prod.outlook.com>
+
+Hello,
+
+I was working on an R script using the datediff object, to log certain durations in the data processing.
+I ran in to the issue that outputing a datediff object using PASTE will leave out the time unit by default.
+
+When you paste() or as.character() a datediff object it only outputs the numeric value, for example "1.23", so without the time unit secs, minutes, hours etc. This is arguably is not very useful, because 1.23 seconds is very different from 1.23 hours.
+
+```
+start_time <- Sys.time()
+result <- sum(1:10000)
+dur_time <- Sys.time() - start_time
+
+print(paste(Sys.time(), "the process duration:", dur_time)) # "2024-10-23 09:57:10.69578 the process duration: 0.00280904769897461"
+
+print(dur_time)               # "Time difference of 0.002809048 secs"
+print(paste(dur_time))        # "0.00280904769897461"
+print(as.character(dur_time)) # "0.00280904769897461"
+print(format(dur_time))       # "0.002809048 secs"
+
+print(paste(dur_time, attr(dur_time, "units"))) # "0.00280904769897461 secs"
+```
+
+So my questions are:
+1)  is it possible to have the default output for as.character for the datediff object also include the time unit? That way, it automatically outputs for example "1.23 seconds" when used in combination with paste().
+If someone really need just the numeric value without the unit, you can already use as.numeric(dur_time).
+2) Is it possible to expand the format() options for the datediff object, so that it also accepts a strptime-like string, so like %H:%M:%S ? That way you have more output options without having to rely on third-party libraries
+
+regards,
+Bas de reuver (UMCG, The Netherlands)
+________________________________
+ De inhoud van dit bericht is vertrouwelijk en alleen bestemd voor de geadresseerde(n). Anderen dan de geadresseerde(n) mogen geen gebruik maken van dit bericht, het niet openbaar maken of op enige wijze verspreiden of vermenigvuldigen. Het UMCG kan niet aansprakelijk gesteld worden voor een incomplete aankomst of vertraging van dit verzonden bericht.
+
+The contents of this message are confidential and only intended for the eyes of the addressee(s). Others than the addressee(s) are not allowed to use this message, to make it public or to distribute or multiply this message in any way. The UMCG cannot be held responsible for incomplete reception or delay of this transferred message.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Thu Oct 24 13:18:33 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Thu, 24 Oct 2024 12:18:33 +0100
+Subject: [R] Outputting a difftime object in PASTE or AS.CHARACTER is
+ missing the unit + expand the format options?
+In-Reply-To: <AS8PR09MB6257C9677CFDD19C307670C7AA4D2@AS8PR09MB6257.eurprd09.prod.outlook.com>
+References: <AS8PR09MB6257C9677CFDD19C307670C7AA4D2@AS8PR09MB6257.eurprd09.prod.outlook.com>
+Message-ID: <7bc28a3c-ba2d-444f-9cec-afdb9c172f0b@sapo.pt>
+
+?s 09:11 de 23/10/2024, Reuver, B de (epi) via R-help escreveu:
+> Hello,
+> 
+> I was working on an R script using the datediff object, to log certain durations in the data processing.
+> I ran in to the issue that outputing a datediff object using PASTE will leave out the time unit by default.
+> 
+> When you paste() or as.character() a datediff object it only outputs the numeric value, for example "1.23", so without the time unit secs, minutes, hours etc. This is arguably is not very useful, because 1.23 seconds is very different from 1.23 hours.
+> 
+> ```
+> start_time <- Sys.time()
+> result <- sum(1:10000)
+> dur_time <- Sys.time() - start_time
+> 
+> print(paste(Sys.time(), "the process duration:", dur_time)) # "2024-10-23 09:57:10.69578 the process duration: 0.00280904769897461"
+> 
+> print(dur_time)               # "Time difference of 0.002809048 secs"
+> print(paste(dur_time))        # "0.00280904769897461"
+> print(as.character(dur_time)) # "0.00280904769897461"
+> print(format(dur_time))       # "0.002809048 secs"
+> 
+> print(paste(dur_time, attr(dur_time, "units"))) # "0.00280904769897461 secs"
+> ```
+> 
+> So my questions are:
+> 1)  is it possible to have the default output for as.character for the datediff object also include the time unit? That way, it automatically outputs for example "1.23 seconds" when used in combination with paste().
+> If someone really need just the numeric value without the unit, you can already use as.numeric(dur_time).
+> 2) Is it possible to expand the format() options for the datediff object, so that it also accepts a strptime-like string, so like %H:%M:%S ? That way you have more output options without having to rely on third-party libraries
+> 
+> regards,
+> Bas de reuver (UMCG, The Netherlands)
+> ________________________________
+>   De inhoud van dit bericht is vertrouwelijk en alleen bestemd voor de geadresseerde(n). Anderen dan de geadresseerde(n) mogen geen gebruik maken van dit bericht, het niet openbaar maken of op enige wijze verspreiden of vermenigvuldigen. Het UMCG kan niet aansprakelijk gesteld worden voor een incomplete aankomst of vertraging van dit verzonden bericht.
+> 
+> The contents of this message are confidential and only intended for the eyes of the addressee(s). Others than the addressee(s) are not allowed to use this message, to make it public or to distribute or multiply this message in any way. The UMCG cannot be held responsible for incomplete reception or delay of this transferred message.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+There are, in base R, methods
+
+as.list.difftime
+as.double.difftime
+
+but not as.character.difftime.
+If you write your own, it will be a functionality that only exists in 
+your system and this can sometimes be a source for unexpected behavior.
+
+
+
+as.character.difftime <- function(x) {
+   u <- units(x)
+   paste(unclass(x), u)
+}
+
+start_time <- Sys.time()
+result <- sum(1:10000)
+dur_time <- Sys.time() - start_time
+
+as.character(dur_time)
+#> [1] "0.000754117965698242 secs"
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From @tephen@peder@on@@u @end|ng |rom gm@||@com  Thu Oct 24 13:59:53 2024
+From: @tephen@peder@on@@u @end|ng |rom gm@||@com (Stevie Pederson)
+Date: Thu, 24 Oct 2024 22:29:53 +1030
+Subject: [R] OSX-specific Bug in randomForest
+In-Reply-To: <26394.7107.519883.806173@stat.math.ethz.ch>
+References: <CAGCDhaXOMhreAUx=60twjtGhpRJ1NV5Xf5cdUJ7REBqn6zQ1TA@mail.gmail.com>
+ <41B76FCD-DE32-4759-B50C-E6EB20142CFF@gmail.com>
+ <26394.7107.519883.806173@stat.math.ethz.ch>
+Message-ID: <CAGCDhaVBWL66u0s4ksBZyPy0Zj2U-t_w2af+c1uP4xW8CBTuDQ@mail.gmail.com>
+
+Thank you all for such insightful comments & let's hope it gets sorted
+soon. I was unaware of the isTRUE() and all.equal() functions so they're
+very helpful things indeed to add to my own toolkit.
+
+Our current solution is to move from a local machine to an HPC-based
+environment so we have a way forward for our specific use-case at least.
+
+Thanks again
+
+On Thu, 24 Oct 2024 at 20:34, Martin Maechler <maechler at stat.math.ethz.ch>
+wrote:
+
+> >>>>> "pd" == peter dalgaard
+> >>>>>     on Thu, 24 Oct 2024 11:00:25 +0200 writes:
+>
+>     pd> This is probably Apple Silicon specific, not OSX per se:
+>     >> sum(rep(1 / 9, 9)) - 1
+>     pd> [1] 0
+>
+>     >> On 23 Oct 2024, at 07:26 , Stevie Pederson
+>     >> <stephen.pederson.au at gmail.com> wrote:
+>     >>
+>     >> sum(rep(1 / 9, 9)) - 1 # [1] 2.220446e-16
+>
+> But indeed, it *is* a bug *always* to assume that double
+> precision arithmetic is exact be it in R or not
+> (unless you *know* that all the numbers involved are of the form
+>   <integer> * 2^k ; k in "around" (-1000):1000 )
+>
+> Martin Maechler
+>
+
+	[[alternative HTML version deleted]]
+
+
+From JH@rm@e @end|ng |rom roku@com  Thu Oct 24 00:29:12 2024
+From: JH@rm@e @end|ng |rom roku@com (Jorgen Harmse)
+Date: Wed, 23 Oct 2024 22:29:12 +0000
+Subject: [R] [EXTERNAL] R-help Digest, Vol 260, Issue 19
+In-Reply-To: <mailman.372127.1.1729677601.12567.r-help@r-project.org>
+References: <mailman.372127.1.1729677601.12567.r-help@r-project.org>
+Message-ID: <BL0PR01MB4434B14256229BD8DDF173BFDC4D2@BL0PR01MB4434.prod.exchangelabs.com>
+
+I think that Stevie Pederson has the right idea, but it is not obvious what the threshold should be. Example:
+
+> n <- 2428716; sum(rep(1/n,n)) - 1
+[1] -3.297362e-14
+
+I assume that equally large errors in the other direction are also possible.
+
+Regards,
+Jorgen Harmse.
+
+----------------------------------------------------------------------
+
+Message: 1
+Date: Wed, 23 Oct 2024 15:56:00 +1030
+From: Stevie Pederson <stephen.pederson.au at gmail.com>
+To: r-help at r-project.org
+Subject: [R] OSX-specific Bug in randomForest
+Message-ID:
+        <CAGCDhaXOMhreAUx=60twjtGhpRJ1NV5Xf5cdUJ7REBqn6zQ1TA at mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
+
+Hi,
+
+It appears there is an OSX-specific bug in the function
+`randomForest.default()` Going by the source code at
+https://github.com/cran/randomForest/blob/master/R/randomForest.default.R
+the bug is on line 103
+
+If the vector `cutoff` is formed using `cutoff <- rep(1/9, 9)` (line #101)
+the test on line 103 will fail on OSX as the sum is greater than 1 due to
+machine precision errors.
+
+sum(rep(1 / 9, 9)) - 1
+# [1] 2.220446e-16
+
+This will actually occur for a scenario when the number of factor levels
+(nclass) is 9, 11, 18, 20 etc.The problem does not occur on Linux, and I
+haven't tested on WIndows.
+
+A suggestion may be to change the opening test
+
+if (sum(cutoff) > 1 || ...)
+
+to
+
+if (sum(cutoff) - 1  > .Machine$double.eps || ...
+
+however, I'm sure there's a more elegant way to do this
+
+Thanks in advance
+
+        [[alternative HTML version deleted]]
+
+
+***********
+
+	[[alternative HTML version deleted]]
+
+
+From m|kko@m@rtt||@ @end|ng |rom or|onph@rm@@com  Thu Oct 24 13:59:46 2024
+From: m|kko@m@rtt||@ @end|ng |rom or|onph@rm@@com (Marttila Mikko)
+Date: Thu, 24 Oct 2024 11:59:46 +0000
+Subject: [R] readLines() and unz() and non-empty final line
+Message-ID: <DU0PR09MB5500B24008AF907DAB00C723984E2@DU0PR09MB5500.eurprd09.prod.outlook.com>
+
+Dear list,
+
+I'm seeing a strange interaction with readLines() and unz() when reading
+a file without an empty final line. The final line gets dropped silently:
+
+> cat("hello", file = "hello.txt")
+> zip("hello.zip", "hello.txt")
+  adding: hello.txt (stored 0%)
+> readLines(unz("hello.zip", "hello.txt"))
+character(0)
+
+The documentation for readLines() says if the final line is incomplete for
+"non-blocking text-mode connections" the line is "pushed back, silently"
+but otherwise "accepted with a warning".
+
+My understanding is that the unz() here is blocking so the line should be
+accepted. Is that incorrect? If so, how would I go about reading such
+lines from a zip file?
+
+Best,
+
+Mikko
+
+
+This e-mail transmission may contain confidential or legally privileged information that is intended only for the individual or entity named in the e-mail address. If you are not the intended recipient, you are hereby notified that any disclosure, copying, distribution, or reliance upon the contents of this e-mail is strictly prohibited. If you have received this e-mail transmission in error, please reply to the sender, so that they can arrange for proper delivery, and then please delete the message from your computer systems. Thank you.
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Thu Oct 24 17:13:20 2024
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Thu, 24 Oct 2024 17:13:20 +0200
+Subject: [R] Outputting a difftime object in PASTE or AS.CHARACTER is
+ missing the unit + expand the format options?
+In-Reply-To: <AS8PR09MB6257C9677CFDD19C307670C7AA4D2@AS8PR09MB6257.eurprd09.prod.outlook.com>
+References: <AS8PR09MB6257C9677CFDD19C307670C7AA4D2@AS8PR09MB6257.eurprd09.prod.outlook.com>
+Message-ID: <26394.25616.5816.647478@stat.math.ethz.ch>
+
+>>>>> Reuver, B de \(epi\) via R-help 
+>>>>>     on Wed, 23 Oct 2024 08:11:50 +0000 writes:
+
+    > Hello,
+    > I was working on an R script using the datediff object, to log certain durations in the data processing.
+    > I ran in to the issue that outputing a datediff object using PASTE will leave out the time unit by default.
+
+    > When you paste() or as.character() a datediff object it only outputs the numeric value, for example "1.23", so without the time unit secs, minutes, hours etc. This is arguably is not very useful, because 1.23 seconds is very different from 1.23 hours.
+
+    > ```
+    > start_time <- Sys.time()
+    > result <- sum(1:10000)
+    > dur_time <- Sys.time() - start_time
+
+Note that  print(  ... )   below is unneeded:
+ in R's toplevel, "auto" print() is (almost) always called
+
+    > print(paste(Sys.time(), "the process duration:", dur_time)) # "2024-10-23 09:57:10.69578 the process duration: 0.00280904769897461"
+
+    > print(dur_time)               # "Time difference of 0.002809048 secs"
+    > print(paste(dur_time))        # "0.00280904769897461"
+    > print(as.character(dur_time)) # "0.00280904769897461"
+    > print(format(dur_time))       # "0.002809048 secs"
+
+i.e.,  the format()  method is doing the right thing, as it should.
+
+The as.character() method shouldn't (and will not) be changed here.
+
+
+    > print(paste(dur_time, attr(dur_time, "units"))) # "0.00280904769897461 secs"
+    > ```
+
+    > So my questions are:
+
+    > 1)  is it possible to have the default output for as.character for the datediff object also include the time unit? That way, it automatically outputs for example "1.23 seconds" when used in combination with paste().
+
+No, see above.  You should use format() in such situations, not
+just for "difftime" objects.
+
+    > If someone really need just the numeric value without the unit, you can already use as.numeric(dur_time).
+
+indeed.
+But as  as.character()  is defined (typically / in base R) to get rid of attributes.
+
+    > 2) Is it possible to expand the format() options for the datediff object, so that it also accepts a strptime-like string, so like %H:%M:%S ? That way you have more output options without having to rely on third-party libraries
+
+That would be possible, but I'm not at all sure that it's
+desirable / necessary  .. (but opinions may differ, I may change
+mine after some good discussion...).
+
+Did you look at the  ?difftime  help page  and its 'Examples' ?
+
+I think everything you need is almost available.
+The formatting in %H:%M .. etc is not directly possible,
+and I think for good reasons:
+Somewhat experienced R users can currently quickly see the
+difference between  Date, Date-Times, and "difftime" objects
+from their print output,  and I think that is desirable.
+
+
+start_time <- structure(1729777, class = c("POSIXct", "POSIXt"))
+result <- sum(1:10000)
+nowTime <- structure(1729888.123123123, class = c("POSIXct", "POSIXt"))
+##                          ^^^^^^^^^^ to see precision (not soo accurate with POSIXct!)
+
+(dur_time <- nowTime - start_time) # -> print
+## Time difference of 1.852052 mins
+format(dur_time)            # --> "1.852052 mins"       -- MM: isn't that good!
+format(dur_time, digits=12) # --> "1.85205205205 mins"
+
+## You can switch from minutes to seconds :
+dtime <- dur_time; units(dtime) <- "secs"
+dtime ## Time difference of 111.1231 secs
+format(dtime, digits = 10)
+## [1] "111.1231231 secs"
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Thu Oct 24 17:56:42 2024
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Thu, 24 Oct 2024 11:56:42 -0400
+Subject: [R] readLines() and unz() and non-empty final line
+In-Reply-To: <DU0PR09MB5500B24008AF907DAB00C723984E2@DU0PR09MB5500.eurprd09.prod.outlook.com>
+References: <DU0PR09MB5500B24008AF907DAB00C723984E2@DU0PR09MB5500.eurprd09.prod.outlook.com>
+Message-ID: <CADNULg9QH+8mYHVDsN9gbgWCZhxiBjxVUnBERbFQ7quaupMTBg@mail.gmail.com>
+
+Hi Mikko,
+
+
+I tried running a few different things, and it seems as though
+explicitly using `open()` and opening a blocking connection works.
+
+```R
+cat("hello", file = "hello.txt")
+zip("hello.zip", "hello.txt")
+local({
+    conn <- unz("hello.zip", "hello.txt")
+    on.exit(close(conn))
+    ## you can use "r" instead of "rt"
+    ##
+    ## 'blocking = TRUE' is the default, so remove if desired
+    open(conn, "rb", blocking = TRUE)
+    readLines(conn)
+})
+```
+
+A blocking connection might be undesirable for you, in which case
+someone else might have a better solution.
+
+On Thu, Oct 24, 2024 at 10:58?AM Marttila Mikko via R-help
+<r-help at r-project.org> wrote:
+>
+> Dear list,
+>
+> I'm seeing a strange interaction with readLines() and unz() when reading
+> a file without an empty final line. The final line gets dropped silently:
+>
+> > cat("hello", file = "hello.txt")
+> > zip("hello.zip", "hello.txt")
+>   adding: hello.txt (stored 0%)
+> > readLines(unz("hello.zip", "hello.txt"))
+> character(0)
+>
+> The documentation for readLines() says if the final line is incomplete for
+> "non-blocking text-mode connections" the line is "pushed back, silently"
+> but otherwise "accepted with a warning".
+>
+> My understanding is that the unz() here is blocking so the line should be
+> accepted. Is that incorrect? If so, how would I go about reading such
+> lines from a zip file?
+>
+> Best,
+>
+> Mikko
+>
+>
+> This e-mail transmission may contain confidential or legally privileged information that is intended only for the individual or entity named in the e-mail address. If you are not the intended recipient, you are hereby notified that any disclosure, copying, distribution, or reliance upon the contents of this e-mail is strictly prohibited. If you have received this e-mail transmission in error, please reply to the sender, so that they can arrange for proper delivery, and then please delete the message from your computer systems. Thank you.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Thu Oct 24 19:12:58 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 24 Oct 2024 10:12:58 -0700
+Subject: [R] readLines() and unz() and non-empty final line
+In-Reply-To: <CADNULg9QH+8mYHVDsN9gbgWCZhxiBjxVUnBERbFQ7quaupMTBg@mail.gmail.com>
+References: <DU0PR09MB5500B24008AF907DAB00C723984E2@DU0PR09MB5500.eurprd09.prod.outlook.com>
+ <CADNULg9QH+8mYHVDsN9gbgWCZhxiBjxVUnBERbFQ7quaupMTBg@mail.gmail.com>
+Message-ID: <CAGxFJbQj2iFv8jeB94hBVhgPTZeuU2ovK806+ci4jMg_qRZvNA@mail.gmail.com>
+
+But note:
+
+> zip("hello.zip", "hello.txt")
+updating: hello.txt (stored 0%)
+> readChar(unz("hello.zip","hello.txt"),100)
+[1] "hello"
+
+I leave it to you and other wiser heads to figure out.
+
+Cheers,
+Bert
+
+On Thu, Oct 24, 2024 at 8:57?AM Iris Simmons <ikwsimmo at gmail.com> wrote:
+
+> Hi Mikko,
+>
+>
+> I tried running a few different things, and it seems as though
+> explicitly using `open()` and opening a blocking connection works.
+>
+> ```R
+> cat("hello", file = "hello.txt")
+> zip("hello.zip", "hello.txt")
+> local({
+>     conn <- unz("hello.zip", "hello.txt")
+>     on.exit(close(conn))
+>     ## you can use "r" instead of "rt"
+>     ##
+>     ## 'blocking = TRUE' is the default, so remove if desired
+>     open(conn, "rb", blocking = TRUE)
+>     readLines(conn)
+> })
+> ```
+>
+> A blocking connection might be undesirable for you, in which case
+> someone else might have a better solution.
+>
+> On Thu, Oct 24, 2024 at 10:58?AM Marttila Mikko via R-help
+> <r-help at r-project.org> wrote:
+> >
+> > Dear list,
+> >
+> > I'm seeing a strange interaction with readLines() and unz() when reading
+> > a file without an empty final line. The final line gets dropped silently:
+> >
+> > > cat("hello", file = "hello.txt")
+> > > zip("hello.zip", "hello.txt")
+> >   adding: hello.txt (stored 0%)
+> > > readLines(unz("hello.zip", "hello.txt"))
+> > character(0)
+> >
+> > The documentation for readLines() says if the final line is incomplete
+> for
+> > "non-blocking text-mode connections" the line is "pushed back, silently"
+> > but otherwise "accepted with a warning".
+> >
+> > My understanding is that the unz() here is blocking so the line should be
+> > accepted. Is that incorrect? If so, how would I go about reading such
+> > lines from a zip file?
+> >
+> > Best,
+> >
+> > Mikko
+> >
+> >
+> > This e-mail transmission may contain confidential or legally privileged
+> information that is intended only for the individual or entity named in the
+> e-mail address. If you are not the intended recipient, you are hereby
+> notified that any disclosure, copying, distribution, or reliance upon the
+> contents of this e-mail is strictly prohibited. If you have received this
+> e-mail transmission in error, please reply to the sender, so that they can
+> arrange for proper delivery, and then please delete the message from your
+> computer systems. Thank you.
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From tebert @end|ng |rom u||@edu  Thu Oct 24 20:31:53 2024
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Thu, 24 Oct 2024 18:31:53 +0000
+Subject: [R] readLines() and unz() and non-empty final line
+In-Reply-To: <DU0PR09MB5500B24008AF907DAB00C723984E2@DU0PR09MB5500.eurprd09.prod.outlook.com>
+References: <DU0PR09MB5500B24008AF907DAB00C723984E2@DU0PR09MB5500.eurprd09.prod.outlook.com>
+Message-ID: <CH3PR22MB45148CC0BB0ACAAAC12928A3CF4E2@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+I had something like this problem where the program read files but some files would be missing the last line of data. My solution was to write another program that looked at the files and if a file did not end in a line feed to add one. Possibly a bit primitive, but it worked.
+Regards,
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Marttila Mikko via R-help
+Sent: Thursday, October 24, 2024 8:00 AM
+To: r-help at r-project.org
+Subject: [R] readLines() and unz() and non-empty final line
+
+[External Email]
+
+Dear list,
+
+I'm seeing a strange interaction with readLines() and unz() when reading a file without an empty final line. The final line gets dropped silently:
+
+> cat("hello", file = "hello.txt")
+> zip("hello.zip", "hello.txt")
+  adding: hello.txt (stored 0%)
+> readLines(unz("hello.zip", "hello.txt"))
+character(0)
+
+The documentation for readLines() says if the final line is incomplete for "non-blocking text-mode connections" the line is "pushed back, silently"
+but otherwise "accepted with a warning".
+
+My understanding is that the unz() here is blocking so the line should be accepted. Is that incorrect? If so, how would I go about reading such lines from a zip file?
+
+Best,
+
+Mikko
+
+
+This e-mail transmission may contain confidential or legally privileged information that is intended only for the individual or entity named in the e-mail address. If you are not the intended recipient, you are hereby notified that any disclosure, copying, distribution, or reliance upon the contents of this e-mail is strictly prohibited. If you have received this e-mail transmission in error, please reply to the sender, so that they can arrange for proper delivery, and then please delete the message from your computer systems. Thank you.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
