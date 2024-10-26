@@ -8250,3 +8250,419 @@ PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From |kw@|mmo @end|ng |rom gm@||@com  Fri Oct 25 15:37:36 2024
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Fri, 25 Oct 2024 09:37:36 -0400
+Subject: [R] readLines() and unz() and non-empty final line
+In-Reply-To: <DU0PR09MB5500AB7AF72229368DCAD3BE984F2@DU0PR09MB5500.eurprd09.prod.outlook.com>
+References: <DU0PR09MB5500B24008AF907DAB00C723984E2@DU0PR09MB5500.eurprd09.prod.outlook.com>
+ <CADNULg9QH+8mYHVDsN9gbgWCZhxiBjxVUnBERbFQ7quaupMTBg@mail.gmail.com>
+ <CAGxFJbQj2iFv8jeB94hBVhgPTZeuU2ovK806+ci4jMg_qRZvNA@mail.gmail.com>
+ <DU0PR09MB5500AB7AF72229368DCAD3BE984F2@DU0PR09MB5500.eurprd09.prod.outlook.com>
+Message-ID: <CADNULg_=AUXh-KJp2fO9FBmVO4cc=2sZryxDo8YoRABEWEYCjQ@mail.gmail.com>
+
+Hi again,
+
+
+The unz connection is non-blocking by default. I checked do_unz which calls
+R_newunz which calls init_con and the only place in any of those functions
+that sets 'blocking' is init_con which sets it to FALSE:
+
+https://github.com/wch/r-source/blob/0c26529e807a9b1dd65f7324958c17bf72e1de1a/src/main/connections.c#L713
+
+I'll open an issue on R-bugzilla and see if they're willing to do something
+similar to 'file()'; that is, add a 'blocking' argument to unz. It's hard
+to say whether they would choose 'blocking = FALSE' for back compatibility
+or 'blocking = TRUE' for consistency with 'file()'.
+
+
+Regards,
+
+Iris
+
+On Fri, Oct 25, 2024, 04:47 Marttila Mikko <mikko.marttila at orionpharma.com>
+wrote:
+
+> Thanks Iris, Bert, and Tim.
+>
+>
+>
+> Whether unz() is blocking or not by default doesn?t seem to be documented.
+> Indeed, thank you Iris for finding out that explicitly opening it as
+> blocking would work. That made me wonder if it?s non-blocking by default
+> then, which would have been surprising. However, explicitly opening it as
+> non-blocking seems to lead to problems as well:
+>
+>
+>
+> > local({
+>
+> +   con <- unz("hello.zip", "hello.txt")
+>
+> +   open(con, blocking = FALSE)
+>
+> +   on.exit(close(con))
+>
+> +   res <- readLines(con)
+>
+> +   res
+>
+> + })
+>
+> Error in readLines(con) : seek not enabled for this connection
+>
+> Calls: local ... eval.parent -> eval -> eval -> eval -> eval -> readLines
+>
+> Execution halted
+>
+> So, the behaviour of unz() seems to be different depending on whether it
+> was explicitly opened before passed to readLines(). Should this be fixed or
+> documented?
+>
+>
+>
+> Best,
+>
+>
+>
+> Mikko
+>
+>
+>
+> *From:* Bert Gunter <bgunter.4567 at gmail.com>
+> *Sent:* Thursday, 24 October 2024 18:13
+> *To:* Iris Simmons <ikwsimmo at gmail.com>
+> *Cc:* Marttila Mikko <mikko.marttila at orionpharma.com>;
+> r-help at r-project.org
+> *Subject:* Re: [R] readLines() and unz() and non-empty final line
+>
+>
+>
+> You don't often get email from bgunter.4567 at gmail.com. Learn why this is
+> important <https://aka.ms/LearnAboutSenderIdentification>
+>
+> But note:
+>
+>
+>
+> > zip("hello.zip", "hello.txt")
+> updating: hello.txt (stored 0%)
+> > readChar(unz("hello.zip","hello.txt"),100)
+> [1] "hello"
+>
+>
+>
+> I leave it to you and other wiser heads to figure out.
+>
+>
+>
+> Cheers,
+>
+> Bert
+>
+>
+>
+> On Thu, Oct 24, 2024 at 8:57?AM Iris Simmons <ikwsimmo at gmail.com> wrote:
+>
+> Hi Mikko,
+>
+>
+> I tried running a few different things, and it seems as though
+> explicitly using `open()` and opening a blocking connection works.
+>
+> ```R
+> cat("hello", file = "hello.txt")
+> zip("hello.zip", "hello.txt")
+> local({
+>     conn <- unz("hello.zip", "hello.txt")
+>     on.exit(close(conn))
+>     ## you can use "r" instead of "rt"
+>     ##
+>     ## 'blocking = TRUE' is the default, so remove if desired
+>     open(conn, "rb", blocking = TRUE)
+>     readLines(conn)
+> })
+> ```
+>
+> A blocking connection might be undesirable for you, in which case
+> someone else might have a better solution.
+>
+> On Thu, Oct 24, 2024 at 10:58?AM Marttila Mikko via R-help
+> <r-help at r-project.org> wrote:
+> >
+> > Dear list,
+> >
+> > I'm seeing a strange interaction with readLines() and unz() when reading
+> > a file without an empty final line. The final line gets dropped silently:
+> >
+> > > cat("hello", file = "hello.txt")
+> > > zip("hello.zip", "hello.txt")
+> >   adding: hello.txt (stored 0%)
+> > > readLines(unz("hello.zip", "hello.txt"))
+> > character(0)
+> >
+> > The documentation for readLines() says if the final line is incomplete
+> for
+> > "non-blocking text-mode connections" the line is "pushed back, silently"
+> > but otherwise "accepted with a warning".
+> >
+> > My understanding is that the unz() here is blocking so the line should be
+> > accepted. Is that incorrect? If so, how would I go about reading such
+> > lines from a zip file?
+> >
+> > Best,
+> >
+> > Mikko
+> >
+> >
+> > This e-mail transmission may contain confidential or legally privileged
+> information that is intended only for the individual or entity named in the
+> e-mail address. If you are not the intended recipient, you are hereby
+> notified that any disclosure, copying, distribution, or reliance upon the
+> contents of this e-mail is strictly prohibited. If you have received this
+> e-mail transmission in error, please reply to the sender, so that they can
+> arrange for proper delivery, and then please delete the message from your
+> computer systems. Thank you.
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+>
+>
+> This e-mail transmission may contain confidential or legally privileged
+> information that is intended only for the individual or entity named in the
+> e-mail address. If you are not the intended recipient, you are hereby
+> notified that any disclosure, copying, distribution, or reliance upon the
+> contents of this e-mail is strictly prohibited. If you have received this
+> e-mail transmission in error, please reply to the sender, so that they can
+> arrange for proper delivery, and then please delete the message from your
+> computer systems. Thank you.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From k|mmo@e|o @end|ng |rom ue|@||  Fri Oct 25 16:21:00 2024
+From: k|mmo@e|o @end|ng |rom ue|@|| (Kimmo Elo)
+Date: Fri, 25 Oct 2024 14:21:00 +0000
+Subject: [R] readLines() and unz() and non-empty final line
+In-Reply-To: <CAGxFJbQj2iFv8jeB94hBVhgPTZeuU2ovK806+ci4jMg_qRZvNA@mail.gmail.com>
+References: <DU0PR09MB5500B24008AF907DAB00C723984E2@DU0PR09MB5500.eurprd09.prod.outlook.com>
+ <CADNULg9QH+8mYHVDsN9gbgWCZhxiBjxVUnBERbFQ7quaupMTBg@mail.gmail.com>
+ <CAGxFJbQj2iFv8jeB94hBVhgPTZeuU2ovK806+ci4jMg_qRZvNA@mail.gmail.com>
+Message-ID: <204e0622-08a3-493b-be34-614a14e716fe@uef.fi>
+
+Hi,
+
+you could use "scan" instead, it seems to work fine also when wrapped 
+around "unz".
+
+Or, alternatively, you could use "unzip" instead of "unz". It works as 
+expected, i.e. reads the last incomplete line and throws a warning about 
+this.
+
+So it seems to me that "unz" creates a non-blocking connection, whereas 
+"unzip" creates a blocking connection. But this is a pure guess based on 
+how the behave :-)
+
+Best,
+
+Kimmo
+
+Bert Gunter kirjoitti 24.10.2024 klo 20.12:
+> But note:
+> 
+>> zip("hello.zip", "hello.txt")
+> updating: hello.txt (stored 0%)
+>> readChar(unz("hello.zip","hello.txt"),100)
+> [1] "hello"
+> 
+> I leave it to you and other wiser heads to figure out.
+> 
+> Cheers,
+> Bert
+> 
+> On Thu, Oct 24, 2024 at 8:57?AM Iris Simmons <ikwsimmo at gmail.com> wrote:
+> 
+>> Hi Mikko,
+>>
+>>
+>> I tried running a few different things, and it seems as though
+>> explicitly using `open()` and opening a blocking connection works.
+>>
+>> ```R
+>> cat("hello", file = "hello.txt")
+>> zip("hello.zip", "hello.txt")
+>> local({
+>>      conn <- unz("hello.zip", "hello.txt")
+>>      on.exit(close(conn))
+>>      ## you can use "r" instead of "rt"
+>>      ##
+>>      ## 'blocking = TRUE' is the default, so remove if desired
+>>      open(conn, "rb", blocking = TRUE)
+>>      readLines(conn)
+>> })
+>> ```
+>>
+>> A blocking connection might be undesirable for you, in which case
+>> someone else might have a better solution.
+>>
+>> On Thu, Oct 24, 2024 at 10:58?AM Marttila Mikko via R-help
+>> <r-help at r-project.org> wrote:
+>>>
+>>> Dear list,
+>>>
+>>> I'm seeing a strange interaction with readLines() and unz() when reading
+>>> a file without an empty final line. The final line gets dropped silently:
+>>>
+>>>> cat("hello", file = "hello.txt")
+>>>> zip("hello.zip", "hello.txt")
+>>>    adding: hello.txt (stored 0%)
+>>>> readLines(unz("hello.zip", "hello.txt"))
+>>> character(0)
+>>>
+>>> The documentation for readLines() says if the final line is incomplete
+>> for
+>>> "non-blocking text-mode connections" the line is "pushed back, silently"
+>>> but otherwise "accepted with a warning".
+>>>
+>>> My understanding is that the unz() here is blocking so the line should be
+>>> accepted. Is that incorrect? If so, how would I go about reading such
+>>> lines from a zip file?
+>>>
+>>> Best,
+>>>
+>>> Mikko
+>>>
+
+From m|kko@m@rtt||@ @end|ng |rom or|onph@rm@@com  Fri Oct 25 10:47:02 2024
+From: m|kko@m@rtt||@ @end|ng |rom or|onph@rm@@com (Marttila Mikko)
+Date: Fri, 25 Oct 2024 08:47:02 +0000
+Subject: [R] readLines() and unz() and non-empty final line
+In-Reply-To: <CAGxFJbQj2iFv8jeB94hBVhgPTZeuU2ovK806+ci4jMg_qRZvNA@mail.gmail.com>
+References: <DU0PR09MB5500B24008AF907DAB00C723984E2@DU0PR09MB5500.eurprd09.prod.outlook.com>
+ <CADNULg9QH+8mYHVDsN9gbgWCZhxiBjxVUnBERbFQ7quaupMTBg@mail.gmail.com>
+ <CAGxFJbQj2iFv8jeB94hBVhgPTZeuU2ovK806+ci4jMg_qRZvNA@mail.gmail.com>
+Message-ID: <DU0PR09MB5500AB7AF72229368DCAD3BE984F2@DU0PR09MB5500.eurprd09.prod.outlook.com>
+
+Thanks Iris, Bert, and Tim.
+
+Whether unz() is blocking or not by default doesn?t seem to be documented. Indeed, thank you Iris for finding out that explicitly opening it as blocking would work. That made me wonder if it?s non-blocking by default then, which would have been surprising. However, explicitly opening it as non-blocking seems to lead to problems as well:
+
+> local({
++   con <- unz("hello.zip", "hello.txt")
++   open(con, blocking = FALSE)
++   on.exit(close(con))
++   res <- readLines(con)
++   res
++ })
+Error in readLines(con) : seek not enabled for this connection
+Calls: local ... eval.parent -> eval -> eval -> eval -> eval -> readLines
+Execution halted
+So, the behaviour of unz() seems to be different depending on whether it was explicitly opened before passed to readLines(). Should this be fixed or documented?
+
+Best,
+
+Mikko
+
+From: Bert Gunter <bgunter.4567 at gmail.com>
+Sent: Thursday, 24 October 2024 18:13
+To: Iris Simmons <ikwsimmo at gmail.com>
+Cc: Marttila Mikko <mikko.marttila at orionpharma.com>; r-help at r-project.org
+Subject: Re: [R] readLines() and unz() and non-empty final line
+
+You don't often get email from bgunter.4567 at gmail.com<mailto:bgunter.4567 at gmail.com>. Learn why this is important<https://aka.ms/LearnAboutSenderIdentification>
+But note:
+
+> zip("hello.zip", "hello.txt")
+updating: hello.txt (stored 0%)
+> readChar(unz("hello.zip","hello.txt"),100)
+[1] "hello"
+
+I leave it to you and other wiser heads to figure out.
+
+Cheers,
+Bert
+
+On Thu, Oct 24, 2024 at 8:57?AM Iris Simmons <ikwsimmo at gmail.com<mailto:ikwsimmo at gmail.com>> wrote:
+Hi Mikko,
+
+
+I tried running a few different things, and it seems as though
+explicitly using `open()` and opening a blocking connection works.
+
+```R
+cat("hello", file = "hello.txt")
+zip("hello.zip", "hello.txt")
+local({
+    conn <- unz("hello.zip", "hello.txt")
+    on.exit(close(conn))
+    ## you can use "r" instead of "rt"
+    ##
+    ## 'blocking = TRUE' is the default, so remove if desired
+    open(conn, "rb", blocking = TRUE)
+    readLines(conn)
+})
+```
+
+A blocking connection might be undesirable for you, in which case
+someone else might have a better solution.
+
+On Thu, Oct 24, 2024 at 10:58?AM Marttila Mikko via R-help
+<r-help at r-project.org<mailto:r-help at r-project.org>> wrote:
+>
+> Dear list,
+>
+> I'm seeing a strange interaction with readLines() and unz() when reading
+> a file without an empty final line. The final line gets dropped silently:
+>
+> > cat("hello", file = "hello.txt")
+> > zip("hello.zip", "hello.txt")
+>   adding: hello.txt (stored 0%)
+> > readLines(unz("hello.zip", "hello.txt"))
+> character(0)
+>
+> The documentation for readLines() says if the final line is incomplete for
+> "non-blocking text-mode connections" the line is "pushed back, silently"
+> but otherwise "accepted with a warning".
+>
+> My understanding is that the unz() here is blocking so the line should be
+> accepted. Is that incorrect? If so, how would I go about reading such
+> lines from a zip file?
+>
+> Best,
+>
+> Mikko
+>
+>
+> This e-mail transmission may contain confidential or legally privileged information that is intended only for the individual or entity named in the e-mail address. If you are not the intended recipient, you are hereby notified that any disclosure, copying, distribution, or reliance upon the contents of this e-mail is strictly prohibited. If you have received this e-mail transmission in error, please reply to the sender, so that they can arrange for proper delivery, and then please delete the message from your computer systems. Thank you.
+>
+> ______________________________________________
+> R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+This e-mail transmission may contain confidential or legally privileged information that is intended only for the individual or entity named in the e-mail address. If you are not the intended recipient, you are hereby notified that any disclosure, copying, distribution, or reliance upon the contents of this e-mail is strictly prohibited. If you have received this e-mail transmission in error, please reply to the sender, so that they can arrange for proper delivery, and then please delete the message from your computer systems. Thank you.
+
+	[[alternative HTML version deleted]]
+
+
