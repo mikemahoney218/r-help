@@ -393,3 +393,475 @@ vlineplot <- mydt[ ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?
 ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ? ?
 electplot + vlineplot ??
 
+From @|by||e@@toeck|| @end|ng |rom gmx@ch  Wed Nov  6 07:29:27 2024
+From: @|by||e@@toeck|| @end|ng |rom gmx@ch (=?utf-8?Q?Sibylle_St=C3=B6ckli?=)
+Date: Wed, 6 Nov 2024 07:29:27 +0100
+Subject: [R] Using multiple dat files
+References: <B8E50D3E-29D2-4E6D-B90A-A08259C803BD@unige.ch>
+Message-ID: <6E7A7742-21DC-4E9E-8AA3-059ECA813E43@gmx.ch>
+
+Dear community
+
+To import multiple .dat  weather files I am using list.files().
+I intend to use the R package ?ClimInd? to calculate different agroclimatic indicators. 
+
+Question: Is there another solution to import multiple .dat files so that I can select elements from the list, e.g. one specific weather file (example AAR_DailyWeather)?
+ 
+ 
+# Import multiple .dat files weather data
+filelist <- list.files(path = "O:/Data-Work/??./Daten_RA-MeteoCH_1990-2021", pattern='*.dat', all.files= T, full.names= T)
+W <- lapply(filelist, function(x) read.table(x, header = TRUE, sep = "", colClasses = "numeric", comment.char = ""))
+W[[1]]
+ 
+> dd(data = W[[1]]$Precip, time.scale = W[[1]]$year)
+Fehler in W[[1]]$year : $ operator is invalid for atomic vectors
+ 
+Kind regards
+Sibylle
+ 
+ 
+ 
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Wed Nov  6 18:17:58 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Wed, 6 Nov 2024 17:17:58 +0000
+Subject: [R] Using multiple dat files
+In-Reply-To: <6E7A7742-21DC-4E9E-8AA3-059ECA813E43@gmx.ch>
+References: <B8E50D3E-29D2-4E6D-B90A-A08259C803BD@unige.ch>
+ <6E7A7742-21DC-4E9E-8AA3-059ECA813E43@gmx.ch>
+Message-ID: <65aef957-7552-4789-8864-2502e59d7ed9@sapo.pt>
+
+?s 06:29 de 06/11/2024, Sibylle St?ckli via R-help escreveu:
+> Dear community
+> 
+> To import multiple .dat  weather files I am using list.files().
+> I intend to use the R package ?ClimInd? to calculate different agroclimatic indicators.
+> 
+> Question: Is there another solution to import multiple .dat files so that I can select elements from the list, e.g. one specific weather file (example AAR_DailyWeather)?
+>   
+>   
+> # Import multiple .dat files weather data
+> filelist <- list.files(path = "O:/Data-Work/??./Daten_RA-MeteoCH_1990-2021", pattern='*.dat', all.files= T, full.names= T)
+> W <- lapply(filelist, function(x) read.table(x, header = TRUE, sep = "", colClasses = "numeric", comment.char = ""))
+> W[[1]]
+>   
+>> dd(data = W[[1]]$Precip, time.scale = W[[1]]$year)
+> Fehler in W[[1]]$year : $ operator is invalid for atomic vectors
+>   
+> Kind regards
+> Sibylle
+>   
+>   
+>   
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+I find it strange that the error is complaining about the 2nd argument, 
+W[[1]]$year. It seems that column W[[1]]$Precip exists but not year.
+
+What does
+
+str(W[[1]])
+
+return? A data.frame?
+
+And why sep = "" when reading the files, aren't those files csv files?
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Wed Nov  6 18:28:29 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Wed, 6 Nov 2024 09:28:29 -0800
+Subject: [R] Using multiple dat files
+In-Reply-To: <6E7A7742-21DC-4E9E-8AA3-059ECA813E43@gmx.ch>
+References: <B8E50D3E-29D2-4E6D-B90A-A08259C803BD@unige.ch>
+ <6E7A7742-21DC-4E9E-8AA3-059ECA813E43@gmx.ch>
+Message-ID: <CAGxFJbTHiqLXgo-L7zBLZFy61Dt-GEHgbnOWfyUaVborYykRfQ@mail.gmail.com>
+
+Not quite sure if I understand you.
+
+list.files() simply returns a character vector(not a list). You can simply
+use a vector index to select whatever file you wish to read. So if your
+desired filename is the 5th element of filelist above, something like
+
+myfile <- read.table(filename[5], ...)
+
+You can also use regular expressions to choose a bunch of files that have
+some common signature to their names that you can read in simultaneously
+using your "filelist" vector of names via something like:
+
+myfiles <- lapply(grep("weath", filelist, value = TRUE), \(x)
+read.table(x,...))
+### Note that the result of lapply *is* a list, so use list indexing for
+extraction from myfiles.
+
+
+You can also choose files to read interactively (via a GUI interface) using
+file.choose() instead of using list.files() if you prefer to do it that way.
+
+Cheers,
+Bert
+
+On Wed, Nov 6, 2024 at 8:25?AM Sibylle St?ckli via R-help <
+r-help at r-project.org> wrote:
+
+> Dear community
+>
+> To import multiple .dat  weather files I am using list.files().
+> I intend to use the R package ?ClimInd? to calculate different
+> agroclimatic indicators.
+>
+> Question: Is there another solution to import multiple .dat files so that
+> I can select elements from the list, e.g. one specific weather file
+> (example AAR_DailyWeather)?
+>
+>
+> # Import multiple .dat files weather data
+> filelist <- list.files(path =
+> "O:/Data-Work/??./Daten_RA-MeteoCH_1990-2021", pattern='*.dat', all.files=
+> T, full.names= T)
+> W <- lapply(filelist, function(x) read.table(x, header = TRUE, sep = "",
+> colClasses = "numeric", comment.char = ""))
+> W[[1]]
+>
+> > dd(data = W[[1]]$Precip, time.scale = W[[1]]$year)
+> Fehler in W[[1]]$year : $ operator is invalid for atomic vectors
+>
+> Kind regards
+> Sibylle
+>
+>
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Wed Nov  6 21:46:27 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Wed, 6 Nov 2024 12:46:27 -0800
+Subject: [R] Using multiple dat files
+In-Reply-To: <trinity-e67b69c2-afc2-4b13-a41c-4906c0a5e2c2-1730919598265@trinity-msg-rest-gmx-gmx-live-c75c5fb4b-m9vrp>
+References: <B8E50D3E-29D2-4E6D-B90A-A08259C803BD@unige.ch>
+ <6E7A7742-21DC-4E9E-8AA3-059ECA813E43@gmx.ch>
+ <CAGxFJbTHiqLXgo-L7zBLZFy61Dt-GEHgbnOWfyUaVborYykRfQ@mail.gmail.com>
+ <trinity-e67b69c2-afc2-4b13-a41c-4906c0a5e2c2-1730919598265@trinity-msg-rest-gmx-gmx-live-c75c5fb4b-m9vrp>
+Message-ID: <CAGxFJbSQkRirQcJKQWRdcShE6_5ebgBqvn2Aefm5MoC_gNea1w@mail.gmail.com>
+
+"It seems therefore that there is no other way than read in individually >
+100 weather tables using read.tables., right? Using file.choose() doesn't
+change the work."
+
+Yes. With that many files, file.choose() does not make sense. However, I
+still do not understand what is the problem with using lapply() on the
+character vector of file names with read.table() as you did in your
+original post to read in all the files as components of the W list. As data
+frames are also lists, you can extract individual columns as you did before
+using  the $ extractor, i.e. W[[1]]$year, etc.. You can also use data frame
+indices for the columns, i.e. W[[1]][ ,1] or W[[1]][ ,"year"] . All of
+which I believe you know.
+
+However, I will hazard a *guess* (so exercise due diligence and check) as
+to the cause of your original error,
+
+"dd(data = W[[1]]$Precip, time.scale = W[[1]]$year)
+Fehler in W[[1]]$year : $ operator is invalid for atomic vectors'
+
+even though I know **nothing** about the dd() function. My guess is:
+"data" is usually an argument to a function that tells it to use
+"nonstandard evaluation" to look for arguments and other names in the
+function first in the "data" argument, rather than by following R's
+"standard" evaluation by looking first through the function's closures.
+**If** this guess is correct, the call you gave above should be something
+like:
+
+dd(data = W[[1]], time.scale = year, precip = Precip,...)
+
+where precip (small "p") is a formal argument of the dd() function and
+Precip is a column in the data frame W[[1]].  If this is wrong, my
+apologies, and feel free to ignore without responding.
+
+Best,
+Bert
+
+On Wed, Nov 6, 2024 at 10:59?AM Sibylle St?ckli <sibylle.stoeckli at gmx.ch>
+wrote:
+
+> Dear Rui
+> Dear Bert
+>
+> Many thanks
+>
+> Solution
+> filelist <- list.files(path =
+> "O:/Data-Work/2.../Daten_RA-MeteoCH_1990-2021", pattern='*.dat', all.files=
+> T, full.names= T)
+> AAR<-read.table(filelist[1])
+>
+> It seems therefore that there is no other way than read in individually >
+> 100 weather tables using read.tables., right? Using file.choose() doesn't
+> change the work.
+>
+> Yes my .dat files are data.frames
+>
+> > str(W[[1]])'data.frame':	11688 obs. of  7 variables:
+>  $ year  : num  1990 1990 1990 1990 1990 1990 1990 1990 1990 1990 ...
+>  $ DOY   : num  1 2 3 4 5 6 7 8 9 10 ...
+>  $ Ta    : num  -2.67 -2.77 -2.23 -2.21 -0.98 0.82 0.49 -1.02 -2.31 -3.36 ...
+>  $ Tmin  : num  -3.5 -3.7 -4.26 -2.87 -2.98 0.3 -0.83 -1.27 -3 -3.82 ...
+>  $ Tmax  : num  -1.13 -0.15 -0.13 -0.45 1 1.87 1.72 -0.35 -0.85 -2.3 ...
+>  $ Precip: num  0 0 0 0 0.45 1.81 0.03 0 0 0 ...
+>  $ rSSD  : num  0 0.08 0 0 0.08 0 0 0 0 0 ...
+>
+>
+> *Gesendet: *Mittwoch, 6. November 2024 um 18:28
+> *Von: *"Bert Gunter" <bgunter.4567 at gmail.com>
+> *An: *"Sibylle St?ckli" <sibylle.stoeckli at gmx.ch>
+> *CC: *r-help at r-project.org
+> *Betreff: *Re: [R] Using multiple dat files
+> Not quite sure if I understand you.
+>
+> list.files() simply returns a character vector(not a list). You can simply
+> use a vector index to select whatever file you wish to read. So if your
+> desired filename is the 5th element of filelist above, something like
+>
+> myfile <- read.table(filename[5], ...)
+>
+> You can also use regular expressions to choose a bunch of files that have
+> some common signature to their names that you can read in simultaneously
+> using your "filelist" vector of names via something like:
+>
+> myfiles <- lapply(grep("weath", filelist, value = TRUE), \(x)
+> read.table(x,...))
+> ### Note that the result of lapply *is* a list, so use list indexing for
+> extraction from myfiles.
+>
+>
+> You can also choose files to read interactively (via a GUI interface)
+> using file.choose() instead of using list.files() if you prefer to do it
+> that way.
+>
+> Cheers,
+> Bert
+>
+> On Wed, Nov 6, 2024 at 8:25?AM Sibylle St?ckli via R-help <
+> r-help at r-project.org> wrote:
+>
+>> Dear community
+>>
+>> To import multiple .dat  weather files I am using list.files().
+>> I intend to use the R package ?ClimInd? to calculate different
+>> agroclimatic indicators.
+>>
+>> Question: Is there another solution to import multiple .dat files so that
+>> I can select elements from the list, e.g. one specific weather file
+>> (example AAR_DailyWeather)?
+>>
+>>
+>> # Import multiple .dat files weather data
+>> filelist <- list.files(path =
+>> "O:/Data-Work/??./Daten_RA-MeteoCH_1990-2021", pattern='*.dat', all.files=
+>> T, full.names= T)
+>> W <- lapply(filelist, function(x) read.table(x, header = TRUE, sep = "",
+>> colClasses = "numeric", comment.char = ""))
+>> W[[1]]
+>>
+>> > dd(data = W[[1]]$Precip, time.scale = W[[1]]$year)
+>> Fehler in W[[1]]$year : $ operator is invalid for atomic vectors
+>>
+>> Kind regards
+>> Sibylle
+>>
+>>
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> https://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Wed Nov  6 21:52:54 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Wed, 6 Nov 2024 12:52:54 -0800
+Subject: [R] Using multiple dat files
+In-Reply-To: <CAGxFJbSQkRirQcJKQWRdcShE6_5ebgBqvn2Aefm5MoC_gNea1w@mail.gmail.com>
+References: <B8E50D3E-29D2-4E6D-B90A-A08259C803BD@unige.ch>
+ <6E7A7742-21DC-4E9E-8AA3-059ECA813E43@gmx.ch>
+ <CAGxFJbTHiqLXgo-L7zBLZFy61Dt-GEHgbnOWfyUaVborYykRfQ@mail.gmail.com>
+ <trinity-e67b69c2-afc2-4b13-a41c-4906c0a5e2c2-1730919598265@trinity-msg-rest-gmx-gmx-live-c75c5fb4b-m9vrp>
+ <CAGxFJbSQkRirQcJKQWRdcShE6_5ebgBqvn2Aefm5MoC_gNea1w@mail.gmail.com>
+Message-ID: <CAGxFJbQ5qGAikqTMm9X86Jbw5zwgG5PaxOe8QbGzrDG67==Ftg@mail.gmail.com>
+
+Sorry, wrong language.
+"through the function's closures" in my email should be:
+through the function's chain of environments. (A function in R *is* a
+closure).
+
+-- Bert
+
+
+
+On Wed, Nov 6, 2024 at 12:46?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> "It seems therefore that there is no other way than read in individually
+> > 100 weather tables using read.tables., right? Using file.choose() doesn't
+> change the work."
+>
+> Yes. With that many files, file.choose() does not make sense. However, I
+> still do not understand what is the problem with using lapply() on the
+> character vector of file names with read.table() as you did in your
+> original post to read in all the files as components of the W list. As data
+> frames are also lists, you can extract individual columns as you did before
+> using  the $ extractor, i.e. W[[1]]$year, etc.. You can also use data frame
+> indices for the columns, i.e. W[[1]][ ,1] or W[[1]][ ,"year"] . All of
+> which I believe you know.
+>
+> However, I will hazard a *guess* (so exercise due diligence and check) as
+> to the cause of your original error,
+>
+> "dd(data = W[[1]]$Precip, time.scale = W[[1]]$year)
+> Fehler in W[[1]]$year : $ operator is invalid for atomic vectors'
+>
+> even though I know **nothing** about the dd() function. My guess is:
+> "data" is usually an argument to a function that tells it to use
+> "nonstandard evaluation" to look for arguments and other names in the
+> function first in the "data" argument, rather than by following R's
+> "standard" evaluation by looking first through the function's closures.
+> **If** this guess is correct, the call you gave above should be something
+> like:
+>
+> dd(data = W[[1]], time.scale = year, precip = Precip,...)
+>
+> where precip (small "p") is a formal argument of the dd() function and
+> Precip is a column in the data frame W[[1]].  If this is wrong, my
+> apologies, and feel free to ignore without responding.
+>
+> Best,
+> Bert
+>
+> On Wed, Nov 6, 2024 at 10:59?AM Sibylle St?ckli <sibylle.stoeckli at gmx.ch>
+> wrote:
+>
+>> Dear Rui
+>> Dear Bert
+>>
+>> Many thanks
+>>
+>> Solution
+>> filelist <- list.files(path =
+>> "O:/Data-Work/2.../Daten_RA-MeteoCH_1990-2021", pattern='*.dat', all.files=
+>> T, full.names= T)
+>> AAR<-read.table(filelist[1])
+>>
+>> It seems therefore that there is no other way than read in individually >
+>> 100 weather tables using read.tables., right? Using file.choose() doesn't
+>> change the work.
+>>
+>> Yes my .dat files are data.frames
+>>
+>> > str(W[[1]])'data.frame':	11688 obs. of  7 variables:
+>>  $ year  : num  1990 1990 1990 1990 1990 1990 1990 1990 1990 1990 ...
+>>  $ DOY   : num  1 2 3 4 5 6 7 8 9 10 ...
+>>  $ Ta    : num  -2.67 -2.77 -2.23 -2.21 -0.98 0.82 0.49 -1.02 -2.31 -3.36 ...
+>>  $ Tmin  : num  -3.5 -3.7 -4.26 -2.87 -2.98 0.3 -0.83 -1.27 -3 -3.82 ...
+>>  $ Tmax  : num  -1.13 -0.15 -0.13 -0.45 1 1.87 1.72 -0.35 -0.85 -2.3 ...
+>>  $ Precip: num  0 0 0 0 0.45 1.81 0.03 0 0 0 ...
+>>  $ rSSD  : num  0 0.08 0 0 0.08 0 0 0 0 0 ...
+>>
+>>
+>> *Gesendet: *Mittwoch, 6. November 2024 um 18:28
+>> *Von: *"Bert Gunter" <bgunter.4567 at gmail.com>
+>> *An: *"Sibylle St?ckli" <sibylle.stoeckli at gmx.ch>
+>> *CC: *r-help at r-project.org
+>> *Betreff: *Re: [R] Using multiple dat files
+>> Not quite sure if I understand you.
+>>
+>> list.files() simply returns a character vector(not a list). You can
+>> simply use a vector index to select whatever file you wish to read. So if
+>> your desired filename is the 5th element of filelist above, something like
+>>
+>> myfile <- read.table(filename[5], ...)
+>>
+>> You can also use regular expressions to choose a bunch of files that have
+>> some common signature to their names that you can read in simultaneously
+>> using your "filelist" vector of names via something like:
+>>
+>> myfiles <- lapply(grep("weath", filelist, value = TRUE), \(x)
+>> read.table(x,...))
+>> ### Note that the result of lapply *is* a list, so use list indexing for
+>> extraction from myfiles.
+>>
+>>
+>> You can also choose files to read interactively (via a GUI interface)
+>> using file.choose() instead of using list.files() if you prefer to do it
+>> that way.
+>>
+>> Cheers,
+>> Bert
+>>
+>> On Wed, Nov 6, 2024 at 8:25?AM Sibylle St?ckli via R-help <
+>> r-help at r-project.org> wrote:
+>>
+>>> Dear community
+>>>
+>>> To import multiple .dat  weather files I am using list.files().
+>>> I intend to use the R package ?ClimInd? to calculate different
+>>> agroclimatic indicators.
+>>>
+>>> Question: Is there another solution to import multiple .dat files so
+>>> that I can select elements from the list, e.g. one specific weather file
+>>> (example AAR_DailyWeather)?
+>>>
+>>>
+>>> # Import multiple .dat files weather data
+>>> filelist <- list.files(path =
+>>> "O:/Data-Work/??./Daten_RA-MeteoCH_1990-2021", pattern='*.dat', all.files=
+>>> T, full.names= T)
+>>> W <- lapply(filelist, function(x) read.table(x, header = TRUE, sep = "",
+>>> colClasses = "numeric", comment.char = ""))
+>>> W[[1]]
+>>>
+>>> > dd(data = W[[1]]$Precip, time.scale = W[[1]]$year)
+>>> Fehler in W[[1]]$year : $ operator is invalid for atomic vectors
+>>>
+>>> Kind regards
+>>> Sibylle
+>>>
+>>>
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> https://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>>
+
+	[[alternative HTML version deleted]]
+
+
