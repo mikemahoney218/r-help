@@ -5995,3 +5995,158 @@ Duncan Murdoch
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From dyk|m7411 @end|ng |rom gm@||@com  Sat Nov 30 05:12:31 2024
+From: dyk|m7411 @end|ng |rom gm@||@com (D)
+Date: Fri, 29 Nov 2024 23:12:31 -0500
+Subject: [R] Save spatial data in a csv file
+Message-ID: <CADmwX-LXiw0yrVy2a0X+eERg=Vuv=pYGG8h16kdyuLLw3x2p+w@mail.gmail.com>
+
+> print(nyc_ct_geo) Simple feature collection with 2325 features and 1
+field Geometry type: MULTIPOLYGON Dimension: XY Bounding box: xmin:
+913175.1 ymin: 120128.4 xmax: 1067383 ymax: 272844.3 Projected CRS: NAD83 /
+New York Long Island (ftUS) First 10 features: geoid geometry 1 36061000100
+MULTIPOLYGON (((972081.8 19... 2 36061000201 MULTIPOLYGON (((988548.2 19...
+3 36061000600 MULTIPOLYGON (((986961.2 19... 4 36061001401 MULTIPOLYGON
+(((987475 2002... 5 36061001402 MULTIPOLYGON (((988387.7 20... 6
+36061001800 MULTIPOLYGON (((987062.3 20... 7 36061002201 MULTIPOLYGON
+(((990139.8 20... 8 36061002601 MULTIPOLYGON (((990655.2 20... 9
+36061002602 MULTIPOLYGON (((991015.1 20... 10 36061002800 MULTIPOLYGON
+(((991650.9 20...
+
+I am trying to save the above spatial data in a csv file using the code:
+write.csv(nyc_ct_geo, 'nyc_ct_geo.csv',row.names=FALSE).   However, when I
+ran said code, all geometry coordinates for each spatial unit were placed
+in different columns.  I think they should be placed in one single column.
+Any advice would be appreciated.
+
+	[[alternative HTML version deleted]]
+
+
+From h@@@n@d|w@n @end|ng |rom gm@||@com  Sat Nov 30 18:46:17 2024
+From: h@@@n@d|w@n @end|ng |rom gm@||@com (Hasan Diwan)
+Date: Sat, 30 Nov 2024 09:46:17 -0800
+Subject: [R] Save spatial data in a csv file
+In-Reply-To: <CADmwX-LXiw0yrVy2a0X+eERg=Vuv=pYGG8h16kdyuLLw3x2p+w@mail.gmail.com>
+References: <CADmwX-LXiw0yrVy2a0X+eERg=Vuv=pYGG8h16kdyuLLw3x2p+w@mail.gmail.com>
+Message-ID: <CAP+bYWCkzSSiBJ_FPH7fyYYcUV=4yGRP_baBe4UvMbMg87p0OQ@mail.gmail.com>
+
+Kindly respond with the output of `dput(nyc_ct_geo)` -- thank you! -- H
+
+
+-- 
+OpenPGP: https://hasan.d8u.us/openpgp.asc
+If you wish to request my time, please do so using
+*bit.ly/hd1AppointmentRequest
+<http://bit.ly/hd1AppointmentRequest>*.
+Si vous voudriez faire connnaisance, allez a *bit.ly/hd1AppointmentRequest
+<http://bit.ly/hd1AppointmentRequest>*.
+
+<https://sks-keyservers.net/pks/lookup?op=get&search=0xFEBAD7FFD041BBA1>Sent
+from my mobile device
+Envoye de mon portable
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Nov 30 21:21:01 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 30 Nov 2024 12:21:01 -0800
+Subject: [R] 
+ Trying to get the prior value of a record from a data.frame . .
+ . data.frame
+In-Reply-To: <DM6PR03MB50499EBB4A90D668242E8AC3E22A2@DM6PR03MB5049.namprd03.prod.outlook.com>
+References: <DM6PR03MB50499EBB4A90D668242E8AC3E22A2@DM6PR03MB5049.namprd03.prod.outlook.com>
+Message-ID: <CAGxFJbS-y=DfYLW-0VfGA_psfQ+Em7Dce_JLakkx0x4QSnauJg@mail.gmail.com>
+
+I assume that the responses that John already received to his recent
+post met his needs. However, when I read it, I had a slightly
+different interpretation. So feel free to ignore the rest of this post
+if you like, but here's my interpretation and a simple solution to it.
+
+An example to help explain:
+
+set.seed(453)
+df <- data.frame(
+      group = sample(letters[1:4],30, rep = TRUE),
+      gender = sample(c("M", "F", "NB"), 30, rep = TRUE),
+      value = 1:30
+)
+
+df is a data frame with 30 records/rows of 3 columns giving a group
+identifier, gender, and value for each record. I kept the values
+artificially simple to (I hope) make it easier to understand the
+problem and my solution.
+
+The problem: create a new column, prev.value, that gives the value of
+the previous record that has the same group and gender as the current
+record if any such exist; or NA if no such previous id and gender
+combination occur.
+I think this is a slightly more complex task than John's original
+request, but it is actually straightforward even in base R -- and
+undoubtedly also using similar functionality in the Tidyverse or other
+packages.
+
+Here is my solution (using the R pipe, "|>", syntax):
+
+df$prev.value <- with(df, {
+   f <- paste0(group,gender) ## a simple 'hash' to identify the combinations
+      ## "shift" the values for each group defined by f:
+   f |> tapply(value, INDEX = _, FUN = \(x)c(NA, head(x, -1)))  |>
+      ## reassemble according to f:
+   unsplit(f)
+})
+df
+
+
+Cheers,
+Bert
+
+
+On Thu, Nov 28, 2024 at 5:25?PM Sorkin, John <jsorkin at som.umaryland.edu> wrote:
+>
+> I need to write code that will give me the previous value of from a data.frame. I have written the following code using the shift function from data.table . It does not work. I hope someone can help me correct the code.
+> ###########################
+> # Try to understand shift #
+> ###########################
+> if(!require(data.table)) install.packages("data.table")
+> library(data.table)
+> # Create data
+> x <- data.frame(Id=rep(1:10),num=rep(11:20))
+> cat("This is the input data.frame used in the code below","\n")
+> x
+>
+> for (i in 1:10) {
+>   cat("x[i,num]",x[i,"num"],"\n")
+>   # Get previous value of x[i,"num"]
+>   zoop<-shift(x[i,"num"], n=1L, type="lag")
+>   cat("Previous value of x[,num]=",zoop,"\n")
+>   }
+> ###############################
+> # END Try to understand shift #
+> ###############################
+>
+> Thank you,
+> John
+>
+>
+> John David Sorkin M.D., Ph.D.
+> Professor of Medicine, University of Maryland School of Medicine;
+> Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+> PI Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+> Senior Statistician University of Maryland Center for Vascular Research;
+>
+> Division of Gerontology and Paliative Care,
+> 10 North Greene Street
+> GRECC (BT/18/GR)
+> Baltimore, MD 21201-1524
+> Cell phone 443-418-5382
+>
+>
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
