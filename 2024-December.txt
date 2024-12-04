@@ -1144,3 +1144,798 @@ On Sat, Nov 30, 2024 at 11:05?PM Rui Barradas <ruipbarradas at sapo.pt> wrote:
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From bgunter@4567 @end|ng |rom gm@||@com  Mon Dec  2 06:43:45 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 1 Dec 2024 21:43:45 -0800
+Subject: [R] Identify first row of each ID within a data frame,
+ create a variable first =1 for the first row and first=0 of all
+ other rows
+In-Reply-To: <DM6PR03MB5049F365BD14FF48597163E3E2352@DM6PR03MB5049.namprd03.prod.outlook.com>
+References: <DM6PR03MB5049ED4EE95641C693B3D7EAE2342@DM6PR03MB5049.namprd03.prod.outlook.com>
+ <CAGxFJbQzXRAQzgnyS7QTiN3ewCkLiMvpJb6AiEhTp4EvstesHw@mail.gmail.com>
+ <DM6PR03MB5049F365BD14FF48597163E3E2352@DM6PR03MB5049.namprd03.prod.outlook.com>
+Message-ID: <CAGxFJbQ_YjZND6XFGgpA2fCOxWdw-zRwSTpr1OnZA-FsPxBW7A@mail.gmail.com>
+
+OK.
+
+(Note: I am ccing this to the list so that others can correct any
+mistakes, misunderstandings, or misstatements that I may make; and
+also give you more and better advice about how to proceed. For
+example, there may be environmental packages ( see the environmetrics
+task view, https://CRAN.R-project.org/view=Environmetrics) that
+already do everything you want from your data source that someone else
+could tell you about. Why reinvent the wheel if you don't have to? )
+
+Unfortunately, you failed to show us the critical information
+necessary to give you a definitive answer: the structure of a single
+record. However, I will wing it based on your description and assume
+that each record contains the following information something like
+this: Latitude   Longitude  Date Time pm25 + other stuff maybe.  If
+this is the case,
+
+1) You do not need to sort anything. R has robust date-time
+manipulation and computation capabilities to handle dates and times,
+though in this case you only need dates. R knows all about how to
+order dates and times.
+
+2) You do not have to physically group your records according to
+geographic location. R knows how to extract and manipulate groups
+without this;
+
+3) And as all you need is a daily average, you do not need to worry
+about when days begin or end.
+
+If this is a reasonably accurate interpretation of what needs to be
+done, and your data are in a data frame called dat, then something
+like the following will do it:
+## First convert latitude and longitude into a single location factor, loc
+dat$loc <- with(dat, paste0(Latitude, Longitude))
+
+## you could also convert the latitude and longitude into actual
+location names if you like; the "factor" data structure in R is one
+simple way to do this, for example.
+
+## Then a one liner in base R does what I think you want:
+avgs <- aggregate(pm25 ~ loc + Date, FUN = mean, data = dat)
+
+See ?aggregate for details. Note in particular that you can get
+results simultaneously for several different pm's or whatevers. I
+should also note that the so-called "Tidyverse" and "data.table"
+groups of packages, and likely others, also can easily do these sorts
+of things, though of course with different syntax, semantics, and
+functionality, perhaps in ways that you might find simpler to master..
+There are many good tutorials available for both base R and these
+packages, but from my ignorant perspective, you need to first spend
+some time to learn about R's basic data structures (factors, lists,
+vectors, etc.) if you want to use R for serious data manipulation.
+Finally, my best advice would be to forget about SAS if you wish to
+use R. Trying to translate SAS paradigms into R is the devil's work.
+
+Cheers,
+Bert
+
+
+
+
+
+
+On Sun, Dec 1, 2024 at 7:29?PM Sorkin, John <jsorkin at som.umaryland.edu> wrote:
+>
+> Bert, Avi:
+>
+> I stand accused of "using SAS-like strategies for your data analysis rather than R-like [analyses]." Although I am guilty, but I beg the court's mercy ;).  I have been a SAS programmer for more than 35 years. I have used R (and S-Plus) for about 20-years, but mostly for statistical analyses that required little or no data manipulation. I now need to use R for both statistical analyses and data manipulation and am trying to do in R what I can do easily is SAS.
+>
+> Here is a full description of my data manipulation problem:
+> I have satellite data of airborne pollutants, obtained every 15-minutes over four-days from approximately 500 geographic areas=438 observations/4 days*500 geographic locations=approximately 250,000 individual observations. (I say approximately because I have slightly less than four-days data and I have slightly less than 500 geographic areas. The exact number of observations is of minor importance.)
+>
+> Each of the 500 geographic areas has a fixed longitude and latitude. Each of the 438 observations for each of the approximately 500 geographic areas has a date-time stamp. I need to compute average 24-hour pollutant (e.g. pm2.5) exposure for each day, across ALL 500 geographic areas. To accomplish this, I need to
+>
+> 1) Group data from each of the 500 geographic areas together
+>
+> 2) Within each geographic area order the observations by day and time
+>         1) and 2) are easily accomplished using the R order function,
+>       mydata<-mydata[order(mydata$lat_lon,mydata$Time),]
+>
+>  or SAS proc sort:
+>         proc sort data=mydata;
+>            by lat_lon daytime;  /* lat long is a string giving latitude and longitude */
+>         run;
+>
+> 3) For each geographic area determine the records that mark the start and stop of each of the four days, let's say from 00:00 hrs to 23:59 hours, and create a variable, daynum that indicates the day number (valid values 1 to 4). I do not know how to accomplish this in R. This is the part of my analysis that I asked the R community to help me write. I know how this this can be easily done in SAS:
+> * Arrange data date and time within each geographic region (i.e. lat_lon and daytime);
+> proc sort data=mydata;
+>   by lat_lon daytime;
+> run;
+>
+> data mydata;
+>   /* For each getgraphic area, each time a new record is run, keep the preceding value of daynum */
+>   retain daynum;
+>   set mydata;
+>      by lat_lon daytime;
+>   /* initialize daynum to 0 for first record from a given geographic location*/
+>   if _n_ eq 1 then daynum=0;
+>  /* Determine start of each day */
+> mytime = timepart(daytime)  /* Extract time from date-time constant */
+>   if mytime eq '00:00:00't then daynum=daynum+1; /* Increment daynum for each new day */
+> run;
+>
+> 4) Get average value for a pollutant, pm25, by day across all 500 geographic areas. This is easily done in SAS using proc sort and proc means.
+> proc sort data=mydata;
+>   by daynum;
+> run;
+>
+> * Get mean pm 2.5 by day accross all 500 geographic regions.;
+> proc means data=mydata;
+>   by daynum;
+>   var pm25;
+> run;
+>
+> If I can get step (3) above accomplished in R, I know how to accomplish step 4) in R using the by function:
+> by(mydata[,"pm25"], mydata[,"daynum"],mean)
+>
+> I am trying to write the analysis described, and written in SAS, for 3) above in R. Please understand that I am fluent in SAS, and (except for straight forward analyses that require little or no data manipulation, where I am an intermediate programmer) i am an R tyro.
+>
+> Thank you for your help. My apologies for the long description of what I am trying to do. I sent this because you asked what I was trying to do and why I was doing it from the perspective of a SAS programmer rather than a matrix-based R programmer.
+>
+> John David Sorkin M.D., Ph.D.
+> Professor of Medicine, University of Maryland School of Medicine;
+> Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+> PI Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+> Senior Statistician University of Maryland Center for Vascular Research;
+>
+> Division of Gerontology and Paliative Care,
+> 10 North Greene Street
+> GRECC (BT/18/GR)
+> Baltimore, MD 21201-1524
+> Cell phone 443-418-5382
+>
+>
+>
+>
+> ________________________________________
+> From: Bert Gunter <bgunter.4567 at gmail.com>
+> Sent: Saturday, November 30, 2024 11:33 PM
+> To: Sorkin, John
+> Cc: r-help at r-project.org (r-help at r-project.org)
+> Subject: Re: [R] Identify first row of each ID within a data frame, create a variable first =1 for the first row and first=0 of all other rows
+>
+> May I ask *why* you want to do this?
+>
+> It sounds to me like like you're using SAS-like strategies for your
+> data analysis rather than R-like.
+>
+> -- Bert
+>
+> -- Bert
+>
+> On Sat, Nov 30, 2024 at 6:27?PM Sorkin, John <jsorkin at som.umaryland.edu> wrote:
+> >
+> > Dear R help folks,
+> >
+> > First my apologizes for sending several related questions to the list server. I am trying to learn how to manipulate data in R . . . and am having difficulty getting my program to work. I greatly appreciate the help and support list member give!
+> >
+> > I am trying to write a program that will run through a data frame organized by ID and for the first line of each new group of data lines that has the same ID create a new variable first that will be 1 for the first line of the group and 0 for all other lines.
+> >
+> > e.g. if my original data is
+> >  olddata
+> >    ID date
+> >     1     1
+> >     1     1
+> >     1     2
+> >     1     2
+> >     1     3
+> >     1     3
+> >     1     4
+> >     1     4
+> >     1     5
+> >     1     5
+> >     2     5
+> >     2     5
+> >     2     5
+> >     2     6
+> >     2     6
+> >     2     6
+> >     3   10
+> >     3   10
+> >
+> > the new data will be
+> > newdata
+> >    ID date  first
+> >     1     1       1
+> >     1     1       0
+> >     1     2       0
+> >     1     2       0
+> >     1     3       0
+> >     1     3       0
+> >     1     4       0
+> >     1     4       0
+> >     1     5       0
+> >     1     5       0
+> >     2     5       1
+> >     2     5       0
+> >     2     5       0
+> >     2     6       0
+> >     2     6       0
+> >     2     6       0
+> >     3   10       1
+> >     3   10       0
+> >
+> > When I run the program below, I receive the following error:
+> > Error in df[, "ID"] : incorrect number of dimensions
+> >
+> > My code:
+> > # Create data.frame
+> > ID <- c(rep(1,10),rep(2,6),rep(3,2))
+> > date <- c(rep(1,2),rep(2,2),rep(3,2),rep(4,2),rep(5,2),
+> >           rep(5,3),rep(6,3),rep(10,2))
+> > olddata <- data.frame(ID=ID,date=date)
+> > class(olddata)
+> > cat("This is the original data frame","\n")
+> > print(olddata)
+> >
+> > # This function is supposed to identify the first row
+> > # within each level of ID and, for the first row, set
+> > # the variable first to 1, and for all rows other than
+> > # the first row set first to 0.
+> > mydoit <- function(df){
+> >   value <- ifelse (first(df[,"ID"]),1,0)
+> >   cat("value=",value,"\n")
+> >   df[,"first"] <- value
+> > }
+> > newdata <- aggregate(olddata,list(olddata[,"ID"]),mydoit)
+> >
+> > Thank you,
+> > John
+> >
+> >
+> > John David Sorkin M.D., Ph.D.
+> > Professor of Medicine, University of Maryland School of Medicine;
+> > Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+> > PI Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+> > Senior Statistician University of Maryland Center for Vascular Research;
+> >
+> > Division of Gerontology and Paliative Care,
+> > 10 North Greene Street
+> > GRECC (BT/18/GR)
+> > Baltimore, MD 21201-1524
+> > Cell phone 443-418-5382
+> >
+> >
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+
+From ro||turner @end|ng |rom po@teo@net  Mon Dec  2 07:47:20 2024
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Mon,  2 Dec 2024 06:47:20 +0000
+Subject: [R] Fortune nomination.
+In-Reply-To: <CAGxFJbQ_YjZND6XFGgpA2fCOxWdw-zRwSTpr1OnZA-FsPxBW7A@mail.gmail.com>
+References: <DM6PR03MB5049ED4EE95641C693B3D7EAE2342@DM6PR03MB5049.namprd03.prod.outlook.com>
+ <CAGxFJbQzXRAQzgnyS7QTiN3ewCkLiMvpJb6AiEhTp4EvstesHw@mail.gmail.com>
+ <DM6PR03MB5049F365BD14FF48597163E3E2352@DM6PR03MB5049.namprd03.prod.outlook.com>
+ <CAGxFJbQ_YjZND6XFGgpA2fCOxWdw-zRwSTpr1OnZA-FsPxBW7A@mail.gmail.com>
+Message-ID: <20241202194720.3baf35af@new-hp>
+
+
+On Sun, 1 Dec 2024 21:43:45 -0800
+Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+
+> Finally, my best advice would be to forget about SAS if you wish to
+> use R. Trying to translate SAS paradigms into R is the devil's work.
+
+cheers,
+
+Rolf Turner
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Mon Dec  2 06:39:28 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Mon, 2 Dec 2024 00:39:28 -0500
+Subject: [R] Identify first row of each ID within a data frame,
+ create a variable first =1 for the first row and first=0 of all
+ other rows
+In-Reply-To: <DM6PR03MB50499E32539371619AB9CE39E2352@DM6PR03MB5049.namprd03.prod.outlook.com>
+References: <DM6PR03MB5049ED4EE95641C693B3D7EAE2342@DM6PR03MB5049.namprd03.prod.outlook.com>
+ <b888c330-de36-4a00-aeff-b38385baa085@sapo.pt>
+ <CAGxFJbTUEFgeeDXe0rpAe4EfGN8edJAC1oVSjMTKuat-iBkSww@mail.gmail.com>
+ <DM6PR03MB50499E32539371619AB9CE39E2352@DM6PR03MB5049.namprd03.prod.outlook.com>
+Message-ID: <000701db447c$8df72760$a9e57620$@gmail.com>
+
+John,
+
+Thanks for enlightening us so we better understand.
+
+I won't argue with your wish to learn to do things in base R first. I started that way, myself, and found lots of the commands not particularly easy to fit into a single worldview. Many functions I read about were promptly forgotten, especially those without great documentation and not enough examples of real world usage.
+
+This is why some packages that came later are important as they generally try to come up with a somewhat consistent set of tools that often are also faster and more flexible. There is often a set of reasons various packages are created in the first place to meet real needs. And, I note that some may be subtle. Original R was often inconsistent in the order of command arguments while the dplyr and other tidyverse command try as much as possible to make the first argument be the one normally passed through a pipeline. R fairly recently added a native pipe operator that may be faster than the magrittr pipe but in some ways makes some functionality harder. The rest of R has not really been changed to make using commands in pipelines easy.
+
+You seem to have also looked at data.table and given you may have large amounts of data, it may be designed in ways that might also be beneficial.
+
+But as I do not want to relearn lots of R functions I never use, I will bow out from further discussion as what I would offer these days would probably not be what you want.
+
+My personal opinion is that proper use of R can actually be far easier and more flexible than you had with the proprietary software that may largely consist of canned reports often used.
+
+I do want to point out a few things to consider.
+
+When you go grouping, you may want to consider grouping (as well as sorting) by multipole variables. You mention a variable with about 500 possibilities and then another variable with an ID number but did not say the ID number was unique across them all. 
+
+And, I want to note you may want to also look into testing the sanity of your data. That is a wide area too. Things like duplicates, for example.
+
+I do not know how many steps you can handle but there are sometimes designs that make an algorithm work differently.
+
+Consider your request to find  the first row in each grouping and add a column with a 1, and 0 for all others. If that is what you need, fine.
+
+But, what if instead you just added a row number. Some rows would have a 1, and some may have a 2, 3, or 4.
+
+When you wanted  to so something to just the rows with a 1, you can filter out a subset of the data easily enough or apply a command only to those rows. But if you want to test if any entry has more than 4 rows, this could allow you to detect an error. Other ideas might be possible if that is how the data was saved.
+
+And, if it really is a 0/1 choice, fine, but consider the advantages or disadvantages of what you save in the new column. Storing a numeric or an int can take up space when storing a Boolean or TRUE/FALSE is what you need. R gives you lots of flexibility which perhaps you did not have to think about before.
+
+All I know is that so much of what you want to do is easily enough done with a pipeline or two in dplyr. But this is your task and you choose what makes sense. It specializes in group analysis and generates reports and so on. It may not be how you think. 
+
+
+-----Original Message-----
+From: Sorkin, John <jsorkin at som.umaryland.edu> 
+Sent: Sunday, December 1, 2024 11:19 PM
+To: Bert Gunter <bgunter.4567 at gmail.com>; Rui Barradas <ruipbarradas at sapo.pt>; twoolman at ontargettek.com; tebert at ufl.edu; Bert Gunter <bgunter.4567 at gmail.com>; jdnewmil at dcn.davis.ca.us; avi.e.gross at gmail.com; therneau at mayo.edu; dwinsemius at comcast.net; tebert at ufl.edu; rmh at temple.edu; ken.knoblauch at inserm.fr; boris.steipe at utoronto.ca
+Cc: r-help at r-project.org (r-help at r-project.org) <r-help at r-project.org>; kimmo.elo at uef.fi
+Subject: Re: [R] Identify first row of each ID within a data frame, create a variable first =1 for the first row and first=0 of all other rows
+
+Dear Colleagues,
+
+I am grateful to all of you for helping me with my question, how to write R code that will identify the first row of each ID within a data frame, create a variable first=1 for the first row and first=0 for all repeats of the ID.
+
+WOW!!!
+I just saw Boris Steipe's answer to my question:
+olddata$first <- as.numeric(! duplicated(olddata$ID))
+The solution is elegant, short, easy to understand, and it uses base R! All important characteristics of a good solution, at least for me. While I want to learn solutions using packages that extend base R, I believe that a good programmer learns how to do something using the base language and once that is learned, explores way to solve a programing problem using advanced packages.
+
+Each and every one of you (I hope I did not miss anyone in my list of email addresses) took the time to read my emails and respond to me. Your collective help is invaluable, and I am in your collect debt.
+
+Many, many thanks,
+John
+
+John David Sorkin M.D., Ph.D.
+Professor of Medicine, University of Maryland School of Medicine;
+Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+PI Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+Senior Statistician University of Maryland Center for Vascular Research;
+
+Division of Gerontology and Paliative Care,
+10 North Greene Street
+GRECC (BT/18/GR)
+Baltimore, MD 21201-1524
+Cell phone 443-418-5382
+
+
+
+
+________________________________________
+From: Bert Gunter <bgunter.4567 at gmail.com>
+Sent: Sunday, December 1, 2024 11:30 AM
+To: Rui Barradas
+Cc: Sorkin, John; r-help at r-project.org (r-help at r-project.org)
+Subject: Re: [R] Identify first row of each ID within a data frame, create a variable first =1 for the first row and first=0 of all other rows
+
+Rui:
+"f these two, diff is faster. But of all the solutions posted so far,
+Ben Bolker's is the fastest."
+
+But the explicit version of diff is still considerably faster:
+
+> D <- c(rep(1,10),rep(2,6),rep(3,2))
+
+> microbenchmark(c(1L,diff(D)), times = 1000L)
+Unit: microseconds
+           expr   min    lq    mean median    uq    max neval
+ c(1L, diff(D)) 3.075 3.198 3.34396   3.28 3.362 29.684  1000
+
+> microbenchmark( as.integer(!duplicated(D)), times =1000L)
+Unit: microseconds
+                       expr   min    lq     mean median   uq  max neval
+ as.integer(!duplicated(D)) 1.476 1.558 1.644264  1.599 1.64 16.4  1000
+
+> microbenchmark( D - c(0L, D[-length(D)]), times = 1000L)
+Unit: nanoseconds  ## note that unit is nanoseconds not microseconds
+                     expr min  lq    mean median  uq  max neval
+ D - c(0L, D[-length(D)]) 369 410 489.335    492 533 9840  1000
+
+Cheers,
+Bert
+
+On Sat, Nov 30, 2024 at 11:05?PM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>
+> ?s 02:27 de 01/12/2024, Sorkin, John escreveu:
+> > Dear R help folks,
+> >
+> > First my apologizes for sending several related questions to the list server. I am trying to learn how to manipulate data in R . . . and am having difficulty getting my program to work. I greatly appreciate the help and support list member give!
+> >
+> > I am trying to write a program that will run through a data frame organized by ID and for the first line of each new group of data lines that has the same ID create a new variable first that will be 1 for the first line of the group and 0 for all other lines.
+> >
+> > e.g. if my original data is
+> >   olddata
+> >     ID date
+> >      1     1
+> >      1     1
+> >      1     2
+> >      1     2
+> >      1     3
+> >      1     3
+> >      1     4
+> >      1     4
+> >      1     5
+> >      1     5
+> >      2     5
+> >      2     5
+> >      2     5
+> >      2     6
+> >      2     6
+> >      2     6
+> >      3   10
+> >      3   10
+> >
+> > the new data will be
+> > newdata
+> >     ID date  first
+> >      1     1       1
+> >      1     1       0
+> >      1     2       0
+> >      1     2       0
+> >      1     3       0
+> >      1     3       0
+> >      1     4       0
+> >      1     4       0
+> >      1     5       0
+> >      1     5       0
+> >      2     5       1
+> >      2     5       0
+> >      2     5       0
+> >      2     6       0
+> >      2     6       0
+> >      2     6       0
+> >      3   10       1
+> >      3   10       0
+> >
+> > When I run the program below, I receive the following error:
+> > Error in df[, "ID"] : incorrect number of dimensions
+> >
+> > My code:
+> > # Create data.frame
+> > ID <- c(rep(1,10),rep(2,6),rep(3,2))
+> > date <- c(rep(1,2),rep(2,2),rep(3,2),rep(4,2),rep(5,2),
+> >            rep(5,3),rep(6,3),rep(10,2))
+> > olddata <- data.frame(ID=ID,date=date)
+> > class(olddata)
+> > cat("This is the original data frame","\n")
+> > print(olddata)
+> >
+> > # This function is supposed to identify the first row
+> > # within each level of ID and, for the first row, set
+> > # the variable first to 1, and for all rows other than
+> > # the first row set first to 0.
+> > mydoit <- function(df){
+> >    value <- ifelse (first(df[,"ID"]),1,0)
+> >    cat("value=",value,"\n")
+> >    df[,"first"] <- value
+> > }
+> > newdata <- aggregate(olddata,list(olddata[,"ID"]),mydoit)
+> >
+> > Thank you,
+> > John
+> >
+> >
+> > John David Sorkin M.D., Ph.D.
+> > Professor of Medicine, University of Maryland School of Medicine;
+> > Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+> > PI Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+> > Senior Statistician University of Maryland Center for Vascular Research;
+> >
+> > Division of Gerontology and Paliative Care,
+> > 10 North Greene Street
+> > GRECC (BT/18/GR)
+> > Baltimore, MD 21201-1524
+> > Cell phone 443-418-5382
+> >
+> >
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+>
+> And here are two other solutions.
+>
+>
+> olddata$first <- with(olddata, ave(seq_along(ID), ID, FUN = \(x) x ==
+> x[1L]))
+>
+> olddata$first <- c(1L, diff(olddata$ID))
+>
+>
+> Of these two, diff is faster. But of all the solutions posted so far,
+> Ben Bolker's is the fastest. And it can be made a little faster if
+> as.integer substitutes for as.numeric.
+> And dplyr::mutate now has a .by argument, which avoids explicit the call
+> to group_by, with a performance gain.
+>
+>
+> library(microbenchmark)
+>
+> mb <- microbenchmark(
+>    ave = with(olddata, ave(seq_along(ID), ID, FUN = \(x) x == x[1L])),
+>    dup_num = as.numeric(! duplicated(olddata$ID)),
+>    dup_int = as.integer(! duplicated(olddata$ID)),
+>    diff = diff = c(1L, diff(olddata$ID)),
+>    dplyr_grp = olddata %>% group_by(ID) %>% mutate(first =
+> as.integer(row_number() == 1)),
+>    dplyr = olddata %>% mutate(first = as.integer(row_number() == 1), .by
+> = ID)
+> )
+> print(mb, order = "median")
+>
+>
+>
+> However, note that dplyr operates in entire data.frames and therefore is
+> expected to be slower when tested against instructions that process one
+> column only.
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+> --
+> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+> http://www.avg.com/
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Mon Dec  2 05:18:40 2024
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Mon, 2 Dec 2024 04:18:40 +0000
+Subject: [R] Identify first row of each ID within a data frame,
+ create a variable first =1 for the first row and first=0 of all
+ other rows
+In-Reply-To: <CAGxFJbTUEFgeeDXe0rpAe4EfGN8edJAC1oVSjMTKuat-iBkSww@mail.gmail.com>
+References: <DM6PR03MB5049ED4EE95641C693B3D7EAE2342@DM6PR03MB5049.namprd03.prod.outlook.com>
+ <b888c330-de36-4a00-aeff-b38385baa085@sapo.pt>
+ <CAGxFJbTUEFgeeDXe0rpAe4EfGN8edJAC1oVSjMTKuat-iBkSww@mail.gmail.com>
+Message-ID: <DM6PR03MB50499E32539371619AB9CE39E2352@DM6PR03MB5049.namprd03.prod.outlook.com>
+
+Dear Colleagues,
+
+I am grateful to all of you for helping me with my question, how to write R code that will identify the first row of each ID within a data frame, create a variable first=1 for the first row and first=0 for all repeats of the ID.
+
+WOW!!!
+I just saw Boris Steipe's answer to my question:
+olddata$first <- as.numeric(! duplicated(olddata$ID))
+The solution is elegant, short, easy to understand, and it uses base R! All important characteristics of a good solution, at least for me. While I want to learn solutions using packages that extend base R, I believe that a good programmer learns how to do something using the base language and once that is learned, explores way to solve a programing problem using advanced packages.
+
+Each and every one of you (I hope I did not miss anyone in my list of email addresses) took the time to read my emails and respond to me. Your collective help is invaluable, and I am in your collect debt.
+
+Many, many thanks,
+John
+
+John David Sorkin M.D., Ph.D.
+Professor of Medicine, University of Maryland School of Medicine;
+Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+PI Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+Senior Statistician University of Maryland Center for Vascular Research;
+
+Division of Gerontology and Paliative Care,
+10 North Greene Street
+GRECC (BT/18/GR)
+Baltimore, MD 21201-1524
+Cell phone 443-418-5382
+
+
+
+
+________________________________________
+From: Bert Gunter <bgunter.4567 at gmail.com>
+Sent: Sunday, December 1, 2024 11:30 AM
+To: Rui Barradas
+Cc: Sorkin, John; r-help at r-project.org (r-help at r-project.org)
+Subject: Re: [R] Identify first row of each ID within a data frame, create a variable first =1 for the first row and first=0 of all other rows
+
+Rui:
+"f these two, diff is faster. But of all the solutions posted so far,
+Ben Bolker's is the fastest."
+
+But the explicit version of diff is still considerably faster:
+
+> D <- c(rep(1,10),rep(2,6),rep(3,2))
+
+> microbenchmark(c(1L,diff(D)), times = 1000L)
+Unit: microseconds
+           expr   min    lq    mean median    uq    max neval
+ c(1L, diff(D)) 3.075 3.198 3.34396   3.28 3.362 29.684  1000
+
+> microbenchmark( as.integer(!duplicated(D)), times =1000L)
+Unit: microseconds
+                       expr   min    lq     mean median   uq  max neval
+ as.integer(!duplicated(D)) 1.476 1.558 1.644264  1.599 1.64 16.4  1000
+
+> microbenchmark( D - c(0L, D[-length(D)]), times = 1000L)
+Unit: nanoseconds  ## note that unit is nanoseconds not microseconds
+                     expr min  lq    mean median  uq  max neval
+ D - c(0L, D[-length(D)]) 369 410 489.335    492 533 9840  1000
+
+Cheers,
+Bert
+
+On Sat, Nov 30, 2024 at 11:05?PM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+>
+> ?s 02:27 de 01/12/2024, Sorkin, John escreveu:
+> > Dear R help folks,
+> >
+> > First my apologizes for sending several related questions to the list server. I am trying to learn how to manipulate data in R . . . and am having difficulty getting my program to work. I greatly appreciate the help and support list member give!
+> >
+> > I am trying to write a program that will run through a data frame organized by ID and for the first line of each new group of data lines that has the same ID create a new variable first that will be 1 for the first line of the group and 0 for all other lines.
+> >
+> > e.g. if my original data is
+> >   olddata
+> >     ID date
+> >      1     1
+> >      1     1
+> >      1     2
+> >      1     2
+> >      1     3
+> >      1     3
+> >      1     4
+> >      1     4
+> >      1     5
+> >      1     5
+> >      2     5
+> >      2     5
+> >      2     5
+> >      2     6
+> >      2     6
+> >      2     6
+> >      3   10
+> >      3   10
+> >
+> > the new data will be
+> > newdata
+> >     ID date  first
+> >      1     1       1
+> >      1     1       0
+> >      1     2       0
+> >      1     2       0
+> >      1     3       0
+> >      1     3       0
+> >      1     4       0
+> >      1     4       0
+> >      1     5       0
+> >      1     5       0
+> >      2     5       1
+> >      2     5       0
+> >      2     5       0
+> >      2     6       0
+> >      2     6       0
+> >      2     6       0
+> >      3   10       1
+> >      3   10       0
+> >
+> > When I run the program below, I receive the following error:
+> > Error in df[, "ID"] : incorrect number of dimensions
+> >
+> > My code:
+> > # Create data.frame
+> > ID <- c(rep(1,10),rep(2,6),rep(3,2))
+> > date <- c(rep(1,2),rep(2,2),rep(3,2),rep(4,2),rep(5,2),
+> >            rep(5,3),rep(6,3),rep(10,2))
+> > olddata <- data.frame(ID=ID,date=date)
+> > class(olddata)
+> > cat("This is the original data frame","\n")
+> > print(olddata)
+> >
+> > # This function is supposed to identify the first row
+> > # within each level of ID and, for the first row, set
+> > # the variable first to 1, and for all rows other than
+> > # the first row set first to 0.
+> > mydoit <- function(df){
+> >    value <- ifelse (first(df[,"ID"]),1,0)
+> >    cat("value=",value,"\n")
+> >    df[,"first"] <- value
+> > }
+> > newdata <- aggregate(olddata,list(olddata[,"ID"]),mydoit)
+> >
+> > Thank you,
+> > John
+> >
+> >
+> > John David Sorkin M.D., Ph.D.
+> > Professor of Medicine, University of Maryland School of Medicine;
+> > Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+> > PI Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+> > Senior Statistician University of Maryland Center for Vascular Research;
+> >
+> > Division of Gerontology and Paliative Care,
+> > 10 North Greene Street
+> > GRECC (BT/18/GR)
+> > Baltimore, MD 21201-1524
+> > Cell phone 443-418-5382
+> >
+> >
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+>
+> And here are two other solutions.
+>
+>
+> olddata$first <- with(olddata, ave(seq_along(ID), ID, FUN = \(x) x ==
+> x[1L]))
+>
+> olddata$first <- c(1L, diff(olddata$ID))
+>
+>
+> Of these two, diff is faster. But of all the solutions posted so far,
+> Ben Bolker's is the fastest. And it can be made a little faster if
+> as.integer substitutes for as.numeric.
+> And dplyr::mutate now has a .by argument, which avoids explicit the call
+> to group_by, with a performance gain.
+>
+>
+> library(microbenchmark)
+>
+> mb <- microbenchmark(
+>    ave = with(olddata, ave(seq_along(ID), ID, FUN = \(x) x == x[1L])),
+>    dup_num = as.numeric(! duplicated(olddata$ID)),
+>    dup_int = as.integer(! duplicated(olddata$ID)),
+>    diff = diff = c(1L, diff(olddata$ID)),
+>    dplyr_grp = olddata %>% group_by(ID) %>% mutate(first =
+> as.integer(row_number() == 1)),
+>    dplyr = olddata %>% mutate(first = as.integer(row_number() == 1), .by
+> = ID)
+> )
+> print(mb, order = "median")
+>
+>
+>
+> However, note that dplyr operates in entire data.frames and therefore is
+> expected to be slower when tested against instructions that process one
+> column only.
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+> --
+> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+> http://www.avg.com/
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
