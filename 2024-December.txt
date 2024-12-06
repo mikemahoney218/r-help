@@ -1939,3 +1939,165 @@ On Sat, Nov 30, 2024 at 11:05?PM Rui Barradas <ruipbarradas at sapo.pt> wrote:
 > PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
 > and provide commented, minimal, self-contained, reproducible code.
 
+From gerr|t@e|chner @end|ng |rom m@th@un|-g|e@@en@de  Wed Dec  4 13:38:45 2024
+From: gerr|t@e|chner @end|ng |rom m@th@un|-g|e@@en@de (Gerrit Eichner)
+Date: Wed, 4 Dec 2024 13:38:45 +0100
+Subject: [R] Undocumented behaviour of diag when replacing the diagonal of a
+ matrix?
+Message-ID: <982a9d37-0f89-42bc-9394-69f8080bf227@math.uni-giessen.de>
+
+Dear list,
+
+is anyone aware of the following behavious of diag when used to replace 
+diagonals (plural!) of a matrix?
+
+Small example: The following is documented and clearly to be expected:
+
+A <- matrix(0, nrow = 5, ncol = 5)
+diag(A) <- 1; A
+
+
+BUT, what about the following? When executing the code of `diag<-` line 
+by line, it throws errors. So why does it work?
+
+diag(A[-1, ]) <- 2; A
+
+diag(A[-5, -1]) <- 3; A
+
+diag(A[-5, -(1:2)]) <- 4; A
+
+
+Any ideas?
+
+  TIA and best regards  --  Gerrit
+
+---------------------------------------------------------------------
+Dr. Gerrit Eichner                   Mathematical Institute, Room 215
+gerrit.eichner at math.uni-giessen.de   Justus-Liebig-University Giessen
+Tel: +49-(0)641-99-32104          Arndtstr. 2, 35392 Giessen, Germany
+https://www.uni-giessen.de/math/eichner
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Wed Dec  4 14:38:44 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Wed, 4 Dec 2024 05:38:44 -0800
+Subject: [R] 
+ Undocumented behaviour of diag when replacing the diagonal of a
+ matrix?
+In-Reply-To: <982a9d37-0f89-42bc-9394-69f8080bf227@math.uni-giessen.de>
+References: <982a9d37-0f89-42bc-9394-69f8080bf227@math.uni-giessen.de>
+Message-ID: <CAGxFJbQAb21XyihMJ7Fiu+ctLdPdkFodjWJggQgvxKjeZ_QHpQ@mail.gmail.com>
+
+matrices are vectors with a "dim" attribute.
+So what I think is happening is:
+
+> A <- matrix(1:25, nrow = 5, ncol = 5)
+> diag(A[-1,]) <- 0
+> A
+     [,1] [,2] [,3] [,4] [,5]
+[1,]    1    6   11   16   21
+[2,]    0    7   12   17   22
+[3,]    3    0   13   18   23
+[4,]    4    9    0   19   24
+[5,]    5   10   15    0   25
+>
+> ## is equivqalent to:
+>
+> A <- matrix(1:25, nrow = 5, ncol = 5)
+> wh <- c(diag(A[-1,]))   # A's vector indices of diag(A[-1,])
+> A[wh] <- 0
+> A
+     [,1] [,2] [,3] [,4] [,5]
+[1,]    1    6   11   16   21
+[2,]    0    7   12   17   22
+[3,]    3    0   13   18   23
+[4,]    4    9    0   19   24
+[5,]    5   10   15    0   25
+
+I didn't check, but I assume your other examples would work similarly.
+Please repost if I am wrong.
+
+Cheers,
+Bert
+
+On Wed, Dec 4, 2024 at 4:39?AM Gerrit Eichner
+<gerrit.eichner at math.uni-giessen.de> wrote:
+>
+> Dear list,
+>
+> is anyone aware of the following behavious of diag when used to replace
+> diagonals (plural!) of a matrix?
+>
+> Small example: The following is documented and clearly to be expected:
+>
+> A <- matrix(0, nrow = 5, ncol = 5)
+> diag(A) <- 1; A
+>
+>
+> BUT, what about the following? When executing the code of `diag<-` line
+> by line, it throws errors. So why does it work?
+>
+> diag(A[-1, ]) <- 2; A
+>
+> diag(A[-5, -1]) <- 3; A
+>
+> diag(A[-5, -(1:2)]) <- 4; A
+>
+>
+> Any ideas?
+>
+>   TIA and best regards  --  Gerrit
+>
+> ---------------------------------------------------------------------
+> Dr. Gerrit Eichner                   Mathematical Institute, Room 215
+> gerrit.eichner at math.uni-giessen.de   Justus-Liebig-University Giessen
+> Tel: +49-(0)641-99-32104          Arndtstr. 2, 35392 Giessen, Germany
+> https://www.uni-giessen.de/math/eichner
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Wed Dec  4 15:31:30 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Wed, 4 Dec 2024 09:31:30 -0500
+Subject: [R] 
+ Undocumented behaviour of diag when replacing the diagonal of a
+ matrix?
+In-Reply-To: <982a9d37-0f89-42bc-9394-69f8080bf227@math.uni-giessen.de>
+References: <982a9d37-0f89-42bc-9394-69f8080bf227@math.uni-giessen.de>
+Message-ID: <f8d638cf-75ab-41c6-9127-b0a69c162330@gmail.com>
+
+On 2024-12-04 7:38 a.m., Gerrit Eichner wrote:
+> Dear list,
+> 
+> is anyone aware of the following behavious of diag when used to replace
+> diagonals (plural!) of a matrix?
+> 
+> Small example: The following is documented and clearly to be expected:
+> 
+> A <- matrix(0, nrow = 5, ncol = 5)
+> diag(A) <- 1; A
+> 
+> 
+> BUT, what about the following? When executing the code of `diag<-` line
+> by line, it throws errors. So why does it work?
+> 
+> diag(A[-1, ]) <- 2; A
+> 
+> diag(A[-5, -1]) <- 3; A
+> 
+> diag(A[-5, -(1:2)]) <- 4; A
+> 
+
+Could you show us the log of what you did that generated errors?  The 
+statement `diag(A[-1, ]) <- 2` is pretty complex; it involves two 
+assignment functions (both `diag<-` and `[<-`), so you might have tried 
+to execute the wrong thing.
+
+Duncan Murdoch
+
+
