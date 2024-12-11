@@ -3359,3 +3359,54 @@ On December 6, 2024 12:31:15 PM PST, D <dykim7411 at gmail.com> wrote:
 Sent from my phone. Please excuse my brevity.
 
 
+From phii m@iii@g oii phiiipsmith@c@  Tue Dec 10 01:56:29 2024
+From: phii m@iii@g oii phiiipsmith@c@ (phii m@iii@g oii phiiipsmith@c@)
+Date: Mon, 09 Dec 2024 19:56:29 -0500
+Subject: [R] Heat maps containing two types of variables
+Message-ID: <306707f054a523ecc38c58c238225d7b@philipsmith.ca>
+
+I am working with a heat map, as in the REPREX below. The code works 
+fine as long as "bigger numbers imply greener and smaller numbers imply 
+redder". These are time series where bigger numbers are "better", like 
+total employment for example. But I also have cases within the heat map 
+where "bigger numbers imply redder and smaller numbers imply greener". 
+These are time series where bigger numbers are "worse", like total 
+unemployment for example. So suppose column B in dat is of the second 
+type, i.e. "bigger numbers imply redder and smaller numbers imply 
+greener". I would like the colour coding to be the reverse of what it is 
+for columns A and C. How can I modify the code to accomplish this? I 
+have tried different approaches with no success. Thanks for your help. 
+Philip
+
+# REPREX
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+dat <- data.frame(
+   date=seq.Date(as.Date("2024-01-01"),as.Date("2024-06-01"),by="month"),
+   A=c(1,3,3,4,2,6),
+   B=c(3,5,6,4,8,9),
+   C=c(10,8,17,19,26,22)
+)
+dat_long <- pivot_longer(dat,2:4,names_to="variable",values_to="value")
+normalize <- function(x) { y <- (x-min(x))/(max(x)-min(x)) }
+dat_norm <- mutate(dat,across(2:4,normalize))
+dat_long_norm <- 
+pivot_longer(dat_norm,2:4,names_to="variable",values_to="norm_value")
+dat_long <- inner_join(dat_long,dat_long_norm,by=c("date","variable"))
+heatmap <- ggplot(dat_long, aes(x = date, y = variable,fill=norm_value)) 
++
+   geom_tile() +
+   geom_text(aes(label = as.character(value)),
+     color = "black", size = 2.5) +
+   labs(title="REPREX",x="",y="")+
+   scale_fill_gradient2(low = "#E94A26", mid = "white", high = "#A1D385", 
+midpoint = 0.5) +
+   scale_x_continuous(breaks=seq.Date(as.Date("2024-01-01"),
+     as.Date("2024-06-01"),by="month"),
+     labels=function(x) format(x,"%b\n%Y"),position="top")+
+   theme(legend.position="none")
+heatmap
+ggsave("REPREXHeatmap.png",heatmap,height=3.5,width=4.9,dpi=200)
+
+
