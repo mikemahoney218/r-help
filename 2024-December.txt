@@ -3410,3 +3410,1061 @@ heatmap
 ggsave("REPREXHeatmap.png",heatmap,height=3.5,width=4.9,dpi=200)
 
 
+From tebert @end|ng |rom u||@edu  Tue Dec 10 05:33:53 2024
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Tue, 10 Dec 2024 04:33:53 +0000
+Subject: [R] Heat maps containing two types of variables
+In-Reply-To: <306707f054a523ecc38c58c238225d7b@philipsmith.ca>
+References: <306707f054a523ecc38c58c238225d7b@philipsmith.ca>
+Message-ID: <CH3PR22MB4514A30D6D8E43040C194A22CF3D2@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+What happens if you switch the colors in this line:
+   scale_fill_gradient2(low = "#E94A26", mid = "white", high = "#A1D385", midpoint = 0.5) +
+to be the following
+   scale_fill_gradient2(low = "# A1D385", mid = "white", high = "# E94A26", midpoint = 0.5) +
+
+That said, a red-green heat map may be unhelpful to color blind people.
+
+So then you need two ggplot statements, one with each scale_fill_gradient2 and then specify which version to plot for each variable.
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of phil at philipsmith.ca
+Sent: Monday, December 9, 2024 7:56 PM
+To: R-help at r-project.org
+Subject: [R] Heat maps containing two types of variables
+
+[External Email]
+
+I am working with a heat map, as in the REPREX below. The code works fine as long as "bigger numbers imply greener and smaller numbers imply redder". These are time series where bigger numbers are "better", like total employment for example. But I also have cases within the heat map where "bigger numbers imply redder and smaller numbers imply greener".
+These are time series where bigger numbers are "worse", like total unemployment for example. So suppose column B in dat is of the second type, i.e. "bigger numbers imply redder and smaller numbers imply greener". I would like the colour coding to be the reverse of what it is for columns A and C. How can I modify the code to accomplish this? I have tried different approaches with no success. Thanks for your help.
+Philip
+
+# REPREX
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+dat <- data.frame(
+   date=seq.Date(as.Date("2024-01-01"),as.Date("2024-06-01"),by="month"),
+   A=c(1,3,3,4,2,6),
+   B=c(3,5,6,4,8,9),
+   C=c(10,8,17,19,26,22)
+)
+dat_long <- pivot_longer(dat,2:4,names_to="variable",values_to="value")
+normalize <- function(x) { y <- (x-min(x))/(max(x)-min(x)) } dat_norm <- mutate(dat,across(2:4,normalize)) dat_long_norm <-
+pivot_longer(dat_norm,2:4,names_to="variable",values_to="norm_value")
+dat_long <- inner_join(dat_long,dat_long_norm,by=c("date","variable"))
+heatmap <- ggplot(dat_long, aes(x = date, y = variable,fill=norm_value))
++
+   geom_tile() +
+   geom_text(aes(label = as.character(value)),
+     color = "black", size = 2.5) +
+   labs(title="REPREX",x="",y="")+
+   scale_fill_gradient2(low = "#E94A26", mid = "white", high = "#A1D385", midpoint = 0.5) +
+   scale_x_continuous(breaks=seq.Date(as.Date("2024-01-01"),
+     as.Date("2024-06-01"),by="month"),
+     labels=function(x) format(x,"%b\n%Y"),position="top")+
+   theme(legend.position="none")
+heatmap
+ggsave("REPREXHeatmap.png",heatmap,height=3.5,width=4.9,dpi=200)
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From phii m@iii@g oii phiiipsmith@c@  Tue Dec 10 13:59:25 2024
+From: phii m@iii@g oii phiiipsmith@c@ (phii m@iii@g oii phiiipsmith@c@)
+Date: Tue, 10 Dec 2024 07:59:25 -0500
+Subject: [R] Heat maps containing two types of variables
+In-Reply-To: <CH3PR22MB4514A30D6D8E43040C194A22CF3D2@CH3PR22MB4514.namprd22.prod.outlook.com>
+References: <306707f054a523ecc38c58c238225d7b@philipsmith.ca>
+ <CH3PR22MB4514A30D6D8E43040C194A22CF3D2@CH3PR22MB4514.namprd22.prod.outlook.com>
+Message-ID: <5a3ca0d2997a114390cf70cc8336e9b6@philipsmith.ca>
+
+Thank you for the suggestion. I tried it, but could not get it to work. 
+When I added a second ggplot statement, I hit an error saying that one 
+cannot add a ggplot to a ggplot object. So I added a second geom_tile 
+statement instead. That worked, except that it warned that since a scale 
+for fill was already present, the new fill would replace the old one. In 
+other words, the colour scale was changed not just for the target, B, 
+but also for the other two variables. So I am still searching for a 
+solution.
+
+Philip
+
+On 2024-12-09 23:33, Ebert,Timothy Aaron wrote:
+> What happens if you switch the colors in this line:
+>    scale_fill_gradient2(low = "#E94A26", mid = "white", high = 
+> "#A1D385", midpoint = 0.5) +
+> to be the following
+>    scale_fill_gradient2(low = "# A1D385", mid = "white", high = "# 
+> E94A26", midpoint = 0.5) +
+> 
+> That said, a red-green heat map may be unhelpful to color blind people.
+> 
+> So then you need two ggplot statements, one with each 
+> scale_fill_gradient2 and then specify which version to plot for each 
+> variable.
+> 
+> Tim
+> 
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of 
+> phil at philipsmith.ca
+> Sent: Monday, December 9, 2024 7:56 PM
+> To: R-help at r-project.org
+> Subject: [R] Heat maps containing two types of variables
+> 
+> [External Email]
+> 
+> I am working with a heat map, as in the REPREX below. The code works 
+> fine as long as "bigger numbers imply greener and smaller numbers imply 
+> redder". These are time series where bigger numbers are "better", like 
+> total employment for example. But I also have cases within the heat map 
+> where "bigger numbers imply redder and smaller numbers imply greener".
+> These are time series where bigger numbers are "worse", like total 
+> unemployment for example. So suppose column B in dat is of the second 
+> type, i.e. "bigger numbers imply redder and smaller numbers imply 
+> greener". I would like the colour coding to be the reverse of what it 
+> is for columns A and C. How can I modify the code to accomplish this? I 
+> have tried different approaches with no success. Thanks for your help.
+> Philip
+> 
+> # REPREX
+> library(ggplot2)
+> library(tidyr)
+> library(dplyr)
+> dat <- data.frame(
+>    
+> date=seq.Date(as.Date("2024-01-01"),as.Date("2024-06-01"),by="month"),
+>    A=c(1,3,3,4,2,6),
+>    B=c(3,5,6,4,8,9),
+>    C=c(10,8,17,19,26,22)
+> )
+> dat_long <- pivot_longer(dat,2:4,names_to="variable",values_to="value")
+> normalize <- function(x) { y <- (x-min(x))/(max(x)-min(x)) } dat_norm 
+> <- mutate(dat,across(2:4,normalize)) dat_long_norm <-
+> pivot_longer(dat_norm,2:4,names_to="variable",values_to="norm_value")
+> dat_long <- inner_join(dat_long,dat_long_norm,by=c("date","variable"))
+> heatmap <- ggplot(dat_long, aes(x = date, y = 
+> variable,fill=norm_value))
+> +
+>    geom_tile() +
+>    geom_text(aes(label = as.character(value)),
+>      color = "black", size = 2.5) +
+>    labs(title="REPREX",x="",y="")+
+>    scale_fill_gradient2(low = "#E94A26", mid = "white", high = 
+> "#A1D385", midpoint = 0.5) +
+>    scale_x_continuous(breaks=seq.Date(as.Date("2024-01-01"),
+>      as.Date("2024-06-01"),by="month"),
+>      labels=function(x) format(x,"%b\n%Y"),position="top")+
+>    theme(legend.position="none")
+> heatmap
+> ggsave("REPREXHeatmap.png",heatmap,height=3.5,width=4.9,dpi=200)
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide 
+> https://www.r-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From tebert @end|ng |rom u||@edu  Tue Dec 10 14:35:26 2024
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Tue, 10 Dec 2024 13:35:26 +0000
+Subject: [R] Heat maps containing two types of variables
+In-Reply-To: <5a3ca0d2997a114390cf70cc8336e9b6@philipsmith.ca>
+References: <306707f054a523ecc38c58c238225d7b@philipsmith.ca>
+ <CH3PR22MB4514A30D6D8E43040C194A22CF3D2@CH3PR22MB4514.namprd22.prod.outlook.com>
+ <5a3ca0d2997a114390cf70cc8336e9b6@philipsmith.ca>
+Message-ID: <CH3PR22MB4514AA72E844CC1572251AE2CF3D2@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+You will need to add code to tell R which variables to plot in reverse color order. In this code, I chose variable B to plot in reverse order. 
+
+
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+
+dat <- data.frame(
+  date = seq.Date(as.Date("2024-01-01"), as.Date("2024-06-01"), by = "month"),
+  A = c(1, 3, 3, 4, 2, 6),
+  B = c(3, 5, 6, 4, 8, 9),
+  C = c(10, 8, 17, 19, 26, 22)
+)
+normalize <- function(x) {
+  (x - min(x)) / (max(x) - min(x))
+}
+dat_long <- dat %>%
+  mutate(across(2:4, normalize)) %>% 
+  pivot_longer(cols = A:C, names_to = "variable", values_to = "norm_value") %>%
+  left_join(
+    dat %>%
+      pivot_longer(cols = A:C, names_to = "variable", values_to = "value"),
+    by = c("date", "variable")
+  )
+
+dat_long <- dat_long %>%
+  mutate(adjusted_norm_value = ifelse(variable == "B", 1 - norm_value, norm_value))
+
+heatmap <- ggplot(dat_long, aes(x = date, y = variable, fill = adjusted_norm_value)) +
+  geom_tile() +
+  geom_text(aes(label = as.character(value)), color = "black", size = 2.5) +
+  labs(title = "REPREX", x = "", y = "") +
+  scale_fill_gradient2(low = "#E94A26", mid = "white", high = "#A1D385", midpoint = 0.5) +
+  scale_x_continuous(
+    breaks = seq.Date(as.Date("2024-01-01"), as.Date("2024-06-01"), by = "month"),
+    labels = function(x) format(x, "%b\n%Y"),
+    position = "top"
+  ) +
+  theme(legend.position = "none")
+
+heatmap
+
+-----Original Message-----
+From: phil at philipsmith.ca <phil at philipsmith.ca> 
+Sent: Tuesday, December 10, 2024 7:59 AM
+To: Ebert,Timothy Aaron <tebert at ufl.edu>
+Cc: R-help at r-project.org
+Subject: Re: [R] Heat maps containing two types of variables
+
+[External Email]
+
+Thank you for the suggestion. I tried it, but could not get it to work.
+When I added a second ggplot statement, I hit an error saying that one cannot add a ggplot to a ggplot object. So I added a second geom_tile statement instead. That worked, except that it warned that since a scale for fill was already present, the new fill would replace the old one. In other words, the colour scale was changed not just for the target, B, but also for the other two variables. So I am still searching for a solution.
+
+Philip
+
+On 2024-12-09 23:33, Ebert,Timothy Aaron wrote:
+> What happens if you switch the colors in this line:
+>    scale_fill_gradient2(low = "#E94A26", mid = "white", high = 
+> "#A1D385", midpoint = 0.5) + to be the following
+>    scale_fill_gradient2(low = "# A1D385", mid = "white", high = "# 
+> E94A26", midpoint = 0.5) +
+>
+> That said, a red-green heat map may be unhelpful to color blind people.
+>
+> So then you need two ggplot statements, one with each
+> scale_fill_gradient2 and then specify which version to plot for each 
+> variable.
+>
+> Tim
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of 
+> phil at philipsmith.ca
+> Sent: Monday, December 9, 2024 7:56 PM
+> To: R-help at r-project.org
+> Subject: [R] Heat maps containing two types of variables
+>
+> [External Email]
+>
+> I am working with a heat map, as in the REPREX below. The code works 
+> fine as long as "bigger numbers imply greener and smaller numbers 
+> imply redder". These are time series where bigger numbers are 
+> "better", like total employment for example. But I also have cases 
+> within the heat map where "bigger numbers imply redder and smaller numbers imply greener".
+> These are time series where bigger numbers are "worse", like total 
+> unemployment for example. So suppose column B in dat is of the second 
+> type, i.e. "bigger numbers imply redder and smaller numbers imply 
+> greener". I would like the colour coding to be the reverse of what it 
+> is for columns A and C. How can I modify the code to accomplish this? 
+> I have tried different approaches with no success. Thanks for your help.
+> Philip
+>
+> # REPREX
+> library(ggplot2)
+> library(tidyr)
+> library(dplyr)
+> dat <- data.frame(
+>
+> date=seq.Date(as.Date("2024-01-01"),as.Date("2024-06-01"),by="month"),
+>    A=c(1,3,3,4,2,6),
+>    B=c(3,5,6,4,8,9),
+>    C=c(10,8,17,19,26,22)
+> )
+> dat_long <- 
+> pivot_longer(dat,2:4,names_to="variable",values_to="value")
+> normalize <- function(x) { y <- (x-min(x))/(max(x)-min(x)) } dat_norm
+> <- mutate(dat,across(2:4,normalize)) dat_long_norm <-
+> pivot_longer(dat_norm,2:4,names_to="variable",values_to="norm_value")
+> dat_long <- inner_join(dat_long,dat_long_norm,by=c("date","variable"))
+> heatmap <- ggplot(dat_long, aes(x = date, y =
+> variable,fill=norm_value))
+> +
+>    geom_tile() +
+>    geom_text(aes(label = as.character(value)),
+>      color = "black", size = 2.5) +
+>    labs(title="REPREX",x="",y="")+
+>    scale_fill_gradient2(low = "#E94A26", mid = "white", high = 
+> "#A1D385", midpoint = 0.5) +
+>    scale_x_continuous(breaks=seq.Date(as.Date("2024-01-01"),
+>      as.Date("2024-06-01"),by="month"),
+>      labels=function(x) format(x,"%b\n%Y"),position="top")+
+>    theme(legend.position="none")
+> heatmap
+> ggsave("REPREXHeatmap.png",heatmap,height=3.5,width=4.9,dpi=200)
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat
+> .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C02%7Ctebert%40ufl.edu
+> %7C1a08885d2b61452a502308dd191a7c05%7C0d4da0f84a314d76ace60a62331e1b84
+> %7C0%7C0%7C638694323735326272%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGki
+> OnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ
+> %3D%3D%7C0%7C%7C%7C&sdata=AyPt4o4LzEivT0D6JfeB%2Bav7N2wnZM%2BxPkrLF9B3
+> LvI%3D&reserved=0
+> PLEASE do read the posting guide
+> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fwww.
+> r-project.org%2Fposting-guide.html&data=05%7C02%7Ctebert%40ufl.edu%7C1
+> a08885d2b61452a502308dd191a7c05%7C0d4da0f84a314d76ace60a62331e1b84%7C0
+> %7C0%7C638694323735345552%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRy
+> dWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%
+> 3D%7C0%7C%7C%7C&sdata=bH1aZLifelBywJO42%2BWGcyU1O6tmJbQi3DPC%2FjxWIKo%
+> 3D&reserved=0 and provide commented, minimal, self-contained, 
+> reproducible code.
+
+
+From phii m@iii@g oii phiiipsmith@c@  Tue Dec 10 16:37:37 2024
+From: phii m@iii@g oii phiiipsmith@c@ (phii m@iii@g oii phiiipsmith@c@)
+Date: Tue, 10 Dec 2024 10:37:37 -0500
+Subject: [R] Heat maps containing two types of variables
+In-Reply-To: <CH3PR22MB4514AA72E844CC1572251AE2CF3D2@CH3PR22MB4514.namprd22.prod.outlook.com>
+References: <306707f054a523ecc38c58c238225d7b@philipsmith.ca>
+ <CH3PR22MB4514A30D6D8E43040C194A22CF3D2@CH3PR22MB4514.namprd22.prod.outlook.com>
+ <5a3ca0d2997a114390cf70cc8336e9b6@philipsmith.ca>
+ <CH3PR22MB4514AA72E844CC1572251AE2CF3D2@CH3PR22MB4514.namprd22.prod.outlook.com>
+Message-ID: <e1c965c85d47ff39023d910be732ddaa@philipsmith.ca>
+
+Thanks for sticking with me Tim. Your solution is clear and works like a 
+charm.
+
+Philip
+
+On 2024-12-10 08:35, Ebert,Timothy Aaron wrote:
+> You will need to add code to tell R which variables to plot in reverse 
+> color order. In this code, I chose variable B to plot in reverse order.
+> 
+> 
+> library(ggplot2)
+> library(tidyr)
+> library(dplyr)
+> 
+> dat <- data.frame(
+>   date = seq.Date(as.Date("2024-01-01"), as.Date("2024-06-01"), by = 
+> "month"),
+>   A = c(1, 3, 3, 4, 2, 6),
+>   B = c(3, 5, 6, 4, 8, 9),
+>   C = c(10, 8, 17, 19, 26, 22)
+> )
+> normalize <- function(x) {
+>   (x - min(x)) / (max(x) - min(x))
+> }
+> dat_long <- dat %>%
+>   mutate(across(2:4, normalize)) %>%
+>   pivot_longer(cols = A:C, names_to = "variable", values_to = 
+> "norm_value") %>%
+>   left_join(
+>     dat %>%
+>       pivot_longer(cols = A:C, names_to = "variable", values_to = 
+> "value"),
+>     by = c("date", "variable")
+>   )
+> 
+> dat_long <- dat_long %>%
+>   mutate(adjusted_norm_value = ifelse(variable == "B", 1 - norm_value, 
+> norm_value))
+> 
+> heatmap <- ggplot(dat_long, aes(x = date, y = variable, fill = 
+> adjusted_norm_value)) +
+>   geom_tile() +
+>   geom_text(aes(label = as.character(value)), color = "black", size = 
+> 2.5) +
+>   labs(title = "REPREX", x = "", y = "") +
+>   scale_fill_gradient2(low = "#E94A26", mid = "white", high = 
+> "#A1D385", midpoint = 0.5) +
+>   scale_x_continuous(
+>     breaks = seq.Date(as.Date("2024-01-01"), as.Date("2024-06-01"), by 
+> = "month"),
+>     labels = function(x) format(x, "%b\n%Y"),
+>     position = "top"
+>   ) +
+>   theme(legend.position = "none")
+> 
+> heatmap
+> 
+> -----Original Message-----
+> From: phil at philipsmith.ca <phil at philipsmith.ca>
+> Sent: Tuesday, December 10, 2024 7:59 AM
+> To: Ebert,Timothy Aaron <tebert at ufl.edu>
+> Cc: R-help at r-project.org
+> Subject: Re: [R] Heat maps containing two types of variables
+> 
+> [External Email]
+> 
+> Thank you for the suggestion. I tried it, but could not get it to work.
+> When I added a second ggplot statement, I hit an error saying that one 
+> cannot add a ggplot to a ggplot object. So I added a second geom_tile 
+> statement instead. That worked, except that it warned that since a 
+> scale for fill was already present, the new fill would replace the old 
+> one. In other words, the colour scale was changed not just for the 
+> target, B, but also for the other two variables. So I am still 
+> searching for a solution.
+> 
+> Philip
+> 
+> On 2024-12-09 23:33, Ebert,Timothy Aaron wrote:
+>> What happens if you switch the colors in this line:
+>>    scale_fill_gradient2(low = "#E94A26", mid = "white", high =
+>> "#A1D385", midpoint = 0.5) + to be the following
+>>    scale_fill_gradient2(low = "# A1D385", mid = "white", high = "#
+>> E94A26", midpoint = 0.5) +
+>> 
+>> That said, a red-green heat map may be unhelpful to color blind 
+>> people.
+>> 
+>> So then you need two ggplot statements, one with each
+>> scale_fill_gradient2 and then specify which version to plot for each
+>> variable.
+>> 
+>> Tim
+>> 
+>> -----Original Message-----
+>> From: R-help <r-help-bounces at r-project.org> On Behalf Of
+>> phil at philipsmith.ca
+>> Sent: Monday, December 9, 2024 7:56 PM
+>> To: R-help at r-project.org
+>> Subject: [R] Heat maps containing two types of variables
+>> 
+>> [External Email]
+>> 
+>> I am working with a heat map, as in the REPREX below. The code works
+>> fine as long as "bigger numbers imply greener and smaller numbers
+>> imply redder". These are time series where bigger numbers are
+>> "better", like total employment for example. But I also have cases
+>> within the heat map where "bigger numbers imply redder and smaller 
+>> numbers imply greener".
+>> These are time series where bigger numbers are "worse", like total
+>> unemployment for example. So suppose column B in dat is of the second
+>> type, i.e. "bigger numbers imply redder and smaller numbers imply
+>> greener". I would like the colour coding to be the reverse of what it
+>> is for columns A and C. How can I modify the code to accomplish this?
+>> I have tried different approaches with no success. Thanks for your 
+>> help.
+>> Philip
+>> 
+>> # REPREX
+>> library(ggplot2)
+>> library(tidyr)
+>> library(dplyr)
+>> dat <- data.frame(
+>> 
+>> date=seq.Date(as.Date("2024-01-01"),as.Date("2024-06-01"),by="month"),
+>>    A=c(1,3,3,4,2,6),
+>>    B=c(3,5,6,4,8,9),
+>>    C=c(10,8,17,19,26,22)
+>> )
+>> dat_long <-
+>> pivot_longer(dat,2:4,names_to="variable",values_to="value")
+>> normalize <- function(x) { y <- (x-min(x))/(max(x)-min(x)) } dat_norm
+>> <- mutate(dat,across(2:4,normalize)) dat_long_norm <-
+>> pivot_longer(dat_norm,2:4,names_to="variable",values_to="norm_value")
+>> dat_long <- inner_join(dat_long,dat_long_norm,by=c("date","variable"))
+>> heatmap <- ggplot(dat_long, aes(x = date, y =
+>> variable,fill=norm_value))
+>> +
+>>    geom_tile() +
+>>    geom_text(aes(label = as.character(value)),
+>>      color = "black", size = 2.5) +
+>>    labs(title="REPREX",x="",y="")+
+>>    scale_fill_gradient2(low = "#E94A26", mid = "white", high =
+>> "#A1D385", midpoint = 0.5) +
+>>    scale_x_continuous(breaks=seq.Date(as.Date("2024-01-01"),
+>>      as.Date("2024-06-01"),by="month"),
+>>      labels=function(x) format(x,"%b\n%Y"),position="top")+
+>>    theme(legend.position="none")
+>> heatmap
+>> ggsave("REPREXHeatmap.png",heatmap,height=3.5,width=4.9,dpi=200)
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fstat
+>> .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C02%7Ctebert%40ufl.edu
+>> %7C1a08885d2b61452a502308dd191a7c05%7C0d4da0f84a314d76ace60a62331e1b84
+>> %7C0%7C0%7C638694323735326272%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGki
+>> OnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ
+>> %3D%3D%7C0%7C%7C%7C&sdata=AyPt4o4LzEivT0D6JfeB%2Bav7N2wnZM%2BxPkrLF9B3
+>> LvI%3D&reserved=0
+>> PLEASE do read the posting guide
+>> https://nam10.safelinks.protection.outlook.com/?url=https%3A%2F%2Fwww.
+>> r-project.org%2Fposting-guide.html&data=05%7C02%7Ctebert%40ufl.edu%7C1
+>> a08885d2b61452a502308dd191a7c05%7C0d4da0f84a314d76ace60a62331e1b84%7C0
+>> %7C0%7C638694323735345552%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRy
+>> dWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%
+>> 3D%7C0%7C%7C%7C&sdata=bH1aZLifelBywJO42%2BWGcyU1O6tmJbQi3DPC%2FjxWIKo%
+>> 3D&reserved=0 and provide commented, minimal, self-contained,
+>> reproducible code.
+
+
+From bog@@o@chr|@to|er @end|ng |rom gm@||@com  Tue Dec 10 17:36:54 2024
+From: bog@@o@chr|@to|er @end|ng |rom gm@||@com (Christofer Bogaso)
+Date: Tue, 10 Dec 2024 22:06:54 +0530
+Subject: [R] outer() is not working with my simple function
+Message-ID: <CA+dpOJmGPUf6p5WpGj+zbo3qyznzgLswnq0S-Bisud1x1fPkeA@mail.gmail.com>
+
+Hi,
+
+I have below code
+
+FN1 = function(x, y) 3
+
+outer(1:9, 1:9, FN1)
+
+With above I get error as below
+
+Error in dim(robj) <- c(dX, dY) :
+
+  dims [product 81] do not match the length of object [1]
+
+Could you please help to understand why is it failing? I am just
+expecting to get a matrix with all elements as 3
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Tue Dec 10 17:43:05 2024
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Tue, 10 Dec 2024 11:43:05 -0500
+Subject: [R] outer() is not working with my simple function
+In-Reply-To: <CA+dpOJmGPUf6p5WpGj+zbo3qyznzgLswnq0S-Bisud1x1fPkeA@mail.gmail.com>
+References: <CA+dpOJmGPUf6p5WpGj+zbo3qyznzgLswnq0S-Bisud1x1fPkeA@mail.gmail.com>
+Message-ID: <CADNULg_p_y_91OrvKEpevQgE3+=N7dfd682Z+cq=bS=8c-mnpg@mail.gmail.com>
+
+outer() expects a return value with the same length as that of x.
+
+You could change the code to rep(3, length(x))
+
+Or if you don't want to change the code of the function, you could make a
+wrapper and use that instead:
+function (x, y)
+{
+    v <- FN1(x, y)
+    if (length(v) != 1) v else rep(v, length(x))
+}
+
+
+On Tue, Dec 10, 2024, 11:37 Christofer Bogaso <bogaso.christofer at gmail.com>
+wrote:
+
+> Hi,
+>
+> I have below code
+>
+> FN1 = function(x, y) 3
+>
+> outer(1:9, 1:9, FN1)
+>
+> With above I get error as below
+>
+> Error in dim(robj) <- c(dX, dY) :
+>
+>   dims [product 81] do not match the length of object [1]
+>
+> Could you please help to understand why is it failing? I am just
+> expecting to get a matrix with all elements as 3
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Tue Dec 10 17:44:12 2024
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Tue, 10 Dec 2024 11:44:12 -0500
+Subject: [R] outer() is not working with my simple function
+In-Reply-To: <CA+dpOJmGPUf6p5WpGj+zbo3qyznzgLswnq0S-Bisud1x1fPkeA@mail.gmail.com>
+References: <CA+dpOJmGPUf6p5WpGj+zbo3qyznzgLswnq0S-Bisud1x1fPkeA@mail.gmail.com>
+Message-ID: <489a80da-58bf-4bae-a83e-5c8274be78c0@gmail.com>
+
+On 2024-12-10 11:36 a.m., Christofer Bogaso wrote:
+> Hi,
+> 
+> I have below code
+> 
+> FN1 = function(x, y) 3
+> 
+> outer(1:9, 1:9, FN1)
+> 
+> With above I get error as below
+> 
+> Error in dim(robj) <- c(dX, dY) :
+> 
+>    dims [product 81] do not match the length of object [1]
+> 
+> Could you please help to understand why is it failing? I am just
+> expecting to get a matrix with all elements as 3
+
+The help page says this about the function:  "It must be a vectorized 
+function (or the name of one) expecting at least two arguments and 
+returning a value with the same length as the first (and the second)." 
+So your function could be
+
+   FN1 <- function(x, y) rep_len(3, length(x))
+
+and it would work.
+
+Duncan Murdoch
+
+
+From tder@mu@ @end|ng |rom mgb@org  Wed Dec 11 01:20:28 2024
+From: tder@mu@ @end|ng |rom mgb@org (Deramus, Thomas Patrick)
+Date: Wed, 11 Dec 2024 00:20:28 +0000
+Subject: [R] Cores hang when calling mcapply
+Message-ID: <SA2PR04MB75005AE94F0FE0B9F22E94EDCB3E2@SA2PR04MB7500.namprd04.prod.outlook.com>
+
+Hi R users.
+
+Apologies for the lack of concrete examples because the dataset is large, and it being so I believe is the issue.
+
+I multiple, very large datasets for which I need to generate 0/1 absence/presence columns
+Some include over 200M rows, with two columns that need presence/absence columns based on the strings contained within them, as an example, one set has ~29k unique values and the other with ~15k unique values (no overlap across the two).
+
+Using a combination of custom functions:
+
+crewjanitormakeclean <- function(df,columns) {
+  df <- df |> mutate(across(columns, ~make_clean_names(.,  allow_dupes = TRUE)))
+  return(df)
+}
+
+mass_pivot_wider <- function(df,column,prefix) {
+  df <- df |> distinct() |> mutate(n = 1) |> pivot_wider(names_from = glue("{column}"), values_from = n, names_prefix = prefix, values_fill = list(n = 0))
+  return(df)
+}
+
+sum_group_function <- function(df) {
+  df <- df |> group_by(ID_Key) |> summarise(across(c(starts_with("column1_name_"),starts_with("column2_name_"),), ~ sum(.x, na.rm = TRUE))) |> ungroup()
+  return(df)
+}
+
+and splitting up the data into a list of 110k individual dataframes based on Key_ID
+
+temp <-
+  open_dataset(
+    sources = input_files,
+    format = 'csv',
+    unify_schema = TRUE,
+    col_types = schema(
+      "ID_Key" = string(),
+      "column1" = string(),
+      "column1" = string()
+    )
+  ) |> as_tibble()
+
+
+  keeptabs <- split(temp, temp$ID_Key)
+
+
+I used a multicore framework to distribute the `sum` functions across each Key_ID when a multicore argument is enabled.
+
+??????
+    if(isTRUE(multicore)){
+      output <- mclapply(1:length(modtabs), function(i) crewjanitormakeclean(modtabs[[i]],c("string_columns_2","string_columns_1")), mc.cores = numcores)
+      output <- mclapply(1:length(modtabs), function(i) mass_pivot_wider(modtabs[[i]],"string_columns_1","col_1_name_"), mc.cores = numcores)
+      output <- mclapply(1:length(modtabs), function(i) mass_pivot_wider(modtabs[[i]],"string_columns_2","col_2_name_"), mc.cores = numcores)
+    }else{
+      output <- lapply(1:length(modtabs), function(i) crewjanitormakeclean(modtabs[[i]],c("string_columns_2","string_columns_1")))
+      output <- lapply(1:length(modtabs), function(i) mass_pivot_wider(modtabs[[i]],"string_columns_1","col_1_name_"))
+      output <- mclapply(1:length(modtabs), function(i) mass_pivot_wider(modtabs[[i]],"string_columns_2","col_2_name_"))
+    }
+
+
+Moving every Key_ID to a single row and then row-binding the data while creating new columns for the differences across `Key_ID`s from the pivot using the following solution (78 upvotes at time of this email):
+https://stackoverflow.com/questions/3402371/combine-two-data-frames-by-rows-rbind-when-they-have-different-sets-of-columns
+
+  allNms <- unique(unlist(lapply(keeptabs, names)))
+
+  output <- do.call(rbind,
+                     c(lapply(keeptabs,
+                              function(x) data.frame(c((x), sapply(setdiff(allNms, names(x)),
+                                                                 function(y) NA))) |> as_tibble()),
+                       make.row.names=FALSE)) |> mutate(across(c(starts_with("column1_name_"), starts_with("column2_name_")), coalesce, 0))
+
+However, I have noticed that the jobs seem to "hang" after a while, with the initial 30 or so (numcores == 30 in the workflow, equal to the number of cores I reserved) at 100% of the requested CPU, and then several "zombie" processes occur and the cores just stop at 0% and never proceed, usually dying with a timeout or not all jobs running to completion failure to join of some kind.
+
+This happens in both base R and RStudio, and I haven't been able to figure out if it's something wrong with the code, the size of the data, or our architecture, but I would appreciate any suggestions as to what I might be able to do about this.
+
+Before they are suggested, I have also tried this same approach with foreach, snow, future, and furr packages, and base parallel with mc.apply seems to be the only thing that works for at least one dataset.
+
+In the event it has something to do with our architecture, here is what we are running on and our loaded packages:
+
+OS Information:
+NAME="Red Hat Enterprise Linux"
+VERSION="9.3 (Plow)"
+ID="rhel"
+ID_LIKE="fedora"
+VERSION_ID="9.3"
+PLATFORM_ID="platform:el9"
+PRETTY_NAME="Red Hat Enterprise Linux 9.3 (Plow)"
+ANSI_COLOR="0;31"
+LOGO="fedora-logo-icon"
+CPE_NAME="cpe:/o:redhat:enterprise_linux:9::baseos"
+HOME_URL="https://www.redhat.com/"
+DOCUMENTATION_URL="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/9"
+BUG_REPORT_URL="https://bugzilla.redhat.com/"
+REDHAT_BUGZILLA_PRODUCT="Red Hat Enterprise Linux 9"
+REDHAT_BUGZILLA_PRODUCT_VERSION=9.3
+REDHAT_SUPPORT_PRODUCT="Red Hat Enterprise Linux"
+REDHAT_SUPPORT_PRODUCT_VERSION="9.3"
+Operating System: Red Hat Enterprise Linux 9.3 (Plow)
+     CPE OS Name: cpe:/o:redhat:enterprise_linux:9::baseos
+          Kernel: Linux 5.14.0-362.13.1.el9_3.x86_64
+    Architecture: x86-64
+ Hardware Vendor: Dell Inc.
+  Hardware Model: PowerEdge R840
+Firmware Version: 2.15.1
+
+R Version:
+R.Version()
+$platform
+[1] "x86_64-pc-linux-gnu"
+$arch
+[1] "x86_64"
+$os
+[1] "linux-gnu"
+$system
+[1] "x86_64, linux-gnu"
+$status
+[1] ""
+$major
+[1] "4"
+$minor
+[1] "3.2"
+$year
+[1] "2023"
+$month
+[1] "10"
+$day
+[1] "31"
+$`svn rev`
+[1] "85441"
+$language
+[1] "R"
+$version.string
+[1] "R version 4.3.2 (2023-10-31)"
+$nickname
+[1] "Eye Holes"
+
+RStudio Server Version:
+RStudio 2023.09.1+494 "Desert Sunflower" Release (cd7011dce393115d3a7c3db799dda4b1c7e88711, 2023-10-16) for RHEL 9
+Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36
+
+PPM Repo:
+https://packagemanager.posit.co/cran/__linux__/rhel9/latest
+
+attached base packages:
+[1] parallel  stats     graphics  grDevices datasets  utils     methods   base
+
+other attached packages:
+ [1] listenv_0.9.1        microbenchmark_1.5.0 dbplyr_2.4.0         duckplyr_0.4.1       readxl_1.4.3         fastDummies_1.7.3
+ [7] glue_1.8.0           arrow_14.0.2.1       data.table_1.15.2    toolbox_0.1.1        janitor_2.2.0        lubridate_1.9.3
+[13] forcats_1.0.0        stringr_1.5.1        dplyr_1.1.4          purrr_1.0.2          readr_2.1.5          tidyr_1.3.1
+[19] tibble_3.2.1         ggplot2_3.5.0        tidyverse_2.0.0      duckdb_1.1.2         DBI_1.2.3            fs_1.6.3
+
+
+Happy to provide additional information if it would be helpful.
+
+Thank you in advance!
+The information in this e-mail is intended only for the person to whom it is addressed.  If you believe this e-mail was sent to you in error and the e-mail contains patient information, please contact the Mass General Brigham Compliance HelpLine at https://www.massgeneralbrigham.org/complianceline <https://www.massgeneralbrigham.org/complianceline> .
+Please note that this e-mail is not secure (encrypted).  If you do not wish to continue communication over unencrypted e-mail, please notify the sender of this message immediately.  Continuing to send or respond to e-mail after receiving this message means you understand and accept this risk and wish to continue to communicate over unencrypted e-mail. 
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Wed Dec 11 01:41:25 2024
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 10 Dec 2024 16:41:25 -0800
+Subject: [R] Cores hang when calling mcapply
+In-Reply-To: <SA2PR04MB75005AE94F0FE0B9F22E94EDCB3E2@SA2PR04MB7500.namprd04.prod.outlook.com>
+References: <SA2PR04MB75005AE94F0FE0B9F22E94EDCB3E2@SA2PR04MB7500.namprd04.prod.outlook.com>
+Message-ID: <D15380AC-2594-40CF-9175-DE0D09FECB32@dcn.davis.ca.us>
+
+Maybe ask on the HPC list? [1]
+
+A general tip... you may be running out of memory. If at all possible you need to make sure you extract the data subsets in the parent process, and limit the amount of environment data passed into the child processes. That is, instead of using an integer counter to index into the modtabs list, iterate over the list itself so that each process doesnt need a copy of the whole data set.
+
+I know that fork lets you share memory blocks temporarily between the parent and child processes, but it is fragile... if you modify the data at all then the sharing stops for that memory block and you get an explosion of memory use.
+
+[1] <https://stat.ethz.ch/mailman/listinfo/r-sig-hpc>
+
+On December 10, 2024 4:20:28 PM PST, "Deramus, Thomas Patrick" <tderamus at mgb.org> wrote:
+>Hi R users.
+>
+>Apologies for the lack of concrete examples because the dataset is large, and it being so I believe is the issue.
+>
+>I multiple, very large datasets for which I need to generate 0/1 absence/presence columns
+>Some include over 200M rows, with two columns that need presence/absence columns based on the strings contained within them, as an example, one set has ~29k unique values and the other with ~15k unique values (no overlap across the two).
+>
+>Using a combination of custom functions:
+>
+>crewjanitormakeclean <- function(df,columns) {
+>  df <- df |> mutate(across(columns, ~make_clean_names(.,  allow_dupes = TRUE)))
+>  return(df)
+>}
+>
+>mass_pivot_wider <- function(df,column,prefix) {
+>  df <- df |> distinct() |> mutate(n = 1) |> pivot_wider(names_from = glue("{column}"), values_from = n, names_prefix = prefix, values_fill = list(n = 0))
+>  return(df)
+>}
+>
+>sum_group_function <- function(df) {
+>  df <- df |> group_by(ID_Key) |> summarise(across(c(starts_with("column1_name_"),starts_with("column2_name_"),), ~ sum(.x, na.rm = TRUE))) |> ungroup()
+>  return(df)
+>}
+>
+>and splitting up the data into a list of 110k individual dataframes based on Key_ID
+>
+>temp <-
+>  open_dataset(
+>    sources = input_files,
+>    format = 'csv',
+>    unify_schema = TRUE,
+>    col_types = schema(
+>      "ID_Key" = string(),
+>      "column1" = string(),
+>      "column1" = string()
+>    )
+>  ) |> as_tibble()
+>
+>
+>  keeptabs <- split(temp, temp$ID_Key)
+>
+>
+>I used a multicore framework to distribute the `sum` functions across each Key_ID when a multicore argument is enabled.
+>
+>??????
+>    if(isTRUE(multicore)){
+>      output <- mclapply(1:length(modtabs), function(i) crewjanitormakeclean(modtabs[[i]],c("string_columns_2","string_columns_1")), mc.cores = numcores)
+>      output <- mclapply(1:length(modtabs), function(i) mass_pivot_wider(modtabs[[i]],"string_columns_1","col_1_name_"), mc.cores = numcores)
+>      output <- mclapply(1:length(modtabs), function(i) mass_pivot_wider(modtabs[[i]],"string_columns_2","col_2_name_"), mc.cores = numcores)
+>    }else{
+>      output <- lapply(1:length(modtabs), function(i) crewjanitormakeclean(modtabs[[i]],c("string_columns_2","string_columns_1")))
+>      output <- lapply(1:length(modtabs), function(i) mass_pivot_wider(modtabs[[i]],"string_columns_1","col_1_name_"))
+>      output <- mclapply(1:length(modtabs), function(i) mass_pivot_wider(modtabs[[i]],"string_columns_2","col_2_name_"))
+>    }
+>
+>
+>Moving every Key_ID to a single row and then row-binding the data while creating new columns for the differences across `Key_ID`s from the pivot using the following solution (78 upvotes at time of this email):
+>https://stackoverflow.com/questions/3402371/combine-two-data-frames-by-rows-rbind-when-they-have-different-sets-of-columns
+>
+>  allNms <- unique(unlist(lapply(keeptabs, names)))
+>
+>  output <- do.call(rbind,
+>                     c(lapply(keeptabs,
+>                              function(x) data.frame(c((x), sapply(setdiff(allNms, names(x)),
+>                                                                 function(y) NA))) |> as_tibble()),
+>                       make.row.names=FALSE)) |> mutate(across(c(starts_with("column1_name_"), starts_with("column2_name_")), coalesce, 0))
+>
+>However, I have noticed that the jobs seem to "hang" after a while, with the initial 30 or so (numcores == 30 in the workflow, equal to the number of cores I reserved) at 100% of the requested CPU, and then several "zombie" processes occur and the cores just stop at 0% and never proceed, usually dying with a timeout or not all jobs running to completion failure to join of some kind.
+>
+>This happens in both base R and RStudio, and I haven't been able to figure out if it's something wrong with the code, the size of the data, or our architecture, but I would appreciate any suggestions as to what I might be able to do about this.
+>
+>Before they are suggested, I have also tried this same approach with foreach, snow, future, and furr packages, and base parallel with mc.apply seems to be the only thing that works for at least one dataset.
+>
+>In the event it has something to do with our architecture, here is what we are running on and our loaded packages:
+>
+>OS Information:
+>NAME="Red Hat Enterprise Linux"
+>VERSION="9.3 (Plow)"
+>ID="rhel"
+>ID_LIKE="fedora"
+>VERSION_ID="9.3"
+>PLATFORM_ID="platform:el9"
+>PRETTY_NAME="Red Hat Enterprise Linux 9.3 (Plow)"
+>ANSI_COLOR="0;31"
+>LOGO="fedora-logo-icon"
+>CPE_NAME="cpe:/o:redhat:enterprise_linux:9::baseos"
+>HOME_URL="https://www.redhat.com/"
+>DOCUMENTATION_URL="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/9"
+>BUG_REPORT_URL="https://bugzilla.redhat.com/"
+>REDHAT_BUGZILLA_PRODUCT="Red Hat Enterprise Linux 9"
+>REDHAT_BUGZILLA_PRODUCT_VERSION=9.3
+>REDHAT_SUPPORT_PRODUCT="Red Hat Enterprise Linux"
+>REDHAT_SUPPORT_PRODUCT_VERSION="9.3"
+>Operating System: Red Hat Enterprise Linux 9.3 (Plow)
+>     CPE OS Name: cpe:/o:redhat:enterprise_linux:9::baseos
+>          Kernel: Linux 5.14.0-362.13.1.el9_3.x86_64
+>    Architecture: x86-64
+> Hardware Vendor: Dell Inc.
+>  Hardware Model: PowerEdge R840
+>Firmware Version: 2.15.1
+>
+>R Version:
+>R.Version()
+>$platform
+>[1] "x86_64-pc-linux-gnu"
+>$arch
+>[1] "x86_64"
+>$os
+>[1] "linux-gnu"
+>$system
+>[1] "x86_64, linux-gnu"
+>$status
+>[1] ""
+>$major
+>[1] "4"
+>$minor
+>[1] "3.2"
+>$year
+>[1] "2023"
+>$month
+>[1] "10"
+>$day
+>[1] "31"
+>$`svn rev`
+>[1] "85441"
+>$language
+>[1] "R"
+>$version.string
+>[1] "R version 4.3.2 (2023-10-31)"
+>$nickname
+>[1] "Eye Holes"
+>
+>RStudio Server Version:
+>RStudio 2023.09.1+494 "Desert Sunflower" Release (cd7011dce393115d3a7c3db799dda4b1c7e88711, 2023-10-16) for RHEL 9
+>Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36
+>
+>PPM Repo:
+>https://packagemanager.posit.co/cran/__linux__/rhel9/latest
+>
+>attached base packages:
+>[1] parallel  stats     graphics  grDevices datasets  utils     methods   base
+>
+>other attached packages:
+> [1] listenv_0.9.1        microbenchmark_1.5.0 dbplyr_2.4.0         duckplyr_0.4.1       readxl_1.4.3         fastDummies_1.7.3
+> [7] glue_1.8.0           arrow_14.0.2.1       data.table_1.15.2    toolbox_0.1.1        janitor_2.2.0        lubridate_1.9.3
+>[13] forcats_1.0.0        stringr_1.5.1        dplyr_1.1.4          purrr_1.0.2          readr_2.1.5          tidyr_1.3.1
+>[19] tibble_3.2.1         ggplot2_3.5.0        tidyverse_2.0.0      duckdb_1.1.2         DBI_1.2.3            fs_1.6.3
+>
+>
+>Happy to provide additional information if it would be helpful.
+>
+>Thank you in advance!
+>The information in this e-mail is intended only for the...{{dropped:23}}
+
+
+From g@@@powe|| @end|ng |rom protonm@||@com  Wed Dec 11 01:52:27 2024
+From: g@@@powe|| @end|ng |rom protonm@||@com (Gregg Powell)
+Date: Wed, 11 Dec 2024 00:52:27 +0000
+Subject: [R] Cores hang when calling mcapply
+In-Reply-To: <SA2PR04MB75005AE94F0FE0B9F22E94EDCB3E2@SA2PR04MB7500.namprd04.prod.outlook.com>
+References: <SA2PR04MB75005AE94F0FE0B9F22E94EDCB3E2@SA2PR04MB7500.namprd04.prod.outlook.com>
+Message-ID: <4E0RX-KjQotMJQqoZSTmkP26Nat7LaPPYPmThroNPdSsqyCVyZVxJcwib8VZ1wUxk4h_FaU-JgHsn-uV3MqfDsuG-Y2Kq9xOjXCZThR1rxc=@protonmail.com>
+
+Hello Thomas,
+
+Consider that the primary bottleneck may be tied to memory usage and the complexity of pivoting extremely large datasets into wide formats with tens of thousands of unique values per column. Extremely large expansions of columns inherently stress both memory and CPU, and splitting into 110k separate data frames before pivoting and combining them again is likely causing resource overhead and system instability.
+
+Perhaps, evaluate if the presence/absence transformation can be done in a more memory-efficient manner without pivoting all at once. Since you are dealing with extremely large data, a more incremental or streaming approach may be necessary. Instead of splitting into thousands of individual data frames and trying to pivot each in parallel, consider instead  a method that processes segments of data to incrementally build a large sparse matrix or a compressed representation, then combine results at the end.
+
+It's probbaly better to move away from `pivot_wider()` on a massive scale and attempt a data.table-based approach, which is often more memory-efficient and faster for large-scale operations in R. 
+
+
+An alternate way would be data.table?s `dcast()` can handle large data more efficiently, and data.table?s in-memory operations often reduce overhead compared to tidyverse pivoting functions.
+
+Also - consider using data.table?s `fread()` or `arrow::open_dataset()` directly with `as.data.table()` to keep everything in a data.table format. For example, you can do a large `dcast()` operation to create presence/absence columns by group. If your categories are extremely large, consider an approach that processes categories in segments as I mentioned earlier -  and writes intermediate results to disk, then combines/mergesresults at the end.
+
+Limit parallelization when dealing with massive reshapes. Instead of trying to parallelize the entire pivot across thousands of subsets, run a single parallelized chunking approach that processes manageable subsets and writes out intermediate results (for example... using `fwrite()` for each subset). After processing, load and combine these intermediate results. This manual segmenting approach can circumvent the "zombie" processes you mentioned - that I think arise from overly complex parallel nesting and excessivememory utilization.
+
+If the presence/absence indicators are ultimately sparse (many zeros and few ones), consider storing the result in a sparse matrix format (for exapmple- `Matrix` package in R). Instead of creating thousands of columns as dense integers, using a sparse matrix representation should dramatically reduce memory. After processing the data into a sparse format, you can then save it in a suitable file format and only convert to a dense format if absolutely necessary.
+
+Below is a reworked code segment using data.table for a more scalable approach. Note that this is a conceptual template. In practice, adapt the chunk sizes and filtering operations to your workflow. The idea is to avoid creating 110k separate data frames and to handle the pivot in a data.table manner that?s more robust and less memory intensve. Here, presence/absence encoding is done by grouping and casting directly rather than repeatedly splitting and row-binding.
+
+> library(data.table)
+> library(arrow)
+>
+> # Step A: Load data efficiently as data.table
+> dt <- as.data.table(
+>   open_dataset(
+>    sources = input_files,
+>    format = 'csv',
+>    unify_schema = TRUE,
+>    col_types = schema(
+>      "ID_Key" = string(),
+>      "column1" = string(),
+>      "column2" = string()
+>    )
+>  ) |> 
+
+>    collect()
+> )
+>
+> # Step B: Clean names once
+> # Assume `crewjanitormakeclean` essentially standardizes column names
+> dt[, column1 := janitor::make_clean_names(column1, allow_dupes =  
+
+> TRUE)]
+> dt[, column2 := janitor::make_clean_names(column2, allow_dupes = 
+
+>  TRUE)]
+>
+> # Step C: Create presence/absence indicators using data.table
+> # Use dcast to pivot wide. Set n=1 for presence, 0 for absence.
+> # For large unique values, consider chunking if needed.
+> out1 <- dcast(dt[!is.na(column1)], ID_Key ~ column1, fun.aggregate = 
+
+> length, value.var = "column1")
+> out2 <- dcast(dt[!is.na(column2)], ID_Key ~ column2, fun.aggregate = 
+
+> length, value.var = "column2")
+>
+> # Step D: Merge the two wide tables by ID_Key
+> # Fill missing columns with 0 using data.table on-the-fly operations
+> all_cols <- unique(c(names(out1), names(out2)))
+> out1_missing <- setdiff(all_cols, names(out1))
+> out2_missing <- setdiff(all_cols, names(out2))
+>
+> # Add missing columns with 0
+> for (col in out1_missing) out1[, (col) := 0]
+> for (col in out2_missing) out2[, (col) := 0]
+>
+> # Ensure column order alignment if needed
+> setcolorder(out1, all_cols)
+> setcolorder(out2, all_cols)
+>
+> # Combine by ID_Key (since they share same columns now)
+> final_dt <- rbindlist(list(out1, out2), use.names = TRUE, fill = TRUE)
+>
+> # Step E: If needed, summarize across ID_Key to sum presence 
+
+> indicators
+> final_result <- final_dt[, lapply(.SD, sum, na.rm = TRUE), by = 
+
+> ID_Key, .SDcols = setdiff(names(final_dt), "ID_Key")]
+>
+> # note that final_result should now contain summed presence/absence 
+
+> (0/1) indicators.
+
+
+
+
+Hope this helps!
+gregg
+somewhereinArizona
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: signature.asc
+Type: application/pgp-signature
+Size: 509 bytes
+Desc: OpenPGP digital signature
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20241211/2385b049/attachment.sig>
+
