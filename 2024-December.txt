@@ -4468,3 +4468,1970 @@ Size: 509 bytes
 Desc: OpenPGP digital signature
 URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20241211/2385b049/attachment.sig>
 
+From @k@h@y_e4 @end|ng |rom hotm@||@com  Wed Dec 11 14:16:59 2024
+From: @k@h@y_e4 @end|ng |rom hotm@||@com (akshay kulkarni)
+Date: Wed, 11 Dec 2024 13:16:59 +0000
+Subject: [R] SQL and R
+Message-ID: <SL2P216MB1561751390461734F553EB2CC83E2@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+
+dear Members,
+                            I have recently started studying SQL and MySQL. My question is, what exactly is SQL used for? That is, whatever can be done by SQL, like subsetting and filtering of data sets, can also be done by R. What's, then, the advantage of SQL?  It is OK if you tag this question as offtopic, but I could'nt find any info on the web. Can you please refer me to some online resources that shed some light on this? Finally, how does SQL complement R? Are both dependent?
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+[https://s-install.avcdn.net/ipm/preview/icons/icon-envelope-tick-round-orange-animated-no-repeat-v1.gif]<https://www.avast.com/sig-email?utm_medium=email&utm_source=link&utm_campaign=sig-email&utm_content=webmail>  Virus-free.www.avast.com<https://www.avast.com/sig-email?utm_medium=email&utm_source=link&utm_campaign=sig-email&utm_content=webmail>
+
+	[[alternative HTML version deleted]]
+
+
+From tder@mu@ @end|ng |rom mgb@org  Wed Dec 11 14:51:36 2024
+From: tder@mu@ @end|ng |rom mgb@org (Deramus, Thomas Patrick)
+Date: Wed, 11 Dec 2024 13:51:36 +0000
+Subject: [R] Cores hang when calling mcapply
+In-Reply-To: <4E0RX-KjQotMJQqoZSTmkP26Nat7LaPPYPmThroNPdSsqyCVyZVxJcwib8VZ1wUxk4h_FaU-JgHsn-uV3MqfDsuG-Y2Kq9xOjXCZThR1rxc=@protonmail.com>
+References: <SA2PR04MB75005AE94F0FE0B9F22E94EDCB3E2@SA2PR04MB7500.namprd04.prod.outlook.com>
+ <4E0RX-KjQotMJQqoZSTmkP26Nat7LaPPYPmThroNPdSsqyCVyZVxJcwib8VZ1wUxk4h_FaU-JgHsn-uV3MqfDsuG-Y2Kq9xOjXCZThR1rxc=@protonmail.com>
+Message-ID: <PH0PR04MB74932EAF56BA4F38915F2004CB3E2@PH0PR04MB7493.namprd04.prod.outlook.com>
+
+About to try this implementation.
+
+As a follow-up, this is the exact error:
+
+Lost warning messages
+Error: no more error handlers available (recursive errors?); invoking 'abort' restart
+Execution halted
+Error: cons memory exhausted (limit reached?)
+Error: cons memory exhausted (limit reached?)
+Error: cons memory exhausted (limit reached?)
+Error: cons memory exhausted (limit reached?)
+
+________________________________
+From: Gregg Powell <g.a.powell at protonmail.com>
+Sent: Tuesday, December 10, 2024 7:52 PM
+To: Deramus, Thomas Patrick <tderamus at mgb.org>
+Cc: r-help at r-project.org <r-help at r-project.org>
+Subject: Re: [R] Cores hang when calling mcapply
+
+Hello Thomas,
+
+Consider that the primary bottleneck may be tied to memory usage and the complexity of pivoting extremely large datasets into wide formats with tens of thousands of unique values per column. Extremely large expansions of columns inherently stress both memory and CPU, and splitting into 110k separate data frames before pivoting and combining them again is likely causing resource overhead and system instability.
+
+Perhaps, evaluate if the presence/absence transformation can be done in a more memory-efficient manner without pivoting all at once. Since you are dealing with extremely large data, a more incremental or streaming approach may be necessary. Instead of splitting into thousands of individual data frames and trying to pivot each in parallel, consider instead  a method that processes segments of data to incrementally build a large sparse matrix or a compressed representation, then combine results at the end.
+
+It's probbaly better to move away from `pivot_wider()` on a massive scale and attempt a data.table-based approach, which is often more memory-efficient and faster for large-scale operations in R.
+
+
+An alternate way would be data.table?s `dcast()` can handle large data more efficiently, and data.table?s in-memory operations often reduce overhead compared to tidyverse pivoting functions.
+
+Also - consider using data.table?s `fread()` or `arrow::open_dataset()` directly with `as.data.table()` to keep everything in a data.table format. For example, you can do a large `dcast()` operation to create presence/absence columns by group. If your categories are extremely large, consider an approach that processes categories in segments as I mentioned earlier -  and writes intermediate results to disk, then combines/mergesresults at the end.
+
+Limit parallelization when dealing with massive reshapes. Instead of trying to parallelize the entire pivot across thousands of subsets, run a single parallelized chunking approach that processes manageable subsets and writes out intermediate results (for example... using `fwrite()` for each subset). After processing, load and combine these intermediate results. This manual segmenting approach can circumvent the "zombie" processes you mentioned - that I think arise from overly complex parallel nesting and excessivememory utilization.
+
+If the presence/absence indicators are ultimately sparse (many zeros and few ones), consider storing the result in a sparse matrix format (for exapmple- `Matrix` package in R). Instead of creating thousands of columns as dense integers, using a sparse matrix representation should dramatically reduce memory. After processing the data into a sparse format, you can then save it in a suitable file format and only convert to a dense format if absolutely necessary.
+
+Below is a reworked code segment using data.table for a more scalable approach. Note that this is a conceptual template. In practice, adapt the chunk sizes and filtering operations to your workflow. The idea is to avoid creating 110k separate data frames and to handle the pivot in a data.table manner that?s more robust and less memory intensve. Here, presence/absence encoding is done by grouping and casting directly rather than repeatedly splitting and row-binding.
+
+> library(data.table)
+> library(arrow)
+>
+> # Step A: Load data efficiently as data.table
+> dt <- as.data.table(
+>   open_dataset(
+>    sources = input_files,
+>    format = 'csv',
+>    unify_schema = TRUE,
+>    col_types = schema(
+>      "ID_Key" = string(),
+>      "column1" = string(),
+>      "column2" = string()
+>    )
+>  ) |>
+
+>    collect()
+> )
+>
+> # Step B: Clean names once
+> # Assume `crewjanitormakeclean` essentially standardizes column names
+> dt[, column1 := janitor::make_clean_names(column1, allow_dupes =
+
+> TRUE)]
+> dt[, column2 := janitor::make_clean_names(column2, allow_dupes =
+
+>  TRUE)]
+>
+> # Step C: Create presence/absence indicators using data.table
+> # Use dcast to pivot wide. Set n=1 for presence, 0 for absence.
+> # For large unique values, consider chunking if needed.
+> out1 <- dcast(dt[!is.na(column1)], ID_Key ~ column1, fun.aggregate =
+
+> length, value.var = "column1")
+> out2 <- dcast(dt[!is.na(column2)], ID_Key ~ column2, fun.aggregate =
+
+> length, value.var = "column2")
+>
+> # Step D: Merge the two wide tables by ID_Key
+> # Fill missing columns with 0 using data.table on-the-fly operations
+> all_cols <- unique(c(names(out1), names(out2)))
+> out1_missing <- setdiff(all_cols, names(out1))
+> out2_missing <- setdiff(all_cols, names(out2))
+>
+> # Add missing columns with 0
+> for (col in out1_missing) out1[, (col) := 0]
+> for (col in out2_missing) out2[, (col) := 0]
+>
+> # Ensure column order alignment if needed
+> setcolorder(out1, all_cols)
+> setcolorder(out2, all_cols)
+>
+> # Combine by ID_Key (since they share same columns now)
+> final_dt <- rbindlist(list(out1, out2), use.names = TRUE, fill = TRUE)
+>
+> # Step E: If needed, summarize across ID_Key to sum presence
+
+> indicators
+> final_result <- final_dt[, lapply(.SD, sum, na.rm = TRUE), by =
+
+> ID_Key, .SDcols = setdiff(names(final_dt), "ID_Key")]
+>
+> # note that final_result should now contain summed presence/absence
+
+> (0/1) indicators.
+
+
+
+
+Hope this helps!
+gregg
+somewhereinArizona
+The information in this e-mail is intended only for the ...{{dropped:14}}
+
+
+From bbo|ker @end|ng |rom gm@||@com  Wed Dec 11 16:33:43 2024
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Wed, 11 Dec 2024 10:33:43 -0500
+Subject: [R] SQL and R
+In-Reply-To: <SL2P216MB1561751390461734F553EB2CC83E2@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+References: <SL2P216MB1561751390461734F553EB2CC83E2@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <4d3fd4aa-4f2b-41df-ba31-afacbb4501ba@gmail.com>
+
+   Others may know more than I do, but roughly:
+
+   (1) SQL provides access to relational database management systems 
+that are much more robust and handle large-scale data;
+   (2) methods based on SQL will often handle data that are too large to 
+fit in memory
+
+   R complements SQL by providing a much  larger set of statistical 
+tools. The typical workflow would be that you would use SQL queries to 
+do the extraction, subsetting, and simple manipulation of data to reduce 
+the data to a manageable size for analysis on a single machine, then use 
+R to analyze it.
+
+   See also various packages (arrow, dbplyr) that provide alternative 
+big-data workflows.
+
+   cheers
+    Ben Bolker
+
+
+On 12/11/24 08:16, akshay kulkarni wrote:
+> dear Members,
+>                              I have recently started studying SQL and MySQL. My question is, what exactly is SQL used for? That is, whatever can be done by SQL, like subsetting and filtering of data sets, can also be done by R. What's, then, the advantage of SQL?  It is OK if you tag this question as offtopic, but I could'nt find any info on the web. Can you please refer me to some online resources that shed some light on this? Finally, how does SQL complement R? Are both dependent?
+> 
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+> 
+> [https://s-install.avcdn.net/ipm/preview/icons/icon-envelope-tick-round-orange-animated-no-repeat-v1.gif]<https://www.avast.com/sig-email?utm_medium=email&utm_source=link&utm_campaign=sig-email&utm_content=webmail>  Virus-free.www.avast.com<https://www.avast.com/sig-email?utm_medium=email&utm_source=link&utm_campaign=sig-email&utm_content=webmail>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+* E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Wed Dec 11 16:55:01 2024
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Wed, 11 Dec 2024 07:55:01 -0800
+Subject: [R] SQL and R
+In-Reply-To: <SL2P216MB1561751390461734F553EB2CC83E2@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+References: <SL2P216MB1561751390461734F553EB2CC83E2@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <CAGxFJbREO0Rk=i-_XO9iYkYXS9z+ZU594nZ7w+ix84KXXS+=zA@mail.gmail.com>
+
+Just a slight technical note -- Ben gave you a good answer already, imo.
+
+The note is: R is Turing complete, which mean that *anything* any
+language can do, R could be programmed to do also. The point is what
+can be done well in R and what can be done (often much) better with
+other tools, as Ben explained.
+
+Cheers,
+Bert
+
+On Wed, Dec 11, 2024 at 5:17?AM akshay kulkarni <akshay_e4 at hotmail.com> wrote:
+>
+> dear Members,
+>                             I have recently started studying SQL and MySQL. My question is, what exactly is SQL used for? That is, whatever can be done by SQL, like subsetting and filtering of data sets, can also be done by R. What's, then, the advantage of SQL?  It is OK if you tag this question as offtopic, but I could'nt find any info on the web. Can you please refer me to some online resources that shed some light on this? Finally, how does SQL complement R? Are both dependent?
+>
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+> [https://s-install.avcdn.net/ipm/preview/icons/icon-envelope-tick-round-orange-animated-no-repeat-v1.gif]<https://www.avast.com/sig-email?utm_medium=email&utm_source=link&utm_campaign=sig-email&utm_content=webmail>  Virus-free.www.avast.com<https://www.avast.com/sig-email?utm_medium=email&utm_source=link&utm_campaign=sig-email&utm_content=webmail>
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Wed Dec 11 17:11:27 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Wed, 11 Dec 2024 11:11:27 -0500
+Subject: [R] SQL and R
+In-Reply-To: <SL2P216MB1561751390461734F553EB2CC83E2@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+References: <SL2P216MB1561751390461734F553EB2CC83E2@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <008d01db4be7$5593f4d0$00bbde70$@gmail.com>
+
+Akshay,
+
+Your question has way too many answers.
+
+SQL has a long history and early versions came long before R arrived on the
+scene. There is a huge embedded base of hardware and software dedicated to
+managing databases. It has some features that most R programs do not even
+dream of doing. Besides easily handling massive amounts of data or sometimes
+tweaking queries to possibly run more efficiently, there are all kinds of
+issue of how to manage multiple people accessing and changing the data at
+about the same time, or rolling the data back to an earlier checkpoint.
+
+R came along later and, as Ben pointed out, adds all kinds of things SQL
+does not have and likely does not need, or alternate ways to do things.
+
+For many people now, the workload is to use a programming language, and R is
+not the only one used, which has enhanced with packages or modules that
+allow access in a fairly general way to one or many databases running
+various versions of SQL. The programmer uses this API in many ways.
+
+In some ways, it is just a way to tell the database what to do without much
+other processing. You can ask to open a connection to the server, do a query
+that gets translated to SQL (or you can provide the actual SQL)  and let the
+remote (or local) machine do much of the work. For example, imagine a
+database with terabytes of data and all you want is a few rows/columns that
+meet your query. In R, you might have to open a collection of huge CSV files
+and fill more memory than you have and do the query somehow. If the data is
+remote, we are talking about a huge receiving of data. Using SQL divides the
+work so you do parts here and parts there.
+
+Why use a local MYSQL? Part of the answer is that you have a fairly
+optimized and debugged system that does it well and lets the programmer
+focus on the parts they need to add within R like complex analyses. Part is
+portability, as you can later move the data outside your machine and with
+minor changes, your program should still work. And, there are many other
+scenarios such as wanting to gather data from different sources such as
+connecting to multiple remote databases and getting filtered data and doing
+an analysis across that data and perhaps updating them.
+
+R used in ways like this provides lots of flexibility. But part of the
+question is like asking why there are a hundred programming languages still
+in use out there. Why do we need so many? In short, we don't necessarily
+need all or even most of them but they are there because various people
+developed them and used them and it is not trivial to get people to switch
+and maybe abandon all the older software or try to rewrite it.
+
+Having said that, I think a large fraction of R users have never had any
+particular reason to learn SQL. Many have never used it directly or even
+indirectly. I know someone who I have programmed for who calls some expert
+to do a SQL query and save the results in CSV files and then works directly
+in R on those files. I have pointed out to them that their life could be
+even easier if they got a more focused dump of the SQL data with some of the
+added processing done in SQL and then a smaller amount of data coming into
+the R side.
+
+I also note that languages like R and python can have parts that run fairly
+slowly. Arguably, most versions of SQL have been tuned over decades ...
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of akshay kulkarni
+Sent: Wednesday, December 11, 2024 8:17 AM
+To: R help Mailing list <r-help at r-project.org>
+Subject: [R] SQL and R
+
+dear Members,
+                            I have recently started studying SQL and MySQL.
+My question is, what exactly is SQL used for? That is, whatever can be done
+by SQL, like subsetting and filtering of data sets, can also be done by R.
+What's, then, the advantage of SQL?  It is OK if you tag this question as
+offtopic, but I could'nt find any info on the web. Can you please refer me
+to some online resources that shed some light on this? Finally, how does SQL
+complement R? Are both dependent?
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+[https://s-install.avcdn.net/ipm/preview/icons/icon-envelope-tick-round-oran
+ge-animated-no-repeat-v1.gif]<https://www.avast.com/sig-email?utm_medium=ema
+il&utm_source=link&utm_campaign=sig-email&utm_content=webmail>
+Virus-free.www.avast.com<https://www.avast.com/sig-email?utm_medium=email&ut
+m_source=link&utm_campaign=sig-email&utm_content=webmail>
+
+	[[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide
+https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From g@@@powe|| @end|ng |rom protonm@||@com  Wed Dec 11 17:41:36 2024
+From: g@@@powe|| @end|ng |rom protonm@||@com (Gregg Powell)
+Date: Wed, 11 Dec 2024 16:41:36 +0000
+Subject: [R] Cores hang when calling mcapply
+In-Reply-To: <PH0PR04MB74932EAF56BA4F38915F2004CB3E2@PH0PR04MB7493.namprd04.prod.outlook.com>
+References: <SA2PR04MB75005AE94F0FE0B9F22E94EDCB3E2@SA2PR04MB7500.namprd04.prod.outlook.com>
+ <4E0RX-KjQotMJQqoZSTmkP26Nat7LaPPYPmThroNPdSsqyCVyZVxJcwib8VZ1wUxk4h_FaU-JgHsn-uV3MqfDsuG-Y2Kq9xOjXCZThR1rxc=@protonmail.com>
+ <PH0PR04MB74932EAF56BA4F38915F2004CB3E2@PH0PR04MB7493.namprd04.prod.outlook.com>
+Message-ID: <K-Jmkrf3aApJi7lie-0cVW3OvZ2F5szMiIsSq9HHQBSQZCZbjVuRuN3woxIEh5eCLx9JYk4B70PRvp_d_5zOGvZcWjG4Cm2M_DsMg38JdFk=@protonmail.com>
+
+Thomas,
+I'm curious - what OS are you running this on, and how much memory does the computer have??
+
+Let me know if that code worked out as I hoped.
+
+regards,
+gregg
+
+
+On Wednesday, December 11th, 2024 at 6:51 AM, Deramus, Thomas Patrick <tderamus at mgb.org> wrote:
+
+> About to try this implementation.
+> 
+
+> As a follow-up, this is the exact error:
+> 
+
+> Lost warning messages
+> Error: no more error handlers available (recursive errors?); invoking 'abort' restart
+> Execution halted
+> Error: cons memory exhausted (limit reached?)
+> Error: cons memory exhausted (limit reached?)
+> Error: cons memory exhausted (limit reached?)
+> Error: cons memory exhausted (limit reached?)
+> 
+
+> 
+
+> 
+
+> From: Gregg Powell <g.a.powell at protonmail.com>
+> Sent: Tuesday, December 10, 2024 7:52 PM
+> To: Deramus, Thomas Patrick <tderamus at mgb.org>
+> Cc: r-help at r-project.org <r-help at r-project.org>
+> Subject: Re: [R] Cores hang when calling mcapply
+> 
+
+> Hello Thomas,
+> 
+
+> Consider that the primary bottleneck may be tied to memory usage and the complexity of pivoting extremely large datasets into wide formats with tens of thousands of unique values per column. Extremely large expansions of columns inherently stress both memory and CPU, and splitting into 110k separate data frames before pivoting and combining them again is likely causing resource overhead and system instability.
+> 
+
+> Perhaps, evaluate if the presence/absence transformation can be done in a more memory-efficient manner without pivoting all at once. Since you are dealing with extremely large data, a more incremental or streaming approach may be necessary. Instead of splitting into thousands of individual data frames and trying to pivot each in parallel, consider instead? a method that processes segments of data to incrementally build a large sparse matrix or a compressed representation, then combine results at the end.
+> 
+
+> It's probbaly better to move away from `pivot_wider()` on a massive scale and attempt a data.table-based approach, which is often more memory-efficient and faster for large-scale operations in R.
+> 
+
+> 
+
+> An alternate way would be data.table?s `dcast()` can handle large data more efficiently, and data.table?s in-memory operations often reduce overhead compared to tidyverse pivoting functions.
+> 
+
+> Also - consider using data.table?s `fread()` or `arrow::open_dataset()` directly with `as.data.table()` to keep everything in a data.table format. For example, you can do a large `dcast()` operation to create presence/absence columns by group. If your categories are extremely large, consider an approach that processes categories in segments as I mentioned earlier -? and writes intermediate results to disk, then combines/mergesresults at the end.
+> 
+
+> Limit parallelization when dealing with massive reshapes. Instead of trying to parallelize the entire pivot across thousands of subsets, run a single parallelized chunking approach that processes manageable subsets and writes out intermediate results (for example... using `fwrite()` for each subset). After processing, load and combine these intermediate results. This manual segmenting approach can circumvent the "zombie" processes you mentioned - that I think arise from overly complex parallel nesting and excessivememory utilization.
+> 
+
+> If the presence/absence indicators are ultimately sparse (many zeros and few ones), consider storing the result in a sparse matrix format (for exapmple- `Matrix` package in R). Instead of creating thousands of columns as dense integers, using a sparse matrix representation should dramatically reduce memory. After processing the data into a sparse format, you can then save it in a suitable file format and only convert to a dense format if absolutely necessary.
+> 
+
+> Below is a reworked code segment using data.table for a more scalable approach. Note that this is a conceptual template. In practice, adapt the chunk sizes and filtering operations to your workflow. The idea is to avoid creating 110k separate data frames and to handle the pivot in a data.table manner that?s more robust and less memory intensve. Here, presence/absence encoding is done by grouping and casting directly rather than repeatedly splitting and row-binding.
+> 
+
+> > library(data.table)
+> > library(arrow)
+> >
+> > # Step A: Load data efficiently as data.table
+> > dt <- as.data.table(
+> >?? open_dataset(
+> >??? sources = input_files,
+> >??? format = 'csv',
+> >??? unify_schema = TRUE,
+> >??? col_types = schema(
+> >????? "ID_Key" = string(),
+> >????? "column1" = string(),
+> >????? "column2" = string()
+> >??? )
+> >? ) |>
+> 
+
+> >??? collect()
+> > )
+> >
+> > # Step B: Clean names once
+> > # Assume `crewjanitormakeclean` essentially standardizes column names
+> > dt[, column1 := janitor::make_clean_names(column1, allow_dupes =?
+> 
+
+> > TRUE)]
+> > dt[, column2 := janitor::make_clean_names(column2, allow_dupes =
+> 
+
+> >? TRUE)]
+> >
+> > # Step C: Create presence/absence indicators using data.table
+> > # Use dcast to pivot wide. Set n=1 for presence, 0 for absence.
+> > # For large unique values, consider chunking if needed.
+> > out1 <- dcast(dt[!is.na(column1)], ID_Key ~ column1, fun.aggregate =
+> 
+
+> > length, value.var = "column1")
+> > out2 <- dcast(dt[!is.na(column2)], ID_Key ~ column2, fun.aggregate =
+> 
+
+> > length, value.var = "column2")
+> >
+> > # Step D: Merge the two wide tables by ID_Key
+> > # Fill missing columns with 0 using data.table on-the-fly operations
+> > all_cols <- unique(c(names(out1), names(out2)))
+> > out1_missing <- setdiff(all_cols, names(out1))
+> > out2_missing <- setdiff(all_cols, names(out2))
+> >
+> > # Add missing columns with 0
+> > for (col in out1_missing) out1[, (col) := 0]
+> > for (col in out2_missing) out2[, (col) := 0]
+> >
+> > # Ensure column order alignment if needed
+> > setcolorder(out1, all_cols)
+> > setcolorder(out2, all_cols)
+> >
+> > # Combine by ID_Key (since they share same columns now)
+> > final_dt <- rbindlist(list(out1, out2), use.names = TRUE, fill = TRUE)
+> >
+> > # Step E: If needed, summarize across ID_Key to sum presence
+> 
+
+> > indicators
+> > final_result <- final_dt[, lapply(.SD, sum, na.rm = TRUE), by =
+> 
+
+> > ID_Key, .SDcols = setdiff(names(final_dt), "ID_Key")]
+> >
+> > # note that final_result should now contain summed presence/absence
+> 
+
+> > (0/1) indicators.
+> 
+
+> 
+
+> 
+
+> 
+
+> Hope this helps!
+> gregg
+> somewhereinArizona
+> 
+
+> The information in this e-mail is intended only for the person to whom it is addressed.? If you believe this e-mail was sent to you in error and the e-mail contains patient information, please contact the Mass General Brigham Compliance HelpLine at https://www.massgeneralbrigham.org/complianceline .
+> 
+
+> 
+
+> 
+
+> Please note that this e-mail is not secure (encrypted).? If you do not wish to continue communication over unencrypted e-mail, please notify the sender of this message immediately.? Continuing to send or respond to e-mail after receiving this message means you understand and accept this risk and wish to continue to communicate over unencrypted e-mail.
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: signature.asc
+Type: application/pgp-signature
+Size: 603 bytes
+Desc: OpenPGP digital signature
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20241211/6beda415/attachment.sig>
+
+From tder@mu@ @end|ng |rom mgb@org  Wed Dec 11 17:49:37 2024
+From: tder@mu@ @end|ng |rom mgb@org (Deramus, Thomas Patrick)
+Date: Wed, 11 Dec 2024 16:49:37 +0000
+Subject: [R] Cores hang when calling mcapply
+In-Reply-To: <K-Jmkrf3aApJi7lie-0cVW3OvZ2F5szMiIsSq9HHQBSQZCZbjVuRuN3woxIEh5eCLx9JYk4B70PRvp_d_5zOGvZcWjG4Cm2M_DsMg38JdFk=@protonmail.com>
+References: <SA2PR04MB75005AE94F0FE0B9F22E94EDCB3E2@SA2PR04MB7500.namprd04.prod.outlook.com>
+ <4E0RX-KjQotMJQqoZSTmkP26Nat7LaPPYPmThroNPdSsqyCVyZVxJcwib8VZ1wUxk4h_FaU-JgHsn-uV3MqfDsuG-Y2Kq9xOjXCZThR1rxc=@protonmail.com>
+ <PH0PR04MB74932EAF56BA4F38915F2004CB3E2@PH0PR04MB7493.namprd04.prod.outlook.com>
+ <K-Jmkrf3aApJi7lie-0cVW3OvZ2F5szMiIsSq9HHQBSQZCZbjVuRuN3woxIEh5eCLx9JYk4B70PRvp_d_5zOGvZcWjG4Cm2M_DsMg38JdFk=@protonmail.com>
+Message-ID: <PH0PR04MB7493EF3DA4FE6201CB9C72D1CB3E2@PH0PR04MB7493.namprd04.prod.outlook.com>
+
+It's Redhat Enterprise Linux 9
+
+Specifically:
+OS Information:
+NAME="Red Hat Enterprise Linux"
+VERSION="9.3 (Plow)"
+ID="rhel"
+ID_LIKE="fedora"
+VERSION_ID="9.3"
+PLATFORM_ID="platform:el9"
+PRETTY_NAME="Red Hat Enterprise Linux 9.3 (Plow)"
+ANSI_COLOR="0;31"
+LOGO="fedora-logo-icon"
+CPE_NAME="cpe:/o:redhat:enterprise_linux:9::baseos"
+HOME_URL="https://www.redhat.com/"
+DOCUMENTATION_URL="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/9"
+BUG_REPORT_URL="https://bugzilla.redhat.com/"
+REDHAT_BUGZILLA_PRODUCT="Red Hat Enterprise Linux 9"
+REDHAT_BUGZILLA_PRODUCT_VERSION=9.3
+REDHAT_SUPPORT_PRODUCT="Red Hat Enterprise Linux"
+REDHAT_SUPPORT_PRODUCT_VERSION="9.3"
+Operating System: Red Hat Enterprise Linux 9.3 (Plow)
+     CPE OS Name: cpe:/o:redhat:enterprise_linux:9::baseos
+          Kernel: Linux 5.14.0-362.13.1.el9_3.x86_64
+    Architecture: x86-64
+ Hardware Vendor: Dell Inc.
+  Hardware Model: PowerEdge R840
+Firmware Version: 2.15.1
+
+
+Regarding RAM restrictions, here are the specs:
+               total        used        free      shared  buff/cache   available
+Mem:           753Gi        70Gi       600Gi       2.9Gi        89Gi       683Gi
+Swap:          4.0Gi       2.5Gi       1.5Gi
+
+It's a multi-user server so naturally things fluctuate.
+
+Regarding possible CPU restrictions, here are the specs of our server:
+
+    Thread(s) per core:  2
+    Core(s) per socket:  20
+    Socket(s):           4
+    Stepping:            4
+    CPU(s) scaling MHz:  50%
+    CPU max MHz:         3700.0000
+    CPU min MHz:         1000.0000
+
+
+
+________________________________
+From: Gregg Powell <g.a.powell at protonmail.com>
+Sent: Wednesday, December 11, 2024 11:41 AM
+To: Deramus, Thomas Patrick <tderamus at mgb.org>
+Cc: r-help at r-project.org <r-help at r-project.org>
+Subject: Re: [R] Cores hang when calling mcapply
+
+Thomas,
+I'm curious - what OS are you running this on, and how much memory does the computer have?
+
+Let me know if that code worked out as I hoped.
+
+regards,
+gregg
+
+On Wednesday, December 11th, 2024 at 6:51 AM, Deramus, Thomas Patrick <tderamus at mgb.org> wrote:
+About to try this implementation.
+
+As a follow-up, this is the exact error:
+
+Lost warning messages
+Error: no more error handlers available (recursive errors?); invoking 'abort' restart
+Execution halted
+Error: cons memory exhausted (limit reached?)
+Error: cons memory exhausted (limit reached?)
+Error: cons memory exhausted (limit reached?)
+Error: cons memory exhausted (limit reached?)
+
+________________________________
+From: Gregg Powell <g.a.powell at protonmail.com>
+Sent: Tuesday, December 10, 2024 7:52 PM
+To: Deramus, Thomas Patrick <tderamus at mgb.org>
+Cc: r-help at r-project.org <r-help at r-project.org>
+Subject: Re: [R] Cores hang when calling mcapply
+
+Hello Thomas,
+
+Consider that the primary bottleneck may be tied to memory usage and the complexity of pivoting extremely large datasets into wide formats with tens of thousands of unique values per column. Extremely large expansions of columns inherently stress both memory and CPU, and splitting into 110k separate data frames before pivoting and combining them again is likely causing resource overhead and system instability.
+
+Perhaps, evaluate if the presence/absence transformation can be done in a more memory-efficient manner without pivoting all at once. Since you are dealing with extremely large data, a more incremental or streaming approach may be necessary. Instead of splitting into thousands of individual data frames and trying to pivot each in parallel, consider instead  a method that processes segments of data to incrementally build a large sparse matrix or a compressed representation, then combine results at the end.
+
+It's probbaly better to move away from `pivot_wider()` on a massive scale and attempt a data.table-based approach, which is often more memory-efficient and faster for large-scale operations in R.
+
+
+An alternate way would be data.table?s `dcast()` can handle large data more efficiently, and data.table?s in-memory operations often reduce overhead compared to tidyverse pivoting functions.
+
+Also - consider using data.table?s `fread()` or `arrow::open_dataset()` directly with `as.data.table()` to keep everything in a data.table format. For example, you can do a large `dcast()` operation to create presence/absence columns by group. If your categories are extremely large, consider an approach that processes categories in segments as I mentioned earlier -  and writes intermediate results to disk, then combines/mergesresults at the end.
+
+Limit parallelization when dealing with massive reshapes. Instead of trying to parallelize the entire pivot across thousands of subsets, run a single parallelized chunking approach that processes manageable subsets and writes out intermediate results (for example... using `fwrite()` for each subset). After processing, load and combine these intermediate results. This manual segmenting approach can circumvent the "zombie" processes you mentioned - that I think arise from overly complex parallel nesting and excessivememory utilization.
+
+If the presence/absence indicators are ultimately sparse (many zeros and few ones), consider storing the result in a sparse matrix format (for exapmple- `Matrix` package in R). Instead of creating thousands of columns as dense integers, using a sparse matrix representation should dramatically reduce memory. After processing the data into a sparse format, you can then save it in a suitable file format and only convert to a dense format if absolutely necessary.
+
+Below is a reworked code segment using data.table for a more scalable approach. Note that this is a conceptual template. In practice, adapt the chunk sizes and filtering operations to your workflow. The idea is to avoid creating 110k separate data frames and to handle the pivot in a data.table manner that?s more robust and less memory intensve. Here, presence/absence encoding is done by grouping and casting directly rather than repeatedly splitting and row-binding.
+
+> library(data.table)
+> library(arrow)
+>
+> # Step A: Load data efficiently as data.table
+> dt <- as.data.table(
+>   open_dataset(
+>    sources = input_files,
+>    format = 'csv',
+>    unify_schema = TRUE,
+>    col_types = schema(
+>      "ID_Key" = string(),
+>      "column1" = string(),
+>      "column2" = string()
+>    )
+>  ) |>
+
+>    collect()
+> )
+>
+> # Step B: Clean names once
+> # Assume `crewjanitormakeclean` essentially standardizes column names
+> dt[, column1 := janitor::make_clean_names(column1, allow_dupes =
+
+> TRUE)]
+> dt[, column2 := janitor::make_clean_names(column2, allow_dupes =
+
+>  TRUE)]
+>
+> # Step C: Create presence/absence indicators using data.table
+> # Use dcast to pivot wide. Set n=1 for presence, 0 for absence.
+> # For large unique values, consider chunking if needed.
+> out1 <- dcast(dt[!is.na(column1)], ID_Key ~ column1, fun.aggregate =
+
+> length, value.var = "column1")
+> out2 <- dcast(dt[!is.na(column2)], ID_Key ~ column2, fun.aggregate =
+
+> length, value.var = "column2")
+>
+> # Step D: Merge the two wide tables by ID_Key
+> # Fill missing columns with 0 using data.table on-the-fly operations
+> all_cols <- unique(c(names(out1), names(out2)))
+> out1_missing <- setdiff(all_cols, names(out1))
+> out2_missing <- setdiff(all_cols, names(out2))
+>
+> # Add missing columns with 0
+> for (col in out1_missing) out1[, (col) := 0]
+> for (col in out2_missing) out2[, (col) := 0]
+>
+> # Ensure column order alignment if needed
+> setcolorder(out1, all_cols)
+> setcolorder(out2, all_cols)
+>
+> # Combine by ID_Key (since they share same columns now)
+> final_dt <- rbindlist(list(out1, out2), use.names = TRUE, fill = TRUE)
+>
+> # Step E: If needed, summarize across ID_Key to sum presence
+
+> indicators
+> final_result <- final_dt[, lapply(.SD, sum, na.rm = TRUE), by =
+
+> ID_Key, .SDcols = setdiff(names(final_dt), "ID_Key")]
+>
+> # note that final_result should now contain summed presence/absence
+
+> (0/1) indicators.
+
+
+
+
+Hope this helps!
+gregg
+somewhereinArizona
+
+The information in this e-mail is intended only for the person to whom it is addressed.  If you believe this e-mail was sent to you in error and the e-mail contains patient information, please contact the Mass General Brigham Compliance HelpLine at https://www.massgeneralbrigham.org/complianceline<https://secure-web.cisco.com/100Hi_g3yJTBAxxYPpHz7NQcwx9A06rN2U4Dh4wHDMTBLGJ5yiq8PszsdEMlRsD9C7ESGkM_88I-b3jy2QGu-x35cEfVZ6QUW9Uf8aQihVfQOceLc1DZr3AXcvDUKCpPFXgrBqSOYdHyh31yQD3--3ltk0pjgK_te1I0M6i_pIUEbdE334rYMuIxAhmwI48EHf8_k9wuSXxBrgiQc9D6Lsakb1w2RckPEmz4DmrbjWfLR4hx3ylUbDTf9UR_eWYxzvivxt6NpRfEN3T9WpUjWHHTNIdUphSKwmR8Sk8i4-KqcpJdPjHKC1185wd1Sr78X/https%3A%2F%2Fwww.massgeneralbrigham.org%2Fcomplianceline> .
+
+
+Please note that this e-mail is not secure (encrypted).  If you do not wish to continue communication over unencrypted e-mail, please notify the sender of this message immediately.  Continuing to send or respond to e-mail after receiving this message means you understand and accept this risk and wish to continue to communicate over unencrypted e-mail.
+
+The information in this e-mail is intended only for the person to whom it is addressed.  If you believe this e-mail was sent to you in error and the e-mail contains patient information, please contact the Mass General Brigham Compliance HelpLine at https://www.massgeneralbrigham.org/complianceline <https://www.massgeneralbrigham.org/complianceline> .
+Please note that this e-mail is not secure (encrypted).  If you do not wish to continue communication over unencrypted e-mail, please notify the sender of this message immediately.  Continuing to send or respond to e-mail after receiving this message means you understand and accept this risk and wish to continue to communicate over unencrypted e-mail. 
+
+	[[alternative HTML version deleted]]
+
+
+From pro|jcn@@h @end|ng |rom gm@||@com  Wed Dec 11 17:57:59 2024
+From: pro|jcn@@h @end|ng |rom gm@||@com (J C Nash)
+Date: Wed, 11 Dec 2024 11:57:59 -0500
+Subject: [R] SQL and R - tangential
+In-Reply-To: <008d01db4be7$5593f4d0$00bbde70$@gmail.com>
+References: <SL2P216MB1561751390461734F553EB2CC83E2@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+ <008d01db4be7$5593f4d0$00bbde70$@gmail.com>
+Message-ID: <85bf9905-4180-446f-864b-5c7d488611fc@gmail.com>
+
+My late friend Morven Gentleman, not long after he stepped down from being chair
+of Computer Science at Waterloo, said that it seemed computer scientists had to create
+a new computer language for every new problem they encountered.
+
+If we could use least squares to measure this approximation, we'd likely be suspicious
+of a terribly small error measure or overly high R^2.
+
+JN
+
+On 2024-12-11 11:11, avi.e.gross at gmail.com wrote:
+> Akshay,
+> 
+> Your question has way too many answers.
+> 
+> SQL has a long history and early versions came long before R arrived on the
+> scene. There is a huge embedded base of hardware and software dedicated to
+> managing databases. It has some features that most R programs do not even
+> dream of doing. Besides easily handling massive amounts of data or sometimes
+> tweaking queries to possibly run more efficiently, there are all kinds of
+> issue of how to manage multiple people accessing and changing the data at
+> about the same time, or rolling the data back to an earlier checkpoint.
+> 
+> R came along later and, as Ben pointed out, adds all kinds of things SQL
+> does not have and likely does not need, or alternate ways to do things.
+> 
+> For many people now, the workload is to use a programming language, and R is
+> not the only one used, which has enhanced with packages or modules that
+> allow access in a fairly general way to one or many databases running
+> various versions of SQL. The programmer uses this API in many ways.
+> 
+> In some ways, it is just a way to tell the database what to do without much
+> other processing. You can ask to open a connection to the server, do a query
+> that gets translated to SQL (or you can provide the actual SQL)  and let the
+> remote (or local) machine do much of the work. For example, imagine a
+> database with terabytes of data and all you want is a few rows/columns that
+> meet your query. In R, you might have to open a collection of huge CSV files
+> and fill more memory than you have and do the query somehow. If the data is
+> remote, we are talking about a huge receiving of data. Using SQL divides the
+> work so you do parts here and parts there.
+> 
+> Why use a local MYSQL? Part of the answer is that you have a fairly
+> optimized and debugged system that does it well and lets the programmer
+> focus on the parts they need to add within R like complex analyses. Part is
+> portability, as you can later move the data outside your machine and with
+> minor changes, your program should still work. And, there are many other
+> scenarios such as wanting to gather data from different sources such as
+> connecting to multiple remote databases and getting filtered data and doing
+> an analysis across that data and perhaps updating them.
+> 
+> R used in ways like this provides lots of flexibility. But part of the
+> question is like asking why there are a hundred programming languages still
+> in use out there. Why do we need so many? In short, we don't necessarily
+> need all or even most of them but they are there because various people
+> developed them and used them and it is not trivial to get people to switch
+> and maybe abandon all the older software or try to rewrite it.
+> 
+> Having said that, I think a large fraction of R users have never had any
+> particular reason to learn SQL. Many have never used it directly or even
+> indirectly. I know someone who I have programmed for who calls some expert
+> to do a SQL query and save the results in CSV files and then works directly
+> in R on those files. I have pointed out to them that their life could be
+> even easier if they got a more focused dump of the SQL data with some of the
+> added processing done in SQL and then a smaller amount of data coming into
+> the R side.
+> 
+> I also note that languages like R and python can have parts that run fairly
+> slowly. Arguably, most versions of SQL have been tuned over decades ...
+> 
+> 
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of akshay kulkarni
+> Sent: Wednesday, December 11, 2024 8:17 AM
+> To: R help Mailing list <r-help at r-project.org>
+> Subject: [R] SQL and R
+> 
+> dear Members,
+>                              I have recently started studying SQL and MySQL.
+> My question is, what exactly is SQL used for? That is, whatever can be done
+> by SQL, like subsetting and filtering of data sets, can also be done by R.
+> What's, then, the advantage of SQL?  It is OK if you tag this question as
+> offtopic, but I could'nt find any info on the web. Can you please refer me
+> to some online resources that shed some light on this? Finally, how does SQL
+> complement R? Are both dependent?
+> 
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+> 
+> [https://s-install.avcdn.net/ipm/preview/icons/icon-envelope-tick-round-oran
+> ge-animated-no-repeat-v1.gif]<https://www.avast.com/sig-email?utm_medium=ema
+> il&utm_source=link&utm_campaign=sig-email&utm_content=webmail>
+> Virus-free.www.avast.com<https://www.avast.com/sig-email?utm_medium=email&ut
+> m_source=link&utm_campaign=sig-email&utm_content=webmail>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From g@@@powe|| @end|ng |rom protonm@||@com  Wed Dec 11 20:11:56 2024
+From: g@@@powe|| @end|ng |rom protonm@||@com (Gregg Powell)
+Date: Wed, 11 Dec 2024 19:11:56 +0000
+Subject: [R] Cores hang when calling mcapply
+In-Reply-To: <PH0PR04MB7493EF3DA4FE6201CB9C72D1CB3E2@PH0PR04MB7493.namprd04.prod.outlook.com>
+References: <SA2PR04MB75005AE94F0FE0B9F22E94EDCB3E2@SA2PR04MB7500.namprd04.prod.outlook.com>
+ <4E0RX-KjQotMJQqoZSTmkP26Nat7LaPPYPmThroNPdSsqyCVyZVxJcwib8VZ1wUxk4h_FaU-JgHsn-uV3MqfDsuG-Y2Kq9xOjXCZThR1rxc=@protonmail.com>
+ <PH0PR04MB74932EAF56BA4F38915F2004CB3E2@PH0PR04MB7493.namprd04.prod.outlook.com>
+ <K-Jmkrf3aApJi7lie-0cVW3OvZ2F5szMiIsSq9HHQBSQZCZbjVuRuN3woxIEh5eCLx9JYk4B70PRvp_d_5zOGvZcWjG4Cm2M_DsMg38JdFk=@protonmail.com>
+ <PH0PR04MB7493EF3DA4FE6201CB9C72D1CB3E2@PH0PR04MB7493.namprd04.prod.outlook.com>
+Message-ID: <cAYww-6WFIIKmwBU2q6Wc4pgQskAHuHN1kL1GzYAwGd1exbdHijmhuRrwNMK45riNN8KKNTcjRF686SShKo5zmWXs-gvMR0jh5znWtyHoms=@protonmail.com>
+
+How is the server configured to handle memory distribution for individual users. I see it has over 700GB of total system memory, but how much can be assigned it each individual user?
+
+AAgain - just curious, and wondering how much memory was assigned to your instance when you were running R.
+
+regards,
+Gregg
+
+
+
+On Wednesday, December 11th, 2024 at 9:49 AM, Deramus, Thomas Patrick <tderamus at mgb.org> wrote:
+
+> It's Redhat Enterprise Linux 9
+> 
+
+> Specifically:
+> OS Information:
+> NAME="Red Hat Enterprise Linux"
+> VERSION="9.3 (Plow)"
+> ID="rhel"
+> ID_LIKE="fedora"
+> VERSION_ID="9.3"
+> PLATFORM_ID="platform:el9"
+> PRETTY_NAME="Red Hat Enterprise Linux 9.3 (Plow)"
+> ANSI_COLOR="0;31"
+> LOGO="fedora-logo-icon"
+> CPE_NAME="cpe:/o:redhat:enterprise_linux:9::baseos"
+> HOME_URL="https://www.redhat.com/"
+> DOCUMENTATION_URL="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/9"
+> BUG_REPORT_URL="https://bugzilla.redhat.com/"
+> REDHAT_BUGZILLA_PRODUCT="Red Hat Enterprise Linux 9"
+> REDHAT_BUGZILLA_PRODUCT_VERSION=9.3
+> REDHAT_SUPPORT_PRODUCT="Red Hat Enterprise Linux"
+> REDHAT_SUPPORT_PRODUCT_VERSION="9.3"
+> Operating System: Red Hat Enterprise Linux 9.3 (Plow)
+> ? ? ?CPE OS Name: cpe:/o:redhat:enterprise_linux:9::baseos
+> ? ? ? ? ? Kernel: Linux 5.14.0-362.13.1.el9_3.x86_64
+> ? ? Architecture: x86-64
+> ?Hardware Vendor: Dell Inc.
+> ? Hardware Model: PowerEdge R840
+> Firmware Version: 2.15.1
+> 
+
+> 
+
+> Regarding RAM restrictions, here are the specs:
+> ? ? ? ? ? ? ? ?total ? ? ? ?used ? ? ? ?free ? ? ?shared ?buff/cache ? available
+> Mem: ? ? ? ? ? 753Gi?? ? ? ?70Gi ? ? ? 600Gi ? ? ? 2.9Gi ? ? ? ?89Gi ? ? ? 683Gi
+> Swap: ? ? ? ? ?4.0Gi ? ? ? 2.5Gi ? ? ? 1.5Gi
+> 
+
+> It's a multi-user server so naturally things fluctuate.
+> 
+
+> Regarding possible CPU restrictions, here are the specs of our server:
+> ? ? Thread(s) per core: ?2
+> ? ? Core(s) per socket: ?20
+> ? ? Socket(s): ? ? ? ? ? 4
+> ? ? Stepping: ? ? ? ? ? ?4
+> ? ? CPU(s) scaling MHz: ?50%
+> ? ? CPU max MHz: ? ? ? ? 3700.0000
+> ? ? CPU min MHz: ? ? ? ? 1000.0000
+> 
+
+> 
+
+> 
+
+> 
+
+> 
+
+> From: Gregg Powell <g.a.powell at protonmail.com>
+> Sent: Wednesday, December 11, 2024 11:41 AM
+> To: Deramus, Thomas Patrick <tderamus at mgb.org>
+> Cc: r-help at r-project.org <r-help at r-project.org>
+> Subject: Re: [R] Cores hang when calling mcapply
+> 
+
+> Thomas,
+> I'm curious - what OS are you running this on, and how much memory does the computer have??
+> 
+
+> Let me know if that code worked out as I hoped.
+> 
+
+> regards,
+> gregg
+> 
+
+> 
+
+> On Wednesday, December 11th, 2024 at 6:51 AM, Deramus, Thomas Patrick <tderamus at mgb.org> wrote:
+> 
+
+> > About to try this implementation.
+> > 
+
+> > As a follow-up, this is the exact error:
+> > 
+
+> > Lost warning messages
+> > Error: no more error handlers available (recursive errors?); invoking 'abort' restart
+> > Execution halted
+> > Error: cons memory exhausted (limit reached?)
+> > Error: cons memory exhausted (limit reached?)
+> > Error: cons memory exhausted (limit reached?)
+> > Error: cons memory exhausted (limit reached?)
+> > 
+
+> > 
+
+> > 
+
+> > From: Gregg Powell <g.a.powell at protonmail.com>
+> > Sent: Tuesday, December 10, 2024 7:52 PM
+> > To: Deramus, Thomas Patrick <tderamus at mgb.org>
+> > Cc: r-help at r-project.org <r-help at r-project.org>
+> > Subject: Re: [R] Cores hang when calling mcapply
+> > 
+
+> > Hello Thomas,
+> > 
+
+> > Consider that the primary bottleneck may be tied to memory usage and the complexity of pivoting extremely large datasets into wide formats with tens of thousands of unique values per column. Extremely large expansions of columns inherently stress both memory and CPU, and splitting into 110k separate data frames before pivoting and combining them again is likely causing resource overhead and system instability.
+> > 
+
+> > Perhaps, evaluate if the presence/absence transformation can be done in a more memory-efficient manner without pivoting all at once. Since you are dealing with extremely large data, a more incremental or streaming approach may be necessary. Instead of splitting into thousands of individual data frames and trying to pivot each in parallel, consider instead? a method that processes segments of data to incrementally build a large sparse matrix or a compressed representation, then combine results at the end.
+> > 
+
+> > It's probbaly better to move away from `pivot_wider()` on a massive scale and attempt a data.table-based approach, which is often more memory-efficient and faster for large-scale operations in R.
+> > 
+
+> > 
+
+> > An alternate way would be data.table?s `dcast()` can handle large data more efficiently, and data.table?s in-memory operations often reduce overhead compared to tidyverse pivoting functions.
+> > 
+
+> > Also - consider using data.table?s `fread()` or `arrow::open_dataset()` directly with `as.data.table()` to keep everything in a data.table format. For example, you can do a large `dcast()` operation to create presence/absence columns by group. If your categories are extremely large, consider an approach that processes categories in segments as I mentioned earlier -? and writes intermediate results to disk, then combines/mergesresults at the end.
+> > 
+
+> > Limit parallelization when dealing with massive reshapes. Instead of trying to parallelize the entire pivot across thousands of subsets, run a single parallelized chunking approach that processes manageable subsets and writes out intermediate results (for example... using `fwrite()` for each subset). After processing, load and combine these intermediate results. This manual segmenting approach can circumvent the "zombie" processes you mentioned - that I think arise from overly complex parallel nesting and excessivememory utilization.
+> > 
+
+> > If the presence/absence indicators are ultimately sparse (many zeros and few ones), consider storing the result in a sparse matrix format (for exapmple- `Matrix` package in R). Instead of creating thousands of columns as dense integers, using a sparse matrix representation should dramatically reduce memory. After processing the data into a sparse format, you can then save it in a suitable file format and only convert to a dense format if absolutely necessary.
+> > 
+
+> > Below is a reworked code segment using data.table for a more scalable approach. Note that this is a conceptual template. In practice, adapt the chunk sizes and filtering operations to your workflow. The idea is to avoid creating 110k separate data frames and to handle the pivot in a data.table manner that?s more robust and less memory intensve. Here, presence/absence encoding is done by grouping and casting directly rather than repeatedly splitting and row-binding.
+> > 
+
+> > > library(data.table)
+> > > library(arrow)
+> > >
+> > > # Step A: Load data efficiently as data.table
+> > > dt <- as.data.table(
+> > >?? open_dataset(
+> > >??? sources = input_files,
+> > >??? format = 'csv',
+> > >??? unify_schema = TRUE,
+> > >??? col_types = schema(
+> > >????? "ID_Key" = string(),
+> > >????? "column1" = string(),
+> > >????? "column2" = string()
+> > >??? )
+> > >? ) |>
+> > 
+
+> > >??? collect()
+> > > )
+> > >
+> > > # Step B: Clean names once
+> > > # Assume `crewjanitormakeclean` essentially standardizes column names
+> > > dt[, column1 := janitor::make_clean_names(column1, allow_dupes =?
+> > 
+
+> > > TRUE)]
+> > > dt[, column2 := janitor::make_clean_names(column2, allow_dupes =
+> > 
+
+> > >? TRUE)]
+> > >
+> > > # Step C: Create presence/absence indicators using data.table
+> > > # Use dcast to pivot wide. Set n=1 for presence, 0 for absence.
+> > > # For large unique values, consider chunking if needed.
+> > > out1 <- dcast(dt[!is.na(column1)], ID_Key ~ column1, fun.aggregate =
+> > 
+
+> > > length, value.var = "column1")
+> > > out2 <- dcast(dt[!is.na(column2)], ID_Key ~ column2, fun.aggregate =
+> > 
+
+> > > length, value.var = "column2")
+> > >
+> > > # Step D: Merge the two wide tables by ID_Key
+> > > # Fill missing columns with 0 using data.table on-the-fly operations
+> > > all_cols <- unique(c(names(out1), names(out2)))
+> > > out1_missing <- setdiff(all_cols, names(out1))
+> > > out2_missing <- setdiff(all_cols, names(out2))
+> > >
+> > > # Add missing columns with 0
+> > > for (col in out1_missing) out1[, (col) := 0]
+> > > for (col in out2_missing) out2[, (col) := 0]
+> > >
+> > > # Ensure column order alignment if needed
+> > > setcolorder(out1, all_cols)
+> > > setcolorder(out2, all_cols)
+> > >
+> > > # Combine by ID_Key (since they share same columns now)
+> > > final_dt <- rbindlist(list(out1, out2), use.names = TRUE, fill = TRUE)
+> > >
+> > > # Step E: If needed, summarize across ID_Key to sum presence
+> > 
+
+> > > indicators
+> > > final_result <- final_dt[, lapply(.SD, sum, na.rm = TRUE), by =
+> > 
+
+> > > ID_Key, .SDcols = setdiff(names(final_dt), "ID_Key")]
+> > >
+> > > # note that final_result should now contain summed presence/absence
+> > 
+
+> > > (0/1) indicators.
+> > 
+
+> > 
+
+> > 
+
+> > 
+
+> > Hope this helps!
+> > gregg
+> > somewhereinArizona
+> > 
+
+> > The information in this e-mail is intended only for the person to whom it is addressed.? If you believe this e-mail was sent to you in error and the e-mail contains patient information, please contact the Mass General Brigham Compliance HelpLine at https://www.massgeneralbrigham.org/complianceline .
+> > 
+
+> > 
+
+> > 
+
+> > Please note that this e-mail is not secure (encrypted).? If you do not wish to continue communication over unencrypted e-mail, please notify the sender of this message immediately.? Continuing to send or respond to e-mail after receiving this message means you understand and accept this risk and wish to continue to communicate over unencrypted e-mail.?
+> 
+
+> The information in this e-mail is intended only for the person to whom it is addressed.? If you believe this e-mail was sent to you in error and the e-mail contains patient information, please contact the Mass General Brigham Compliance HelpLine at https://www.massgeneralbrigham.org/complianceline .
+> 
+
+> 
+
+> 
+
+> Please note that this e-mail is not secure (encrypted).? If you do not wish to continue communication over unencrypted e-mail, please notify the sender of this message immediately.? Continuing to send or respond to e-mail after receiving this message means you understand and accept this risk and wish to continue to communicate over unencrypted e-mail.
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: signature.asc
+Type: application/pgp-signature
+Size: 603 bytes
+Desc: OpenPGP digital signature
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20241211/98c681de/attachment.sig>
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Wed Dec 11 21:03:05 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Wed, 11 Dec 2024 15:03:05 -0500
+Subject: [R] SQL and R - tangential
+In-Reply-To: <85bf9905-4180-446f-864b-5c7d488611fc@gmail.com>
+References: <SL2P216MB1561751390461734F553EB2CC83E2@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+ <008d01db4be7$5593f4d0$00bbde70$@gmail.com>
+ <85bf9905-4180-446f-864b-5c7d488611fc@gmail.com>
+Message-ID: <00d901db4c07$b0f7bf30$12e73d90$@gmail.com>
+
+Actually, tangentially, JC, I have a deep suspicion that many computer
+languages are not written to solve problems. They are sometimes an effort by
+someone to implement a new paradigm different than what others have tried
+before or to protect the programmer from themselves or to demand extensive
+rigor so the result almost proves itself and so on.
+
+Only after the language is in place, might they look for a problem that
+might be solved using it.
+
+Kidding aside, some aspects of R may not have been as useful early on in
+that the use of multi-dimensional arrays is not as common a need in many
+areas of endeavor. But it has taken on more meaning in areas like AI. Other
+languages that did not support some concepts like that well, have often had
+to add it in.
+
+The problem today in looking at computer languages is how ALIKE they are
+becoming as features keep being grafted on to make each language have
+features already found in another.
+
+If you look at the question about SQL and R, you might note that although
+base R had lots of functionality, some aspects you see in extensions like
+dplyr are attempts to in some way mimic SQL or do things different or even
+better. Consider the many clauses allowed in a SQL "select" statement and
+map that onto a dplyr query in a pipeline with what seems like lots of
+clauses. Base R before the pipe did not lend itself so easily to that.
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of J C Nash
+Sent: Wednesday, December 11, 2024 11:58 AM
+To: r-help at r-project.org
+Subject: Re: [R] SQL and R - tangential
+
+My late friend Morven Gentleman, not long after he stepped down from being
+chair
+of Computer Science at Waterloo, said that it seemed computer scientists had
+to create
+a new computer language for every new problem they encountered.
+
+If we could use least squares to measure this approximation, we'd likely be
+suspicious
+of a terribly small error measure or overly high R^2.
+
+JN
+
+On 2024-12-11 11:11, avi.e.gross at gmail.com wrote:
+> Akshay,
+> 
+> Your question has way too many answers.
+> 
+> SQL has a long history and early versions came long before R arrived on
+the
+> scene. There is a huge embedded base of hardware and software dedicated to
+> managing databases. It has some features that most R programs do not even
+> dream of doing. Besides easily handling massive amounts of data or
+sometimes
+> tweaking queries to possibly run more efficiently, there are all kinds of
+> issue of how to manage multiple people accessing and changing the data at
+> about the same time, or rolling the data back to an earlier checkpoint.
+> 
+> R came along later and, as Ben pointed out, adds all kinds of things SQL
+> does not have and likely does not need, or alternate ways to do things.
+> 
+> For many people now, the workload is to use a programming language, and R
+is
+> not the only one used, which has enhanced with packages or modules that
+> allow access in a fairly general way to one or many databases running
+> various versions of SQL. The programmer uses this API in many ways.
+> 
+> In some ways, it is just a way to tell the database what to do without
+much
+> other processing. You can ask to open a connection to the server, do a
+query
+> that gets translated to SQL (or you can provide the actual SQL)  and let
+the
+> remote (or local) machine do much of the work. For example, imagine a
+> database with terabytes of data and all you want is a few rows/columns
+that
+> meet your query. In R, you might have to open a collection of huge CSV
+files
+> and fill more memory than you have and do the query somehow. If the data
+is
+> remote, we are talking about a huge receiving of data. Using SQL divides
+the
+> work so you do parts here and parts there.
+> 
+> Why use a local MYSQL? Part of the answer is that you have a fairly
+> optimized and debugged system that does it well and lets the programmer
+> focus on the parts they need to add within R like complex analyses. Part
+is
+> portability, as you can later move the data outside your machine and with
+> minor changes, your program should still work. And, there are many other
+> scenarios such as wanting to gather data from different sources such as
+> connecting to multiple remote databases and getting filtered data and
+doing
+> an analysis across that data and perhaps updating them.
+> 
+> R used in ways like this provides lots of flexibility. But part of the
+> question is like asking why there are a hundred programming languages
+still
+> in use out there. Why do we need so many? In short, we don't necessarily
+> need all or even most of them but they are there because various people
+> developed them and used them and it is not trivial to get people to switch
+> and maybe abandon all the older software or try to rewrite it.
+> 
+> Having said that, I think a large fraction of R users have never had any
+> particular reason to learn SQL. Many have never used it directly or even
+> indirectly. I know someone who I have programmed for who calls some expert
+> to do a SQL query and save the results in CSV files and then works
+directly
+> in R on those files. I have pointed out to them that their life could be
+> even easier if they got a more focused dump of the SQL data with some of
+the
+> added processing done in SQL and then a smaller amount of data coming into
+> the R side.
+> 
+> I also note that languages like R and python can have parts that run
+fairly
+> slowly. Arguably, most versions of SQL have been tuned over decades ...
+> 
+> 
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of akshay kulkarni
+> Sent: Wednesday, December 11, 2024 8:17 AM
+> To: R help Mailing list <r-help at r-project.org>
+> Subject: [R] SQL and R
+> 
+> dear Members,
+>                              I have recently started studying SQL and
+MySQL.
+> My question is, what exactly is SQL used for? That is, whatever can be
+done
+> by SQL, like subsetting and filtering of data sets, can also be done by R.
+> What's, then, the advantage of SQL?  It is OK if you tag this question as
+> offtopic, but I could'nt find any info on the web. Can you please refer me
+> to some online resources that shed some light on this? Finally, how does
+SQL
+> complement R? Are both dependent?
+> 
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+> 
+>
+[https://s-install.avcdn.net/ipm/preview/icons/icon-envelope-tick-round-oran
+>
+ge-animated-no-repeat-v1.gif]<https://www.avast.com/sig-email?utm_medium=ema
+> il&utm_source=link&utm_campaign=sig-email&utm_content=webmail>
+>
+Virus-free.www.avast.com<https://www.avast.com/sig-email?utm_medium=email&ut
+> m_source=link&utm_campaign=sig-email&utm_content=webmail>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide
+https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Wed Dec 11 21:31:10 2024
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Wed, 11 Dec 2024 20:31:10 +0000
+Subject: [R] aggregate produces  results in unexpected format
+Message-ID: <DM6PR03MB5049620104DE1F51AD0B353DE23E2@DM6PR03MB5049.namprd03.prod.outlook.com>
+
+I am trying to use the aggregate function to run a function, catsbydat2, that produces the mean, minimum, maximum, and number of observations of the values in a dataframe, inJan2Test, by levels of the dataframe variable MyDay. The output should be in the form of a dataframe.
+
+#my code:
+# This function should process a data frame and return a data frame
+# containing the mean, minimum, maximum, and number of observations
+# in the data frame for each level of MyDay.
+catsbyday2 <- function(df){
+  # Create a matrix to hold the calculated values.
+  xx <- matrix(nrow=1,ncol=4)
+  # Give names to the columns.
+  colnames(xx) <- c("Mean","min","max","Nobs")
+  cat("This is the matrix that will hold the results\n",xx,"\n")
+
+  # For each level of the indexing variable, MyDay, compute the
+  # mean, minimum, maximum, and number of observations in the
+  # dataframe passed to the function.
+  xx[,1] <- mean(df)
+  xx[,2] <- min(df)
+  xx[,3] <- max(df)
+  xx[,4] <- length(df)
+  cat("These are the dimensions of the matrix in the function",dim(xx),"\n")
+  print(xx)
+  return(xx)
+}
+
+# Create data frame
+inJan2Test <- data.frame(MyDay=rep(c(1,2,3),4),AveragePM2_5=c(10,20,30,
+                                                              11,21,31,
+                                                              12,22,32,
+                                                              15,25,35))
+str(inJan2Test)
+cat("This is the data frame","\n")
+inJan2Test
+
+xx <- aggregate(inJan2Test[,"AveragePM2_5"],list(inJan2Test[,"MyDay"]),catsbyday2,simplify=FALSE)
+xx
+class(xx)
+str(xx)
+names(xx)
+
+# Create a data frame in the format that I expect aggregate would return
+examplar <- data.frame(mean=c(12,22,32),min=c(10,20,30),max=c(15,25,35),length=c(4,4,4))
+examplar
+str(examplar)
+
+
+While the output is correct (the mean, mean etc. are correctly calculated), the format of the output is not what I want.  
+
+(1) Although the returned object appears to be a data frame, it does appear to be a "normal" data frame. (see the output of  
+(2) The column names I define in the function are not part of the data frame that is created.
+(3) The returned values on each row are separated by commas. I would expect them to be separated by spaces.
+(4) When I run str() on the output it appears that the output dataframe contains a list. 
+> str(xx)
+'data.frame':	3 obs. of  2 variables:
+ $ Group.1: num  1 2 3
+ $ x      :List of 3
+  ..$ : num [1, 1:4] 12 10 15 4
+  .. ..- attr(*, "dimnames")=List of 2
+  .. .. ..$ : NULL
+  .. .. ..$ : chr [1:4] "Mean" "min" "max" "Nobs"
+  ..$ : num [1, 1:4] 22 20 25 4
+  .. ..- attr(*, "dimnames")=List of 2
+  .. .. ..$ : NULL
+  .. .. ..$ : chr [1:4] "Mean" "min" "max" "Nobs"
+  ..$ : num [1, 1:4] 32 30 35 4
+  .. ..- attr(*, "dimnames")=List of 2
+  .. .. ..$ : NULL
+  .. .. ..$ : chr [1:4] "Mean" "min" "max" "Nobs"
+
+I want it to simply be a numeric dataframe:
+
+mean  min max length
+   12      10    15     4
+   22      20    25     4
+   32      30     35    4
+
+which should return the following str
+
+examplar <- data.frame(mean=c(12,22,32),min=c(10,20,30),max=c(15,25,35),length=c(4,4,4))
+examplar
+str(examplar)
+
+'data.frame':	3 obs. of  4 variables:
+ $ mean  : num  12 22 32
+ $ min   : num  10 20 30
+ $ max   : num  15 25 35
+ $ length: num  4 4 4
+
+John David Sorkin M.D., Ph.D.
+Professor of Medicine, University of Maryland School of Medicine;
+Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;?
+PI?Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+Senior Statistician University of Maryland Center for Vascular Research;
+
+Division of Gerontology and Paliative Care,
+10 North Greene Street
+GRECC (BT/18/GR)
+Baltimore, MD 21201-1524
+Cell phone 443-418-5382
+
+
+
+
+From e@ @end|ng |rom enr|co@chum@nn@net  Wed Dec 11 21:54:04 2024
+From: e@ @end|ng |rom enr|co@chum@nn@net (Enrico Schumann)
+Date: Wed, 11 Dec 2024 21:54:04 +0100
+Subject: [R] aggregate produces  results in unexpected format
+In-Reply-To: <DM6PR03MB5049620104DE1F51AD0B353DE23E2@DM6PR03MB5049.namprd03.prod.outlook.com>
+ (John Sorkin's message of "Wed, 11 Dec 2024 20:31:10 +0000")
+References: <DM6PR03MB5049620104DE1F51AD0B353DE23E2@DM6PR03MB5049.namprd03.prod.outlook.com>
+Message-ID: <87v7vq3pqr.fsf@enricoschumann.net>
+
+On Wed, 11 Dec 2024, Sorkin, John writes:
+
+> I am trying to use the aggregate function to run a function, catsbydat2, that produces the mean, minimum, maximum, and number of observations of the values in a dataframe, inJan2Test, by levels of the dataframe variable MyDay. The output should be in the form of a dataframe.
+>
+> #my code:
+> # This function should process a data frame and return a data frame
+> # containing the mean, minimum, maximum, and number of observations
+> # in the data frame for each level of MyDay.
+> catsbyday2 <- function(df){
+>   # Create a matrix to hold the calculated values.
+>   xx <- matrix(nrow=1,ncol=4)
+>   # Give names to the columns.
+>   colnames(xx) <- c("Mean","min","max","Nobs")
+>   cat("This is the matrix that will hold the results\n",xx,"\n")
+>
+>   # For each level of the indexing variable, MyDay, compute the
+>   # mean, minimum, maximum, and number of observations in the
+>   # dataframe passed to the function.
+>   xx[,1] <- mean(df)
+>   xx[,2] <- min(df)
+>   xx[,3] <- max(df)
+>   xx[,4] <- length(df)
+>   cat("These are the dimensions of the matrix in the function",dim(xx),"\n")
+>   print(xx)
+>   return(xx)
+> }
+>
+> # Create data frame
+> inJan2Test <- data.frame(MyDay=rep(c(1,2,3),4),AveragePM2_5=c(10,20,30,
+>                                                               11,21,31,
+>                                                               12,22,32,
+>                                                               15,25,35))
+> str(inJan2Test)
+> cat("This is the data frame","\n")
+> inJan2Test
+>
+> xx <- aggregate(inJan2Test[,"AveragePM2_5"],list(inJan2Test[,"MyDay"]),catsbyday2,simplify=FALSE)
+> xx
+> class(xx)
+> str(xx)
+> names(xx)
+>
+> # Create a data frame in the format that I expect aggregate would return
+> examplar <- data.frame(mean=c(12,22,32),min=c(10,20,30),max=c(15,25,35),length=c(4,4,4))
+> examplar
+> str(examplar)
+>
+>
+> While the output is correct (the mean, mean etc. are correctly calculated), the format of the output is not what I want.  
+>
+> (1) Although the returned object appears to be a data frame, it does appear to be a "normal" data frame. (see the output of  
+> (2) The column names I define in the function are not part of the data frame that is created.
+> (3) The returned values on each row are separated by commas. I would expect them to be separated by spaces.
+> (4) When I run str() on the output it appears that the output dataframe contains a list. 
+>> str(xx)
+> 'data.frame':	3 obs. of  2 variables:
+>  $ Group.1: num  1 2 3
+>  $ x      :List of 3
+>   ..$ : num [1, 1:4] 12 10 15 4
+>   .. ..- attr(*, "dimnames")=List of 2
+>   .. .. ..$ : NULL
+>   .. .. ..$ : chr [1:4] "Mean" "min" "max" "Nobs"
+>   ..$ : num [1, 1:4] 22 20 25 4
+>   .. ..- attr(*, "dimnames")=List of 2
+>   .. .. ..$ : NULL
+>   .. .. ..$ : chr [1:4] "Mean" "min" "max" "Nobs"
+>   ..$ : num [1, 1:4] 32 30 35 4
+>   .. ..- attr(*, "dimnames")=List of 2
+>   .. .. ..$ : NULL
+>   .. .. ..$ : chr [1:4] "Mean" "min" "max" "Nobs"
+>
+> I want it to simply be a numeric dataframe:
+>
+> mean  min max length
+>    12      10    15     4
+>    22      20    25     4
+>    32      30     35    4
+>
+> which should return the following str
+>
+> examplar <- data.frame(mean=c(12,22,32),min=c(10,20,30),max=c(15,25,35),length=c(4,4,4))
+> examplar
+> str(examplar)
+>
+> 'data.frame':	3 obs. of  4 variables:
+>  $ mean  : num  12 22 32
+>  $ min   : num  10 20 30
+>  $ max   : num  15 25 35
+>  $ length: num  4 4 4
+
+You'll no doubt get answers that use 'aggregate', but
+for such calculations I find 'tapply' much easier/clearer:
+
+    res <- tapply(inJan2Test$AveragePM2_5,  ## what to compute on
+                  inJan2Test$MyDay,         ## what to group by
+                  function(x) c(mean = mean(x),  ## what to do for each group
+                                min = min(x),
+                                max = max(x),                            
+                                length = length(x)))
+
+The result will be a list of vectors, which you can
+bind together:
+
+    do.call(rbind, res)
+    ##   min max mean length
+    ## 1  10  15   12      4
+    ## 2  20  25   22      4
+    ## 3  30  35   32      4
+
+
+(Though the result is a numeric matrix. But that is
+ only one 'as.data.frame' away from a data.frame, if it
+ has to be one.)
+
+kind regards
+    Enrico
+
+
+
+
+> John David Sorkin M.D., Ph.D.
+> Professor of Medicine, University of Maryland School of Medicine;
+> Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;?
+> PI?Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+> Senior Statistician University of Maryland Center for Vascular Research;
+>
+> Division of Gerontology and Paliative Care,
+> 10 North Greene Street
+> GRECC (BT/18/GR)
+> Baltimore, MD 21201-1524
+> Cell phone 443-418-5382
+
+-- 
+Enrico Schumann
+Lucerne, Switzerland
+https://enricoschumann.net
+
+
+From no@p@m @end|ng |rom ||@@e@NA  Wed Dec 11 22:23:12 2024
+From: no@p@m @end|ng |rom ||@@e@NA (Eberhard W Lisse)
+Date: Wed, 11 Dec 2024 23:23:12 +0200
+Subject: [R] SQL and R
+In-Reply-To: <SL2P216MB1561751390461734F553EB2CC83E2@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+References: <SL2P216MB1561751390461734F553EB2CC83E2@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <vjcvs1$9tc$1@ciao.gmane.io>
+
+Looks like an assignment question.
+
+If so, do your homework yourself. Google is your friend
+
+el
+
+
+On 2024-12-11 15:16, akshay kulkarni wrote:
+> dear Members, I have recently started studying SQL and MySQL. My
+> question is, what exactly is SQL used for? That is, whatever can be
+> done by SQL, like subsetting and filtering of data sets, can also be
+> done by R. What's, then, the advantage of SQL?  It is OK if you tag
+> this question as offtopic, but I could'nt find any info on the web.
+> Can you please refer me to some online resources that shed some
+> light on this? Finally, how does SQL complement R? Are both
+> dependent?
+> 
+> THanking you, Yours sincerely, AKSHAY M KULKARNI
+
+
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Wed Dec 11 22:39:30 2024
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Wed, 11 Dec 2024 21:39:30 +0000
+Subject: [R] SQL and R
+In-Reply-To: <SL2P216MB1561751390461734F553EB2CC83E2@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+References: <SL2P216MB1561751390461734F553EB2CC83E2@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+Message-ID: <DM6PR03MB5049662D073ECE775995168AE23E2@DM6PR03MB5049.namprd03.prod.outlook.com>
+
+Dear Askay,
+
+I believe my grey hair allows me to help answer your question. SQL, and its progenitor SEQUEL, were developed specifically to manipulate relational databases. It was developed in the early 1970s (equivalent to the historical bronze age) when the concept of a relational database (see https://en.wikipedia.org/wiki/Relational_database) and Codd's 12-rules were being developed (see https://en.wikipedia.org/wiki/Codd%27s_12_rules)
+
+At the time, the concept of a relation database and a programming language dedicated to manipulating them was revolutionary. The concept was clearly needed, important, and well used; a commercial version of SQL, Oracle, made Larry Ellison more than a quarter billionaire.
+
+S, one of the progenitors of R, was developed later. In 1975 by John Chambers, Rick Becker, Trevor Hastie, and William Cleveland (all of whom, I believe worked at Bell Labs) developed S as a general programming language. It was NOT developed specifically for the manipulation of relational databases. S had modest success in academia. S-Plus, a commercial version of R was developed fairly recently in 1988 by a company Statistical Sciences. The founder of Statistical Sciences was R. Douglas Marin who was a professor of statistics at the University of Washington, Seattle.
+
+S was also the progenitor of R. R was developed by Ross Ihaka and Robert Gentlemen in 1993, faculty members of the University of Auckland. Given the ubiquity of R in academia, it is clear that S, much like SQL has been extraordinarily successful.
+
+John
+
+
+
+John David Sorkin M.D., Ph.D.
+Professor of Medicine, University of Maryland School of Medicine;
+Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+PI Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+Senior Statistician University of Maryland Center for Vascular Research;
+
+Division of Gerontology and Paliative Care,
+10 North Greene Street
+GRECC (BT/18/GR)
+Baltimore, MD 21201-1524
+Cell phone 443-418-5382
+
+
+
+
+________________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of akshay kulkarni <akshay_e4 at hotmail.com>
+Sent: Wednesday, December 11, 2024 8:16 AM
+To: R help Mailing  list
+Subject: [R] SQL and R
+
+dear Members,
+                            I have recently started studying SQL and MySQL. My question is, what exactly is SQL used for? That is, whatever can be done by SQL, like subsetting and filtering of data sets, can also be done by R. What's, then, the advantage of SQL?  It is OK if you tag this question as offtopic, but I could'nt find any info on the web. Can you please refer me to some online resources that shed some light on this? Finally, how does SQL complement R? Are both dependent?
+
+THanking you,
+Yours sincerely,
+AKSHAY M KULKARNI
+
+[https://s-install.avcdn.net/ipm/preview/icons/icon-envelope-tick-round-orange-animated-no-repeat-v1.gif]<https://www.avast.com/sig-email?utm_medium=email&utm_source=link&utm_campaign=sig-email&utm_content=webmail>  Virus-free.http://www.avast.com/<https://www.avast.com/sig-email?utm_medium=email&utm_source=link&utm_campaign=sig-email&utm_content=webmail>
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Wed Dec 11 23:17:10 2024
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Wed, 11 Dec 2024 22:17:10 +0000
+Subject: [R] aggregate produces results in unexpected format
+In-Reply-To: <DM6PR03MB5049620104DE1F51AD0B353DE23E2@DM6PR03MB5049.namprd03.prod.outlook.com>
+References: <DM6PR03MB5049620104DE1F51AD0B353DE23E2@DM6PR03MB5049.namprd03.prod.outlook.com>
+Message-ID: <1c5ce988-078c-4fac-a386-3a27d1f2234b@sapo.pt>
+
+?s 20:31 de 11/12/2024, Sorkin, John escreveu:
+> I am trying to use the aggregate function to run a function, catsbydat2, that produces the mean, minimum, maximum, and number of observations of the values in a dataframe, inJan2Test, by levels of the dataframe variable MyDay. The output should be in the form of a dataframe.
+> 
+> #my code:
+> # This function should process a data frame and return a data frame
+> # containing the mean, minimum, maximum, and number of observations
+> # in the data frame for each level of MyDay.
+> catsbyday2 <- function(df){
+>    # Create a matrix to hold the calculated values.
+>    xx <- matrix(nrow=1,ncol=4)
+>    # Give names to the columns.
+>    colnames(xx) <- c("Mean","min","max","Nobs")
+>    cat("This is the matrix that will hold the results\n",xx,"\n")
+> 
+>    # For each level of the indexing variable, MyDay, compute the
+>    # mean, minimum, maximum, and number of observations in the
+>    # dataframe passed to the function.
+>    xx[,1] <- mean(df)
+>    xx[,2] <- min(df)
+>    xx[,3] <- max(df)
+>    xx[,4] <- length(df)
+>    cat("These are the dimensions of the matrix in the function",dim(xx),"\n")
+>    print(xx)
+>    return(xx)
+> }
+> 
+> # Create data frame
+> inJan2Test <- data.frame(MyDay=rep(c(1,2,3),4),AveragePM2_5=c(10,20,30,
+>                                                                11,21,31,
+>                                                                12,22,32,
+>                                                                15,25,35))
+> str(inJan2Test)
+> cat("This is the data frame","\n")
+> inJan2Test
+> 
+> xx <- aggregate(inJan2Test[,"AveragePM2_5"],list(inJan2Test[,"MyDay"]),catsbyday2,simplify=FALSE)
+> xx
+> class(xx)
+> str(xx)
+> names(xx)
+> 
+> # Create a data frame in the format that I expect aggregate would return
+> examplar <- data.frame(mean=c(12,22,32),min=c(10,20,30),max=c(15,25,35),length=c(4,4,4))
+> examplar
+> str(examplar)
+> 
+> 
+> While the output is correct (the mean, mean etc. are correctly calculated), the format of the output is not what I want.
+> 
+> (1) Although the returned object appears to be a data frame, it does appear to be a "normal" data frame. (see the output of
+> (2) The column names I define in the function are not part of the data frame that is created.
+> (3) The returned values on each row are separated by commas. I would expect them to be separated by spaces.
+> (4) When I run str() on the output it appears that the output dataframe contains a list.
+>> str(xx)
+> 'data.frame':	3 obs. of  2 variables:
+>   $ Group.1: num  1 2 3
+>   $ x      :List of 3
+>    ..$ : num [1, 1:4] 12 10 15 4
+>    .. ..- attr(*, "dimnames")=List of 2
+>    .. .. ..$ : NULL
+>    .. .. ..$ : chr [1:4] "Mean" "min" "max" "Nobs"
+>    ..$ : num [1, 1:4] 22 20 25 4
+>    .. ..- attr(*, "dimnames")=List of 2
+>    .. .. ..$ : NULL
+>    .. .. ..$ : chr [1:4] "Mean" "min" "max" "Nobs"
+>    ..$ : num [1, 1:4] 32 30 35 4
+>    .. ..- attr(*, "dimnames")=List of 2
+>    .. .. ..$ : NULL
+>    .. .. ..$ : chr [1:4] "Mean" "min" "max" "Nobs"
+> 
+> I want it to simply be a numeric dataframe:
+> 
+> mean  min max length
+>     12      10    15     4
+>     22      20    25     4
+>     32      30     35    4
+> 
+> which should return the following str
+> 
+> examplar <- data.frame(mean=c(12,22,32),min=c(10,20,30),max=c(15,25,35),length=c(4,4,4))
+> examplar
+> str(examplar)
+> 
+> 'data.frame':	3 obs. of  4 variables:
+>   $ mean  : num  12 22 32
+>   $ min   : num  10 20 30
+>   $ max   : num  15 25 35
+>   $ length: num  4 4 4
+> 
+> John David Sorkin M.D., Ph.D.
+> Professor of Medicine, University of Maryland School of Medicine;
+> Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;
+> PI?Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+> Senior Statistician University of Maryland Center for Vascular Research;
+> 
+> Division of Gerontology and Paliative Care,
+> 10 North Greene Street
+> GRECC (BT/18/GR)
+> Baltimore, MD 21201-1524
+> Cell phone 443-418-5382
+> 
+> 
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+The code can be made much simpler. The summary statistics function is a 
+one-liner, it just computes and returns a named vector.
+But the statistics are now in a matrix, the last column is a matrix 
+column and if you print the result, agg, you will see the name 
+AveragePM2_5 with suffixes "mean", "min", "max" and "nobs" appended.
+
+You can solve this by removing that column from the result and cbind it 
+with the rest of the agg data.frame.
+
+
+
+
+catsbyday2 <- function(x) {
+   c(mean = mean(x), min = min(x), max = max(x), nobs = length(x))
+}
+
+agg <- aggregate(AveragePM2_5 ~ MyDay, inJan2Test, FUN = catsbyday2)
+
+# The 2nd column is a matrix 3x4
+str(agg)
+#> 'data.frame':    3 obs. of  2 variables:
+#>  $ MyDay       : num  1 2 3
+#>  $ AveragePM2_5: num [1:3, 1:4] 12 22 32 10 20 30 15 25 35 4 ...
+#>   ..- attr(*, "dimnames")=List of 2
+#>   .. ..$ : NULL
+#>   .. ..$ : chr [1:4] "mean" "min" "max" "nobs"
+
+# this solves it, the method cbind.data.frame is
+# called since the 1st argument is a df
+cbind(agg[-ncol(agg)], agg[[ncol(agg)]])
+#>   MyDay mean min max nobs
+#> 1     1   12  10  15    4
+#> 2     2   22  20  25    4
+#> 3     3   32  30  35    4
+
+
+# a data.frame
+agg[-ncol(agg)]
+#>   MyDay
+#> 1     1
+#> 2     2
+#> 3     3
+
+# the matrix column
+agg[[ncol(agg)]]
+#>      mean min max nobs
+#> [1,]   12  10  15    4
+#> [2,]   22  20  25    4
+#> [3,]   32  30  35    4
+
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From po|c1410 @end|ng |rom gm@||@com  Wed Dec 11 23:52:10 2024
+From: po|c1410 @end|ng |rom gm@||@com (CALUM POLWART)
+Date: Wed, 11 Dec 2024 22:52:10 +0000
+Subject: [R] SQL and R
+In-Reply-To: <DM6PR03MB5049662D073ECE775995168AE23E2@DM6PR03MB5049.namprd03.prod.outlook.com>
+References: <SL2P216MB1561751390461734F553EB2CC83E2@SL2P216MB1561.KORP216.PROD.OUTLOOK.COM>
+ <DM6PR03MB5049662D073ECE775995168AE23E2@DM6PR03MB5049.namprd03.prod.outlook.com>
+Message-ID: <CA+etgP=f45fr73hqmD=SjMSd=dzPM_GO8cao4G1RgHFT7iJssQ@mail.gmail.com>
+
+And to answer the dependency question.
+
+Neither is dependent on the other. But both can be complimentary.
+
+If you consider that SQL*may* be a route to accessing your data (if it's in
+a database).
+
+And R *may* be a route to analysis of the data.
+
+If the data is in a CSV file, Excel file, API etc.  you don't need SQL. IF
+it is in a database, you might extract it to CSV etc. or you might directly
+access it from R
+
+If ALL you want is some simple number counts you can do that in SQL. NO
+NEED FOR R. So for instance you could have a database for a warehouse.
+There could be three tables in that database (you'll have far more).
+
+Orders
+
+Customers
+
+Products
+
+Products lists all your products - with a product code.
+
+Customers lists all the customers with a customer code
+
+And orders lists the customer code, date and product ordered.
+
+SQL will let you create a "view" of that data that shows the customer
+address, and product name.
+
+SQL can also tell you how many of a product were ordered by postal area in
+a month even though the data is not organised like that.
+
+R can do that analysis too. But it could do far more statistical analysis
+and say run a stats test to see if male customers are more likely to buy
+beer than female.  I don't think that's possible in SQL.
+
+Sometimes you could just pull the whole database into R and analyse it. But
+if you imagine that database was actually every sale made in Walmart in the
+last 10 years, the database is huge.  It would be better to extract the
+beer sales and males and females only which is hopefully smaller to
+analyse...
+
+On Wed, 11 Dec 2024, 21:39 Sorkin, John, <jsorkin at som.umaryland.edu> wrote:
+
+> Dear Askay,
+>
+> I believe my grey hair allows me to help answer your question. SQL, and
+> its progenitor SEQUEL, were developed specifically to manipulate relational
+> databases. It was developed in the early 1970s (equivalent to the
+> historical bronze age) when the concept of a relational database (see
+> https://en.wikipedia.org/wiki/Relational_database) and Codd's 12-rules
+> were being developed (see https://en.wikipedia.org/wiki/Codd%27s_12_rules)
+>
+> At the time, the concept of a relation database and a programming language
+> dedicated to manipulating them was revolutionary. The concept was clearly
+> needed, important, and well used; a commercial version of SQL, Oracle, made
+> Larry Ellison more than a quarter billionaire.
+>
+> S, one of the progenitors of R, was developed later. In 1975 by John
+> Chambers, Rick Becker, Trevor Hastie, and William Cleveland (all of whom, I
+> believe worked at Bell Labs) developed S as a general programming language.
+> It was NOT developed specifically for the manipulation of relational
+> databases. S had modest success in academia. S-Plus, a commercial version
+> of R was developed fairly recently in 1988 by a company Statistical
+> Sciences. The founder of Statistical Sciences was R. Douglas Marin who was
+> a professor of statistics at the University of Washington, Seattle.
+>
+> S was also the progenitor of R. R was developed by Ross Ihaka and Robert
+> Gentlemen in 1993, faculty members of the University of Auckland. Given the
+> ubiquity of R in academia, it is clear that S, much like SQL has been
+> extraordinarily successful.
+>
+> John
+>
+>
+>
+> John David Sorkin M.D., Ph.D.
+> Professor of Medicine, University of Maryland School of Medicine;
+> Associate Director for Biostatistics and Informatics, Baltimore VA Medical
+> Center Geriatrics Research, Education, and Clinical Center;
+> PI Biostatistics and Informatics Core, University of Maryland School of
+> Medicine Claude D. Pepper Older Americans Independence Center;
+> Senior Statistician University of Maryland Center for Vascular Research;
+>
+> Division of Gerontology and Paliative Care,
+> 10 North Greene Street
+> <https://www.google.com/maps/search/10+North+Greene+Street?entry=gmail&source=g>
+> GRECC (BT/18/GR)
+> Baltimore, MD 21201-1524
+> Cell phone 443-418-5382
+>
+>
+>
+>
+> ________________________________________
+> From: R-help <r-help-bounces at r-project.org> on behalf of akshay kulkarni <
+> akshay_e4 at hotmail.com>
+> Sent: Wednesday, December 11, 2024 8:16 AM
+> To: R help Mailing  list
+> Subject: [R] SQL and R
+>
+> dear Members,
+>                             I have recently started studying SQL and
+> MySQL. My question is, what exactly is SQL used for? That is, whatever can
+> be done by SQL, like subsetting and filtering of data sets, can also be
+> done by R. What's, then, the advantage of SQL?  It is OK if you tag this
+> question as offtopic, but I could'nt find any info on the web. Can you
+> please refer me to some online resources that shed some light on this?
+> Finally, how does SQL complement R? Are both dependent?
+>
+> THanking you,
+> Yours sincerely,
+> AKSHAY M KULKARNI
+>
+> [
+> https://s-install.avcdn.net/ipm/preview/icons/icon-envelope-tick-round-orange-animated-no-repeat-v1.gif
+> ]<
+> https://www.avast.com/sig-email?utm_medium=email&utm_source=link&utm_campaign=sig-email&utm_content=webmail>
+> Virus-free.http://www.avast.com/<
+> https://www.avast.com/sig-email?utm_medium=email&utm_source=link&utm_campaign=sig-email&utm_content=webmail
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.r-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
