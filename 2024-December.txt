@@ -12762,3 +12762,166 @@ Cell phone 443-418-5382
 
 
 
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat Dec 14 04:30:06 2024
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Fri, 13 Dec 2024 22:30:06 -0500
+Subject: [R] Weird Behavior of mean
+In-Reply-To: <CAGxFJbRaPHwGc+J5dgqLxU22_wVTQ5WUDrE36h6h5BLfX2BvhA@mail.gmail.com>
+References: <CACi4-Jn_sTEFbnTRYY0H0tToen1uJPA2+w0dZCO9eTrtRZ9FYA@mail.gmail.com>
+ <CA+etgPkpJWeXpZbx4JEvkT6ku6sWk7-z1PV8Mv8CwnRHKhqc8A@mail.gmail.com>
+ <26459.64652.135529.538036@stat.math.ethz.ch>
+ <CAJrNScQm15iBBE625wVR8rwpNzxN0+4ukernKW8-YXck119zYA@mail.gmail.com>
+ <CAGxFJbQu35UTMrBGSqqdJFS4FYz7bT3VM=D92YsPBTzYuHKqnQ@mail.gmail.com>
+ <7baccbf1-1a88-4c4b-894e-1a9c66abed6d@gmail.com>
+ <CAGxFJbRaPHwGc+J5dgqLxU22_wVTQ5WUDrE36h6h5BLfX2BvhA@mail.gmail.com>
+Message-ID: <009601db4dd8$786bb180$69431480$@gmail.com>
+
+It is probably a bit late in most existing languages to change behaviors all over the code. Languages like C often allowed many kinds of shortcuts that happened to work because 0 was false and 1 and most other things were true. Similarly, pointers were used in a Boolean way as in the way they copied a null-terminated string between p and q with code like:
+
+while(*p++ = *q++);
+
+That is quite compact and could do horrible things if the region being copied was not null terminated.
+
+Strictly speaking, the equivalent code written in languages that removed the increment operator as well as access to pointers can either be much longer or be replaced by a function call so you don't see how it is done.
+
+What the above does is a bit subtle for beginners and you have to ask where the comparison is. Heck, the while loop has no body, and does not need one as the work is done as a side effect.
+
+The above takes the pointer called q that starts at the beginning of a string  and retrieves what it is pointing at as a single character. It then moves the pointer forward one unit. It then looks at where p is pointing and copies what it saved there and finally increments p to point to the next available location. But, before that, the value it copied into p is either a letter like A or B, or various other ASCII sequences OR it is all zeroes as in NULL. The latter, viewed as an integer, is 0, or false. Anything else is true. So, the while loop continues copying and moving forward until it copies a null. 
+
+Too bad it is so compact and cute when a better design might have been more like this:
+
+while((*p++ = *q++) != NULL);
+
+Or perhaps an explicit conversion from character to integer that is compared to zero.
+
+It seems sometimes that you have two ways to go. You can abandon an old language and make a new one in which many older styles become not allowed. Or, you create some linter program that at least warns you of possible bad code.
+
+In some ways, R was designed differently enough from C. But, it retain s some features that some people wonder about. As I mentioned earlier, Python brags about how flexible their truthy/falsy can be. True.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Bert Gunter
+Sent: Friday, December 13, 2024 6:32 PM
+To: Ben Bolker <bbolker at gmail.com>
+Cc: r-help at r-project.org
+Subject: Re: [R] Weird Behavior of mean
+
+Sounds reasonable, but I leave it to wiser heads than me to decide. My
+only point is that whatever is done be accurately documented. At
+present, that does not appear to be the case. ... and yes, "accurate"
+documentation is not easy either.
+
+-- Bert
+
+On Fri, Dec 13, 2024 at 3:20?PM Ben Bolker <bbolker at gmail.com> wrote:
+>
+>    Thanks, I had missed/forgotten the fact that there is also an
+> inconsistency between mean.default() and sd().
+>
+>    sd() calls var(), which evaluates if(na.rm) [i.e., it will try to
+> coerce `na.rm` to logical rather than testing isTRUE]
+>
+>   IM(H?)O, it would be best for both mean.default() and sd() to use
+> if(isTRUE(as.logical(na.rm))) -- this converts NULL, numeric(0), zero
+> numeric values, etc. to FALSE, non-zero numeric values (including
+> complex numbers not equal to 0+0i) to TRUE ... fails on un-coerceable
+> stuff like functions, environments ...
+>
+>
+> ?as.logical? attempts to coerce its argument to be of logical
+>       type.  In numeric and complex vectors, zeros are ?FALSE? and
+>       non-zero values are ?TRUE?.  For ?factor?s, this uses the ?levels?
+>       (labels).  Like ?as.vector? it strips attributes including names.
+>       Character strings ?c("T", "TRUE", "True", "true")? are regarded as
+>       true, ?c("F", "FALSE", "False", "false")? as false, and all others
+>       as ?NA?.
+>
+>
+> On 2024-12-13 5:43 p.m., Bert Gunter wrote:
+> > Ivo, et al.:
+> > --IMHO only ... and with apologies for verbosity
+> >
+> > Defining, let alone enforcing, "consistent behavior" can be a
+> > philosophical conundrum: what one person deems "consistent" behavior
+> > for a function across different data structures and circumstances may
+> > not be the same as another's. While you may consider the issue clear
+> > here, a glance at the source code shows that may not necessarily be
+> > the case: mean() is an S3 generic, but sd() is derived from var()
+> > which is in turn based on cov(), for which NA handling is more
+> > complex.
+> >
+> > Anyway, for me, the only defensible standard should be is that the
+> > *documented* behavior for overloaded function names is that they
+> > should be accurately documented for each use case, whether or not the
+> > semantics conform to any particular paradigm of consistency. By this
+> > standard, I think mean() is behaving correctly, as its Help page says:
+> >
+> > na.rm
+> > a *logical* evaluating to TRUE or FALSE indicating whether NA values
+> > should be stripped before the computation proceeds. [emphasis added]
+> > Note: *not* a value that can be *coerced* to logical, but an actual
+> > logical expression.
+> >
+> > But sd() is not, as its Help page says:
+> > na.rm
+> > logical. Should missing values be removed?
+> > Note: So seemingly same as above, but as you noted, will work for
+> > values that can be coerced to logical and not just actual logical
+> > expressions.
+> >
+> > Cheers,
+> > Bert
+> >
+> >
+> >
+> > On Fri, Dec 13, 2024 at 11:43?AM ivo welch <ivo.welch at ucla.edu> wrote:
+> >>
+> >> isn't this still a little R buglet?  I have overwritten T (even if my
+> >> schuld [franconian], it is not that uncommon an error, because T is also a
+> >> common abbreviation for the end of a time series; namespace pollution in R
+> >> can be quite annoying, even though I understand that it is convenient in
+> >> interactive mode).  Nevertheless, I am passing into mean() a positive
+> >> number for na.rm, and by definition, a positive number still means TRUE.
+> >>   besides, sd() and mean() should probably treat this similarly, anyway.  I
+> >> do see the argument that functions cannot be proof against redefinitions of
+> >> all sorts of objects that they can use.    more philosophically, some
+> >> variables should not be overwritable, or at least trigger a warning.
+> >>
+> >> As Dante wrote, Abandon all hope ye who enter R.
+> >>
+> >> --
+> >> Ivo Welch (ivo.welch at ucla.edu)
+> >>
+> >>          [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> --
+> Dr. Benjamin Bolker
+> Professor, Mathematics & Statistics and Biology, McMaster University
+> Director, School of Computational Science and Engineering
+>  > E-mail is sent at my convenience; I don't expect replies outside of
+> working hours.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
