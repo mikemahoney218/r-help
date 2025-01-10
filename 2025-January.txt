@@ -3469,3 +3469,656 @@ PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From @vi@e@gross m@iii@g oii gm@ii@com  Wed Jan  8 03:51:09 2025
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Tue, 7 Jan 2025 21:51:09 -0500
+Subject: [R] Extracting specific arguments from "..."
+In-Reply-To: <DM6PR03MB504908006EC49D9E6C4809C2E2112@DM6PR03MB5049.namprd03.prod.outlook.com>
+References: <mailman.372436.1.1736247601.33267.r-help@r-project.org>
+ <BL0PR01MB4434F6B61D60E865E24E05A3DC112@BL0PR01MB4434.prod.exchangelabs.com>
+ <DM6PR03MB5049EC581893884BD33D10E8E2112@DM6PR03MB5049.namprd03.prod.outlook.com>
+ <719c700b-f706-458c-8e4e-8cc223c8b5df@gmail.com>
+ <DM6PR03MB504908006EC49D9E6C4809C2E2112@DM6PR03MB5049.namprd03.prod.outlook.com>
+Message-ID: <00ae01db6178$2bcb11a0$836134e0$@gmail.com>
+
+Like many things in R, the original way things were done may have ossified
+in place and even if largely unknown packages came along, may not be known
+by many.
+
+The topic John is talking about is NOT in my mind about systems programming
+at all. It is about writing any function where you want control over
+evaluating arguments. There may be a better way from a programmers
+perspective.
+
+I can imagine a set of functions in a package that are well designed and
+hide all the details so they can be easily used. I suspect aspects of what I
+am talking about have been done. They could include some "logical" functions
+that test if an option has been specified, or even if it is just the
+default, without evaluating anything. Other functions would return a
+specified argument. Yet others would remove a specified argument so further
+evaluation does not see it, including removing it from ... so that in the
+end, you can pass along a reduced ... to other functions you call.
+
+I understand some R evaluations can be tricky or even have side effects. But
+something better than what I have seen seems quite possible.
+
+Other languages have variants such as getopt() that are a tad different but
+quite useful.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Sorkin, John
+Sent: Tuesday, January 7, 2025 6:54 PM
+To: Ben Bolker <bbolker at gmail.com>; r-help at r-project.org
+Subject: Re: [R] Extracting specific arguments from "..."
+
+Ben,
+As always, thank you.
+You are correct, it is something like what I want, but not exactly. Perhaps
+someday someone will write a more complete guide.
+Thank you,
+John
+
+
+John David Sorkin M.D., Ph.D.
+Professor of Medicine, University of Maryland School of Medicine;
+Associate Director for Biostatistics and Informatics, Baltimore VA Medical
+Center Geriatrics Research, Education, and Clinical Center;
+PI Biostatistics and Informatics Core, University of Maryland School of
+Medicine Claude D. Pepper Older Americans Independence Center;
+Senior Statistician University of Maryland Center for Vascular Research;
+
+Division of Gerontology and Paliative Care,
+10 North Greene Street
+GRECC (BT/18/GR)
+Baltimore, MD 21201-1524
+Cell phone 443-418-5382
+
+
+
+
+________________________________________
+From: R-help <r-help-bounces at r-project.org> on behalf of Ben Bolker
+<bbolker at gmail.com>
+Sent: Tuesday, January 7, 2025 5:06 PM
+To: r-help at r-project.org
+Subject: Re: [R] Extracting specific arguments from "..."
+
+
+   There's an ancient (2003) document on the CRAN "developers' page"
+https://developer.r-project.org/model-fitting-functions.html that is
+sort of (but not exactly) what you're looking for ...
+
+
+On 2025-01-07 5:03 p.m., Sorkin, John wrote:
+> Colleagues,
+>
+> My interest is not in writing ad hoc functions (which I might use once to
+analyze my data), but rather what I will call a system function that might
+be part of a package. The lm function is a paradigm of what I call a system
+function.
+>
+> The lm function begins by processing the arguments passed to the function
+(represented in the function as parameters, see code below.) Much of this
+processing is only peripherally related to running a regression, but the
+code is necessary to determine exactly what the user of the system function
+wants the function to do. It would be helpful if there was a document that
+would describe best practices when writing system functions, with clear
+explanations of what each step in system function is designed to do and how
+the line accomplishes its task. It would also be nice if the system function
+had documentation. I have pushed my way through the lm function, and with
+the help of R help files, I have come to understand how the function works,
+but this is not an efficient way to learn best practices that should be used
+when writing a system function.
+>
+> Perhaps there is a document that does what I would like to see done, but I
+do not know of one.
+>
+> John
+>
+> lmlm
+> function (formula, data, subset, weights, na.action, method = "qr",
+>      model = TRUE, x = FALSE, y = FALSE, qr = TRUE, singular.ok = TRUE,
+>      contrasts = NULL, offset, ...)
+> {
+>      ret.x <- x
+>      ret.y <- y
+>      cl <- match.call()
+>      mf <- match.call(expand.dots = FALSE)
+>      m <- match(c("formula", "data", "subset", "weights", "na.action",
+>          "offset"), names(mf), 0L)
+>      mf <- mf[c(1L, m)]
+>      mf$drop.unused.levels <- TRUE
+>      mf[[1L]] <- quote(stats::model.frame)
+>      mf <- eval(mf, parent.frame())
+>      if (method == "model.frame")
+>          return(mf)
+>      else if (method != "qr")
+>          warning(gettextf("method = '%s' is not supported. Using 'qr'",
+>              method), domain = NA)
+>      mt <- attr(mf, "terms")
+>      y <- model.response(mf, "numeric")
+>      w <- as.vector(model.weights(mf))
+>      if (!is.null(w) && !is.numeric(w))
+>          stop("'weights' must be a numeric vector")
+>      offset <- model.offset(mf)
+>      mlm <- is.matrix(y)
+>      ny <- if (mlm)
+>          nrow(y)
+>      else length(y)
+>      if (!is.null(offset)) {
+>          if (!mlm)
+>              offset <- as.vector(offset)
+>          if (NROW(offset) != ny)
+>              stop(gettextf("number of offsets is %d, should equal %d
+(number of observations)",
+>                  NROW(offset), ny), domain = NA)
+>      }
+>      if (is.empty.model(mt)) {
+>          x <- NULL
+>          z <- list(coefficients = if (mlm) matrix(NA_real_, 0,
+>              ncol(y)) else numeric(), residuals = y, fitted.values = 0 *
+>              y, weights = w, rank = 0L, df.residual = if (!is.null(w))
+sum(w !=
+>              0) else ny)
+>          if (!is.null(offset)) {
+>              z$fitted.values <- offset
+>              z$residuals <- y - offset
+>          }
+>      }
+>      else {
+>          x <- model.matrix(mt, mf, contrasts)
+>          z <- if (is.null(w))
+>              lm.fit(x, y, offset = offset, singular.ok = singular.ok,
+>                  ...)
+>          else lm.wfit(x, y, w, offset = offset, singular.ok = singular.ok,
+>              ...)
+>      }
+>      class(z) <- c(if (mlm) "mlm", "lm")
+>      z$na.action <- attr(mf, "na.action")
+>      z$offset <- offset
+>      z$contrasts <- attr(x, "contrasts")
+>      z$xlevels <- .getXlevels(mt, mf)
+>      z$call <- cl
+>      z$terms <- mt
+>      if (model)
+>          z$model <- mf
+>      if (ret.x)
+>          z$x <- x
+>      if (ret.y)
+>          z$y <- y
+>      if (!qr)
+>          z$qr <- NULL
+>      z
+> }
+>
+>
+>
+> John David Sorkin M.D., Ph.D.
+> Professor of Medicine, University of Maryland School of Medicine;
+> Associate Director for Biostatistics and Informatics, Baltimore VA Medical
+Center Geriatrics Research, Education, and Clinical Center;
+> PI Biostatistics and Informatics Core, University of Maryland School of
+Medicine Claude D. Pepper Older Americans Independence Center;
+> Senior Statistician University of Maryland Center for Vascular Research;
+>
+> Division of Gerontology and Paliative Care,
+> 10 North Greene Street
+> GRECC (BT/18/GR)
+> Baltimore, MD 21201-1524
+> Cell phone 443-418-5382
+>
+>
+>
+>
+> ________________________________________
+> From: Jorgen Harmse <JHarmse at roku.com>
+> Sent: Tuesday, January 7, 2025 1:47 PM
+> To: r-help at r-project.org; ikwsimmo at gmail.com; Bert Gunter; Sorkin, John;
+jdnewmil at dcn.davis.ca.us
+> Subject: Re: Extracting specific arguments from "..."
+>
+> Interesting discussion. A few things occurred to me.
+>
+> Apologies to Iris Simmons: I mixed up his answer with Bert's question.
+>
+> Bert raises questions about promises, and I think they are related to John
+Sorkin's question. A big difference between R and most other languages is
+that function arguments are computed lazily. match.call & substitute tell us
+what expressions will be evaluated if function arguments are needed but not
+the environments in which that will happen. The usual suspects are
+environment() and parent.frame(), but parent.frame(k) & maybe even other
+environments are possible. If you are really determined then I guess you can
+keep evaluating match.call() in parent frames until you have accounted for
+all the inputs.
+>
+> It's not clear to what extent John Sorkin is concerned about writing
+functions as opposed to using functions. Lazy computation has advantages but
+leads to some issues.
+> Exactly matching the function's default expression for an input is not
+necessarily the same as omitting the input. The evaluation environment is
+different.
+> If the caller uses an expression with side effects then there is no
+guarantee that the side effects will happen. If there are side effects from
+two or more inputs then the order is uncertain. (If an argument is not
+supplied and the default has side effects then they might not happen either.
+However, I don't know why the function writer would specify any side effect
+except stop(), and then he or she has probably arranged for it to happen
+exactly when it should.)
+> If a default value depends on another input and that input is modified
+inside the function then order of evaluation of inputs becomes important.
+Even if you know exactly what you're doing when you write the function, you
+should make it clear to future maintainers. An explicit call to force
+clarifies that the input needs to be computed with the existing values of
+anything that is used in the default, even if the code is refactored so that
+the value is not used immediately. If you really want to modify another
+input before evaluating the default then specify that in a comment.
+>
+> Jeff Newmiller makes a good point. You can still change your mind about
+inspecting a particular input without breaking old code that uses your
+function, and you don't necessarily need default values.
+>
+> Old definition: f <- function(.) {<code that passes . to other functions
+and does some other things>}
+>
+> New definition:
+> f <- function(., a = <default expression, possibly stop()>)
+> { <pass ., a=a to another function>
+>    <do something with the output>
+> }
+>
+> OR
+>
+> f <- function(., a)
+> { if (missing(a)) # OK, this becomes clunky if there are several such
+inputs
+>    { < pass . to another function >}
+>    else
+>   { <inspect or modify a> # Pitfall: Changing the order of evaluation may
+break old code, but then the design was probably too devious in the first
+place.
+>      <pass ., a=a to another function>
+>    }
+>    <do something with the output>
+> }
+>
+> Regards,
+> Jorgen Harmse.
+>
+>
+>
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+https://www.r-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+--
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+ > E-mail is sent at my convenience; I don't expect replies outside of
+working hours.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide
+https://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide
+https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Jan  8 11:21:40 2025
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 8 Jan 2025 11:21:40 +0100
+Subject: [R] Extracting specific arguments from "..."
+In-Reply-To: <DM6PR03MB5049EC581893884BD33D10E8E2112@DM6PR03MB5049.namprd03.prod.outlook.com>
+References: <mailman.372436.1.1736247601.33267.r-help@r-project.org>
+ <BL0PR01MB4434F6B61D60E865E24E05A3DC112@BL0PR01MB4434.prod.exchangelabs.com>
+ <DM6PR03MB5049EC581893884BD33D10E8E2112@DM6PR03MB5049.namprd03.prod.outlook.com>
+Message-ID: <26494.20916.648344.868223@stat.math.ethz.ch>
+
+>>>>> Sorkin, John 
+>>>>>     on Tue, 7 Jan 2025 22:03:02 +0000 writes:
+
+    > Colleagues,
+    > My interest is not in writing ad hoc functions (which I might use once to analyze my data), but rather what I will call a system function that might be part of a package. The lm function is a paradigm of what I call a system function. 
+
+    > The lm function begins by processing the arguments passed to the function (represented in the function as parameters, see code below.) Much of this processing is only peripherally related to running a regression, but the code is necessary to determine exactly what the user of the system function wants the function to do. It would be helpful if there was a document that would describe best practices when writing system functions, with clear explanations of what each step in system function is designed to do and how the line accomplishes its task. It would also be nice if the system function had documentation. I have pushed my way through the lm function, and with the help of R help files, I have come to understand how the function works, but this is not an efficient way to learn best practices that should be used when writing a system function. 
+
+    > Perhaps there is a document that does what I would like to see done, but I do not know of one.  
+
+    > John
+
+Note that the following is *not* the source of the lm() function, but a
+print out to your console of what has become from the original source.
+Notably all comments *and* all original author formatting has
+been lost (as the "system functions" are *not* installed with
+     	   something like options(keep.source = TRUE)).
+
+For a long time, many have strongly advised to use the source
+(e.g. https://en.wiktionary.org/wiki/UTSL   "Use The Source, Luke!")
+instead. Here's the always latest (development / R-devel) source
+for lm() *and* related functions ... also with comments etc:
+  --> https://svn.r-project.org/R/trunk/src/library/stats/R/lm.R
+
+(or you use one of its github mirrors ..)
+
+Martin
+
+
+    > lm
+
+    > function (formula, data, subset, weights, na.action, method = "qr",
+    > model = TRUE, x = FALSE, y = FALSE, qr = TRUE, singular.ok = TRUE,
+    > contrasts = NULL, offset, ...)
+    > {
+    > ret.x <- x
+    > ret.y <- y
+    > cl <- match.call()
+    > mf <- match.call(expand.dots = FALSE)
+    > m <- match(c("formula", "data", "subset", "weights", "na.action",
+    > "offset"), names(mf), 0L)
+    > mf <- mf[c(1L, m)]
+    > mf$drop.unused.levels <- TRUE
+    > mf[[1L]] <- quote(stats::model.frame)
+    > mf <- eval(mf, parent.frame())
+    > if (method == "model.frame")
+    > return(mf)
+    > else if (method != "qr")
+    > warning(gettextf("method = '%s' is not supported. Using 'qr'",
+    > method), domain = NA)
+    > mt <- attr(mf, "terms")
+    > y <- model.response(mf, "numeric")
+    > w <- as.vector(model.weights(mf))
+    > if (!is.null(w) && !is.numeric(w))
+    > stop("'weights' must be a numeric vector")
+    > offset <- model.offset(mf)
+    > mlm <- is.matrix(y)
+    > ny <- if (mlm)
+    > nrow(y)
+    > else length(y)
+    > if (!is.null(offset)) {
+    > if (!mlm)
+    > offset <- as.vector(offset)
+    > if (NROW(offset) != ny)
+    > stop(gettextf("number of offsets is %d, should equal %d (number of observations)",
+    > NROW(offset), ny), domain = NA)
+    > }
+    > if (is.empty.model(mt)) {
+    > x <- NULL
+    > z <- list(coefficients = if (mlm) matrix(NA_real_, 0,
+    > ncol(y)) else numeric(), residuals = y, fitted.values = 0 *
+    > y, weights = w, rank = 0L, df.residual = if (!is.null(w)) sum(w !=
+    > 0) else ny)
+    > if (!is.null(offset)) {
+    > z$fitted.values <- offset
+    > z$residuals <- y - offset
+    > }
+    > }
+    > else {
+    > x <- model.matrix(mt, mf, contrasts)
+    > z <- if (is.null(w))
+    > lm.fit(x, y, offset = offset, singular.ok = singular.ok,
+    > ...)
+    > else lm.wfit(x, y, w, offset = offset, singular.ok = singular.ok,
+    > ...)
+    > }
+    > class(z) <- c(if (mlm) "mlm", "lm")
+    > z$na.action <- attr(mf, "na.action")
+    > z$offset <- offset
+    > z$contrasts <- attr(x, "contrasts")
+    > z$xlevels <- .getXlevels(mt, mf)
+    > z$call <- cl
+    > z$terms <- mt
+    > if (model)
+    > z$model <- mf
+    > if (ret.x)
+    > z$x <- x
+    > if (ret.y)
+    > z$y <- y
+    > if (!qr)
+    > z$qr <- NULL
+    > z
+    > }
+
+
+
+    > John David Sorkin M.D., Ph.D.
+    > Professor of Medicine, University of Maryland School of Medicine;
+    > Associate Director for Biostatistics and Informatics, Baltimore VA Medical Center Geriatrics Research, Education, and Clinical Center;?
+    > PI?Biostatistics and Informatics Core, University of Maryland School of Medicine Claude D. Pepper Older Americans Independence Center;
+    > Senior Statistician University of Maryland Center for Vascular Research;
+
+    > Division of Gerontology and Paliative Care,
+    > 10 North Greene Street
+    > GRECC (BT/18/GR)
+    > Baltimore, MD 21201-1524
+    > Cell phone 443-418-5382
+
+
+
+
+    > ________________________________________
+    > From: Jorgen Harmse <JHarmse at roku.com>
+    > Sent: Tuesday, January 7, 2025 1:47 PM
+    > To: r-help at r-project.org; ikwsimmo at gmail.com; Bert Gunter; Sorkin, John; jdnewmil at dcn.davis.ca.us
+    > Subject: Re: Extracting specific arguments from "..."
+
+    > Interesting discussion. A few things occurred to me.
+
+    > Apologies to Iris Simmons: I mixed up his answer with Bert's question.
+
+    > Bert raises questions about promises, and I think they are related to John Sorkin's question. A big difference between R and most other languages is that function arguments are computed lazily. match.call & substitute tell us what expressions will be evaluated if function arguments are needed but not the environments in which that will happen. The usual suspects are environment() and parent.frame(), but parent.frame(k) & maybe even other environments are possible. If you are really determined then I guess you can keep evaluating match.call() in parent frames until you have accounted for all the inputs.
+
+    > It's not clear to what extent John Sorkin is concerned about writing functions as opposed to using functions. Lazy computation has advantages but leads to some issues.
+    > Exactly matching the function's default expression for an input is not necessarily the same as omitting the input. The evaluation environment is different.
+    > If the caller uses an expression with side effects then there is no guarantee that the side effects will happen. If there are side effects from two or more inputs then the order is uncertain. (If an argument is not supplied and the default has side effects then they might not happen either. However, I don't know why the function writer would specify any side effect except stop(), and then he or she has probably arranged for it to happen exactly when it should.)
+    > If a default value depends on another input and that input is modified inside the function then order of evaluation of inputs becomes important. Even if you know exactly what you're doing when you write the function, you should make it clear to future maintainers. An explicit call to force clarifies that the input needs to be computed with the existing values of anything that is used in the default, even if the code is refactored so that the value is not used immediately. If you really want to modify another input before evaluating the default then specify that in a comment.
+
+    > Jeff Newmiller makes a good point. You can still change your mind about inspecting a particular input without breaking old code that uses your function, and you don?t necessarily need default values.
+
+    > Old definition: f <- function(?) {<code that passes ? to other functions and does some other things>}
+
+    > New definition:
+    > f <- function(?, a = <default expression, possibly stop()>)
+    > { <pass ?, a=a to another function>
+    > <do something with the output>
+    > }
+
+    > OR
+
+    > f <- function(?, a)
+    > { if (missing(a)) # OK, this becomes clunky if there are several such inputs
+    > { < pass ? to another function >}
+    > else
+    > { <inspect or modify a> # Pitfall: Changing the order of evaluation may break old code, but then the design was probably too devious in the first place.
+    > <pass ?, a=a to another function>
+    > }
+    > <do something with the output>
+    > }
+
+    > Regards,
+    > Jorgen Harmse.
+
+
+
+
+    > ______________________________________________
+    > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+    > https://stat.ethz.ch/mailman/listinfo/r-help
+    > PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+    > and provide commented, minimal, self-contained, reproducible code.
+
+
+From h@w|ckh@m @end|ng |rom gm@||@com  Wed Jan  8 21:50:53 2025
+From: h@w|ckh@m @end|ng |rom gm@||@com (Hadley Wickham)
+Date: Wed, 8 Jan 2025 14:50:53 -0600
+Subject: [R] Extracting specific arguments from "..."
+In-Reply-To: <CAGxFJbQsHOnZStQwuJcrSTXxG-XBT1Z-7EckiRjuyLC+vDhoyg@mail.gmail.com>
+References: <CAGxFJbQsHOnZStQwuJcrSTXxG-XBT1Z-7EckiRjuyLC+vDhoyg@mail.gmail.com>
+Message-ID: <CABdHhvHVOBfmTFbDOeApBh0=vt9QYH86=a4xNvjK+BbQL1i5YQ@mail.gmail.com>
+
+I'd propose an alternative that I think is superior: rely on the semantics
+of ... to do the work for you:
+
+f1 <- function(...){
+  one <- list(...)[['a']]
+  two <- ...elt(match('a', ...names()))
+  c(one, two, three(...))
+}
+
+three <- function(a, ...) {
+  a
+}
+
+f1(a = 1, b = 2, c = 3)
+#> [1] 1 1 1
+
+
+On Sun, Jan 5, 2025 at 12:00?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> Consider:
+>
+> f1 <- function(...){
+>   one <- list(...)[['a']]
+>   two <- ...elt(match('a', ...names()))
+>   c(one, two)
+> }
+> ## Here "..." is an argument list with "a" somewhere in it, but in an
+> unknown position.
+>
+> > f1(b=5, a = 2, c=7)
+> [1] 2 2
+>
+> Which is better for extracting a specific named argument, one<- or
+> two<- ?  Or a third alternative that is better than both?
+> Comments and critiques welcome.
+>
+> Cheers,
+> Bert
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+-- 
+http://hadley.nz
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Wed Jan  8 23:57:36 2025
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Wed, 8 Jan 2025 14:57:36 -0800
+Subject: [R] Extracting specific arguments from "..."
+In-Reply-To: <CABdHhvHVOBfmTFbDOeApBh0=vt9QYH86=a4xNvjK+BbQL1i5YQ@mail.gmail.com>
+References: <CAGxFJbQsHOnZStQwuJcrSTXxG-XBT1Z-7EckiRjuyLC+vDhoyg@mail.gmail.com>
+ <CABdHhvHVOBfmTFbDOeApBh0=vt9QYH86=a4xNvjK+BbQL1i5YQ@mail.gmail.com>
+Message-ID: <CAGxFJbTdpmyGKEB5L2Rj3AuW3uZ1wv=XQAhCZkvsDojx=2csRA@mail.gmail.com>
+
+That's very nice, Hadley. Simple and clean. Never would have thought of it
+myself.
+
+As usual, however, in the course of my churnings, I have a further
+complication to add. But first ...
+
+**TO ALL**: Feel free to ignore the following, as I'm just fooling around
+here and don't want to waste your time with my stupid stuff.
+
+Anyway, the complication is motivated by the use of formals() or otherwise
+that *programmatically* generates a character representation of the
+arguments I want to select. So, for example:
+
+> z <- "a"
+## Then:
+f1 <- function(...){
+    ...elt(match(z, ...names())) ## since z gets evaluated in the call
+}
+## still works.
+> f1(b =2, a=1, c=3)
+[1] 1
+
+But I haven't figured out how to modify your suggestion -- at least in a
+simple way -- to do the same. Likely I've missed something, though.
+
+
+Cheers,
+Bert
+
+
+
+
+
+
+On Wed, Jan 8, 2025 at 12:51?PM Hadley Wickham <h.wickham at gmail.com> wrote:
+
+> I'd propose an alternative that I think is superior: rely on the semantics
+> of ... to do the work for you:
+>
+> f1 <- function(...){
+>   one <- list(...)[['a']]
+>   two <- ...elt(match('a', ...names()))
+>   c(one, two, three(...))
+> }
+>
+> three <- function(a, ...) {
+>   a
+> }
+>
+> f1(a = 1, b = 2, c = 3)
+> #> [1] 1 1 1
+>
+>
+> On Sun, Jan 5, 2025 at 12:00?PM Bert Gunter <bgunter.4567 at gmail.com>
+> wrote:
+>
+>> Consider:
+>>
+>> f1 <- function(...){
+>>   one <- list(...)[['a']]
+>>   two <- ...elt(match('a', ...names()))
+>>   c(one, two)
+>> }
+>> ## Here "..." is an argument list with "a" somewhere in it, but in an
+>> unknown position.
+>>
+>> > f1(b=5, a = 2, c=7)
+>> [1] 2 2
+>>
+>> Which is better for extracting a specific named argument, one<- or
+>> two<- ?  Or a third alternative that is better than both?
+>> Comments and critiques welcome.
+>>
+>> Cheers,
+>> Bert
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> https://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+>
+> --
+> http://hadley.nz
+>
+
+	[[alternative HTML version deleted]]
+
+
