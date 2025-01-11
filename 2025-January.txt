@@ -4122,3 +4122,423 @@ On Wed, Jan 8, 2025 at 12:51?PM Hadley Wickham <h.wickham at gmail.com> wrote:
 	[[alternative HTML version deleted]]
 
 
+From |@n@|@rm @end|ng |rom m@|ne@edu  Thu Jan  9 14:12:00 2025
+From: |@n@|@rm @end|ng |rom m@|ne@edu (Ian Farm)
+Date: Thu, 9 Jan 2025 08:12:00 -0500
+Subject: [R] Extracting specific arguments from "..."
+In-Reply-To: <CAGxFJbTdpmyGKEB5L2Rj3AuW3uZ1wv=XQAhCZkvsDojx=2csRA@mail.gmail.com>
+References: <CAGxFJbQsHOnZStQwuJcrSTXxG-XBT1Z-7EckiRjuyLC+vDhoyg@mail.gmail.com>
+ <CABdHhvHVOBfmTFbDOeApBh0=vt9QYH86=a4xNvjK+BbQL1i5YQ@mail.gmail.com>
+ <CAGxFJbTdpmyGKEB5L2Rj3AuW3uZ1wv=XQAhCZkvsDojx=2csRA@mail.gmail.com>
+Message-ID: <CAP8nD2xJhtwtYHR2yySFZoi=Uyo_mt=GOpjAr1yTrW=JLLvhLw@mail.gmail.com>
+
+I might add that there seems to be a subtle difference between using
+`...elt()` and `match.call()`, which is that the former causes `a` itself
+to be evaluated while the latter doesn't:
+```
+# Some approaches that have been suggested:
+
+# 1. Using `list()` (Bert Gunter)
+f1 <- function(...) list(...)[["a"]]
+# 2. Using `...elt()` (Bert Gunter)
+f2 <- function(...) ...elt(match("a", ...names()))
+# 3. Using argument matching (Hadley Wickham)
+f3 <- function(...) (\(a, ...) a)(...)
+# 4. Using `match.call()`
+f4 <- function(...) eval(match.call()[["a"]], parent.frame())
+
+ff <- list(f1 = f1, f2 = f2, f3 = f3, f4 = f4)
+
+sapply(ff, \(f) {
+  f(b = 2, a = 1, c = 3)
+})
+#> f1 f2 f3 f4
+#>  1  1  1  1
+
+# View the (defused) arguments after `a` has been accessed:
+
+# returns an expression if the argument has not been evaluated, and a
+number if it has
+check_forced_args <- function(f) {
+  body(f) <- call("{", body(f), quote(rlang::enexprs(...)))
+  # pass `f()` some expressions to see which are evaluated
+  f(a = cos(0), b = sqrt(4))
+}
+# make a data frame showing the defused arguments for each function
+lapply(ff, check_forced_args) |> do.call(rbind, args = _) |> as.data.frame()
+
+#>         a       b
+#> f1      1       2    # all the arguments are forced
+#> f2      1 sqrt(4)    # only `a` is forced
+#> f3      1 sqrt(4)    # only `a` is forced
+#> f4 cos(0) sqrt(4)    # none of the arguments are forced
+```
+
+Also, here's a possible way to adapt Hadley Wickham's approach so that it
+takes the name of the argument as a string, though it does lose the
+elegance:
+```
+pick_arg <- function(nm) {
+  as.function(c(
+    setNames(alist(. = , . = ), c(nm, "...")),
+    as.symbol(nm)
+  ))
+}
+
+z <- "a"
+f5 <- function(...) {
+  pick_arg(z)(...)
+}
+f5(b = 2, a = 1, c = 3)
+#> [1] 1
+```
+
+Regards,
+Ian
+____
+Ian Farm, Laboratory Manager
+University of Maine Agroecology Lab
+
+
+On Wed, Jan 8, 2025 at 5:58?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> That's very nice, Hadley. Simple and clean. Never would have thought of it
+> myself.
+>
+> As usual, however, in the course of my churnings, I have a further
+> complication to add. But first ...
+>
+> **TO ALL**: Feel free to ignore the following, as I'm just fooling around
+> here and don't want to waste your time with my stupid stuff.
+>
+> Anyway, the complication is motivated by the use of formals() or otherwise
+> that *programmatically* generates a character representation of the
+> arguments I want to select. So, for example:
+>
+> > z <- "a"
+> ## Then:
+> f1 <- function(...){
+>     ...elt(match(z, ...names())) ## since z gets evaluated in the call
+> }
+> ## still works.
+> > f1(b =2, a=1, c=3)
+> [1] 1
+>
+> But I haven't figured out how to modify your suggestion -- at least in a
+> simple way -- to do the same. Likely I've missed something, though.
+>
+>
+> Cheers,
+> Bert
+>
+>
+>
+>
+>
+>
+> On Wed, Jan 8, 2025 at 12:51?PM Hadley Wickham <h.wickham at gmail.com>
+> wrote:
+>
+> > I'd propose an alternative that I think is superior: rely on the
+> semantics
+> > of ... to do the work for you:
+> >
+> > f1 <- function(...){
+> >   one <- list(...)[['a']]
+> >   two <- ...elt(match('a', ...names()))
+> >   c(one, two, three(...))
+> > }
+> >
+> > three <- function(a, ...) {
+> >   a
+> > }
+> >
+> > f1(a = 1, b = 2, c = 3)
+> > #> [1] 1 1 1
+> >
+> >
+> > On Sun, Jan 5, 2025 at 12:00?PM Bert Gunter <bgunter.4567 at gmail.com>
+> > wrote:
+> >
+> >> Consider:
+> >>
+> >> f1 <- function(...){
+> >>   one <- list(...)[['a']]
+> >>   two <- ...elt(match('a', ...names()))
+> >>   c(one, two)
+> >> }
+> >> ## Here "..." is an argument list with "a" somewhere in it, but in an
+> >> unknown position.
+> >>
+> >> > f1(b=5, a = 2, c=7)
+> >> [1] 2 2
+> >>
+> >> Which is better for extracting a specific named argument, one<- or
+> >> two<- ?  Or a third alternative that is better than both?
+> >> Comments and critiques welcome.
+> >>
+> >> Cheers,
+> >> Bert
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide
+> >> https://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+> >>
+> >
+> >
+> > --
+> > http://hadley.nz
+> >
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Thu Jan  9 21:59:07 2025
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 9 Jan 2025 12:59:07 -0800
+Subject: [R] Extracting specific arguments from "..."
+In-Reply-To: <CAP8nD2xJhtwtYHR2yySFZoi=Uyo_mt=GOpjAr1yTrW=JLLvhLw@mail.gmail.com>
+References: <CAGxFJbQsHOnZStQwuJcrSTXxG-XBT1Z-7EckiRjuyLC+vDhoyg@mail.gmail.com>
+ <CABdHhvHVOBfmTFbDOeApBh0=vt9QYH86=a4xNvjK+BbQL1i5YQ@mail.gmail.com>
+ <CAGxFJbTdpmyGKEB5L2Rj3AuW3uZ1wv=XQAhCZkvsDojx=2csRA@mail.gmail.com>
+ <CAP8nD2xJhtwtYHR2yySFZoi=Uyo_mt=GOpjAr1yTrW=JLLvhLw@mail.gmail.com>
+Message-ID: <CAGxFJbTZe7qz0R58tROZqBAHeqUkbrqhDSFvu6LuowVBEkzqSA@mail.gmail.com>
+
+Thanks Ian (and others),
+
+Taking the advice of ?"..." (which I should have done at the outset ...
+duhh!),  the following seems to be the simplest solution, adequate for my
+needs at least:
+
+f <- function(x, ...){
+   lapply(seq_along(x), \(i)switch(x[i], ..., NA))
+}
+
+(the usual argument checking etc. should be added, of course.)
+
+Comparing this to the ...xx() functions that I previously gave, which are
+the same as names(list(...)) etc. without the overhead of unnecessary
+evaluation, gives:
+
+g <- function(...){
+   one <- f(z,...)
+   two <- lapply(charmatch(z, ...names()), \(i)...elt(i))
+  list(one = one, two = two)
+}
+
+> k <- 5
+> z <- c("a","c")
+> g(b=2, a=1, c = k)
+$one
+$one[[1]]
+[1] 1
+
+$one[[2]]
+[1] 5
+
+
+$two
+$two[[1]]
+[1] 1
+
+$two[[2]]
+[1] 5
+
+As always, corrections and comments welcomed.
+
+Cheers,
+Bert
+
+
+
+On Thu, Jan 9, 2025 at 5:12?AM Ian Farm <ian.farm at maine.edu> wrote:
+
+> I might add that there seems to be a subtle difference between using
+> `...elt()` and `match.call()`, which is that the former causes `a` itself
+> to be evaluated while the latter doesn't:
+> ```
+> # Some approaches that have been suggested:
+>
+> # 1. Using `list()` (Bert Gunter)
+> f1 <- function(...) list(...)[["a"]]
+> # 2. Using `...elt()` (Bert Gunter)
+> f2 <- function(...) ...elt(match("a", ...names()))
+> # 3. Using argument matching (Hadley Wickham)
+> f3 <- function(...) (\(a, ...) a)(...)
+> # 4. Using `match.call()`
+> f4 <- function(...) eval(match.call()[["a"]], parent.frame())
+>
+> ff <- list(f1 = f1, f2 = f2, f3 = f3, f4 = f4)
+>
+> sapply(ff, \(f) {
+>   f(b = 2, a = 1, c = 3)
+> })
+> #> f1 f2 f3 f4
+> #>  1  1  1  1
+>
+> # View the (defused) arguments after `a` has been accessed:
+>
+> # returns an expression if the argument has not been evaluated, and a
+> number if it has
+> check_forced_args <- function(f) {
+>   body(f) <- call("{", body(f), quote(rlang::enexprs(...)))
+>   # pass `f()` some expressions to see which are evaluated
+>   f(a = cos(0), b = sqrt(4))
+> }
+> # make a data frame showing the defused arguments for each function
+> lapply(ff, check_forced_args) |> do.call(rbind, args = _) |>
+> as.data.frame()
+>
+> #>         a       b
+> #> f1      1       2    # all the arguments are forced
+> #> f2      1 sqrt(4)    # only `a` is forced
+> #> f3      1 sqrt(4)    # only `a` is forced
+> #> f4 cos(0) sqrt(4)    # none of the arguments are forced
+> ```
+>
+> Also, here's a possible way to adapt Hadley Wickham's approach so that it
+> takes the name of the argument as a string, though it does lose the
+> elegance:
+> ```
+> pick_arg <- function(nm) {
+>   as.function(c(
+>     setNames(alist(. = , . = ), c(nm, "...")),
+>     as.symbol(nm)
+>   ))
+> }
+>
+> z <- "a"
+> f5 <- function(...) {
+>   pick_arg(z)(...)
+> }
+> f5(b = 2, a = 1, c = 3)
+> #> [1] 1
+> ```
+>
+> Regards,
+> Ian
+> ____
+> Ian Farm, Laboratory Manager
+> University of Maine Agroecology Lab
+>
+>
+> On Wed, Jan 8, 2025 at 5:58?PM Bert Gunter <bgunter.4567 at gmail.com> wrote:
+>
+>> That's very nice, Hadley. Simple and clean. Never would have thought of it
+>> myself.
+>>
+>> As usual, however, in the course of my churnings, I have a further
+>> complication to add. But first ...
+>>
+>> **TO ALL**: Feel free to ignore the following, as I'm just fooling around
+>> here and don't want to waste your time with my stupid stuff.
+>>
+>> Anyway, the complication is motivated by the use of formals() or otherwise
+>> that *programmatically* generates a character representation of the
+>> arguments I want to select. So, for example:
+>>
+>> > z <- "a"
+>> ## Then:
+>> f1 <- function(...){
+>>     ...elt(match(z, ...names())) ## since z gets evaluated in the call
+>> }
+>> ## still works.
+>> > f1(b =2, a=1, c=3)
+>> [1] 1
+>>
+>> But I haven't figured out how to modify your suggestion -- at least in a
+>> simple way -- to do the same. Likely I've missed something, though.
+>>
+>>
+>> Cheers,
+>> Bert
+>>
+>>
+>>
+>>
+>>
+>>
+>> On Wed, Jan 8, 2025 at 12:51?PM Hadley Wickham <h.wickham at gmail.com>
+>> wrote:
+>>
+>> > I'd propose an alternative that I think is superior: rely on the
+>> semantics
+>> > of ... to do the work for you:
+>> >
+>> > f1 <- function(...){
+>> >   one <- list(...)[['a']]
+>> >   two <- ...elt(match('a', ...names()))
+>> >   c(one, two, three(...))
+>> > }
+>> >
+>> > three <- function(a, ...) {
+>> >   a
+>> > }
+>> >
+>> > f1(a = 1, b = 2, c = 3)
+>> > #> [1] 1 1 1
+>> >
+>> >
+>> > On Sun, Jan 5, 2025 at 12:00?PM Bert Gunter <bgunter.4567 at gmail.com>
+>> > wrote:
+>> >
+>> >> Consider:
+>> >>
+>> >> f1 <- function(...){
+>> >>   one <- list(...)[['a']]
+>> >>   two <- ...elt(match('a', ...names()))
+>> >>   c(one, two)
+>> >> }
+>> >> ## Here "..." is an argument list with "a" somewhere in it, but in an
+>> >> unknown position.
+>> >>
+>> >> > f1(b=5, a = 2, c=7)
+>> >> [1] 2 2
+>> >>
+>> >> Which is better for extracting a specific named argument, one<- or
+>> >> two<- ?  Or a third alternative that is better than both?
+>> >> Comments and critiques welcome.
+>> >>
+>> >> Cheers,
+>> >> Bert
+>> >>
+>> >> ______________________________________________
+>> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> >> https://stat.ethz.ch/mailman/listinfo/r-help
+>> >> PLEASE do read the posting guide
+>> >> https://www.R-project.org/posting-guide.html
+>> >> and provide commented, minimal, self-contained, reproducible code.
+>> >>
+>> >
+>> >
+>> > --
+>> > http://hadley.nz
+>> >
+>>
+>>         [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> https://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+>
+
+	[[alternative HTML version deleted]]
+
+
