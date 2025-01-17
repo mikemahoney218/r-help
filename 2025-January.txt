@@ -5132,3 +5132,503 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From w@||y @end|ng |rom m@ge|@@org  Tue Jan 14 19:39:19 2025
+From: w@||y @end|ng |rom m@ge|@@org (Jani =?UTF-8?B?VsOkbGltYWE=?=)
+Date: Tue, 14 Jan 2025 20:39:19 +0200
+Subject: [R] Weird and changed  as.roman() behavior
+Message-ID: <20250114203919.1b387d3c.wally@mageia.org>
+
+Hello,
+
+I don't know what's changed or how to figure out why as.roman() started
+to work different way lately on Mageia Cauldron. Cauldron is the
+latest development version of Mageia Linux.
+
+Expected bahavior:
+> as.roman(strrep("I", 1:5))
+[1] I   II  III IV  V  
+
+Current behavior:
+> as.roman(strrep("I", 1:5))
+[1] I    II   III  IV   <NA>
+Warning message:
+In .roman2numeric(x) : invalid roman numeral: IIIII
+
+as.roman() doesn't handle "IIIII" -> "V" anymore and thus 'make check'
+fails when building any 4.3.x or 4.4.x versions from the sources.
+
+Any hints?
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: not available
+Type: application/pgp-signature
+Size: 833 bytes
+Desc: OpenPGP-allekirjoitus
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20250114/13f7017c/attachment.sig>
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Wed Jan 15 11:41:34 2025
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Wed, 15 Jan 2025 11:41:34 +0100
+Subject: [R] Weird and changed  as.roman() behavior
+In-Reply-To: <20250114203919.1b387d3c.wally@mageia.org>
+References: <20250114203919.1b387d3c.wally@mageia.org>
+Message-ID: <26503.37086.16888.723297@stat.math.ethz.ch>
+
+>>>>> Jani V?limaa 
+>>>>>     on Tue, 14 Jan 2025 20:39:19 +0200 writes:
+
+    > Hello,
+    > I don't know what's changed or how to figure out why as.roman() started
+    > to work different way lately on Mageia Cauldron. Cauldron is the
+    > latest development version of Mageia Linux.
+
+    > Expected bahavior:
+    >> as.roman(strrep("I", 1:5))
+    > [1] I   II  III IV  V  
+
+    > Current behavior:
+    >> as.roman(strrep("I", 1:5))
+    > [1] I    II   III  IV   <NA>
+    > Warning message:
+    > In .roman2numeric(x) : invalid roman numeral: IIIII
+
+    > as.roman() doesn't handle "IIIII" -> "V" anymore and thus 'make check'
+    > fails when building any 4.3.x or 4.4.x versions from the sources.
+
+Not yet.
+For me, (on Linux Fedora 40),
+on current R-4.4.2,  R-patched and R-devel  I get the same good
+results from
+
+ (cc <- strrep("I", 1:5)); (rr <- as.roman(cc)); dput(rr)
+ 
+  > (cc <- strrep("I", 1:5)); (rr <- as.roman(cc)); dput(rr)
+  [1] "I"     "II"    "III"   "IIII"  "IIIII"
+  [1] I   II  III IV  V  
+  structure(1:5, class = "roman")
+  >
+
+The code behind this uses grep() and grepl()
+and I assume this somehow does not work correctly on your
+platform?
+
+Digging a bit further, the crucial part in this case happens in
+the (namespace hidden) function   utils ::: .roman2numeric
+which you probably already know from the above warning.
+For me,
+
+ (cc <- strrep("I", 1:5)); (r2 <- utils:::.roman2numeric(cc)); dput(r2)
+
+gives
+
+  > (cc <- strrep("I", 1:5)); (r2 <- utils:::.roman2numeric(cc))
+  [1] "I"     "II"    "III"   "IIII"  "IIIII"
+  [1] 1 2 3 4 5
+  >
+
+this must be different in your case.
+
+You can use
+	debug(utils:::.roman2numeric)
+and
+	utils:::.roman2numeric(cc)
+
+to find out where the problem happens.
+This will show almost surely that the problem is indeed in a
+grepl() call.
+
+I'm close to sure it is this:
+
+> grepl("^M{,3}D?C{,4}L?X{,4}V?I{,4}$", cc)
+[1] TRUE TRUE TRUE TRUE TRUE
+
+where you don't get the same, but probably
+
+  [1] TRUE TRUE TRUE TRUE FALSE
+
+which I *do* get, too if I use  grepl(....., perl=TRUE)
+.. see also below.
+
+
+The code we use is our own tweaked version of 'TRE' (in <Rsrc>/extra/tre/ ),
+and I do think we've occasionally seen platform dependencies.
+
+Also, yes, in 2022 there have been several changes, related to
+fixing bugs, though several ones *before* releasing R 4.3.0.
+
+Last, but not (at all!) least:
+
+Actually, I *am* confused a bit why this ever worked (and still
+works for most of us):
+
+I'm using {,2} instead of {,4}  to make things faster to grasp;
+I see
+
+  > grepl("^I{,2}$", c("II", "III", "IIII"))
+  [1]  TRUE  TRUE FALSE
+  >
+
+and I wonder why 'I{,2}' matches 3 "I"s. ... I'd thought {,2} to
+mean " up to 2 occurrences (of the previous <entity>)"
+(where here <entity> = character).
+
+In our real example,  I{,4} matched 5 "I"s
+
+and as I mentioned above, the somewhat more maintained
+perl=TRUE option does *not*.
+
+We could change the code to use  I{,5}  to make 5x"I", i.e. "IIIII" 
+work for you .. but then that would also match
+"IIIIII" (6 x "I") for "everybody" else with our current TRE engine..
+
+
+From @te|@nML @end|ng |rom co||oc@t|on@@de  Wed Jan 15 13:18:03 2025
+From: @te|@nML @end|ng |rom co||oc@t|on@@de (Stephanie Evert)
+Date: Wed, 15 Jan 2025 13:18:03 +0100
+Subject: [R] Weird and changed  as.roman() behavior
+In-Reply-To: <26503.37086.16888.723297@stat.math.ethz.ch>
+References: <20250114203919.1b387d3c.wally@mageia.org>
+ <26503.37086.16888.723297@stat.math.ethz.ch>
+Message-ID: <B7E191AD-E864-4293-A693-9C98B2CD7ADF@collocations.de>
+
+Well, the real issue then seems to be that .roman2numeric uses an invalid regular expression:
+
+>> grepl("^M{,3}D?C{,4}L?X{,4}V?I{,4}$", cc)
+> [1] TRUE TRUE TRUE TRUE TRUE
+
+or 
+
+>> grepl("^I{,2}$", c("II", "III", "IIII"))
+>  [1]  TRUE  TRUE FALSE
+
+
+Both the TRE and the PCRE specification only allow repetition quantifiers of the form
+
+	{a}
+	{a,b}
+	{a,}
+
+https://laurikari.net/tre/documentation/regex-syntax/
+https://www.pcre.org/original/doc/html/pcrepattern.html#SEC17
+
+{,2} and {,4} are thus invalid and seem to result in undefined behaviour (which PCRE and TRE fill in different ways, but consistently not what was intended). 
+
+> > grepl("^I{,2}$", c("II", "III", "IIII"))
+> [1]  TRUE  TRUE FALSE
+
+> > grepl("^I{,2}$", c("II", "III", "IIII"), perl=TRUE)
+> [1] FALSE FALSE FALSE
+
+Fix thus is easy: {,4} => {0,4}
+
+Best,
+Stephanie
+
+From e||@n@m@d|@on @end|ng |rom |@u@edu  Tue Jan 14 18:29:50 2025
+From: e||@n@m@d|@on @end|ng |rom |@u@edu (Eliana Madison)
+Date: Tue, 14 Jan 2025 10:29:50 -0700
+Subject: [R] Installing R and RStudio - Contact Software Manufacturer Error
+ URGENT
+Message-ID: <CACbUi+Epg9BCvAyFMTWMCWkAvqy0x+dY4-jogCVCbHc=Z0JQZg@mail.gmail.com>
+
+Good morning, I am currently trying to download R and RStudio to my MacOS
+13.3 as it is a requirement for a statistics class I am taking this
+semester.
+
+I have checked and I have plenty of storage available however after the
+downloading process is complete and I go to install the program this error
+pops up: The installation failed. The Installer encountered an error that
+caused the installation to fail. Contact the software manufacturer for
+assistance.
+
+Please provide guidance on how to remedy this issue so I can complete the
+installation process and get started on my coursework.
+
+I look forward to hearing from you as soon as possible!
+
+Thank you,
+
+-- 
+
+Eliana Madison
+ASISU Secretary | Social Work Student
+Pronouns: She, Her, Hers
+
+elianamadison at isu.edu
+Idaho State University[image: Idaho State University]
+
+Idaho State University (Pocatello) acknowledges that it is located within
+the boundaries of the original Fort Hall Reservation on the traditional
+lands of the Shoshone and Bannock peoples.Idaho State Universit
+
+	[[alternative HTML version deleted]]
+
+
+From @teven@|onzoe|||@ @end|ng |rom gm@||@com  Wed Jan 15 19:46:27 2025
+From: @teven@|onzoe|||@ @end|ng |rom gm@||@com (Steven Ellis)
+Date: Wed, 15 Jan 2025 13:46:27 -0500
+Subject: [R] 
+ Installing R and RStudio - Contact Software Manufacturer Error
+ URGENT
+In-Reply-To: <CACbUi+Epg9BCvAyFMTWMCWkAvqy0x+dY4-jogCVCbHc=Z0JQZg@mail.gmail.com>
+References: <CACbUi+Epg9BCvAyFMTWMCWkAvqy0x+dY4-jogCVCbHc=Z0JQZg@mail.gmail.com>
+Message-ID: <CAHOiV1o7-LvpUzggeAAo10YFsRTXJNN+D3GG=Ey8i5+DK+Vf2A@mail.gmail.com>
+
+Hi Eliana,
+
+What model Mac are you using? Are you the owner?
+
+Thanks,
+Steven
+
+On Wed, Jan 15, 2025, 1:45?PM Eliana Madison <elianamadison at isu.edu> wrote:
+
+> Good morning, I am currently trying to download R and RStudio to my MacOS
+> 13.3 as it is a requirement for a statistics class I am taking this
+> semester.
+>
+> I have checked and I have plenty of storage available however after the
+> downloading process is complete and I go to install the program this error
+> pops up: The installation failed. The Installer encountered an error that
+> caused the installation to fail. Contact the software manufacturer for
+> assistance.
+>
+> Please provide guidance on how to remedy this issue so I can complete the
+> installation process and get started on my coursework.
+>
+> I look forward to hearing from you as soon as possible!
+>
+> Thank you,
+>
+> --
+>
+> Eliana Madison
+> ASISU Secretary | Social Work Student
+> Pronouns: She, Her, Hers
+>
+> elianamadison at isu.edu
+> Idaho State University[image: Idaho State University]
+>
+> Idaho State University (Pocatello) acknowledges that it is located within
+> the boundaries of the original Fort Hall Reservation on the traditional
+> lands of the Shoshone and Bannock peoples.Idaho State Universit
+>
+>         [[alternative HTML version deleted]]
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From m@rc_@chw@rtz @end|ng |rom me@com  Wed Jan 15 20:14:02 2025
+From: m@rc_@chw@rtz @end|ng |rom me@com (Marc Schwartz)
+Date: Wed, 15 Jan 2025 14:14:02 -0500
+Subject: [R] 
+ Installing R and RStudio - Contact Software Manufacturer Error
+ URGENT
+In-Reply-To: <CAHOiV1o7-LvpUzggeAAo10YFsRTXJNN+D3GG=Ey8i5+DK+Vf2A@mail.gmail.com>
+References: <CACbUi+Epg9BCvAyFMTWMCWkAvqy0x+dY4-jogCVCbHc=Z0JQZg@mail.gmail.com>
+ <CAHOiV1o7-LvpUzggeAAo10YFsRTXJNN+D3GG=Ey8i5+DK+Vf2A@mail.gmail.com>
+Message-ID: <73D77E38-15E3-452B-8B30-F391EC5DDA68@me.com>
+
+Hi Eliana,
+
+It is not clear which application is causing the error.
+
+As you are running macOS 13.3 (Ventura) and that you are trying to install both R and RStudio (two separate applications from two different entities), please confirm that you downloaded the correct version of R for your Mac from CRAN, as per:
+
+  https://cran.r-project.org/bin/macosx/
+
+If you are on an older x86 Intel based Mac, you need to be sure that you downloaded R-4.4.2-x86_64.pkg from CRAN, and pay attention to the installation note on the above CRAN page:
+
+"macOS Ventura users: there is a known bug in Ventura preventing installations from some locations without a prompt. If the installation fails, move the downloaded file away from the Downloads folder (e.g., to your home or Desktop)."
+
+If you are an Apple ARM (e.g. M1) based Mac, you need to be sure to download R-4.4.2-arm64.pkg from CRAN.
+
+As Steven notes below, this all presumes that you have the relevant access privileges to install software on the Mac and are not otherwise restricted by, for example, any security policies implemented by the owner of the Mac, if that is not you.
+
+I do not use RStudio, and you may need to contact Posit, the publishers of that application via their support site, if the error is from their application and not R itself.
+
+  https://support.posit.co/
+
+Regards,
+
+Marc Schwartz
+
+
+> On Jan 15, 2025, at 1:46?PM, Steven Ellis <stevenalonzoellis at gmail.com> wrote:
+> 
+> Hi Eliana,
+> 
+> What model Mac are you using? Are you the owner?
+> 
+> Thanks,
+> Steven
+> 
+> On Wed, Jan 15, 2025, 1:45?PM Eliana Madison <elianamadison at isu.edu> wrote:
+> 
+>> Good morning, I am currently trying to download R and RStudio to my MacOS
+>> 13.3 as it is a requirement for a statistics class I am taking this
+>> semester.
+>> 
+>> I have checked and I have plenty of storage available however after the
+>> downloading process is complete and I go to install the program this error
+>> pops up: The installation failed. The Installer encountered an error that
+>> caused the installation to fail. Contact the software manufacturer for
+>> assistance.
+>> 
+>> Please provide guidance on how to remedy this issue so I can complete the
+>> installation process and get started on my coursework.
+>> 
+>> I look forward to hearing from you as soon as possible!
+>> 
+>> Thank you,
+>> 
+>> --
+>> 
+>> Eliana Madison
+>> ASISU Secretary | Social Work Student
+>> Pronouns: She, Her, Hers
+>> 
+>> elianamadison at isu.edu
+>> Idaho State University[image: Idaho State University]
+>> 
+>> Idaho State University (Pocatello) acknowledges that it is located within
+>> the boundaries of the original Fort Hall Reservation on the traditional
+>> lands of the Shoshone and Bannock peoples.Idaho State Universit
+>> 
+>>        [[alternative HTML version deleted]]
+>> 
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> https://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>> 
+> 
+> [[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Thu Jan 16 02:10:19 2025
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Thu, 16 Jan 2025 01:10:19 +0000
+Subject: [R] Need help with time series
+In-Reply-To: <CA+etgPnSZYWnX4MsyCnXVE458WWp5E78qcAqHdipLEGgtALxHg@mail.gmail.com>
+References: <BY3PR09MB8260C6D0388D8E716A81A0D4BF182@BY3PR09MB8260.namprd09.prod.outlook.com>
+ <IA1P223MB0499674BFE095259AD4DD33FFA182@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+ <CA+etgPnSZYWnX4MsyCnXVE458WWp5E78qcAqHdipLEGgtALxHg@mail.gmail.com>
+Message-ID: <IA1P223MB0499A4A5CA5EB1C4B93E1E1BFA1A2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+
+Thanks for providing direction.  By redefining time using as.yearmon(), I got acf() working.
+
+Sent from my iPhone
+
+On Jan 14, 2025, at 6:51?PM, CALUM POLWART <polc1410 at gmail.com> wrote:
+
+?
+acf wants a time series, so tries to make one:
+
+as.ts(myts)
+
+
+Time Series:
+Start = 19357
+End = 20027
+Frequency = 1
+  [1]  24957     NA     NA     NA     NA     NA     NA     NA     NA     NA
+ [11]     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA
+ [21]     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA
+ [31]     NA  10577     NA     NA     NA     NA     NA     NA     NA     NA
+ [41]     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA
+ [51]     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA
+ [61]     NA     NA -18516     NA     NA     NA     NA     NA     NA     NA
+ [71]     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA
+ [81]     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA
+ [91]   2940     NA     NA     NA     NA     NA     NA     NA     NA     NA
+[101]     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA
+[111]     NA     NA     NA     NA     NA     NA     NA     NA     NA     NA
+[121]     NA  -1458     NA     NA     NA     NA     NA     NA     NA     NA
+[131]     NA     NA
+
+I'm not familiar enough with TS to know how you make them 31d month units...
+
+
+On Tue, 14 Jan 2025, 23:08 Naresh Gurbuxani, <naresh_gurbuxani at hotmail.com<mailto:naresh_gurbuxani at hotmail.com>> wrote:
+For below data, I find strange results in basic time series analysis.  Why does acf() function find missing values?  When crossprod(xmat) is invertible, why does arima() find system exactly singular?
+
+Thanks,
+Naresh
+
+x <- c(24957, 10577, -18516, 2940, -1458, 32704, -26697, -46902, 48413, -11937, 2043, 26431, -55336, -16838, 89651, 25363,    -50388, -41012, -28242, -18213, 58759, -15290, -7413, 124098)
+
+myts <- zoo::zoo(x,                 seq.Date(as.Date("2022-12-31"), as.Date("2024-11-30"), by = "1 month"))
+
+> myts
+
+2022-12-31 2023-01-31 2023-03-03 2023-03-31 2023-05-01 2023-05-31 2023-07-01
+
+     24957      10577     -18516       2940      -1458      32704     -26697
+
+2023-07-31 2023-08-31 2023-10-01 2023-10-31 2023-12-01 2023-12-31 2024-01-31
+
+    -46902      48413     -11937       2043      26431     -55336     -16838
+
+2024-03-02 2024-03-31 2024-05-01 2024-05-31 2024-07-01 2024-07-31 2024-08-31
+
+     89651      25363     -50388     -41012     -28242     -18213      58759
+
+2024-10-01 2024-10-31
+
+    -15290      -7413
+
+> coredata(myts) |> class()
+
+[1] "numeric"
+
+> acf(myts, lag.max = 2)
+
+Error in na.fail.default(as.ts(x)) : missing values in object
+
+> arima(myts, order = c(1, 0, 0))
+
+Error in solve.default(res$hessian * n.used, A) :
+
+  Lapack routine dgesv: system is exactly singular: U[1,1] = 0
+
+> xmat <- na.omit(cbind(x = myts, xlag1 = lag(myts, k = -1)))
+
+> crossprod(xmat) |> solve()
+
+                 x        xlag1
+
+x     3.488838e-11 1.949958e-12
+
+xlag1 1.949958e-12 3.421268e-11
+
+
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
