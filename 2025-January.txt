@@ -5993,3 +5993,501 @@ Size: 833 bytes
 Desc: OpenPGP-allekirjoitus
 URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20250116/683b81f1/attachment.sig>
 
+From r@oknz @end|ng |rom gm@||@com  Sat Jan 18 04:03:51 2025
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Sat, 18 Jan 2025 16:03:51 +1300
+Subject: [R] Weird and changed as.roman() behavior
+In-Reply-To: <26504.59340.595600.98138@stat.math.ethz.ch>
+References: <20250114203919.1b387d3c.wally@mageia.org>
+ <26503.37086.16888.723297@stat.math.ethz.ch>
+ <B7E191AD-E864-4293-A693-9C98B2CD7ADF@collocations.de>
+ <26504.59340.595600.98138@stat.math.ethz.ch>
+Message-ID: <CABcYAdJYK=svAPE=pD_FWuDppKERXRaaLnGOO0gQdn2FoWG6vQ@mail.gmail.com>
+
+"Roman numerals" is actually a tricky subject, since there were
+different versions at different times.
+It is worth noting that the Unicode character set (and R does support
+Unicode, does it not?) includes
+the Roman numeral characters for 5,000 10,000 50,000 and 100,000 so
+the idea that 3999 is an acceptable limit
+doesn't quite make much sense any more.
+It is also worth noting that Unicode also includes single-character
+versions of 1-12.
+The characters are U+2160 to U+2188.
+For what it's worth, the Romans could express fractions that were
+multiples of 1/12.
+
+Converting between numbers and their Roman forms is not something that
+regular expressions are a good tool for.
+
+On Fri, 17 Jan 2025 at 00:05, Martin Maechler
+<maechler at stat.math.ethz.ch> wrote:
+>
+> >>>>> Stephanie Evert
+> >>>>>     on Wed, 15 Jan 2025 13:18:03 +0100 writes:
+>
+>     > Well, the real issue then seems to be that .roman2numeric uses an invalid regular expression:
+>     >>> grepl("^M{,3}D?C{,4}L?X{,4}V?I{,4}$", cc)
+>     >> [1] TRUE TRUE TRUE TRUE TRUE
+>
+>     > or
+>
+>     >>> grepl("^I{,2}$", c("II", "III", "IIII"))
+>     >> [1]  TRUE  TRUE FALSE
+>
+>
+>     > Both the TRE and the PCRE specification only allow repetition quantifiers of the form
+>
+>     > {a}
+>     > {a,b}
+>     > {a,}
+>
+>     > https://laurikari.net/tre/documentation/regex-syntax/
+>     > https://www.pcre.org/original/doc/html/pcrepattern.html#SEC17
+>
+>     > {,2} and {,4} are thus invalid and seem to result in undefined behaviour (which PCRE and TRE fill in different ways, but consistently not what was intended).
+>
+>     >> > grepl("^I{,2}$", c("II", "III", "IIII"))
+>     >> [1]  TRUE  TRUE FALSE
+>
+>     >> > grepl("^I{,2}$", c("II", "III", "IIII"), perl=TRUE)
+>     >> [1] FALSE FALSE FALSE
+>
+>     > Fix thus is easy: {,4} => {0,4}
+>
+>     > Best,
+>     > Stephanie
+>
+> Thanks a lot, Stephanie -- indeed, I think I would not have searched in
+> this direction at all
+> ( To me it seemed "obvious" that if {3,} is well defined,  {,3}
+>   would be so, too...  But I was *wrong* and actually I also
+>   understand and that {,3} is not needed, and {0,3} is clearer,
+>   whereas {3,} is not easy to re-express ( '{0,inf}' or similar
+>   would make the code considerably more complicated and probably slower..)
+>
+> Actually, to remain back compatible (see Jani's original report:
+> he'd like "IIIII" to work, as it did for many/most of us),
+> we should replace  {,4}  by {0,5}.
+>
+> But there's more:  our current help page
+>     https://search.r-project.org/R/refmans/utils/html/roman.html
+> says
+>
+> > Only numbers between 1 and 3999 have a unique representation
+> > as roman numbers, and hence others result in as.roman(NA).
+>
+> which is really not quite true, in more than one sense:
+>
+> 1.  as.roman(3899:3999)   # works fine
+>
+> not producing any NA
+>
+> 2. I think, e.g.,  "MMMM"
+> is a pretty unique representation of 4000.
+>
+> Also, one piece of other software (online)
+>     https://www.rapidtables.com/convert/number/date-to-roman-numerals.html
+>
+> does convert _dates_ up to the year 4999, see,
+>   https://www.rapidtables.com/convert/number/date-to-roman-numerals.html?msel=January&dsel=1&year=4999&fmtsel=MM.DD.YYYY
+>
+> giving  MMMMCMXCIX  for 4999.
+>
+> Hence, I also think we should enlarge the valid range from current
+> {1 .. 3999}  to
+> {1 .. 4999}
+>
+> Martin
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From jrkr|de@u @end|ng |rom gm@||@com  Sat Jan 18 19:56:47 2025
+From: jrkr|de@u @end|ng |rom gm@||@com (John Kane)
+Date: Sat, 18 Jan 2025 13:56:47 -0500
+Subject: [R] 
+ Installing R and RStudio - Contact Software Manufacturer Error
+ URGENT
+In-Reply-To: <73D77E38-15E3-452B-8B30-F391EC5DDA68@me.com>
+References: <CACbUi+Epg9BCvAyFMTWMCWkAvqy0x+dY4-jogCVCbHc=Z0JQZg@mail.gmail.com>
+ <CAHOiV1o7-LvpUzggeAAo10YFsRTXJNN+D3GG=Ey8i5+DK+Vf2A@mail.gmail.com>
+ <73D77E38-15E3-452B-8B30-F391EC5DDA68@me.com>
+Message-ID: <CAKZQJMC6JFt-VDkXBG9fQQs3h2f3diU+yKFGHeYq=HO5HCMfhg@mail.gmail.com>
+
+You may also want to check out forum.posit.co/
+
+On Wed, 15 Jan 2025 at 14:14, Marc Schwartz via R-help <r-help at r-project.org>
+wrote:
+
+> Hi Eliana,
+>
+> It is not clear which application is causing the error.
+>
+> As you are running macOS 13.3 (Ventura) and that you are trying to install
+> both R and RStudio (two separate applications from two different entities),
+> please confirm that you downloaded the correct version of R for your Mac
+> from CRAN, as per:
+>
+>   https://cran.r-project.org/bin/macosx/
+>
+> If you are on an older x86 Intel based Mac, you need to be sure that you
+> downloaded R-4.4.2-x86_64.pkg from CRAN, and pay attention to the
+> installation note on the above CRAN page:
+>
+> "macOS Ventura users: there is a known bug in Ventura preventing
+> installations from some locations without a prompt. If the installation
+> fails, move the downloaded file away from the Downloads folder (e.g., to
+> your home or Desktop)."
+>
+> If you are an Apple ARM (e.g. M1) based Mac, you need to be sure to
+> download R-4.4.2-arm64.pkg from CRAN.
+>
+> As Steven notes below, this all presumes that you have the relevant access
+> privileges to install software on the Mac and are not otherwise restricted
+> by, for example, any security policies implemented by the owner of the Mac,
+> if that is not you.
+>
+> I do not use RStudio, and you may need to contact Posit, the publishers of
+> that application via their support site, if the error is from their
+> application and not R itself.
+>
+>   https://support.posit.co/
+>
+> Regards,
+>
+> Marc Schwartz
+>
+>
+> > On Jan 15, 2025, at 1:46?PM, Steven Ellis <stevenalonzoellis at gmail.com>
+> wrote:
+> >
+> > Hi Eliana,
+> >
+> > What model Mac are you using? Are you the owner?
+> >
+> > Thanks,
+> > Steven
+> >
+> > On Wed, Jan 15, 2025, 1:45?PM Eliana Madison <elianamadison at isu.edu>
+> wrote:
+> >
+> >> Good morning, I am currently trying to download R and RStudio to my
+> MacOS
+> >> 13.3 as it is a requirement for a statistics class I am taking this
+> >> semester.
+> >>
+> >> I have checked and I have plenty of storage available however after the
+> >> downloading process is complete and I go to install the program this
+> error
+> >> pops up: The installation failed. The Installer encountered an error
+> that
+> >> caused the installation to fail. Contact the software manufacturer for
+> >> assistance.
+> >>
+> >> Please provide guidance on how to remedy this issue so I can complete
+> the
+> >> installation process and get started on my coursework.
+> >>
+> >> I look forward to hearing from you as soon as possible!
+> >>
+> >> Thank you,
+> >>
+> >> --
+> >>
+> >> Eliana Madison
+> >> ASISU Secretary | Social Work Student
+> >> Pronouns: She, Her, Hers
+> >>
+> >> elianamadison at isu.edu
+> >> Idaho State University[image: Idaho State University]
+> >>
+> >> Idaho State University (Pocatello) acknowledges that it is located
+> within
+> >> the boundaries of the original Fort Hall Reservation on the traditional
+> >> lands of the Shoshone and Bannock peoples.Idaho State Universit
+> >>
+> >>        [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide
+> >> https://www.R-project.org/posting-guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+> >>
+> >
+> > [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+
+-- 
+John Kane
+Kingston ON Canada
+
+	[[alternative HTML version deleted]]
+
+
+From |vo@we|ch @end|ng |rom gm@||@com  Sun Jan 19 00:41:18 2025
+From: |vo@we|ch @end|ng |rom gm@||@com (Ivo Welch)
+Date: Sat, 18 Jan 2025 15:41:18 -0800
+Subject: [R] Parser For Line Number Tracing
+Message-ID: <CACi4-Jmb=wXfAH-Xmi=0CZrpSDnzaP0scGBvtsFyeE6g5gmz8w@mail.gmail.com>
+
+I often find myself hunting where in my program an error has happened,
+(of course, in R, many error messages are mysterious in themselves,
+too, making it even harder.)  the way I do it is mostly with inserting
+`message()` statements.
+
+what I would really like to have is a parser that inserted 'curline
+<<- ##' into the R code, where '##' is the filename and line number.
+something like 'addtracker one.R two.R' and thereafter I can run two.R
+and, when the program dies, use `print curline` to find out where my
+error has roughly occurred.
+
+has someone already written such an 'instrumenter'?
+
+
+From |kw@|mmo @end|ng |rom gm@||@com  Sun Jan 19 00:46:08 2025
+From: |kw@|mmo @end|ng |rom gm@||@com (Iris Simmons)
+Date: Sat, 18 Jan 2025 18:46:08 -0500
+Subject: [R] Parser For Line Number Tracing
+In-Reply-To: <CACi4-Jmb=wXfAH-Xmi=0CZrpSDnzaP0scGBvtsFyeE6g5gmz8w@mail.gmail.com>
+References: <CACi4-Jmb=wXfAH-Xmi=0CZrpSDnzaP0scGBvtsFyeE6g5gmz8w@mail.gmail.com>
+Message-ID: <CADNULg-KLM9ZEA4qNpVaHyL1o9QEg8e0Uiz9SUCL7bQ6P3DsmQ@mail.gmail.com>
+
+Hi Ivo,
+
+
+I maintain 'package:this.path' that I believe does what you want. I
+regularly add this to my own code when I need to:
+
+warning(sprintf("remove this later at %s#%d",
+this.path::try.this.path(), this.path::LINENO()), call. = FALSE,
+immediate. = TRUE)
+
+Of course, modify as needed.
+
+
+Regards,
+    Iris
+
+On Sat, Jan 18, 2025 at 6:41?PM Ivo Welch <ivo.welch at gmail.com> wrote:
+>
+> I often find myself hunting where in my program an error has happened,
+> (of course, in R, many error messages are mysterious in themselves,
+> too, making it even harder.)  the way I do it is mostly with inserting
+> `message()` statements.
+>
+> what I would really like to have is a parser that inserted 'curline
+> <<- ##' into the R code, where '##' is the filename and line number.
+> something like 'addtracker one.R two.R' and thereafter I can run two.R
+> and, when the program dies, use `print curline` to find out where my
+> error has roughly occurred.
+>
+> has someone already written such an 'instrumenter'?
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From |vo@we|ch @end|ng |rom gm@||@com  Sun Jan 19 01:09:02 2025
+From: |vo@we|ch @end|ng |rom gm@||@com (Ivo Welch)
+Date: Sat, 18 Jan 2025 16:09:02 -0800
+Subject: [R] Parser For Line Number Tracing
+In-Reply-To: <CADNULg-KLM9ZEA4qNpVaHyL1o9QEg8e0Uiz9SUCL7bQ6P3DsmQ@mail.gmail.com>
+References: <CACi4-Jmb=wXfAH-Xmi=0CZrpSDnzaP0scGBvtsFyeE6g5gmz8w@mail.gmail.com>
+ <CADNULg-KLM9ZEA4qNpVaHyL1o9QEg8e0Uiz9SUCL7bQ6P3DsmQ@mail.gmail.com>
+Message-ID: <CACi4-JkHDKrvcTFPjj8+54rU3hnmiVTWq+VXeYzmQ6mgYzg2Sw@mail.gmail.com>
+
+great.  wonderful.  will check it out, and hopefully widely recommend
+it (to my students, too).  Non-descriptive R error messages have had
+most of our school abandon R in favor of python.  :-(
+
+On Sat, Jan 18, 2025 at 3:46?PM Iris Simmons <ikwsimmo at gmail.com> wrote:
+>
+> Hi Ivo,
+>
+>
+> I maintain 'package:this.path' that I believe does what you want. I
+> regularly add this to my own code when I need to:
+>
+> warning(sprintf("remove this later at %s#%d",
+> this.path::try.this.path(), this.path::LINENO()), call. = FALSE,
+> immediate. = TRUE)
+>
+> Of course, modify as needed.
+>
+>
+> Regards,
+>     Iris
+>
+> On Sat, Jan 18, 2025 at 6:41?PM Ivo Welch <ivo.welch at gmail.com> wrote:
+> >
+> > I often find myself hunting where in my program an error has happened,
+> > (of course, in R, many error messages are mysterious in themselves,
+> > too, making it even harder.)  the way I do it is mostly with inserting
+> > `message()` statements.
+> >
+> > what I would really like to have is a parser that inserted 'curline
+> > <<- ##' into the R code, where '##' is the filename and line number.
+> > something like 'addtracker one.R two.R' and thereafter I can run two.R
+> > and, when the program dies, use `print curline` to find out where my
+> > error has roughly occurred.
+> >
+> > has someone already written such an 'instrumenter'?
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Sun Jan 19 01:27:31 2025
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Sat, 18 Jan 2025 16:27:31 -0800
+Subject: [R] Parser For Line Number Tracing
+In-Reply-To: <CACi4-Jmb=wXfAH-Xmi=0CZrpSDnzaP0scGBvtsFyeE6g5gmz8w@mail.gmail.com>
+References: <CACi4-Jmb=wXfAH-Xmi=0CZrpSDnzaP0scGBvtsFyeE6g5gmz8w@mail.gmail.com>
+Message-ID: <F6B323B9-0D62-429D-8D7D-4C30754D22C1@dcn.davis.ca.us>
+
+I recommend making sure your code is built with functions and using the debugger and breakpoints (e.g. [1]) to follow the flow of the code to lead you to where your problem is.
+
+If you are used to building thousand-line top-level scripts then you might not welcome this suggestion, but in that you already have problems you have not admitted to... such things (large top-level scripts) are monsters that will swallow you whole at the slightest change in R, packages, or data.
+
+[1] https://rstudio-education.github.io/hopr/debug.html
+
+On January 18, 2025 3:41:18 PM PST, Ivo Welch <ivo.welch at gmail.com> wrote:
+>I often find myself hunting where in my program an error has happened,
+>(of course, in R, many error messages are mysterious in themselves,
+>too, making it even harder.)  the way I do it is mostly with inserting
+>`message()` statements.
+>
+>what I would really like to have is a parser that inserted 'curline
+><<- ##' into the R code, where '##' is the filename and line number.
+>something like 'addtracker one.R two.R' and thereafter I can run two.R
+>and, when the program dies, use `print curline` to find out where my
+>error has roughly occurred.
+>
+>has someone already written such an 'instrumenter'?
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Sun Jan 19 02:19:23 2025
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Sat, 18 Jan 2025 20:19:23 -0500
+Subject: [R] Parser For Line Number Tracing
+In-Reply-To: <CACi4-Jmb=wXfAH-Xmi=0CZrpSDnzaP0scGBvtsFyeE6g5gmz8w@mail.gmail.com>
+References: <CACi4-Jmb=wXfAH-Xmi=0CZrpSDnzaP0scGBvtsFyeE6g5gmz8w@mail.gmail.com>
+Message-ID: <cbba11bf-03cb-44c0-a93a-8cc45d034a9c@gmail.com>
+
+On 2025-01-18 6:41 p.m., Ivo Welch wrote:
+> I often find myself hunting where in my program an error has happened,
+> (of course, in R, many error messages are mysterious in themselves,
+> too, making it even harder.)  the way I do it is mostly with inserting
+> `message()` statements.
+> 
+> what I would really like to have is a parser that inserted 'curline
+> <<- ##' into the R code, where '##' is the filename and line number.
+> something like 'addtracker one.R two.R' and thereafter I can run two.R
+> and, when the program dies, use `print curline` to find out where my
+> error has roughly occurred.
+> 
+> has someone already written such an 'instrumenter'?
+
+The basic R parser already does that.
+
+For example, try putting these lines in test.R:
+
+x <- 1
+y <- 2
+stop("something bad!")
+z <- 4
+
+Then run source("test.R"), and it will die with the uninformative message
+
+Error in eval(ei, envir) : something bad!
+
+But then traceback() will show you the line:
+
+ > traceback()
+5: stop("something bad!") at test.R#3
+4: eval(ei, envir)
+3: eval(ei, envir)
+2: withVisible(eval(ei, envir))
+1: source("~/temp/test.R")
+
+See the first line of the traceback?  It shows that the problem was on 
+line 3 of test.R.
+
+If that line was in a function that had been called from somewhere else, 
+both the function line triggering the error and the line that called the 
+function would have been shown in different parts of the traceback.
+
+This all depends on calling source() with parameter keep.source = TRUE. 
+The default value of that parameter is getOption("keep.source"), so if 
+you're not seeing the line numbers, you may have set that option to FALSE.
+
+Duncan Murdoch
+
+
+From |vo@we|ch @end|ng |rom gm@||@com  Sun Jan 19 02:27:27 2025
+From: |vo@we|ch @end|ng |rom gm@||@com (Ivo Welch)
+Date: Sat, 18 Jan 2025 17:27:27 -0800
+Subject: [R] Parser For Line Number Tracing
+In-Reply-To: <cbba11bf-03cb-44c0-a93a-8cc45d034a9c@gmail.com>
+References: <CACi4-Jmb=wXfAH-Xmi=0CZrpSDnzaP0scGBvtsFyeE6g5gmz8w@mail.gmail.com>
+ <cbba11bf-03cb-44c0-a93a-8cc45d034a9c@gmail.com>
+Message-ID: <CACi4-JmVAkAKZeRgC69Sje21Cfv3zC1XFOKsE2m1oJvFMtmaZw@mail.gmail.com>
+
+I am afraid my errors are worse!  (so are my postings.  I should have
+given an example.)
+
+```
+x <- 1
+y <- 2
+nofunction("something stupid I am doing!")
+z <- 4
+```
+
+and
+
+```
+> source("where-is-my-water.R")
+Error in nofunction("something stupid I am doing!") :
+  could not find function "nofunction"
+```
+
+and no traceback is available.
+
+
