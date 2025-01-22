@@ -8372,3 +8372,408 @@ PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Jan 20 15:37:46 2025
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 20 Jan 2025 09:37:46 -0500
+Subject: [R] [External] Re:  Parser For Line Number Tracing
+In-Reply-To: <2a31ab69-e896-4e2f-b532-f95ca1f9f4c4@gmail.com>
+References: <CACi4-Jmb=wXfAH-Xmi=0CZrpSDnzaP0scGBvtsFyeE6g5gmz8w@mail.gmail.com>
+ <cbba11bf-03cb-44c0-a93a-8cc45d034a9c@gmail.com>
+ <CACi4-JmVAkAKZeRgC69Sje21Cfv3zC1XFOKsE2m1oJvFMtmaZw@mail.gmail.com>
+ <1e727c13-da31-48ba-97cf-e1f143bb4451@gmail.com>
+ <CACi4-JmGyiBt-9MJodbW9BkW4MkE9kXNKLcED40rCtAfd-xPxA@mail.gmail.com>
+ <43a7a670-5e81-2e88-5d8-64de59607da7@uiowa.edu>
+ <2a31ab69-e896-4e2f-b532-f95ca1f9f4c4@gmail.com>
+Message-ID: <94ebcc3d-2b86-4fb6-b94a-3413418cc016@gmail.com>
+
+Sorry, I'm not seeing the first problem now: 
+options(show.error.locations = TRUE) works fine.  Not sure what I did 
+wrong before.
+
+I'm still seeing `traceback()` failing to report the attempt to call 
+nofunction().  I suppose this is because a context is never set up for 
+the failed call.  Perhaps findFun3 could set up a fake context so that 
+traceback() adds one more entry?
+
+Duncan Murdoch
+
+
+On 2025-01-19 3:39 p.m., Duncan Murdoch wrote:
+> Thanks for pointing out the options.  Using
+> 
+>      options(show.error.locations = TRUE)
+> 
+> works on Ivo's example, but it doesn't show a location if the error
+> happens in a function that doesn't have srcrefs, because the known
+> location isn't on the top of the stack.
+> 
+> Perhaps TRUE (and maybe "top"?) should look back through the stack until
+> it finds a known location, and report that, or another option (e.g.
+> "highest"?) could be added to do that.
+> 
+> And still I think traceback() should show the top call in Ivo's example.
+> 
+> Duncan
+> 
+> 
+> On 2025-01-19 11:46 a.m., luke-tierney at uiowa.edu wrote:
+>> On Sun, 19 Jan 2025, Ivo Welch wrote:
+>>
+>>> Hi Duncan ? Wonderful.  Thank you.  Bug or no bug, I think it would be
+>>> a huge improvement for user-friendliness if R printed the last line by
+>>> default *every time* a script dies.  Most computer languages do so.
+>>>
+>>> Should I file it as a request for improvement to the R code
+>>> development team?  Maybe R can be improved at a very low cost to the
+>>> development team and a very high benefit to newbies.
+>>
+>> No. There are already many ways to influence the way the default error
+>> handler prints information about errors, mstly via options(). In
+>> particular you may want to look at entries in ?options for
+>>
+>> show.error.locations
+>> showErrorCalls
+>> showWarningCalls
+>>
+>> and adjust your options settings accordingly.
+>>
+>> Best,
+>>
+>> luke
+>>
+>>>
+>>> Regards,
+>>>
+>>> /ivo
+>>>
+>>> On Sun, Jan 19, 2025 at 2:39?AM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>>>
+>>>> On 2025-01-18 8:27 p.m., Ivo Welch wrote:
+>>>>> I am afraid my errors are worse!  (so are my postings.  I should have
+>>>>> given an example.)
+>>>>>
+>>>>> ```
+>>>>> x <- 1
+>>>>> y <- 2
+>>>>> nofunction("something stupid I am doing!")
+>>>>> z <- 4
+>>>>> ```
+>>>>>
+>>>>> and
+>>>>>
+>>>>> ```
+>>>>>> source("where-is-my-water.R")
+>>>>> Error in nofunction("something stupid I am doing!") :
+>>>>>      could not find function "nofunction"
+>>>>> ```
+>>>>>
+>>>>> and no traceback is available.
+>>>>
+>>>> Okay, I see.  In that case traceback() doesn't report the line, but it
+>>>> still is known internally.  You can see it using the following function:
+>>>>
+>>>> showKnownLocations <- function() {
+>>>>      calls <- sys.calls()
+>>>>      srcrefs <- sapply(calls, function(v) if (!is.null(srcref <- attr(v,
+>>>>
+>>>> "srcref"))) {
+>>>>        srcfile <- attr(srcref, "srcfile")
+>>>>        paste0(basename(srcfile$filename), "#", srcref[1L])
+>>>>      } else ".")
+>>>>      cat("Current call stack locations:\n")
+>>>>      cat(srcrefs, sep = " ")
+>>>>      cat("\n")
+>>>> }
+>>>>
+>>>> I haven't done much testing on this, but I think it can be called
+>>>> explicitly from any location if you want to know how you got there, or
+>>>> you can set it as the error handler using
+>>>>
+>>>>      options(error = showKnownLocations)
+>>>>
+>>>> For example, try this script:
+>>>>
+>>>>      options(error = showKnownLocations)
+>>>>      f <- function() showKnownLocations()
+>>>>      x <- 1
+>>>>      f()
+>>>>      y <- 2
+>>>>      nofunction("something stupid I am doing!")
+>>>>      z <- 4
+>>>>
+>>>> I see this output from source("test.R"):
+>>>>
+>>>>     > source("test.R")
+>>>>      Current call stack locations:
+>>>>      . . . . test.R#4 test.R#2
+>>>>      Error in nofunction("something stupid I am doing!") :
+>>>>        could not find function "nofunction"
+>>>>      Current call stack locations:
+>>>>      . . . . test.R#6
+>>>>
+>>>> The first report is from the explicit call in f() on line 2 that was
+>>>> invoked on line 4, and the second report happens during error handling.
+>>>>
+>>>> I supppose the fact that traceback() isn't showing you the line 6
+>>>> location could be considered a bug.
+>>>>
+>>>> Duncan Murdoch
+>>>>
+>>>>
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+>
+
+
+From ressw m@iii@g oii meer@@et  Mon Jan 20 02:51:47 2025
+From: ressw m@iii@g oii meer@@et (ressw m@iii@g oii meer@@et)
+Date: Sun, 19 Jan 2025 20:51:47 -0500
+Subject: [R] [tcltk] binding two functions to one event
+Message-ID: <20250119205147.1204363ytvvshbgg@webmail.meer.net>
+
+
+
+Here is some tcl/tk code I am trying to emulate in R.
+Paste the following into wish
+
+### begin tcl code
+toplevel .wtop
+proc evresp1 { data } { puts "evresp1 $data" }
+proc evresp2 { data } { puts "evresp2 $data" }
+bind all <<EVENT>> "evresp1 %d"
+bind all <<EVENT>> "+evresp2 %d"
+### end tcl code
+
+Now paste
+
+event generate .wtop <<EVENT>> -data abcdef
+
+I see the output
+evresp1 abcdef
+evresp2 abcdef
+
+Both evresp1 and evresp2 got called in response to the event and both
+got the data.
+
+Then paste the following into an R session
+
+### begin R code
+library(tcltk)
+catn = function(...) { cat(...,'\n') }
+wtop = tktoplevel()
+evresp1 = function(d) { catn('evresp1',d) }
+evresp2 = function(d) { catn('evresp2',d) }
+tkbind('all','<<EVENT>>',evresp1)
+.Tcl(paste('proc evresp2 { d } { ', .Tcl.callback(evresp2),'}'))
+.Tcl('bind all <<EVENT>> "+evresp2 %d"')
+### end R code
+
+The .Tcl() calls are necessary (as far as I can tell) to get the
+effect of 'bind all <<EVENT>> "+evresp2 %d"' ,i.e. appending evresp2
+
+Now paste
+tkevent.generate(wtop,'<<EVENT>>',data='abcdef')
+
+I see output
+evresp1 abcdef
+evresp2 %d
+
+Both evresp1 and evresp2 got called but only evresp1 got the data right.
+
+How can I fix this?
+
+> sessionInfo
+R version 4.3.0 (2023-04-21)
+Platform: x86_64-pc-linux-gnu (64-bit)
+Running under: Ubuntu 20.04.6 LTS
+attached base packages:
+[1] tcltk     stats     graphics  grDevices utils     datasets  methods
+[8] base
+loaded via a namespace (and not attached):
+[1] compiler_4.3.0
+> tclVersion()
+[1] "8.6.10"
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Jan 20 23:56:20 2025
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 20 Jan 2025 17:56:20 -0500
+Subject: [R] [External] Re:  Parser For Line Number Tracing
+In-Reply-To: <94ebcc3d-2b86-4fb6-b94a-3413418cc016@gmail.com>
+References: <CACi4-Jmb=wXfAH-Xmi=0CZrpSDnzaP0scGBvtsFyeE6g5gmz8w@mail.gmail.com>
+ <cbba11bf-03cb-44c0-a93a-8cc45d034a9c@gmail.com>
+ <CACi4-JmVAkAKZeRgC69Sje21Cfv3zC1XFOKsE2m1oJvFMtmaZw@mail.gmail.com>
+ <1e727c13-da31-48ba-97cf-e1f143bb4451@gmail.com>
+ <CACi4-JmGyiBt-9MJodbW9BkW4MkE9kXNKLcED40rCtAfd-xPxA@mail.gmail.com>
+ <43a7a670-5e81-2e88-5d8-64de59607da7@uiowa.edu>
+ <2a31ab69-e896-4e2f-b532-f95ca1f9f4c4@gmail.com>
+ <94ebcc3d-2b86-4fb6-b94a-3413418cc016@gmail.com>
+Message-ID: <b896d7ab-0a30-451b-bb07-5d4d26d19351@gmail.com>
+
+I've posted a patch to bugs.r-project.org that fixes the traceback() 
+issue.  It's not specific to findFun3; you get the same problem with 
+errors from expressions like
+
+  1 + "a"
+
+In my testing, I occasionally saw cases where show.error.locations = 
+TRUE didn't work.  I'll try to track down a reproducible case, and 
+perhaps a patch to fix it.
+
+Duncan Murdoch
+
+
+
+On 2025-01-20 9:37 a.m., Duncan Murdoch wrote:
+> Sorry, I'm not seeing the first problem now:
+> options(show.error.locations = TRUE) works fine.  Not sure what I did
+> wrong before.
+> 
+> I'm still seeing `traceback()` failing to report the attempt to call
+> nofunction().  I suppose this is because a context is never set up for
+> the failed call.  Perhaps findFun3 could set up a fake context so that
+> traceback() adds one more entry?
+> 
+> Duncan Murdoch
+> 
+> 
+> On 2025-01-19 3:39 p.m., Duncan Murdoch wrote:
+>> Thanks for pointing out the options.  Using
+>>
+>>       options(show.error.locations = TRUE)
+>>
+>> works on Ivo's example, but it doesn't show a location if the error
+>> happens in a function that doesn't have srcrefs, because the known
+>> location isn't on the top of the stack.
+>>
+>> Perhaps TRUE (and maybe "top"?) should look back through the stack until
+>> it finds a known location, and report that, or another option (e.g.
+>> "highest"?) could be added to do that.
+>>
+>> And still I think traceback() should show the top call in Ivo's example.
+>>
+>> Duncan
+>>
+>>
+>> On 2025-01-19 11:46 a.m., luke-tierney at uiowa.edu wrote:
+>>> On Sun, 19 Jan 2025, Ivo Welch wrote:
+>>>
+>>>> Hi Duncan ? Wonderful.  Thank you.  Bug or no bug, I think it would be
+>>>> a huge improvement for user-friendliness if R printed the last line by
+>>>> default *every time* a script dies.  Most computer languages do so.
+>>>>
+>>>> Should I file it as a request for improvement to the R code
+>>>> development team?  Maybe R can be improved at a very low cost to the
+>>>> development team and a very high benefit to newbies.
+>>>
+>>> No. There are already many ways to influence the way the default error
+>>> handler prints information about errors, mstly via options(). In
+>>> particular you may want to look at entries in ?options for
+>>>
+>>> show.error.locations
+>>> showErrorCalls
+>>> showWarningCalls
+>>>
+>>> and adjust your options settings accordingly.
+>>>
+>>> Best,
+>>>
+>>> luke
+>>>
+>>>>
+>>>> Regards,
+>>>>
+>>>> /ivo
+>>>>
+>>>> On Sun, Jan 19, 2025 at 2:39?AM Duncan Murdoch <murdoch.duncan at gmail.com> wrote:
+>>>>>
+>>>>> On 2025-01-18 8:27 p.m., Ivo Welch wrote:
+>>>>>> I am afraid my errors are worse!  (so are my postings.  I should have
+>>>>>> given an example.)
+>>>>>>
+>>>>>> ```
+>>>>>> x <- 1
+>>>>>> y <- 2
+>>>>>> nofunction("something stupid I am doing!")
+>>>>>> z <- 4
+>>>>>> ```
+>>>>>>
+>>>>>> and
+>>>>>>
+>>>>>> ```
+>>>>>>> source("where-is-my-water.R")
+>>>>>> Error in nofunction("something stupid I am doing!") :
+>>>>>>       could not find function "nofunction"
+>>>>>> ```
+>>>>>>
+>>>>>> and no traceback is available.
+>>>>>
+>>>>> Okay, I see.  In that case traceback() doesn't report the line, but it
+>>>>> still is known internally.  You can see it using the following function:
+>>>>>
+>>>>> showKnownLocations <- function() {
+>>>>>       calls <- sys.calls()
+>>>>>       srcrefs <- sapply(calls, function(v) if (!is.null(srcref <- attr(v,
+>>>>>
+>>>>> "srcref"))) {
+>>>>>         srcfile <- attr(srcref, "srcfile")
+>>>>>         paste0(basename(srcfile$filename), "#", srcref[1L])
+>>>>>       } else ".")
+>>>>>       cat("Current call stack locations:\n")
+>>>>>       cat(srcrefs, sep = " ")
+>>>>>       cat("\n")
+>>>>> }
+>>>>>
+>>>>> I haven't done much testing on this, but I think it can be called
+>>>>> explicitly from any location if you want to know how you got there, or
+>>>>> you can set it as the error handler using
+>>>>>
+>>>>>       options(error = showKnownLocations)
+>>>>>
+>>>>> For example, try this script:
+>>>>>
+>>>>>       options(error = showKnownLocations)
+>>>>>       f <- function() showKnownLocations()
+>>>>>       x <- 1
+>>>>>       f()
+>>>>>       y <- 2
+>>>>>       nofunction("something stupid I am doing!")
+>>>>>       z <- 4
+>>>>>
+>>>>> I see this output from source("test.R"):
+>>>>>
+>>>>>      > source("test.R")
+>>>>>       Current call stack locations:
+>>>>>       . . . . test.R#4 test.R#2
+>>>>>       Error in nofunction("something stupid I am doing!") :
+>>>>>         could not find function "nofunction"
+>>>>>       Current call stack locations:
+>>>>>       . . . . test.R#6
+>>>>>
+>>>>> The first report is from the explicit call in f() on line 2 that was
+>>>>> invoked on line 4, and the second report happens during error handling.
+>>>>>
+>>>>> I supppose the fact that traceback() isn't showing you the line 6
+>>>>> location could be considered a bug.
+>>>>>
+>>>>> Duncan Murdoch
+>>>>>
+>>>>>
+>>>>
+>>>> ______________________________________________
+>>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>> PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+>>>> and provide commented, minimal, self-contained, reproducible code.
+>>>>
+>>>
+>>
+>
+
+
