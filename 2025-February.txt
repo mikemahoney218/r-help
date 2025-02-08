@@ -1122,3 +1122,334 @@ letter, the editor would display it as a 4 line file.
 Duncan Murdoch
 
 
+From k|mmo@e|o @end|ng |rom ue|@||  Thu Feb  6 08:34:09 2025
+From: k|mmo@e|o @end|ng |rom ue|@|| (Kimmo Elo)
+Date: Thu, 6 Feb 2025 07:34:09 +0000
+Subject: [R] Looking for simple line-splitting code
+In-Reply-To: <fdff731e-d1f5-4ef2-bf3e-8a450f143e59@gmail.com>
+References: <cc02f160-3147-4bfc-89d0-21c5633cbbc5@gmail.com>
+ <07740212-AF66-4219-B235-F985BE744CA8@gmail.com>
+ <fdff731e-d1f5-4ef2-bf3e-8a450f143e59@gmail.com>
+Message-ID: <d67f3dd9d987c4f741c0d8b7afc0f0b2af89d48b.camel@uef.fi>
+
+Hi,
+
+using the library "stringi" allows this:
+
+> unlist(stringr::str_split(x, "\n"))
+[1] "abc" "def" ""    "ghi"
+
+Best,
+Kimmo
+
+ke, 2025-02-05 kello 09:35 -0500, Duncan Murdoch kirjoitti:
+> Thanks to Rui, Peter and Tanvir!  Peter's seems to be the fastest of
+> the
+> 3 suggestions so far on the little test case, but on the real data
+> (where x contains several thousand lines), Rui's seems best.
+>
+> Duncan
+>
+> On 2025-02-05 9:13 a.m., peter dalgaard wrote:
+> > This also seems to work:
+> >
+> > > strsplit(paste(x,collapse="\n"),"\n")[[1]]
+> > [1] "abc" "def" ""    "ghi"
+> >
+> >
+> > > On 5 Feb 2025, at 14:44 , Duncan Murdoch
+> > > <murdoch.duncan at gmail.com> wrote:
+> > >
+> > > If I have this object:
+> > >
+> > >   x <- c("abc\ndef", "", "ghi")
+> > >
+> > > and I write it to a file using `writeLines(x, "test.txt")`, my
+> > > text editor sees a 5 line file:
+> > >
+> > >   1: abc
+> > >   2: def
+> > >   3:
+> > >   4: ghi
+> > >   5:
+> > >
+> > > which is what I'd expect:  the last line in the editor is empty.
+> > > If I use `readLines("test.txt")` on that file, I get the vector
+> > >
+> > >   c("abc", "def", "", "ghi")
+> > >
+> > > and all of that is fine.
+> > >
+> > > What I'm looking for is simple code that modifies x to the
+> > > `readLines()` output, without actually writing and reading it.
+> > >
+> > > My first attempt doesn't work:
+> > >
+> > >   unlist(strsplit(x, "\n"))
+> > >
+> > > because it leaves out the blank line 3.  I can fix that with this
+> > > ugly code:
+> > >
+> > >   lines <- strsplit(x, "\n")
+> > >   lines[sapply(lines, length) == 0] <- list("")
+> > >   lines <- unlist(lines)
+> > >
+> > > Surely there's a simpler way to do this?  I'd like to use just
+> > > base functions, no other packages.
+> > >
+> > > Duncan Murdoch
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide
+> > > https://www.r-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible
+> > > code.
+> >
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.r-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From m|m@|tr@ @end|ng |rom gmx@com  Thu Feb  6 04:32:17 2025
+From: m|m@|tr@ @end|ng |rom gmx@com (Ranjan Maitra)
+Date: Wed, 5 Feb 2025 21:32:17 -0600
+Subject: [R] pairs plot
+Message-ID: <Z6QtQcmXeTvs8Ck7@iastate.edu>
+
+According to the help for pairs, the diag.panel function is supposed to
+take a panel.hist as in:
+
+ pairs(USJudgeRatings[1:5], panel = panel.smooth,
+           cex = 1.5, pch = 24, bg = "light blue", horOdd=TRUE,
+           diag.panel = panel.hist, cex.labels = 2, font.labels = 2)
+
+Error: object 'panel.hist' not found
+
+I know that this used to work in the past so I wonder if this was changed and the documentation was not corrected.
+Anyway, what is the current way of doing this?
+
+Many thanks and best wishes,
+Ranjan
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Thu Feb  6 17:15:45 2025
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 6 Feb 2025 08:15:45 -0800
+Subject: [R] pairs plot
+In-Reply-To: <Z6QtQcmXeTvs8Ck7@iastate.edu>
+References: <Z6QtQcmXeTvs8Ck7@iastate.edu>
+Message-ID: <CAGxFJbR+NNtoTtRq7QZ=fCjPc5UR20qeRH1H53AWXRKGnSXovg@mail.gmail.com>
+
+Possibly because:
+panel.hist is not an existing R function -- you have to first create
+it so pairs() can use it. ?pairs shows you how in the Help examples,
+i.e.
+
+panel.hist <- function(x, ...)
+{
+    usr <- par("usr")
+    par(usr = c(usr[1:2], 0, 1.5) )
+    h <- hist(x, plot = FALSE)
+    breaks <- h$breaks; nB <- length(breaks)
+    y <- h$counts; y <- y/max(y)
+    rect(breaks[-nB], 0, breaks[-1], y, col = "cyan", ...)
+}
+
+Cheers,
+Bert
+
+
+On Thu, Feb 6, 2025 at 8:01?AM Ranjan Maitra via R-help
+<r-help at r-project.org> wrote:
+>
+> According to the help for pairs, the diag.panel function is supposed to
+> take a panel.hist as in:
+>
+>  pairs(USJudgeRatings[1:5], panel = panel.smooth,
+>            cex = 1.5, pch = 24, bg = "light blue", horOdd=TRUE,
+>            diag.panel = panel.hist, cex.labels = 2, font.labels = 2)
+>
+> Error: object 'panel.hist' not found
+>
+> I know that this used to work in the past so I wonder if this was changed and the documentation was not corrected.
+> Anyway, what is the current way of doing this?
+>
+> Many thanks and best wishes,
+> Ranjan
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de  Thu Feb  6 17:27:27 2025
+From: ||gge@ @end|ng |rom @t@t|@t|k@tu-dortmund@de (Uwe Ligges)
+Date: Thu, 6 Feb 2025 17:27:27 +0100
+Subject: [R] pairs plot
+In-Reply-To: <Z6QtQcmXeTvs8Ck7@iastate.edu>
+References: <Z6QtQcmXeTvs8Ck7@iastate.edu>
+Message-ID: <16888c06-1183-4277-8091-8000ba5a992b@statistik.tu-dortmund.de>
+
+On 06.02.2025 04:32, Ranjan Maitra via R-help wrote:
+> According to the help for pairs, the diag.panel function is supposed to
+> take a panel.hist as in:
+> 
+>   pairs(USJudgeRatings[1:5], panel = panel.smooth,
+>             cex = 1.5, pch = 24, bg = "light blue", horOdd=TRUE,
+>             diag.panel = panel.hist, cex.labels = 2, font.labels = 2)
+> 
+> Error: object 'panel.hist' not found
+
+Function panel.hist is only defined in the example section of pairs.
+
+Best,
+Uwe Ligges
+
+
+> I know that this used to work in the past so I wonder if this was changed and the documentation was not corrected.
+> Anyway, what is the current way of doing this?
+> 
+> Many thanks and best wishes,
+> Ranjan
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @rii@mstei@ m@iii@g oii gm@ii@com  Thu Feb  6 18:36:23 2025
+From: @rii@mstei@ m@iii@g oii gm@ii@com (@rii@mstei@ m@iii@g oii gm@ii@com)
+Date: Thu, 6 Feb 2025 09:36:23 -0800
+Subject: [R] install.packages and package dependencies
+Message-ID: <CAEO2kuJfzGdeQOFKKPcyJbzct_5oOy178Ss1tsnbaYboA2xyNA@mail.gmail.com>
+
+It appears that install.packages does not automatically install package
+dependencies when the package is installed via a URL. As an example, here
+is what I get when I attempt to install the latest ggplot2 tarball via its
+URL on CRAN:
+
+> install.packages("
+https://cran.r-project.org/src/contrib/ggplot2_3.5.1.tar.gz")
+inferring 'repos = NULL' from 'pkgs'
+trying URL 'https://cran.r-project.org/src/contrib/ggplot2_3.5.1.tar.gz'
+Content type 'application/x-gzip' length 3604371 bytes (3.4 MB)
+==================================================
+downloaded 3.4 MB
+
+ERROR: dependencies ?cli?, ?glue?, ?gtable?, ?isoband?, ?lifecycle?,
+?rlang?, ?scales?, ?tibble?, ?vctrs?, ?withr? are not available for package
+?ggplot2?
+* removing
+?/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/ggplot2?
+Warning in install.packages :
+  installation of package
+?/var/folders/m7/ztk511fj6vl4m6bw7vh47nk40000gn/T//RtmpmmFBOH/downloaded_packages/ggplot2_3.5.1.tar.gz?
+had non-zero exit status
+>
+
+Is there a parameter I can give to install.packages so that it will
+automatically install all the packages the package (in this example
+ggplot2) needs? I've read the documentation of install.packages several
+times, and am confused by the interplay of the various parameters. When I
+type getOption('repos') I get:
+
+                       CRAN
+"https://cran.rstudio.com/"
+attr(,"RStudio")
+[1] TRUE
+
+Without this it looks like installing from a URL is a 2-step process:
+
+install.packages(c(<packages the package needs>))
+install.packages("<url of package tarball>")
+
+I am aware that there are some contributed packages (such as devtools and
+remotes) that do this for you in a single line. But I am curious whether
+this is possible via install.packages alone.
+
+	[[alternative HTML version deleted]]
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Thu Feb  6 21:37:50 2025
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Thu, 6 Feb 2025 15:37:50 -0500
+Subject: [R] install.packages and package dependencies
+In-Reply-To: <CAEO2kuJfzGdeQOFKKPcyJbzct_5oOy178Ss1tsnbaYboA2xyNA@mail.gmail.com>
+References: <CAEO2kuJfzGdeQOFKKPcyJbzct_5oOy178Ss1tsnbaYboA2xyNA@mail.gmail.com>
+Message-ID: <56e8caed-82de-4142-9f24-62255a796eab@gmail.com>
+
+I don't think install.packages() can do what you want.  If you are 
+specifying a URL, then install.packages() assumes it has no way to know 
+where the other dependencies are supposed to come from.
+
+The typical way I install an unusual version of a package is to install 
+the CRAN version first (install.packages("ggplot2") will do that, and 
+will get all the deps), then reinstall the special version, and hope 
+I've got all the right dependencies.
+
+Duncan Murdoch
+
+On 2025-02-06 12:36 p.m., arilamstein at gmail.com wrote:
+> It appears that install.packages does not automatically install package
+> dependencies when the package is installed via a URL. As an example, here
+> is what I get when I attempt to install the latest ggplot2 tarball via its
+> URL on CRAN:
+> 
+>> install.packages("
+> https://cran.r-project.org/src/contrib/ggplot2_3.5.1.tar.gz")
+> inferring 'repos = NULL' from 'pkgs'
+> trying URL 'https://cran.r-project.org/src/contrib/ggplot2_3.5.1.tar.gz'
+> Content type 'application/x-gzip' length 3604371 bytes (3.4 MB)
+> ==================================================
+> downloaded 3.4 MB
+> 
+> ERROR: dependencies ?cli?, ?glue?, ?gtable?, ?isoband?, ?lifecycle?,
+> ?rlang?, ?scales?, ?tibble?, ?vctrs?, ?withr? are not available for package
+> ?ggplot2?
+> * removing
+> ?/Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/library/ggplot2?
+> Warning in install.packages :
+>    installation of package
+> ?/var/folders/m7/ztk511fj6vl4m6bw7vh47nk40000gn/T//RtmpmmFBOH/downloaded_packages/ggplot2_3.5.1.tar.gz?
+> had non-zero exit status
+>>
+> 
+> Is there a parameter I can give to install.packages so that it will
+> automatically install all the packages the package (in this example
+> ggplot2) needs? I've read the documentation of install.packages several
+> times, and am confused by the interplay of the various parameters. When I
+> type getOption('repos') I get:
+> 
+>                         CRAN
+> "https://cran.rstudio.com/"
+> attr(,"RStudio")
+> [1] TRUE
+> 
+> Without this it looks like installing from a URL is a 2-step process:
+> 
+> install.packages(c(<packages the package needs>))
+> install.packages("<url of package tarball>")
+> 
+> I am aware that there are some contributed packages (such as devtools and
+> remotes) that do this for you in a single line. But I am curious whether
+> this is possible via install.packages alone.
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
