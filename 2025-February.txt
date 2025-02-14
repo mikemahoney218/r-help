@@ -1904,3 +1904,106 @@ On February 11, 2025 4:51:48 AM PST, H B via R-help <r-help at r-project.org> wr
 Sent from my phone. Please excuse my brevity.
 
 
+From berw|n@tur|@ch @end|ng |rom gm@||@com  Wed Feb 12 03:29:39 2025
+From: berw|n@tur|@ch @end|ng |rom gm@||@com (Berwin A Turlach)
+Date: Wed, 12 Feb 2025 10:29:39 +0800
+Subject: [R] install.packages and package dependencies
+In-Reply-To: <CAEO2kuJfzGdeQOFKKPcyJbzct_5oOy178Ss1tsnbaYboA2xyNA@mail.gmail.com>
+References: <CAEO2kuJfzGdeQOFKKPcyJbzct_5oOy178Ss1tsnbaYboA2xyNA@mail.gmail.com>
+Message-ID: <20250212102939.6658d5aa@dep59159.uniwa.uwa.edu.au>
+
+On Thu, 6 Feb 2025 09:36:23 -0800
+arilamstein at gmail.com wrote:
+
+> It appears that install.packages does not automatically install
+> package dependencies when the package is installed via a URL. [...]
+> When I type getOption('repos') I get:
+> 
+>                        CRAN
+> "https://cran.rstudio.com/"
+> attr(,"RStudio")
+> [1] TRUE
+
+Do you set this value somewhere (via an environment variable or start
+up file)?  Or is it this value because you use RStudio as IDE?
+
+If you use RStudio, please be aware that RStudio has its own version of
+install.packages():
+
+RStudio> install.packages
+function (...) 
+.rs.callAs(name, hook, original, ...)
+<environment: 0x12a530f00>
+
+So if you are using RStudio, you will have to talk with Posit about
+changing the behaviour of install.packages().
+
+If you want the behaviour of utils::install.packages() to change, I am
+sure that R-Core will consider any diff that implements the
+new/improved behaviour. :-)
+
+Cheers,
+
+	Berwin
+
+
+From |kry|ov @end|ng |rom d|@root@org  Wed Feb 12 14:09:35 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Wed, 12 Feb 2025 16:09:35 +0300
+Subject: [R] 
+ Unexpected result after auto-attaching of the Matrix package
+In-Reply-To: <7560a90d-2662-4673-97ec-6cca47137044@gmx.net>
+References: <7560a90d-2662-4673-97ec-6cca47137044@gmx.net>
+Message-ID: <20250212160935.6ddacce1@arachnoid>
+
+? Tue, 11 Feb 2025 13:51:48 +0100
+H B via R-help <r-help at r-project.org> ?????:
+
+>  > class(d)  
+> [1] "dgCMatrix"
+> attr(,"package")
+> [1] "Matrix"
+>  > dim(d)  
+> Loading required package: Matrix
+> NULL
+
+Here's what happens here:
+
+1. .Primitive("dim") considers dispatching a dim() method:
+https://github.com/r-devel/r-svn/blob/fa73948a1977da05788499807469e69d5a21bd98/src/main/attrib.c#L1181
+2. DispatchOrEval() first considers S4 dispatch:
+https://github.com/r-devel/r-svn/blob/fa73948a1977da05788499807469e69d5a21bd98/src/main/eval.c#L4152
+3. But then R_has_methods(dim) finds out that no S4 methods are
+currently registered for dim() - Matrix not being loaded yet - and S4
+dispatch is abandoned:
+https://github.com/r-devel/r-svn/blob/fa73948a1977da05788499807469e69d5a21bd98/src/main/objects.c#L1578
+4. Instead, R tries usemethod(...) for S3 dispatch:
+https://github.com/r-devel/r-svn/blob/fa73948a1977da05788499807469e69d5a21bd98/src/main/eval.c#L4215
+5. UseMethod() wants to find out the S3 class vector for 'd' and calls
+R_data_class2():
+https://github.com/r-devel/r-svn/blob/fa73948a1977da05788499807469e69d5a21bd98/src/main/objects.c#L493
+6. R_data_class2() sees it's an S4 object and calls
+methods:::.extendsForS3(class(d)), which finally loads Matrix in order
+to find out classes extended by "dgCMatrix":
+https://github.com/r-devel/r-svn/blob/fa73948a1977da05788499807469e69d5a21bd98/src/main/attrib.c#L840
+https://github.com/r-devel/r-svn/blob/fa73948a1977da05788499807469e69d5a21bd98/src/main/attrib.c#L736-L741
+7. S3 dispatch fails for all those S4 classes or the "default" method,
+so dim(d) returns attr(d, "dim") (which is not set):
+https://github.com/r-devel/r-svn/blob/fa73948a1977da05788499807469e69d5a21bd98/src/main/attrib.c#L1184
+
+Then why does print(d) work without loading Matrix first?
+print.default() internally performs S4 dispatch after Matrix was loaded
+by R_data_class2() on step (6) above.
+
+So while Matrix is not being loaded by accident in your example, things
+are not set up to load the packages containing S4 classes
+automatically. It could become a feature request for DispatchOrEval()
+to ensure that the the package owning the S4 class is loaded before
+trying to dispatch an S4 method, although it could be challenging to
+implement while avoiding additional slowdowns.
+
+-- 
+Best regards,
+Ivan
+
+
