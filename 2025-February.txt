@@ -2837,3 +2837,216 @@ On Thu, 13 Feb 2025, Achim Zeileis via R-help wrote:
 >
 
 
+From j@ork|n @end|ng |rom @om@um@ry|@nd@edu  Tue Feb 18 18:00:01 2025
+From: j@ork|n @end|ng |rom @om@um@ry|@nd@edu (Sorkin, John)
+Date: Tue, 18 Feb 2025 17:00:01 +0000
+Subject: [R] How to specify a quadratic term in the contrast function
+Message-ID: <DM6PR03MB50493366E682A39396493C84E2FA2@DM6PR03MB5049.namprd03.prod.outlook.com>
+
+I am using the contrast package to produce contrasts from a glm model that contains a quadratic term:
+fit0 <- glm(y ~ x + I(x*x),data=mydata)
+I would like to know how to specify the quadratic term, I(x*x), in the contrast function.
+When I try to use 
+contrast(fit0,list(x=4))
+I receive an error message;
+#Error in generateData(fit = list(coefficients = c(`(Intercept)` = 0.5262645536229,  :not enough factors
+When I try to use 
+contrast(fit0,list(x=4,I(x*x)=16))
+I receive an error message:
+#Error: unexpected '=' in "contrast(fit0,list(x=4,I(x*x)="
+Other variants of the call to contrast including
+contrast(fit0,list(x=4,"x*x"=16)) and
+contrast(fit0,list(x=4,"I(x*x}"=16))
+produce similar error messsages.
+
+Please see my code below.
+
+if (!require(contrast)) install.packages("contrast")
+library(contrast)
+help(contrast)
+
+x <- 1:100
+y <- x + x^2 + rnorm(1)
+mydata <- data.frame(x=x,y=y)
+
+fit0 <- glm(y ~ x + I(x*x),data=mydata)
+summary(fit0)
+
+contrast(fit0,list(x=4))
+#Error in generateData(fit = list(coefficients = c(`(Intercept)` = #0.5262645536229,  :  not enough factors
+
+contrast(fit0,list(x=4,I(x*x)=16))
+#Error: unexpected '=' in "contrast(fit0,list(x=4,I(x*x)="
+
+Thank you,
+John
+
+
+From bbo|ker @end|ng |rom gm@||@com  Tue Feb 18 18:23:28 2025
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Tue, 18 Feb 2025 12:23:28 -0500
+Subject: [R] How to specify a quadratic term in the contrast function
+In-Reply-To: <DM6PR03MB50493366E682A39396493C84E2FA2@DM6PR03MB5049.namprd03.prod.outlook.com>
+References: <DM6PR03MB50493366E682A39396493C84E2FA2@DM6PR03MB5049.namprd03.prod.outlook.com>
+Message-ID: <fe732078-58a2-4db2-ac6d-cb0d273c38fb@gmail.com>
+
+   Looking at the 'contrasts' function, it seems to be imported from 
+'rms' and to take only 'rms'-type fits (which are different from base-R 
+[g]lm() fits) as input.
+
+   I'm not sure exactly what contrasts you're trying to generate, but I 
+would probably use the emmeans package for the task, since it handles a 
+wide range of model types.
+
+  Alternately, you could use one of the modeling functions from rms, 
+which should work with rms::contrast(), although I ran into trouble for 
+some reason:
+
+fit1 <- ols(y ~ x + I(x^2), data = mydata)
+
+ > Error in if (!length(fname) || !any(fname == zname)) { :
+   missing value where TRUE/FALSE needed
+
+I guess rms handles I()-protected terms differently? (The model with 
+just y~x didn't throw an error ...)
+
+On 2025-02-18 12:00 p.m., Sorkin, John wrote:
+> I am using the contrast package to produce contrasts from a glm model that contains a quadratic term:
+> fit0 <- glm(y ~ x + I(x*x),data=mydata)
+> I would like to know how to specify the quadratic term, I(x*x), in the contrast function.
+> When I try to use
+> contrast(fit0,list(x=4))
+> I receive an error message;
+> #Error in generateData(fit = list(coefficients = c(`(Intercept)` = 0.5262645536229,  :not enough factors
+> When I try to use
+> contrast(fit0,list(x=4,I(x*x)=16))
+> I receive an error message:
+> #Error: unexpected '=' in "contrast(fit0,list(x=4,I(x*x)="
+> Other variants of the call to contrast including
+> contrast(fit0,list(x=4,"x*x"=16)) and
+> contrast(fit0,list(x=4,"I(x*x}"=16))
+> produce similar error messsages.
+> 
+> Please see my code below.
+> 
+> if (!require(contrast)) install.packages("contrast")
+> library(contrast)
+> help(contrast)
+> 
+> x <- 1:100
+> y <- x + x^2 + rnorm(1)
+> mydata <- data.frame(x=x,y=y)
+> 
+> fit0 <- glm(y ~ x + I(x*x),data=mydata)
+> summary(fit0)
+> 
+> contrast(fit0,list(x=4))
+> #Error in generateData(fit = list(coefficients = c(`(Intercept)` = #0.5262645536229,  :  not enough factors
+> 
+> contrast(fit0,list(x=4,I(x*x)=16))
+> #Error: unexpected '=' in "contrast(fit0,list(x=4,I(x*x)="
+> 
+> Thank you,
+> John
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From kev|n@thorpe @end|ng |rom utoronto@c@  Tue Feb 18 18:29:01 2025
+From: kev|n@thorpe @end|ng |rom utoronto@c@ (Kevin Thorpe)
+Date: Tue, 18 Feb 2025 17:29:01 +0000
+Subject: [R] How to specify a quadratic term in the contrast function
+In-Reply-To: <fe732078-58a2-4db2-ac6d-cb0d273c38fb@gmail.com>
+References: <DM6PR03MB50493366E682A39396493C84E2FA2@DM6PR03MB5049.namprd03.prod.outlook.com>
+ <fe732078-58a2-4db2-ac6d-cb0d273c38fb@gmail.com>
+Message-ID: <E419FD58-D6BA-47EC-BCE8-426C1CF714CD@utoronto.ca>
+
+I don?t know if this will make a difference, but I believe it is generally preferred to use the poly() function (for lm()/glm()) or the pol() function (for rms functions) to include the quadratic (and higher order terms).
+
+Kevin
+
+
+> On Feb 18, 2025, at 12:23?PM, Ben Bolker <bbolker at gmail.com> wrote:
+> 
+>  Looking at the 'contrasts' function, it seems to be imported from 'rms' and to take only 'rms'-type fits (which are different from base-R [g]lm() fits) as input.
+> 
+>  I'm not sure exactly what contrasts you're trying to generate, but I would probably use the emmeans package for the task, since it handles a wide range of model types.
+> 
+> Alternately, you could use one of the modeling functions from rms, which should work with rms::contrast(), although I ran into trouble for some reason:
+> 
+> fit1 <- ols(y ~ x + I(x^2), data = mydata)
+> 
+> > Error in if (!length(fname) || !any(fname == zname)) { :
+>  missing value where TRUE/FALSE needed
+> 
+> I guess rms handles I()-protected terms differently? (The model with just y~x didn't throw an error ...)
+> 
+> On 2025-02-18 12:00 p.m., Sorkin, John wrote:
+>> I am using the contrast package to produce contrasts from a glm model that contains a quadratic term:
+>> fit0 <- glm(y ~ x + I(x*x),data=mydata)
+>> I would like to know how to specify the quadratic term, I(x*x), in the contrast function.
+>> When I try to use
+>> contrast(fit0,list(x=4))
+>> I receive an error message;
+>> #Error in generateData(fit = list(coefficients = c(`(Intercept)` = 0.5262645536229,  :not enough factors
+>> When I try to use
+>> contrast(fit0,list(x=4,I(x*x)=16))
+>> I receive an error message:
+>> #Error: unexpected '=' in "contrast(fit0,list(x=4,I(x*x)="
+>> Other variants of the call to contrast including
+>> contrast(fit0,list(x=4,"x*x"=16)) and
+>> contrast(fit0,list(x=4,"I(x*x}"=16))
+>> produce similar error messsages.
+>> Please see my code below.
+>> if (!require(contrast)) install.packages("contrast")
+>> library(contrast)
+>> help(contrast)
+>> x <- 1:100
+>> y <- x + x^2 + rnorm(1)
+>> mydata <- data.frame(x=x,y=y)
+>> fit0 <- glm(y ~ x + I(x*x),data=mydata)
+>> summary(fit0)
+>> contrast(fit0,list(x=4))
+>> #Error in generateData(fit = list(coefficients = c(`(Intercept)` = #0.5262645536229,  :  not enough factors
+>> contrast(fit0,list(x=4,I(x*x)=16))
+>> #Error: unexpected '=' in "contrast(fit0,list(x=4,I(x*x)="
+>> Thank you,
+>> John
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> -- 
+> Dr. Benjamin Bolker
+> Professor, Mathematics & Statistics and Biology, McMaster University
+> Director, School of Computational Science and Engineering
+> > E-mail is sent at my convenience; I don't expect replies outside of working hours.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+-- 
+Kevin E. Thorpe
+Associate Professor, Dalla Lana School of Public Health
+University of Toronto, Tel: 416-946-8083
+Scientific Lead, Clinical Trials Design and Analysis, Hospital for Sick Children
+
+
+
