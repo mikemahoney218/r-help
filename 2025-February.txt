@@ -3872,3 +3872,1211 @@ https://www.R-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From bbo|ker @end|ng |rom gm@||@com  Sat Feb 22 03:16:49 2025
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Fri, 21 Feb 2025 21:16:49 -0500
+Subject: [R] Compressing a sequence
+In-Reply-To: <CAHOiV1qpq-QSe89KL3RRWcygyoCx-BcyK-OOdu97gKX9=WZGXQ@mail.gmail.com>
+References: <A1CFC56B-281B-4785-8D18-E76ACA12ECDC@plessthan.com>
+ <CAHOiV1qpq-QSe89KL3RRWcygyoCx-BcyK-OOdu97gKX9=WZGXQ@mail.gmail.com>
+Message-ID: <1ffb8d8d-0edb-41f6-91b6-11182a97a253@gmail.com>
+
+   There are some answers from 2016 here:
+
+https://stackoverflow.com/questions/34636461/collapse-consecutive-runs-of-numbers-to-a-string-of-ranges
+
+On 2025-02-21 7:59 p.m., Steven Ellis wrote:
+> Hi Dennis,
+> 
+> A quick Claude request:
+> 
+> "using r I have a sequence like:        1, 3, 4, 5, 7, 8, 12, 13, 14, 15,
+> 20I would like to display it as:        1, 3-5, 7-8, 12-15, 20"
+> 
+> yielded:
+> 
+> condense_sequence <- function(nums) {
+>    if (length(nums) == 0) return("")
+>    if (length(nums) == 1) return(as.character(nums))
+> 
+>    # Sort the numbers just in case they're not in order
+>    nums <- sort(unique(nums))
+> 
+>    # Initialize variables
+>    ranges <- vector("character")
+>    start <- nums[1]
+>    prev <- nums[1]
+> 
+>    for (i in 2:length(nums)) {
+>      if (nums[i] != prev + 1) {
+>        # End of a sequence
+>        if (start == prev) {
+>          ranges <- c(ranges, as.character(start))
+>        } else {
+>          ranges <- c(ranges, paste(start, prev, sep="-"))
+>        }
+>        start <- nums[i]
+>      }
+>      prev <- nums[i]
+>    }
+> 
+>    # Handle the last number or range
+>    if (start == prev) {
+>      ranges <- c(ranges, as.character(start))
+>    } else {
+>      ranges <- c(ranges, paste(start, prev, sep="-"))
+>    }
+> 
+>    # Join all ranges with commas
+>    paste(ranges, collapse=", ")
+> }
+> 
+> # Your sequence
+> nums <- c(1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20)
+> 
+> # Apply the function
+> result <- condense_sequence(nums)
+> print(result)
+> # Output: "1, 3-5, 7-8, 12-15, 20"
+> 
+> Which appears to work well, though you may have other thoughts in mind /
+> edge cases this code does not cover.
+> 
+> Best,
+> Steven
+> 
+> On Fri, Feb 21, 2025 at 7:47?PM Dennis Fisher <fisher at plessthan.com> wrote:
+> 
+>> R 4.4.0
+>> OS X
+>>
+>> Colleagues
+>>
+>> I have a sequence like:
+>>          1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20
+>>
+>> I would like to display it as:
+>>          1, 3-5, 7-8, 12-15, 20
+>>
+>> Any simple ways to accomplish this?
+>>
+>> Dennis
+>>
+>>
+>> Dennis Fisher MD
+>> P < (The "P Less Than" Company)
+>> Phone / Fax: 1-866-PLessThan (1-866-753-7784)
+>> www.PLessThan.com
+>>
+>>
+>>          [[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> https://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From bbo|ker @end|ng |rom gm@||@com  Sat Feb 22 03:23:00 2025
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Fri, 21 Feb 2025 21:23:00 -0500
+Subject: [R] Compressing a sequence
+In-Reply-To: <1ffb8d8d-0edb-41f6-91b6-11182a97a253@gmail.com>
+References: <A1CFC56B-281B-4785-8D18-E76ACA12ECDC@plessthan.com>
+ <CAHOiV1qpq-QSe89KL3RRWcygyoCx-BcyK-OOdu97gKX9=WZGXQ@mail.gmail.com>
+ <1ffb8d8d-0edb-41f6-91b6-11182a97a253@gmail.com>
+Message-ID: <7506c6c4-37ac-48bd-9bc3-a41fcf887e90@gmail.com>
+
+   And some more from 2013: 
+https://stackoverflow.com/questions/14868406/collapse-continuous-integer-runs-to-strings-of-ranges
+
+   Can be as short as:
+
+condense <- function(x)
+   unname(tapply(x, c(0, cumsum(diff(x) != 1)), FUN = function(y)
+     paste(unique(range(y)), collapse = "-")
+   ))
+
+z <- c(1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20)
+
+condense(z) |> paste(collapse = ", ")
+
+"1, 3-5, 7-8, 12-15, 20"
+
+On 2025-02-21 9:16 p.m., Ben Bolker wrote:
+>  ? There are some answers from 2016 here:
+> 
+> https://stackoverflow.com/questions/34636461/collapse-consecutive-runs- 
+> of-numbers-to-a-string-of-ranges
+> 
+> On 2025-02-21 7:59 p.m., Steven Ellis wrote:
+>> Hi Dennis,
+>>
+>> A quick Claude request:
+>>
+>> "using r I have a sequence like:??????? 1, 3, 4, 5, 7, 8, 12, 13, 14, 15,
+>> 20I would like to display it as:??????? 1, 3-5, 7-8, 12-15, 20"
+>>
+>> yielded:
+>>
+>> condense_sequence <- function(nums) {
+>> ?? if (length(nums) == 0) return("")
+>> ?? if (length(nums) == 1) return(as.character(nums))
+>>
+>> ?? # Sort the numbers just in case they're not in order
+>> ?? nums <- sort(unique(nums))
+>>
+>> ?? # Initialize variables
+>> ?? ranges <- vector("character")
+>> ?? start <- nums[1]
+>> ?? prev <- nums[1]
+>>
+>> ?? for (i in 2:length(nums)) {
+>> ???? if (nums[i] != prev + 1) {
+>> ?????? # End of a sequence
+>> ?????? if (start == prev) {
+>> ???????? ranges <- c(ranges, as.character(start))
+>> ?????? } else {
+>> ???????? ranges <- c(ranges, paste(start, prev, sep="-"))
+>> ?????? }
+>> ?????? start <- nums[i]
+>> ???? }
+>> ???? prev <- nums[i]
+>> ?? }
+>>
+>> ?? # Handle the last number or range
+>> ?? if (start == prev) {
+>> ???? ranges <- c(ranges, as.character(start))
+>> ?? } else {
+>> ???? ranges <- c(ranges, paste(start, prev, sep="-"))
+>> ?? }
+>>
+>> ?? # Join all ranges with commas
+>> ?? paste(ranges, collapse=", ")
+>> }
+>>
+>> # Your sequence
+>> nums <- c(1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20)
+>>
+>> # Apply the function
+>> result <- condense_sequence(nums)
+>> print(result)
+>> # Output: "1, 3-5, 7-8, 12-15, 20"
+>>
+>> Which appears to work well, though you may have other thoughts in mind /
+>> edge cases this code does not cover.
+>>
+>> Best,
+>> Steven
+>>
+>> On Fri, Feb 21, 2025 at 7:47?PM Dennis Fisher <fisher at plessthan.com> 
+>> wrote:
+>>
+>>> R 4.4.0
+>>> OS X
+>>>
+>>> Colleagues
+>>>
+>>> I have a sequence like:
+>>> ???????? 1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20
+>>>
+>>> I would like to display it as:
+>>> ???????? 1, 3-5, 7-8, 12-15, 20
+>>>
+>>> Any simple ways to accomplish this?
+>>>
+>>> Dennis
+>>>
+>>>
+>>> Dennis Fisher MD
+>>> P < (The "P Less Than" Company)
+>>> Phone / Fax: 1-866-PLessThan (1-866-753-7784)
+>>> www.PLessThan.com
+>>>
+>>>
+>>> ???????? [[alternative HTML version deleted]]
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> https://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>>>
+>>
+>> ????[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide https://www.R-project.org/posting- 
+>> guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> 
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sat Feb 22 13:35:55 2025
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sat, 22 Feb 2025 12:35:55 +0000
+Subject: [R] Compressing a sequence
+In-Reply-To: <A1CFC56B-281B-4785-8D18-E76ACA12ECDC@plessthan.com>
+References: <A1CFC56B-281B-4785-8D18-E76ACA12ECDC@plessthan.com>
+Message-ID: <0dbdbcf9-6d7f-49bf-a7d8-1680e56c0db4@sapo.pt>
+
+?s 00:46 de 22/02/2025, Dennis Fisher escreveu:
+> R 4.4.0
+> OS X
+> 
+> Colleagues
+> 
+> I have a sequence like:
+> 	1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20
+> 
+> I would like to display it as:
+> 	1, 3-5, 7-8, 12-15, 20
+> 
+> Any simple ways to accomplish this?
+> 
+> Dennis
+> 
+> 
+> Dennis Fisher MD
+> P < (The "P Less Than" Company)
+> Phone / Fax: 1-866-PLessThan (1-866-753-7784)
+> www.PLessThan.com
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Here is a way with package R.utils, function seqToIntervals.
+
+
+x <- scan(text = "1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20", sep = ",")
+
+mat <- R.utils::seqToIntervals(x)
+apply(mat, 1L, \(m) {
+   ifelse(m[1L] == m[2L], m[1L], paste(m, collapse = "-"))
+})
+#> [1] "1"     "3-5"   "7-8"   "12-15" "20"
+
+
+If you want to be fancy, define a special class that prints like that.
+
+
+
+x <- scan(text = "1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20", sep = ",")
+
+as_seqInterval <- function(x) {
+   old_class <- class(x)
+   class(x) <- c("seqInterval", old_class)
+   x
+}
+print.seqInterval <- function(x, ...) {
+   mat <- R.utils::seqToIntervals(x)
+   out <- apply(mat, 1L, \(m) {
+     ifelse(m[1L] == m[2L], m[1L], paste(m, collapse = "-"))
+   })
+   print(out)
+}
+
+y <- as_seqInterval(x)
+class(y)
+#> [1] "seqInterval" "numeric"
+
+# autoprinting y
+y
+#> [1] "1"     "3-5"   "7-8"   "12-15" "20"
+
+# explicit printing y
+print(y)
+#> [1] "1"     "3-5"   "7-8"   "12-15" "20"
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Feb 22 17:14:31 2025
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 22 Feb 2025 08:14:31 -0800
+Subject: [R] Compressing a sequence
+In-Reply-To: <0dbdbcf9-6d7f-49bf-a7d8-1680e56c0db4@sapo.pt>
+References: <A1CFC56B-281B-4785-8D18-E76ACA12ECDC@plessthan.com>
+ <0dbdbcf9-6d7f-49bf-a7d8-1680e56c0db4@sapo.pt>
+Message-ID: <CAGxFJbT+6+Ty21f6dOiSvSiyrK1D+uHYdCZ3Kp3Q=DHGEYms1Q@mail.gmail.com>
+
+Well, as I predicted, my initial suggestions were, ... ummm, rather dumb.
+Also, Rui's suggestions are probably preferable to the below. However, it
+*is* a very simple, bare-boned approach to converting a sequence of
+increasing integers to a character representation using interval notation.
+The code is *very* simple-minded and needs no explanation, I think. You
+should also be able to easily tweak it to change the output format from my
+paste0(..., collapse) choice to something else.
+
+compr <- function(x, sep ="-", collapse = ", ")
+{
+   left<- c(TRUE, diff(x) != 1)
+   right <- c(rev(diff(rev(x)) != -1 ), TRUE)
+   xleft <- x[left]
+   xright <- x[right]
+   ifelse(xleft == xright,
+            xleft,
+            paste(xleft, xright, sep = sep)) |>
+       paste0(collapse = collapse)
+}
+
+which yields the following with your example
+
+> compr(c( 1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20))
+[1] "1, 3-5, 7-8, 12-15, 20"   ##Note: A single character string
+
+(Do let me know if this can fail)
+
+Cheers,
+Bert
+
+"An educated person is one who can entertain new ideas, entertain others,
+and entertain herself."
+
+
+
+On Sat, Feb 22, 2025 at 4:36?AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+
+> ?s 00:46 de 22/02/2025, Dennis Fisher escreveu:
+> > R 4.4.0
+> > OS X
+> >
+> > Colleagues
+> >
+> > I have a sequence like:
+> >       1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20
+> >
+> > I would like to display it as:
+> >       1, 3-5, 7-8, 12-15, 20
+> >
+> > Any simple ways to accomplish this?
+> >
+> > Dennis
+> >
+> >
+> > Dennis Fisher MD
+> > P < (The "P Less Than" Company)
+> > Phone / Fax: 1-866-PLessThan (1-866-753-7784)
+> > www.PLessThan.com
+> >
+> >
+> >       [[alternative HTML version deleted]]
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+>
+> Here is a way with package R.utils, function seqToIntervals.
+>
+>
+> x <- scan(text = "1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20", sep = ",")
+>
+> mat <- R.utils::seqToIntervals(x)
+> apply(mat, 1L, \(m) {
+>    ifelse(m[1L] == m[2L], m[1L], paste(m, collapse = "-"))
+> })
+> #> [1] "1"     "3-5"   "7-8"   "12-15" "20"
+>
+>
+> If you want to be fancy, define a special class that prints like that.
+>
+>
+>
+> x <- scan(text = "1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20", sep = ",")
+>
+> as_seqInterval <- function(x) {
+>    old_class <- class(x)
+>    class(x) <- c("seqInterval", old_class)
+>    x
+> }
+> print.seqInterval <- function(x, ...) {
+>    mat <- R.utils::seqToIntervals(x)
+>    out <- apply(mat, 1L, \(m) {
+>      ifelse(m[1L] == m[2L], m[1L], paste(m, collapse = "-"))
+>    })
+>    print(out)
+> }
+>
+> y <- as_seqInterval(x)
+> class(y)
+> #> [1] "seqInterval" "numeric"
+>
+> # autoprinting y
+> y
+> #> [1] "1"     "3-5"   "7-8"   "12-15" "20"
+>
+> # explicit printing y
+> print(y)
+> #> [1] "1"     "3-5"   "7-8"   "12-15" "20"
+>
+>
+> Hope this helps,
+>
+> Rui Barradas
+>
+>
+> --
+> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a
+> presen?a de v?rus.
+> www.avg.com
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat Feb 22 19:47:39 2025
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 22 Feb 2025 13:47:39 -0500
+Subject: [R] Compressing a sequence
+In-Reply-To: <0dbdbcf9-6d7f-49bf-a7d8-1680e56c0db4@sapo.pt>
+References: <A1CFC56B-281B-4785-8D18-E76ACA12ECDC@plessthan.com>
+ <0dbdbcf9-6d7f-49bf-a7d8-1680e56c0db4@sapo.pt>
+Message-ID: <004901db855a$3fa43ac0$beecb040$@gmail.com>
+
+Rui,
+
+Your post (way at the bottom) expands beyond what was requested and that makes it more interesting. 
+
+I like to look at what I consider reusable ideas and tools.
+
+One was the reminder of using apply across rows of a matrix which would have applied to my earlier post of a package that also created a matrix of sequential followed by a count. 
+
+Another was the idea of creating a changed object that now has an additional class that can determine which new print function to use automagically. I do wonder what happens if there are other classes that also have such a function. Does the first class in the listing dominate?
+
+Finally, I have been considering the broader question of how to create a more abstract function along the lines being discussed. 
+
+This request was about integers and the definition of being next but contiguous was to be one apart. Clearly, there can be cases where you want say just contiguous even (or odd) numbers so that c(2, 6,8,10) becomes "2, 6-10" as in street addresses for deliveries on one side of a street where all addresses on that side are even. That could be handled by not hard-coding in a difference of 1, but providing a successor() function that returns TRUE/FALSE when supplied with two arguments. One method is to allow such a function as an argument.
+
+A related idea would be to allow other entries where a successor has meaning. Consider c("a", "c", "d", "e", "x", "y") which you can imagine collapsed as "a, c-e, x-y" as one example. But you can broaden it to work with something like Roman numerals in text form. Having a successor function, as above, could allow such additional functionality.
+
+And, of course, other options could be allowed, perhaps to just pass through, so that you can specify the sep(arator) or col(lapse) strings such as instead of this:
+
+"1, 3-6, 12-19"
+
+You might see:
+
+1
+3:6
+12:19
+
+As in multiple lines and colon separated.
+
+But one question I keep asking is about complexity. We have seen a number of solutions and some of them require many passes over what could be a long vector and other data structures like matrices with quite a few passes. It is nice to re-use bits and pieces but perhaps for longer examples, not in prototyping mode, writing a custom function that passes minimally over the data, may be a better choice.
+
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Rui Barradas
+Sent: Saturday, February 22, 2025 7:36 AM
+To: Dennis Fisher <fisher at plessthan.com>; r-help <r-help at r-project.org>
+Subject: Re: [R] Compressing a sequence
+
+?s 00:46 de 22/02/2025, Dennis Fisher escreveu:
+> R 4.4.0
+> OS X
+> 
+> Colleagues
+> 
+> I have a sequence like:
+> 	1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20
+> 
+> I would like to display it as:
+> 	1, 3-5, 7-8, 12-15, 20
+> 
+> Any simple ways to accomplish this?
+> 
+> Dennis
+> 
+> 
+> Dennis Fisher MD
+> P < (The "P Less Than" Company)
+> Phone / Fax: 1-866-PLessThan (1-866-753-7784)
+> www.PLessThan.com
+> 
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Here is a way with package R.utils, function seqToIntervals.
+
+
+x <- scan(text = "1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20", sep = ",")
+
+mat <- R.utils::seqToIntervals(x)
+apply(mat, 1L, \(m) {
+   ifelse(m[1L] == m[2L], m[1L], paste(m, collapse = "-"))
+})
+#> [1] "1"     "3-5"   "7-8"   "12-15" "20"
+
+
+If you want to be fancy, define a special class that prints like that.
+
+
+
+x <- scan(text = "1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20", sep = ",")
+
+as_seqInterval <- function(x) {
+   old_class <- class(x)
+   class(x) <- c("seqInterval", old_class)
+   x
+}
+print.seqInterval <- function(x, ...) {
+   mat <- R.utils::seqToIntervals(x)
+   out <- apply(mat, 1L, \(m) {
+     ifelse(m[1L] == m[2L], m[1L], paste(m, collapse = "-"))
+   })
+   print(out)
+}
+
+y <- as_seqInterval(x)
+class(y)
+#> [1] "seqInterval" "numeric"
+
+# autoprinting y
+y
+#> [1] "1"     "3-5"   "7-8"   "12-15" "20"
+
+# explicit printing y
+print(y)
+#> [1] "1"     "3-5"   "7-8"   "12-15" "20"
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From ||@her @end|ng |rom p|e@@th@n@com  Sat Feb 22 19:49:07 2025
+From: ||@her @end|ng |rom p|e@@th@n@com (Dennis Fisher)
+Date: Sat, 22 Feb 2025 10:49:07 -0800
+Subject: [R] Compressing a sequence
+In-Reply-To: <CAGxFJbT+6+Ty21f6dOiSvSiyrK1D+uHYdCZ3Kp3Q=DHGEYms1Q@mail.gmail.com>
+References: <A1CFC56B-281B-4785-8D18-E76ACA12ECDC@plessthan.com>
+ <0dbdbcf9-6d7f-49bf-a7d8-1680e56c0db4@sapo.pt>
+ <CAGxFJbT+6+Ty21f6dOiSvSiyrK1D+uHYdCZ3Kp3Q=DHGEYms1Q@mail.gmail.com>
+Message-ID: <1C3C4179-9020-4B31-81E4-24DBC322B40D@plessthan.com>
+
+Colleagues
+
+I appreciate the many suggestions for my query about collapsing a sequence to a shortened string.  
+
+I finally arrived at:
+
+format_ranges <- function(x)
+        {                       
+	 x                  <- sort(unique(x))          
+	breaks          <- which(diff(x) > 1)
+        start_idx       <- c(1, breaks + 1)
+        end_idx        <- c(breaks, length(x))
+        ranges          <- mapply(function(s, e)
+                {
+                if (s == e)	return(as.character(x[s]))
+                else        	return(paste(x[s], x[e], sep="-"))
+                }, start_idx, end_idx)
+        paste(ranges, collapse=", ")
+        }
+
+numbers <- c(1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20)
+cat("original sequence is:\t\t", numbers, "\n")
+cat("collapsed text string is:\t", format_ranges(numbers), "\n")
+
+Dennis
+
+Dennis Fisher MD
+P < (The "P Less Than" Company)
+Phone / Fax: 1-866-PLessThan (1-866-753-7784)
+www.PLessThan.com
+
+> On Feb 22, 2025, at 8:14 AM, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+> 
+> Well, as I predicted, my initial suggestions were, ... ummm, rather dumb. Also, Rui's suggestions are probably preferable to the below. However, it *is* a very simple, bare-boned approach to converting a sequence of increasing integers to a character representation using interval notation. The code is *very* simple-minded and needs no explanation, I think. You should also be able to easily tweak it to change the output format from my paste0(..., collapse) choice to something else.
+> 
+> compr <- function(x, sep ="-", collapse = ", ")
+> {
+>    left<- c(TRUE, diff(x) != 1)
+>    right <- c(rev(diff(rev(x)) != -1 ), TRUE)
+>    xleft <- x[left]
+>    xright <- x[right]
+>    ifelse(xleft == xright, 
+>             xleft, 
+>             paste(xleft, xright, sep = sep)) |>
+>        paste0(collapse = collapse)
+> }
+> 
+> which yields the following with your example
+> 
+> > compr(c( 1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20))
+> [1] "1, 3-5, 7-8, 12-15, 20"   ##Note: A single character string
+> 
+> (Do let me know if this can fail)
+>  Cheers,
+> Bert
+> 
+> "An educated person is one who can entertain new ideas, entertain others, and entertain herself."
+> 
+> 
+> 
+> On Sat, Feb 22, 2025 at 4:36?AM Rui Barradas <ruipbarradas at sapo.pt> wrote:
+> ?s 00:46 de 22/02/2025, Dennis Fisher escreveu:
+> > R 4.4.0
+> > OS X
+> > 
+> > Colleagues
+> > 
+> > I have a sequence like:
+> >       1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20
+> > 
+> > I would like to display it as:
+> >       1, 3-5, 7-8, 12-15, 20
+> > 
+> > Any simple ways to accomplish this?
+> > 
+> > Dennis
+> > 
+> > 
+> > Dennis Fisher MD
+> > P < (The "P Less Than" Company)
+> > Phone / Fax: 1-866-PLessThan (1-866-753-7784)
+> > www.PLessThan.com
+> > 
+> > 
+> >       [[alternative HTML version deleted]]
+> > 
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+> 
+> Here is a way with package R.utils, function seqToIntervals.
+> 
+> 
+> x <- scan(text = "1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20", sep = ",")
+> 
+> mat <- R.utils::seqToIntervals(x)
+> apply(mat, 1L, \(m) {
+>    ifelse(m[1L] == m[2L], m[1L], paste(m, collapse = "-"))
+> })
+> #> [1] "1"     "3-5"   "7-8"   "12-15" "20"
+> 
+> 
+> If you want to be fancy, define a special class that prints like that.
+> 
+> 
+> 
+> x <- scan(text = "1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20", sep = ",")
+> 
+> as_seqInterval <- function(x) {
+>    old_class <- class(x)
+>    class(x) <- c("seqInterval", old_class)
+>    x
+> }
+> print.seqInterval <- function(x, ...) {
+>    mat <- R.utils::seqToIntervals(x)
+>    out <- apply(mat, 1L, \(m) {
+>      ifelse(m[1L] == m[2L], m[1L], paste(m, collapse = "-"))
+>    })
+>    print(out)
+> }
+> 
+> y <- as_seqInterval(x)
+> class(y)
+> #> [1] "seqInterval" "numeric"
+> 
+> # autoprinting y
+> y
+> #> [1] "1"     "3-5"   "7-8"   "12-15" "20"
+> 
+> # explicit printing y
+> print(y)
+> #> [1] "1"     "3-5"   "7-8"   "12-15" "20"
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> 
+> -- 
+> Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+> www.avg.com
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sat Feb 22 20:28:40 2025
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sat, 22 Feb 2025 19:28:40 +0000
+Subject: [R] Compressing a sequence
+In-Reply-To: <004901db855a$3fa43ac0$beecb040$@gmail.com>
+References: <A1CFC56B-281B-4785-8D18-E76ACA12ECDC@plessthan.com>
+ <0dbdbcf9-6d7f-49bf-a7d8-1680e56c0db4@sapo.pt>
+ <004901db855a$3fa43ac0$beecb040$@gmail.com>
+Message-ID: <59abbab6-4af9-40b2-9715-36e05e3ee4a3@sapo.pt>
+
+Hello,
+
+Inline.
+
+?s 18:47 de 22/02/2025, avi.e.gross at gmail.com escreveu:
+> Rui,
+> 
+> Your post (way at the bottom) expands beyond what was requested and that makes it more interesting.
+> 
+> I like to look at what I consider reusable ideas and tools.
+> 
+> One was the reminder of using apply across rows of a matrix which would have applied to my earlier post of a package that also created a matrix of sequential followed by a count.
+> 
+> Another was the idea of creating a changed object that now has an additional class that can determine which new print function to use automagically. I do wonder what happens if there are other classes that also have such a function. Does the first class in the listing dominate?
+
+Yes, to call the 2nd, use NextMethod().
+
+Continues at the end.
+
+> 
+> Finally, I have been considering the broader question of how to create a more abstract function along the lines being discussed.
+> 
+> This request was about integers and the definition of being next but contiguous was to be one apart. Clearly, there can be cases where you want say just contiguous even (or odd) numbers so that c(2, 6,8,10) becomes "2, 6-10" as in street addresses for deliveries on one side of a street where all addresses on that side are even. That could be handled by not hard-coding in a difference of 1, but providing a successor() function that returns TRUE/FALSE when supplied with two arguments. One method is to allow such a function as an argument.
+> 
+> A related idea would be to allow other entries where a successor has meaning. Consider c("a", "c", "d", "e", "x", "y") which you can imagine collapsed as "a, c-e, x-y" as one example. But you can broaden it to work with something like Roman numerals in text form. Having a successor function, as above, could allow such additional functionality.
+> 
+> And, of course, other options could be allowed, perhaps to just pass through, so that you can specify the sep(arator) or col(lapse) strings such as instead of this:
+> 
+> "1, 3-6, 12-19"
+> 
+> You might see:
+> 
+> 1
+> 3:6
+> 12:19
+> 
+> As in multiple lines and colon separated.
+> 
+> But one question I keep asking is about complexity. We have seen a number of solutions and some of them require many passes over what could be a long vector and other data structures like matrices with quite a few passes. It is nice to re-use bits and pieces but perhaps for longer examples, not in prototyping mode, writing a custom function that passes minimally over the data, may be a better choice.
+> 
+> 
+> 
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Rui Barradas
+> Sent: Saturday, February 22, 2025 7:36 AM
+> To: Dennis Fisher <fisher at plessthan.com>; r-help <r-help at r-project.org>
+> Subject: Re: [R] Compressing a sequence
+> 
+> ?s 00:46 de 22/02/2025, Dennis Fisher escreveu:
+>> R 4.4.0
+>> OS X
+>>
+>> Colleagues
+>>
+>> I have a sequence like:
+>> 	1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20
+>>
+>> I would like to display it as:
+>> 	1, 3-5, 7-8, 12-15, 20
+>>
+>> Any simple ways to accomplish this?
+>>
+>> Dennis
+>>
+>>
+>> Dennis Fisher MD
+>> P < (The "P Less Than" Company)
+>> Phone / Fax: 1-866-PLessThan (1-866-753-7784)
+>> www.PLessThan.com
+>>
+>>
+>> 	[[alternative HTML version deleted]]
+>>
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+> 
+> Here is a way with package R.utils, function seqToIntervals.
+> 
+> 
+> x <- scan(text = "1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20", sep = ",")
+> 
+> mat <- R.utils::seqToIntervals(x)
+> apply(mat, 1L, \(m) {
+>     ifelse(m[1L] == m[2L], m[1L], paste(m, collapse = "-"))
+> })
+> #> [1] "1"     "3-5"   "7-8"   "12-15" "20"
+> 
+> 
+> If you want to be fancy, define a special class that prints like that.
+> 
+> 
+> 
+> x <- scan(text = "1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20", sep = ",")
+> 
+> as_seqInterval <- function(x) {
+>     old_class <- class(x)
+>     class(x) <- c("seqInterval", old_class)
+>     x
+> }
+> print.seqInterval <- function(x, ...) {
+>     mat <- R.utils::seqToIntervals(x)
+>     out <- apply(mat, 1L, \(m) {
+>       ifelse(m[1L] == m[2L], m[1L], paste(m, collapse = "-"))
+>     })
+>     print(out)
+> }
+> 
+> y <- as_seqInterval(x)
+> class(y)
+> #> [1] "seqInterval" "numeric"
+> 
+> # autoprinting y
+> y
+> #> [1] "1"     "3-5"   "7-8"   "12-15" "20"
+> 
+> # explicit printing y
+> print(y)
+> #> [1] "1"     "3-5"   "7-8"   "12-15" "20"
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> 
+
+With the example from my first post, there is another advantage in using 
+a new class. Since this new class sub-classes "numeric" "seqInterval" 
+numbers can be added, subtracted, etc, they will keep the expected 
+behaviour of numbers.
+
+
+
+x2 <- c(1:3, 5, 6)
+length(x)
+#> [1] 11
+length(x2)
+#> [1] 5
+
+y2 <- as_seqInterval(x2)
+y2
+#> [1] "1-3" "5-6"
+x + x2
+#> Warning in x + x2: longer object length is not a multiple of shorter 
+object
+#> length
+#>  [1]  2  5  7 10 13  9 14 16 19 21 21
+
+# make it more obvious that 9, 10 and 13, 14 should be compressed
+sort(x + x2)
+#> Warning in x + x2: longer object length is not a multiple of shorter 
+object
+#> length
+#>  [1]  2  5  7  9 10 13 14 16 19 21 21
+
+# to add two objects of class "seqInterval" keeps the compressing property
+as_seqInterval(x + x2)
+#> Warning in x + x2: longer object length is not a multiple of shorter 
+object
+#> length
+#> [1] "2"     "5"     "7"     "9-10"  "13-14" "16"    "19"    "21"
+y + y2
+#> Warning in y + y2: longer object length is not a multiple of shorter 
+object
+#> length
+#> [1] "2"     "5"     "7"     "9-10"  "13-14" "16"    "19"    "21"
+
+# now a division, the results are not integer
+y/2
+#> [1] "0-4" "6-7" "10"
+unclass(y/2)
+#> [1]  0.5  1.5  2.0  2.5  3.5  4.0  6.0  6.5  7.0  7.5 10.0
+
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Sat Feb 22 23:23:22 2025
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sat, 22 Feb 2025 14:23:22 -0800
+Subject: [R] Compressing a sequence
+In-Reply-To: <7506c6c4-37ac-48bd-9bc3-a41fcf887e90@gmail.com>
+References: <A1CFC56B-281B-4785-8D18-E76ACA12ECDC@plessthan.com>
+ <CAHOiV1qpq-QSe89KL3RRWcygyoCx-BcyK-OOdu97gKX9=WZGXQ@mail.gmail.com>
+ <1ffb8d8d-0edb-41f6-91b6-11182a97a253@gmail.com>
+ <7506c6c4-37ac-48bd-9bc3-a41fcf887e90@gmail.com>
+Message-ID: <CAGxFJbQ=3zx6-4ARRhsOGZFLZAiMZPeBWcxYqaiCQqER=GqdUw@mail.gmail.com>
+
+Hi Ben:
+
+I realize that for the OP whether it takes 1/2 second or 1 microsecond to
+do what he wants may be irrelevant, but just for fun I thought I'd time the
+condense() function you found vs. the compr() function I worked out, which
+are similar in their approach.
+
+compr <- function(x, sep ="-")
+{
+   left<- c(TRUE, diff(x) != 1)
+   right <- c(rev(diff(rev(x)) != -1 ), TRUE)
+   xleft <- x[left]
+   xright <- x[right]
+   ifelse(xleft == xright,
+            xleft,
+            paste(xleft, xright, sep = sep))
+}
+Results were:
+
+set.seed(4456)
+x <- sort(sample(seq_len(1000), 800))
+all(compr(x) == condense(x))  ##TRUE
+
+library(microbenchmark)
+> microbenchmark(compr(x), condense(x), times = 500)
+Unit: microseconds
+        expr      min       lq       mean    median        uq      max neval
+    compr(x)   65.067   67.773   70.45071   69.0235   71.1145  113.857   500
+ condense(x) 1022.089 1031.334 1116.02812 1036.2135 1049.8050 5249.271   500
+
+As usual, ymmv, but the difference is due to vectorized and unvectorized
+(tapply) computation, of course.
+
+Cheers,
+Bert
+
+"An educated person is one who can entertain new ideas, entertain others,
+and entertain herself."
+
+
+
+On Fri, Feb 21, 2025 at 6:27?PM Ben Bolker <bbolker at gmail.com> wrote:
+
+>    And some more from 2013:
+>
+> https://stackoverflow.com/questions/14868406/collapse-continuous-integer-runs-to-strings-of-ranges
+>
+>    Can be as short as:
+>
+> condense <- function(x)
+>    unname(tapply(x, c(0, cumsum(diff(x) != 1)), FUN = function(y)
+>      paste(unique(range(y)), collapse = "-")
+>    ))
+>
+> z <- c(1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20)
+>
+> condense(z) |> paste(collapse = ", ")
+>
+> "1, 3-5, 7-8, 12-15, 20"
+>
+> On 2025-02-21 9:16 p.m., Ben Bolker wrote:
+> >    There are some answers from 2016 here:
+> >
+> > https://stackoverflow.com/questions/34636461/collapse-consecutive-runs-
+> > of-numbers-to-a-string-of-ranges
+> >
+> > On 2025-02-21 7:59 p.m., Steven Ellis wrote:
+> >> Hi Dennis,
+> >>
+> >> A quick Claude request:
+> >>
+> >> "using r I have a sequence like:        1, 3, 4, 5, 7, 8, 12, 13, 14,
+> 15,
+> >> 20I would like to display it as:        1, 3-5, 7-8, 12-15, 20"
+> >>
+> >> yielded:
+> >>
+> >> condense_sequence <- function(nums) {
+> >>    if (length(nums) == 0) return("")
+> >>    if (length(nums) == 1) return(as.character(nums))
+> >>
+> >>    # Sort the numbers just in case they're not in order
+> >>    nums <- sort(unique(nums))
+> >>
+> >>    # Initialize variables
+> >>    ranges <- vector("character")
+> >>    start <- nums[1]
+> >>    prev <- nums[1]
+> >>
+> >>    for (i in 2:length(nums)) {
+> >>      if (nums[i] != prev + 1) {
+> >>        # End of a sequence
+> >>        if (start == prev) {
+> >>          ranges <- c(ranges, as.character(start))
+> >>        } else {
+> >>          ranges <- c(ranges, paste(start, prev, sep="-"))
+> >>        }
+> >>        start <- nums[i]
+> >>      }
+> >>      prev <- nums[i]
+> >>    }
+> >>
+> >>    # Handle the last number or range
+> >>    if (start == prev) {
+> >>      ranges <- c(ranges, as.character(start))
+> >>    } else {
+> >>      ranges <- c(ranges, paste(start, prev, sep="-"))
+> >>    }
+> >>
+> >>    # Join all ranges with commas
+> >>    paste(ranges, collapse=", ")
+> >> }
+> >>
+> >> # Your sequence
+> >> nums <- c(1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20)
+> >>
+> >> # Apply the function
+> >> result <- condense_sequence(nums)
+> >> print(result)
+> >> # Output: "1, 3-5, 7-8, 12-15, 20"
+> >>
+> >> Which appears to work well, though you may have other thoughts in mind /
+> >> edge cases this code does not cover.
+> >>
+> >> Best,
+> >> Steven
+> >>
+> >> On Fri, Feb 21, 2025 at 7:47?PM Dennis Fisher <fisher at plessthan.com>
+> >> wrote:
+> >>
+> >>> R 4.4.0
+> >>> OS X
+> >>>
+> >>> Colleagues
+> >>>
+> >>> I have a sequence like:
+> >>>          1, 3, 4, 5, 7, 8, 12, 13, 14, 15, 20
+> >>>
+> >>> I would like to display it as:
+> >>>          1, 3-5, 7-8, 12-15, 20
+> >>>
+> >>> Any simple ways to accomplish this?
+> >>>
+> >>> Dennis
+> >>>
+> >>>
+> >>> Dennis Fisher MD
+> >>> P < (The "P Less Than" Company)
+> >>> Phone / Fax: 1-866-PLessThan (1-866-753-7784)
+> >>> www.PLessThan.com
+> >>>
+> >>>
+> >>>          [[alternative HTML version deleted]]
+> >>>
+> >>> ______________________________________________
+> >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >>> https://stat.ethz.ch/mailman/listinfo/r-help
+> >>> PLEASE do read the posting guide
+> >>> https://www.R-project.org/posting-guide.html
+> >>> and provide commented, minimal, self-contained, reproducible code.
+> >>>
+> >>
+> >>     [[alternative HTML version deleted]]
+> >>
+> >> ______________________________________________
+> >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> >> https://stat.ethz.ch/mailman/listinfo/r-help
+> >> PLEASE do read the posting guide https://www.R-project.org/posting-
+> >> guide.html
+> >> and provide commented, minimal, self-contained, reproducible code.
+> >
+>
+> --
+> Dr. Benjamin Bolker
+> Professor, Mathematics & Statistics and Biology, McMaster University
+> Director, School of Computational Science and Engineering
+>  > E-mail is sent at my convenience; I don't expect replies outside of
+> working hours.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
