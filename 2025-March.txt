@@ -1,0 +1,100 @@
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Sun Mar  2 15:56:29 2025
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Sun, 2 Mar 2025 14:56:29 +0000
+Subject: [R] expression in lattice panel strip
+Message-ID: <IA1P223MB04997BF88B4F3ECDFB5FA8ECFACE2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+
+Is it possible to include expression in lattice panel strip?
+Thanks,
+Naresh
+
+cs <- 2 * cos(2 * pi * (1:500) / 50 + 0.6 * pi)
+w <- rnorm(500)
+xyplot(ts(cbind(x1 = cs, x2 = cs + w)), screens = list(x1 = expression(2 * cos(2 * pi * t / 50 + 0.6 * pi)), x2 = expression(2 * cos(2 * pi * t / 50 + 0.6 * pi) + N(0, 1))), type = c("l", "g"), main = expression(2 * cos(2 * pi * t / 50 + 0.6 * pi)))
+
+# Greek letter pi is shown in main title, but not in panel strips
+
+From bgunter@4567 @end|ng |rom gm@||@com  Mon Mar  3 02:07:51 2025
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Sun, 2 Mar 2025 17:07:51 -0800
+Subject: [R] expression in lattice panel strip
+In-Reply-To: <IA1P223MB04997BF88B4F3ECDFB5FA8ECFACE2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+References: <IA1P223MB04997BF88B4F3ECDFB5FA8ECFACE2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+Message-ID: <CAGxFJbRuXsPDPdhV7Ob3Fv_uxgxi71H1ubNjCRGf=1egf=wbiQ@mail.gmail.com>
+
+Full disclosure: I have never plotted time series using this xyplot method.
+
+However, ?xyplot.ts says:
+
+"screens
+
+factor (or coerced to factor) whose levels specify which panel each
+series is to be plotted in. screens = c(1, 2, 1) would plot series 1,
+2 and 3 in panels 1, 2 and 1. May also be a named list, see Details
+below."
+
+>From that I would infer the answer to your query in no: factors, know
+nothing about plotmath notation, and as.factor() just coerces your
+expressions to character strings that are the factor labels.
+strip.default() then uses these character strings as the labels for
+the strips, giving what you got.
+
+As you only want to use a "pi" character, ?, in your math expression,
+I tried using a UTF-8 symbol for it, \U1D6D1, in quoted strings as the
+argument for the screens parameter. That is:
+
+striplabs <- factor(c("2cos(2\U1D6D1t/50 + 0.6\U1D6D1)",
+                      "2cos(2\U1D6D1t /50 + 0.6\U1D6D1) + N(0, 1)"))
+xyplot(ts(cbind(x1 = cs, x2 = cs + w)),
+       type = c("l", "g"),
+       main = expression(2 * cos(2 * pi * t / 50 + 0.6 * pi)),
+       screens = striplabs
+)
+
+The RStudio graphics device was *not* able to interpret the UTF-8 in
+the strip, but on my Mac, the Cairo_pdf() device (or just using the
+export button to export the graphic as a pdf from RStudio) *did*
+reproduce the characters nicely in the strip labels in the pdf.
+Unfortunately, the main title expression symbol for pi (presumably
+from the adobe font symbols) did not look nice. However, using the
+quoted graphics string (the first level of the striplabs factor) does
+fine, of course.
+
+As I just sort of barely know what I'm doing here, there may be a much
+better way to do this by using an appropriate font specification in a
+strip = strip.custom(par.strip.text= ...) argument to xyplot, but that
+exceeds my current abilities. Maybe you or one of the R cognescenti
+can figure it  out.
+
+Again, please note my full disclosure.
+
+Cheers,
+Bert
+
+"An educated person is one who can entertain new ideas, entertain
+others, and entertain herself."
+
+"An educated person is one who can entertain new ideas, entertain
+others, and entertain herself."
+
+
+
+On Sun, Mar 2, 2025 at 6:56?AM Naresh Gurbuxani
+<naresh_gurbuxani at hotmail.com> wrote:
+>
+> Is it possible to include expression in lattice panel strip?
+> Thanks,
+> Naresh
+>
+> cs <- 2 * cos(2 * pi * (1:500) / 50 + 0.6 * pi)
+> w <- rnorm(500)
+> xyplot(ts(cbind(x1 = cs, x2 = cs + w)), screens = list(x1 = expression(2 * cos(2 * pi * t / 50 + 0.6 * pi)), x2 = expression(2 * cos(2 * pi * t / 50 + 0.6 * pi) + N(0, 1))), type = c("l", "g"), main = expression(2 * cos(2 * pi * t / 50 + 0.6 * pi)))
+>
+> # Greek letter pi is shown in main title, but not in panel strips
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
