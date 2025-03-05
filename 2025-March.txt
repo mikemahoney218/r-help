@@ -98,3 +98,1077 @@ On Sun, Mar 2, 2025 at 6:56?AM Naresh Gurbuxani
 > and provide commented, minimal, self-contained, reproducible code.
 
 
+From deep@y@n@@@rk@r @end|ng |rom gm@||@com  Mon Mar  3 07:08:05 2025
+From: deep@y@n@@@rk@r @end|ng |rom gm@||@com (Deepayan Sarkar)
+Date: Mon, 3 Mar 2025 11:38:05 +0530
+Subject: [R] expression in lattice panel strip
+In-Reply-To: <CAGxFJbRuXsPDPdhV7Ob3Fv_uxgxi71H1ubNjCRGf=1egf=wbiQ@mail.gmail.com>
+References: <IA1P223MB04997BF88B4F3ECDFB5FA8ECFACE2@IA1P223MB0499.NAMP223.PROD.OUTLOOK.COM>
+ <CAGxFJbRuXsPDPdhV7Ob3Fv_uxgxi71H1ubNjCRGf=1egf=wbiQ@mail.gmail.com>
+Message-ID: <CADfFDC6bxDOfsDbVPi=pCRE1pGHCqQOokYVg+KKgpbKLu--puQ@mail.gmail.com>
+
+This is possible but a little cumbersome. Bert is on the right track with
+strip.custom:
+
+xyplot(ts(cbind(x1 = cs, x2 = cs + w)),
+       strip = strip.custom(factor.levels =
+                                expression(2 * cos(2 * pi * t / 50 + 0.6 *
+pi),
+                                           2 * cos(2 * pi * t / 50 + 0.6 *
+pi) + N(0, 1))),
+       type = c("l", "g"),
+       main = expression(2 * cos(2 * pi * t / 50 + 0.6 * pi)))
+
+where (from the docs):
+
+factor.levels: vector of character strings or expressions giving the
+          levels of the conditioning variable currently being drawn.
+          For more than one conditioning variable, this will vary with
+          'which.given'.
+
+This is relatively straightforward with only one conditioning variable. A
+more general solution for multiple conditioning variables would be
+
+estrip <- function(..., factor.levels)
+{
+    strip.default(..., factor.levels = parse(text = factor.levels))
+}
+
+xyplot(ts(cbind(x1 = cs, x2 = cs + w)),
+       screens = list(x1 = "2 * cos(2 * pi * t / 50 + 0.6 * pi)",
+                      x2 = "2 * cos(2 * pi * t / 50 + 0.6 * pi) + N(0, 1)"),
+       strip = estrip,
+       type = c("l", "g"),
+       main = expression(2 * cos(2 * pi * t / 50 + 0.6 * pi)))
+
+Best,
+-Deepayan
+
+On Mon, 3 Mar 2025 at 06:38, Bert Gunter <bgunter.4567 at gmail.com> wrote:
+
+> Full disclosure: I have never plotted time series using this xyplot method.
+>
+> However, ?xyplot.ts says:
+>
+> "screens
+>
+> factor (or coerced to factor) whose levels specify which panel each
+> series is to be plotted in. screens = c(1, 2, 1) would plot series 1,
+> 2 and 3 in panels 1, 2 and 1. May also be a named list, see Details
+> below."
+>
+> From that I would infer the answer to your query in no: factors, know
+> nothing about plotmath notation, and as.factor() just coerces your
+> expressions to character strings that are the factor labels.
+> strip.default() then uses these character strings as the labels for
+> the strips, giving what you got.
+>
+> As you only want to use a "pi" character, ?, in your math expression,
+> I tried using a UTF-8 symbol for it, \U1D6D1, in quoted strings as the
+> argument for the screens parameter. That is:
+>
+> striplabs <- factor(c("2cos(2\U1D6D1t/50 + 0.6\U1D6D1)",
+>                       "2cos(2\U1D6D1t /50 + 0.6\U1D6D1) + N(0, 1)"))
+> xyplot(ts(cbind(x1 = cs, x2 = cs + w)),
+>        type = c("l", "g"),
+>        main = expression(2 * cos(2 * pi * t / 50 + 0.6 * pi)),
+>        screens = striplabs
+> )
+>
+> The RStudio graphics device was *not* able to interpret the UTF-8 in
+> the strip, but on my Mac, the Cairo_pdf() device (or just using the
+> export button to export the graphic as a pdf from RStudio) *did*
+> reproduce the characters nicely in the strip labels in the pdf.
+> Unfortunately, the main title expression symbol for pi (presumably
+> from the adobe font symbols) did not look nice. However, using the
+> quoted graphics string (the first level of the striplabs factor) does
+> fine, of course.
+>
+> As I just sort of barely know what I'm doing here, there may be a much
+> better way to do this by using an appropriate font specification in a
+> strip = strip.custom(par.strip.text= ...) argument to xyplot, but that
+> exceeds my current abilities. Maybe you or one of the R cognescenti
+> can figure it  out.
+>
+> Again, please note my full disclosure.
+>
+> Cheers,
+> Bert
+>
+> "An educated person is one who can entertain new ideas, entertain
+> others, and entertain herself."
+>
+> "An educated person is one who can entertain new ideas, entertain
+> others, and entertain herself."
+>
+>
+>
+> On Sun, Mar 2, 2025 at 6:56?AM Naresh Gurbuxani
+> <naresh_gurbuxani at hotmail.com> wrote:
+> >
+> > Is it possible to include expression in lattice panel strip?
+> > Thanks,
+> > Naresh
+> >
+> > cs <- 2 * cos(2 * pi * (1:500) / 50 + 0.6 * pi)
+> > w <- rnorm(500)
+> > xyplot(ts(cbind(x1 = cs, x2 = cs + w)), screens = list(x1 = expression(2
+> * cos(2 * pi * t / 50 + 0.6 * pi)), x2 = expression(2 * cos(2 * pi * t / 50
+> + 0.6 * pi) + N(0, 1))), type = c("l", "g"), main = expression(2 * cos(2 *
+> pi * t / 50 + 0.6 * pi)))
+> >
+> > # Greek letter pi is shown in main title, but not in panel strips
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bog@@o@chr|@to|er @end|ng |rom gm@||@com  Mon Mar  3 07:38:43 2025
+From: bog@@o@chr|@to|er @end|ng |rom gm@||@com (Christofer Bogaso)
+Date: Mon, 3 Mar 2025 12:08:43 +0530
+Subject: [R] Failed to convert data to numeric
+Message-ID: <CA+dpOJmdNDT6Y2n5UDZgUj8c1E77TupPfT5MhgbRNZW5XSgjFg@mail.gmail.com>
+
+Hi,
+
+I have below data
+
+dat2 = c("-24.437285333333300", "4.850695000000000", "-1.918495666666670",
+
+"2.641818000000000", "6.777527666666670", "3.208084000000000",
+
+"4.193287666666670", "0.378257666666667", "4.658955000000000",
+
+"?-9.881474000000000")
+
+Now when I try to convert this data to numeric, I got NA as below
+
+> as.numeric(dat2)
+
+ [1] -24.4372853   4.8506950  -1.9184957   2.6418180   6.7775277   3.2080840
+
+ [7]   4.1932877   0.3782577   4.6589550          NA
+
+Could you please help to understand why I get NA for the last value?
+
+> sessionInfo()
+
+R version 4.4.0 (2024-04-24)
+
+Platform: aarch64-apple-darwin20
+
+Running under: macOS 15.3.1
+
+
+Matrix products: default
+
+BLAS:   /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRblas.0.dylib
+
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;
+ LAPACK version 3.12.0
+
+
+locale:
+
+[1] C/UTF-8/C/C/C/C
+
+
+time zone: Asia
+
+tzcode source: internal
+
+
+attached base packages:
+
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+
+loaded via a namespace (and not attached):
+
+[1] compiler_4.4.0
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Mar  3 07:48:37 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 3 Mar 2025 09:48:37 +0300
+Subject: [R] Failed to convert data to numeric
+In-Reply-To: <CA+dpOJmdNDT6Y2n5UDZgUj8c1E77TupPfT5MhgbRNZW5XSgjFg@mail.gmail.com>
+References: <CA+dpOJmdNDT6Y2n5UDZgUj8c1E77TupPfT5MhgbRNZW5XSgjFg@mail.gmail.com>
+Message-ID: <20250303094837.32820c87@Tarkus>
+
+? Mon, 3 Mar 2025 12:08:43 +0530
+Christofer Bogaso <bogaso.christofer at gmail.com> ?????:
+
+> dat2 = c("-24.437285333333300", "4.850695000000000",
+> "-1.918495666666670",
+> 
+> "2.641818000000000", "6.777527666666670", "3.208084000000000",
+> 
+> "4.193287666666670", "0.378257666666667", "4.658955000000000",
+> 
+> "?-9.881474000000000")
+> 
+> Now when I try to convert this data to numeric, I got NA as below
+> 
+> > as.numeric(dat2)  
+> 
+>  [1] -24.4372853   4.8506950  -1.9184957   2.6418180   6.7775277
+> 3.2080840
+> 
+>  [7]   4.1932877   0.3782577   4.6589550          NA
+
+There's an invisible Unicode character in there, U+FEFF ZERO WIDTH
+NO-BREAK SPACE:
+
+> dat2 |> tail(1) |> tools::showNonASCII()
+1: <ef><bb><bf>-9.881474000000000
+
+Try as.numeric(gsub('\ufeff', '', dat2)).
+
+-- 
+Best regards,
+Ivan
+
+
+From bog@@o@chr|@to|er @end|ng |rom gm@||@com  Mon Mar  3 08:51:31 2025
+From: bog@@o@chr|@to|er @end|ng |rom gm@||@com (Christofer Bogaso)
+Date: Mon, 3 Mar 2025 13:21:31 +0530
+Subject: [R] Failed to convert data to numeric
+In-Reply-To: <20250303094837.32820c87@Tarkus>
+References: <CA+dpOJmdNDT6Y2n5UDZgUj8c1E77TupPfT5MhgbRNZW5XSgjFg@mail.gmail.com>
+ <20250303094837.32820c87@Tarkus>
+Message-ID: <CA+dpOJnHQOj+rbOJXhSNxHGerqNCaiAfARtkvo_=87jiD93OTw@mail.gmail.com>
+
+Hi Ivan,
+
+Thanks for your solution.
+
+Is there any way to remove all possible "Unicode character" that may
+be present in the array at once?
+
+On Mon, Mar 3, 2025 at 12:18?PM Ivan Krylov <ikrylov at disroot.org> wrote:
+>
+> ? Mon, 3 Mar 2025 12:08:43 +0530
+> Christofer Bogaso <bogaso.christofer at gmail.com> ?????:
+>
+> > dat2 = c("-24.437285333333300", "4.850695000000000",
+> > "-1.918495666666670",
+> >
+> > "2.641818000000000", "6.777527666666670", "3.208084000000000",
+> >
+> > "4.193287666666670", "0.378257666666667", "4.658955000000000",
+> >
+> > "?-9.881474000000000")
+> >
+> > Now when I try to convert this data to numeric, I got NA as below
+> >
+> > > as.numeric(dat2)
+> >
+> >  [1] -24.4372853   4.8506950  -1.9184957   2.6418180   6.7775277
+> > 3.2080840
+> >
+> >  [7]   4.1932877   0.3782577   4.6589550          NA
+>
+> There's an invisible Unicode character in there, U+FEFF ZERO WIDTH
+> NO-BREAK SPACE:
+>
+> > dat2 |> tail(1) |> tools::showNonASCII()
+> 1: <ef><bb><bf>-9.881474000000000
+>
+> Try as.numeric(gsub('\ufeff', '', dat2)).
+>
+> --
+> Best regards,
+> Ivan
+
+
+From |kry|ov @end|ng |rom d|@root@org  Mon Mar  3 09:09:22 2025
+From: |kry|ov @end|ng |rom d|@root@org (Ivan Krylov)
+Date: Mon, 3 Mar 2025 11:09:22 +0300
+Subject: [R] Failed to convert data to numeric
+In-Reply-To: <CA+dpOJnHQOj+rbOJXhSNxHGerqNCaiAfARtkvo_=87jiD93OTw@mail.gmail.com>
+References: <CA+dpOJmdNDT6Y2n5UDZgUj8c1E77TupPfT5MhgbRNZW5XSgjFg@mail.gmail.com>
+ <20250303094837.32820c87@Tarkus>
+ <CA+dpOJnHQOj+rbOJXhSNxHGerqNCaiAfARtkvo_=87jiD93OTw@mail.gmail.com>
+Message-ID: <20250303110922.1e9ecb49@Tarkus>
+
+? Mon, 3 Mar 2025 13:21:31 +0530
+Christofer Bogaso <bogaso.christofer at gmail.com> ?????:
+
+> Is there any way to remove all possible "Unicode character" that may
+> be present in the array at once?
+
+Define a range of characters you consider acceptable, and you'll be
+able to use regular expressions to remove everything else. For example,
+the following expression should remove everything except ASCII digits,
+dots, and hyphen-minus:
+
+gsub('[^0-9.-]+', '', dat2)
+
+There is a brief introduction to regular expressions in ?regex and
+various online resources such as <https://regex101.com/>.
+
+-- 
+Best regards,
+Ivan
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Mon Mar  3 09:33:40 2025
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Mon, 03 Mar 2025 00:33:40 -0800
+Subject: [R] [Tagged]  Re:  Failed to convert data to numeric
+In-Reply-To: <20250303110922.1e9ecb49@Tarkus>
+References: <CA+dpOJmdNDT6Y2n5UDZgUj8c1E77TupPfT5MhgbRNZW5XSgjFg@mail.gmail.com>
+ <20250303094837.32820c87@Tarkus>
+ <CA+dpOJnHQOj+rbOJXhSNxHGerqNCaiAfARtkvo_=87jiD93OTw@mail.gmail.com>
+ <20250303110922.1e9ecb49@Tarkus>
+Message-ID: <E6FF9AA7-B4B2-43E1-94A3-EBE75CDF7E33@dcn.davis.ca.us>
+
+?tools::showNonASCII
+
+On March 3, 2025 12:09:22 AM PST, Ivan Krylov via R-help <r-help at r-project.org> wrote:
+>? Mon, 3 Mar 2025 13:21:31 +0530
+>Christofer Bogaso <bogaso.christofer at gmail.com> ?????:
+>
+>> Is there any way to remove all possible "Unicode character" that may
+>> be present in the array at once?
+>
+>Define a range of characters you consider acceptable, and you'll be
+>able to use regular expressions to remove everything else. For example,
+>the following expression should remove everything except ASCII digits,
+>dots, and hyphen-minus:
+>
+>gsub('[^0-9.-]+', '', dat2)
+>
+>There is a brief introduction to regular expressions in ?regex and
+>various online resources such as <https://regex101.com/>.
+>
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From n@re@h_gurbux@n| @end|ng |rom hotm@||@com  Mon Mar  3 11:54:37 2025
+From: n@re@h_gurbux@n| @end|ng |rom hotm@||@com (Naresh Gurbuxani)
+Date: Mon, 3 Mar 2025 10:54:37 +0000
+Subject: [R] expression in lattice panel strip
+In-Reply-To: <CADfFDC6bxDOfsDbVPi=pCRE1pGHCqQOokYVg+KKgpbKLu--puQ@mail.gmail.com>
+References: <CADfFDC6bxDOfsDbVPi=pCRE1pGHCqQOokYVg+KKgpbKLu--puQ@mail.gmail.com>
+Message-ID: <DM4P223MB0519AB58C5F791B2363181C1FAC92@DM4P223MB0519.NAMP223.PROD.OUTLOOK.COM>
+
+Thanks all for your responses.  My problem is solved.
+
+Sent from my iPhone
+
+On Mar 3, 2025, at 1:08?AM, Deepayan Sarkar <deepayan.sarkar at gmail.com> wrote:
+
+?
+This is possible but a little cumbersome. Bert is on the right track with strip.custom:
+
+xyplot(ts(cbind(x1 = cs, x2 = cs + w)),
+       strip = strip.custom(factor.levels =
+                                expression(2 * cos(2 * pi * t / 50 + 0.6 * pi),
+                                           2 * cos(2 * pi * t / 50 + 0.6 * pi) + N(0, 1))),
+       type = c("l", "g"),
+       main = expression(2 * cos(2 * pi * t / 50 + 0.6 * pi)))
+
+where (from the docs):
+
+factor.levels: vector of character strings or expressions giving the
+          levels of the conditioning variable currently being drawn.
+          For more than one conditioning variable, this will vary with
+          'which.given'.
+
+This is relatively straightforward with only one conditioning variable. A more general solution for multiple conditioning variables would be
+
+estrip <- function(..., factor.levels)
+{
+    strip.default(..., factor.levels = parse(text = factor.levels))
+}
+
+xyplot(ts(cbind(x1 = cs, x2 = cs + w)),
+       screens = list(x1 = "2 * cos(2 * pi * t / 50 + 0.6 * pi)",
+                      x2 = "2 * cos(2 * pi * t / 50 + 0.6 * pi) + N(0, 1)"),
+       strip = estrip,
+       type = c("l", "g"),
+       main = expression(2 * cos(2 * pi * t / 50 + 0.6 * pi)))
+
+Best,
+-Deepayan
+
+On Mon, 3 Mar 2025 at 06:38, Bert Gunter <bgunter.4567 at gmail.com<mailto:bgunter.4567 at gmail.com>> wrote:
+Full disclosure: I have never plotted time series using this xyplot method.
+
+However, ?xyplot.ts says:
+
+"screens
+
+factor (or coerced to factor) whose levels specify which panel each
+series is to be plotted in. screens = c(1, 2, 1) would plot series 1,
+2 and 3 in panels 1, 2 and 1. May also be a named list, see Details
+below."
+
+From that I would infer the answer to your query in no: factors, know
+nothing about plotmath notation, and as.factor() just coerces your
+expressions to character strings that are the factor labels.
+strip.default() then uses these character strings as the labels for
+the strips, giving what you got.
+
+As you only want to use a "pi" character, ?, in your math expression,
+I tried using a UTF-8 symbol for it, \U1D6D1, in quoted strings as the
+argument for the screens parameter. That is:
+
+striplabs <- factor(c("2cos(2\U1D6D1t/50 + 0.6\U1D6D1)",
+                      "2cos(2\U1D6D1t /50 + 0.6\U1D6D1) + N(0, 1)"))
+xyplot(ts(cbind(x1 = cs, x2 = cs + w)),
+       type = c("l", "g"),
+       main = expression(2 * cos(2 * pi * t / 50 + 0.6 * pi)),
+       screens = striplabs
+)
+
+The RStudio graphics device was *not* able to interpret the UTF-8 in
+the strip, but on my Mac, the Cairo_pdf() device (or just using the
+export button to export the graphic as a pdf from RStudio) *did*
+reproduce the characters nicely in the strip labels in the pdf.
+Unfortunately, the main title expression symbol for pi (presumably
+from the adobe font symbols) did not look nice. However, using the
+quoted graphics string (the first level of the striplabs factor) does
+fine, of course.
+
+As I just sort of barely know what I'm doing here, there may be a much
+better way to do this by using an appropriate font specification in a
+strip = strip.custom(par.strip.text= ...) argument to xyplot, but that
+exceeds my current abilities. Maybe you or one of the R cognescenti
+can figure it  out.
+
+Again, please note my full disclosure.
+
+Cheers,
+Bert
+
+"An educated person is one who can entertain new ideas, entertain
+others, and entertain herself."
+
+"An educated person is one who can entertain new ideas, entertain
+others, and entertain herself."
+
+
+
+On Sun, Mar 2, 2025 at 6:56?AM Naresh Gurbuxani
+<naresh_gurbuxani at hotmail.com<mailto:naresh_gurbuxani at hotmail.com>> wrote:
+>
+> Is it possible to include expression in lattice panel strip?
+> Thanks,
+> Naresh
+>
+> cs <- 2 * cos(2 * pi * (1:500) / 50 + 0.6 * pi)
+> w <- rnorm(500)
+> xyplot(ts(cbind(x1 = cs, x2 = cs + w)), screens = list(x1 = expression(2 * cos(2 * pi * t / 50 + 0.6 * pi)), x2 = expression(2 * cos(2 * pi * t / 50 + 0.6 * pi) + N(0, 1))), type = c("l", "g"), main = expression(2 * cos(2 * pi * t / 50 + 0.6 * pi)))
+>
+> # Greek letter pi is shown in main title, but not in panel strips
+> ______________________________________________
+> R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org<mailto:R-help at r-project.org> mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+	[[alternative HTML version deleted]]
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Mon Mar  3 18:19:02 2025
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Mon, 3 Mar 2025 12:19:02 -0500
+Subject: [R] Failed to convert data to numeric
+In-Reply-To: <20250303110922.1e9ecb49@Tarkus>
+References: <CA+dpOJmdNDT6Y2n5UDZgUj8c1E77TupPfT5MhgbRNZW5XSgjFg@mail.gmail.com>
+ <20250303094837.32820c87@Tarkus>
+ <CA+dpOJnHQOj+rbOJXhSNxHGerqNCaiAfARtkvo_=87jiD93OTw@mail.gmail.com>
+ <20250303110922.1e9ecb49@Tarkus>
+Message-ID: <007801db8c60$5c6df260$1549d720$@gmail.com>
+
+The second solution Ivan offers looks good, and a bit more general than his first that simply removes one non-visible character.
+
+It begs the question of why the data has that anomaly at all. Did the data come from a text-processing environment where it was going to wrap there and was protected?
+
+As Ivan points out, there is a question of what format you expect numbers in and what "as.numeric"  should do when it does not see an integer or floating point number. 
+
+If you test it, you can see that as.numeric ignores leading and/or trailing blanks and tabs and even newlines sometimes and some other irrelevant ASCII characters. In that spirit, the UNICODE character being mentioned should be one that any UNICODE-aware version of as.numeric should ignore.
+
+But UNICODE supports a much wider vision of numeric so that there are numeric-equivalent symbols in other languages and groupings and even something like the symbols for numerals in light or dark circles count as numbers. Those can likely safely be excluded in this context but perhaps not in a more general function.
+
+But I note as.numeric seems to handle scientific notation as in:
+
+as.numeric("1.23e8")
+[1] 1.23e+08
+
+So a single instance of the letters "e" and "E" must be supported if your numbers in string form may contain them. Further, the E cannot be the first or last letter. It cannot have adjacent whitespace. Still, if you are OK with getting an NA in such situations, it should be OK.
+
+It gets worse. Hexadecimal is supported:
+
+> as.numeric("0X12")
+[1] 18
+
+You now need to support the letters x and X. But only if preceded by a zero! 
+
+It gets still worse as any characters from [0-9A-F] are supported:
+
+> as.numeric("0xAE")
+[1] 174
+
+There may be other scenarios it handles. The filter applied might remove valid numbers so you may want to carefully document it if your program only handles a restricted set.
+
+A possible idea might be to make two passes and only  evaluate any resulting NA from as.numeric() by doing a substitution like Ivan suggests to try to fix any broken ones. But note it may fix too much as "1.2 e 5" might become "1.2e5" as spaces are removed.
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Ivan Krylov via R-help
+Sent: Monday, March 3, 2025 3:09 AM
+To: Christofer Bogaso <bogaso.christofer at gmail.com>
+Cc: r-help <r-help at r-project.org>
+Subject: Re: [R] Failed to convert data to numeric
+
+? Mon, 3 Mar 2025 13:21:31 +0530
+Christofer Bogaso <bogaso.christofer at gmail.com> ?????:
+
+> Is there any way to remove all possible "Unicode character" that may
+> be present in the array at once?
+
+Define a range of characters you consider acceptable, and you'll be
+able to use regular expressions to remove everything else. For example,
+the following expression should remove everything except ASCII digits,
+dots, and hyphen-minus:
+
+gsub('[^0-9.-]+', '', dat2)
+
+There is a brief introduction to regular expressions in ?regex and
+various online resources such as <https://regex101.com/>.
+
+-- 
+Best regards,
+Ivan
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From ro||turner @end|ng |rom po@teo@net  Mon Mar  3 22:45:14 2025
+From: ro||turner @end|ng |rom po@teo@net (Rolf Turner)
+Date: Mon,  3 Mar 2025 21:45:14 +0000
+Subject: [R] Failed to convert data to numeric
+In-Reply-To: <007801db8c60$5c6df260$1549d720$@gmail.com>
+References: <CA+dpOJmdNDT6Y2n5UDZgUj8c1E77TupPfT5MhgbRNZW5XSgjFg@mail.gmail.com>
+ <20250303094837.32820c87@Tarkus>
+ <CA+dpOJnHQOj+rbOJXhSNxHGerqNCaiAfARtkvo_=87jiD93OTw@mail.gmail.com>
+ <20250303110922.1e9ecb49@Tarkus>
+ <007801db8c60$5c6df260$1549d720$@gmail.com>
+Message-ID: <20250304104514.691929c1@new-hp>
+
+
+This issue looks like grist for the R Inferno.
+
+cheers,
+
+Rolf
+
+
+On Mon, 3 Mar 2025 12:19:02 -0500
+<avi.e.gross at gmail.com> wrote:
+
+> The second solution Ivan offers looks good, and a bit more general
+> than his first that simply removes one non-visible character.
+> 
+> It begs the question of why the data has that anomaly at all. Did the
+> data come from a text-processing environment where it was going to
+> wrap there and was protected?
+> 
+> As Ivan points out, there is a question of what format you expect
+> numbers in and what "as.numeric"  should do when it does not see an
+> integer or floating point number. 
+> 
+> If you test it, you can see that as.numeric ignores leading and/or
+> trailing blanks and tabs and even newlines sometimes and some other
+> irrelevant ASCII characters. In that spirit, the UNICODE character
+> being mentioned should be one that any UNICODE-aware version of
+> as.numeric should ignore.
+> 
+> But UNICODE supports a much wider vision of numeric so that there are
+> numeric-equivalent symbols in other languages and groupings and even
+> something like the symbols for numerals in light or dark circles
+> count as numbers. Those can likely safely be excluded in this context
+> but perhaps not in a more general function.
+> 
+> But I note as.numeric seems to handle scientific notation as in:
+> 
+> as.numeric("1.23e8")
+> [1] 1.23e+08
+> 
+> So a single instance of the letters "e" and "E" must be supported if
+> your numbers in string form may contain them. Further, the E cannot
+> be the first or last letter. It cannot have adjacent whitespace.
+> Still, if you are OK with getting an NA in such situations, it should
+> be OK.
+> 
+> It gets worse. Hexadecimal is supported:
+> 
+> > as.numeric("0X12")
+> [1] 18
+> 
+> You now need to support the letters x and X. But only if preceded by
+> a zero! 
+> 
+> It gets still worse as any characters from [0-9A-F] are supported:
+> 
+> > as.numeric("0xAE")
+> [1] 174
+> 
+> There may be other scenarios it handles. The filter applied might
+> remove valid numbers so you may want to carefully document it if your
+> program only handles a restricted set.
+> 
+> A possible idea might be to make two passes and only  evaluate any
+> resulting NA from as.numeric() by doing a substitution like Ivan
+> suggests to try to fix any broken ones. But note it may fix too much
+> as "1.2 e 5" might become "1.2e5" as spaces are removed.
+> 
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Ivan Krylov
+> via R-help Sent: Monday, March 3, 2025 3:09 AM
+> To: Christofer Bogaso <bogaso.christofer at gmail.com>
+> Cc: r-help <r-help at r-project.org>
+> Subject: Re: [R] Failed to convert data to numeric
+> 
+> ? Mon, 3 Mar 2025 13:21:31 +0530
+> Christofer Bogaso <bogaso.christofer at gmail.com> ?????:
+> 
+> > Is there any way to remove all possible "Unicode character" that may
+> > be present in the array at once?
+> 
+> Define a range of characters you consider acceptable, and you'll be
+> able to use regular expressions to remove everything else. For
+> example, the following expression should remove everything except
+> ASCII digits, dots, and hyphen-minus:
+> 
+> gsub('[^0-9.-]+', '', dat2)
+> 
+> There is a brief introduction to regular expressions in ?regex and
+> various online resources such as <https://regex101.com/>.
+> 
+
+
+
+-- 
+Honorary Research Fellow
+Department of Statistics
+University of Auckland
+Stats. Dep't. (secretaries) phone:
+         +64-9-373-7599 ext. 89622
+Home phone: +64-9-480-4619
+
+
+From r@oknz @end|ng |rom gm@||@com  Mon Mar  3 23:33:51 2025
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Tue, 4 Mar 2025 11:33:51 +1300
+Subject: [R] Failed to convert data to numeric
+In-Reply-To: <007801db8c60$5c6df260$1549d720$@gmail.com>
+References: <CA+dpOJmdNDT6Y2n5UDZgUj8c1E77TupPfT5MhgbRNZW5XSgjFg@mail.gmail.com>
+ <20250303094837.32820c87@Tarkus>
+ <CA+dpOJnHQOj+rbOJXhSNxHGerqNCaiAfARtkvo_=87jiD93OTw@mail.gmail.com>
+ <20250303110922.1e9ecb49@Tarkus> <007801db8c60$5c6df260$1549d720$@gmail.com>
+Message-ID: <CABcYAdKTKJaRcN9u-uU0FPPC79WJ48VkjmLszjjjA01TWqQoPA@mail.gmail.com>
+
+The zero-width no-break space character is used as the Byte Order
+Mark.  That is, an official function for it at the beginning of a
+character sequence
+is to indicate whether you have 2-byte or 4-byte big-endian or
+little-endian encoding.  It was not intended for use in UTF-8, where
+there is nothing for
+it to tell you, but Microsoft jumped in with all six feet and said
+"hey, we'll use this to indicate that it's Unicode in UTF-8 and not
+one of the hundreds
+of other 8-bit coded character sets."  I've lost count of the number
+of programs that have choked because they were given a BOM where they
+didn't expect one.
+
+So there is no great mystery about why there is a BOM at the beginning
+of this particular string.
+The real mystery is why it was there and NOT at the beginning of all the others.
+
+I suggest that it is a good idea to remove the BOM character from the
+beginning of microsofted strings,
+but a bad idea to remove any other character.  If you are given bad
+data like "Bond-007" when you
+expect a number, you want to know about it, and not mistake it for
+-007.  Still less do you want a
+phone number like "+61 3 555 1234 x77" to be mistaken for a plain
+number "613555123477".
+
+On Tue, 4 Mar 2025 at 06:24, <avi.e.gross at gmail.com> wrote:
+>
+> The second solution Ivan offers looks good, and a bit more general than his first that simply removes one non-visible character.
+>
+> It begs the question of why the data has that anomaly at all. Did the data come from a text-processing environment where it was going to wrap there and was protected?
+>
+> As Ivan points out, there is a question of what format you expect numbers in and what "as.numeric"  should do when it does not see an integer or floating point number.
+>
+> If you test it, you can see that as.numeric ignores leading and/or trailing blanks and tabs and even newlines sometimes and some other irrelevant ASCII characters. In that spirit, the UNICODE character being mentioned should be one that any UNICODE-aware version of as.numeric should ignore.
+>
+> But UNICODE supports a much wider vision of numeric so that there are numeric-equivalent symbols in other languages and groupings and even something like the symbols for numerals in light or dark circles count as numbers. Those can likely safely be excluded in this context but perhaps not in a more general function.
+>
+> But I note as.numeric seems to handle scientific notation as in:
+>
+> as.numeric("1.23e8")
+> [1] 1.23e+08
+>
+> So a single instance of the letters "e" and "E" must be supported if your numbers in string form may contain them. Further, the E cannot be the first or last letter. It cannot have adjacent whitespace. Still, if you are OK with getting an NA in such situations, it should be OK.
+>
+> It gets worse. Hexadecimal is supported:
+>
+> > as.numeric("0X12")
+> [1] 18
+>
+> You now need to support the letters x and X. But only if preceded by a zero!
+>
+> It gets still worse as any characters from [0-9A-F] are supported:
+>
+> > as.numeric("0xAE")
+> [1] 174
+>
+> There may be other scenarios it handles. The filter applied might remove valid numbers so you may want to carefully document it if your program only handles a restricted set.
+>
+> A possible idea might be to make two passes and only  evaluate any resulting NA from as.numeric() by doing a substitution like Ivan suggests to try to fix any broken ones. But note it may fix too much as "1.2 e 5" might become "1.2e5" as spaces are removed.
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Ivan Krylov via R-help
+> Sent: Monday, March 3, 2025 3:09 AM
+> To: Christofer Bogaso <bogaso.christofer at gmail.com>
+> Cc: r-help <r-help at r-project.org>
+> Subject: Re: [R] Failed to convert data to numeric
+>
+> ? Mon, 3 Mar 2025 13:21:31 +0530
+> Christofer Bogaso <bogaso.christofer at gmail.com> ?????:
+>
+> > Is there any way to remove all possible "Unicode character" that may
+> > be present in the array at once?
+>
+> Define a range of characters you consider acceptable, and you'll be
+> able to use regular expressions to remove everything else. For example,
+> the following expression should remove everything except ASCII digits,
+> dots, and hyphen-minus:
+>
+> gsub('[^0-9.-]+', '', dat2)
+>
+> There is a brief introduction to regular expressions in ?regex and
+> various online resources such as <https://regex101.com/>.
+>
+> --
+> Best regards,
+> Ivan
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From r@oknz @end|ng |rom gm@||@com  Mon Mar  3 23:42:30 2025
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Tue, 4 Mar 2025 11:42:30 +1300
+Subject: [R] Failed to convert data to numeric
+In-Reply-To: <20250304104514.691929c1@new-hp>
+References: <CA+dpOJmdNDT6Y2n5UDZgUj8c1E77TupPfT5MhgbRNZW5XSgjFg@mail.gmail.com>
+ <20250303094837.32820c87@Tarkus>
+ <CA+dpOJnHQOj+rbOJXhSNxHGerqNCaiAfARtkvo_=87jiD93OTw@mail.gmail.com>
+ <20250303110922.1e9ecb49@Tarkus> <007801db8c60$5c6df260$1549d720$@gmail.com>
+ <20250304104514.691929c1@new-hp>
+Message-ID: <CABcYAd+stZ5zbXV_svwGNVn8hddyPRU1aU41C70czL7cA3NsXw@mail.gmail.com>
+
+This is not for the R inferno.
+This is for the Microsoft interno, or perhaps the Unicode inferno.
+The Byte Order Mark is supposed to appear at the beginning of UTF-32
+or UTF-16 *external* data, like a file
+or data coming over a socket.
+In the Microsoft world, it also tends to appear at the beginning of
+UTF-8 files, where strictly speaking, it shouldn't.
+ONLY at the beginning does ZWNBSP have this function.
+
+I use a lot of programming languages, and I don't know any that
+routinely ignores ZWNBSP.
+
+
+Hmm.  I wonder if the strings in this example are fields of a data
+file but were originally in a different
+order, with the last string first?
+
+What *would* make sense would be an option, when opening a connection,
+to skip a leading BOM.
+
+
+On Tue, 4 Mar 2025 at 10:45, Rolf Turner <rolfturner at posteo.net> wrote:
+>
+>
+> This issue looks like grist for the R Inferno.
+>
+> cheers,
+>
+> Rolf
+>
+>
+> On Mon, 3 Mar 2025 12:19:02 -0500
+> <avi.e.gross at gmail.com> wrote:
+>
+> > The second solution Ivan offers looks good, and a bit more general
+> > than his first that simply removes one non-visible character.
+> >
+> > It begs the question of why the data has that anomaly at all. Did the
+> > data come from a text-processing environment where it was going to
+> > wrap there and was protected?
+> >
+> > As Ivan points out, there is a question of what format you expect
+> > numbers in and what "as.numeric"  should do when it does not see an
+> > integer or floating point number.
+> >
+> > If you test it, you can see that as.numeric ignores leading and/or
+> > trailing blanks and tabs and even newlines sometimes and some other
+> > irrelevant ASCII characters. In that spirit, the UNICODE character
+> > being mentioned should be one that any UNICODE-aware version of
+> > as.numeric should ignore.
+> >
+> > But UNICODE supports a much wider vision of numeric so that there are
+> > numeric-equivalent symbols in other languages and groupings and even
+> > something like the symbols for numerals in light or dark circles
+> > count as numbers. Those can likely safely be excluded in this context
+> > but perhaps not in a more general function.
+> >
+> > But I note as.numeric seems to handle scientific notation as in:
+> >
+> > as.numeric("1.23e8")
+> > [1] 1.23e+08
+> >
+> > So a single instance of the letters "e" and "E" must be supported if
+> > your numbers in string form may contain them. Further, the E cannot
+> > be the first or last letter. It cannot have adjacent whitespace.
+> > Still, if you are OK with getting an NA in such situations, it should
+> > be OK.
+> >
+> > It gets worse. Hexadecimal is supported:
+> >
+> > > as.numeric("0X12")
+> > [1] 18
+> >
+> > You now need to support the letters x and X. But only if preceded by
+> > a zero!
+> >
+> > It gets still worse as any characters from [0-9A-F] are supported:
+> >
+> > > as.numeric("0xAE")
+> > [1] 174
+> >
+> > There may be other scenarios it handles. The filter applied might
+> > remove valid numbers so you may want to carefully document it if your
+> > program only handles a restricted set.
+> >
+> > A possible idea might be to make two passes and only  evaluate any
+> > resulting NA from as.numeric() by doing a substitution like Ivan
+> > suggests to try to fix any broken ones. But note it may fix too much
+> > as "1.2 e 5" might become "1.2e5" as spaces are removed.
+> >
+> > -----Original Message-----
+> > From: R-help <r-help-bounces at r-project.org> On Behalf Of Ivan Krylov
+> > via R-help Sent: Monday, March 3, 2025 3:09 AM
+> > To: Christofer Bogaso <bogaso.christofer at gmail.com>
+> > Cc: r-help <r-help at r-project.org>
+> > Subject: Re: [R] Failed to convert data to numeric
+> >
+> > ? Mon, 3 Mar 2025 13:21:31 +0530
+> > Christofer Bogaso <bogaso.christofer at gmail.com> ?????:
+> >
+> > > Is there any way to remove all possible "Unicode character" that may
+> > > be present in the array at once?
+> >
+> > Define a range of characters you consider acceptable, and you'll be
+> > able to use regular expressions to remove everything else. For
+> > example, the following expression should remove everything except
+> > ASCII digits, dots, and hyphen-minus:
+> >
+> > gsub('[^0-9.-]+', '', dat2)
+> >
+> > There is a brief introduction to regular expressions in ?regex and
+> > various online resources such as <https://regex101.com/>.
+> >
+>
+>
+>
+> --
+> Honorary Research Fellow
+> Department of Statistics
+> University of Auckland
+> Stats. Dep't. (secretaries) phone:
+>          +64-9-373-7599 ext. 89622
+> Home phone: +64-9-480-4619
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Mon Mar  3 23:51:21 2025
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Mon, 3 Mar 2025 17:51:21 -0500
+Subject: [R] Failed to convert data to numeric
+In-Reply-To: <CABcYAdKTKJaRcN9u-uU0FPPC79WJ48VkjmLszjjjA01TWqQoPA@mail.gmail.com>
+References: <CA+dpOJmdNDT6Y2n5UDZgUj8c1E77TupPfT5MhgbRNZW5XSgjFg@mail.gmail.com>
+ <20250303094837.32820c87@Tarkus>
+ <CA+dpOJnHQOj+rbOJXhSNxHGerqNCaiAfARtkvo_=87jiD93OTw@mail.gmail.com>
+ <20250303110922.1e9ecb49@Tarkus> <007801db8c60$5c6df260$1549d720$@gmail.com>
+ <CABcYAdKTKJaRcN9u-uU0FPPC79WJ48VkjmLszjjjA01TWqQoPA@mail.gmail.com>
+Message-ID: <00aa01db8c8e$c9058b30$5b10a190$@gmail.com>
+
+I like your examples, Richard, of strings that should not be considered as numbers. There are times you want to recognize something like "221B Baker Street" and extract the 221 or perhaps the 221B as a part of a full address and ignore the rest. But one goal of a function like as.numeric() is to handle fully-formed numbers ready to be converted to another storage format. 
+
+People with special uses and needs generally need to roll their own. A Bank may want to be able to handle this:
+
+as.currency("five hundred twenty eight dollars and thirty two cents")
+
+And someone else may want to handle Roman numerals, or calculate the value of text in a form of numerology like:
+gematria("???") generates 18.
+
+But what you describe with ?soft is quite inconsiderate and I wonder if it should be automatically handled by an enhanced version of the as.numeric family. There is indeed a general problem with different character sets and how to know what you have. But breaking lots of software this way is not ...
+
+-----Original Message-----
+From: Richard O'Keefe <raoknz at gmail.com> 
+Sent: Monday, March 3, 2025 5:34 PM
+To: avi.e.gross at gmail.com
+Cc: Ivan Krylov <ikrylov at disroot.org>; Christofer Bogaso <bogaso.christofer at gmail.com>; r-help <r-help at r-project.org>
+Subject: Re: [R] Failed to convert data to numeric
+
+The zero-width no-break space character is used as the Byte Order
+Mark.  That is, an official function for it at the beginning of a
+character sequence
+is to indicate whether you have 2-byte or 4-byte big-endian or
+little-endian encoding.  It was not intended for use in UTF-8, where
+there is nothing for
+it to tell you, but Microsoft jumped in with all six feet and said
+"hey, we'll use this to indicate that it's Unicode in UTF-8 and not
+one of the hundreds
+of other 8-bit coded character sets."  I've lost count of the number
+of programs that have choked because they were given a BOM where they
+didn't expect one.
+
+So there is no great mystery about why there is a BOM at the beginning
+of this particular string.
+The real mystery is why it was there and NOT at the beginning of all the others.
+
+I suggest that it is a good idea to remove the BOM character from the
+beginning of microsofted strings,
+but a bad idea to remove any other character.  If you are given bad
+data like "Bond-007" when you
+expect a number, you want to know about it, and not mistake it for
+-007.  Still less do you want a
+phone number like "+61 3 555 1234 x77" to be mistaken for a plain
+number "613555123477".
+
+On Tue, 4 Mar 2025 at 06:24, <avi.e.gross at gmail.com> wrote:
+>
+> The second solution Ivan offers looks good, and a bit more general than his first that simply removes one non-visible character.
+>
+> It begs the question of why the data has that anomaly at all. Did the data come from a text-processing environment where it was going to wrap there and was protected?
+>
+> As Ivan points out, there is a question of what format you expect numbers in and what "as.numeric"  should do when it does not see an integer or floating point number.
+>
+> If you test it, you can see that as.numeric ignores leading and/or trailing blanks and tabs and even newlines sometimes and some other irrelevant ASCII characters. In that spirit, the UNICODE character being mentioned should be one that any UNICODE-aware version of as.numeric should ignore.
+>
+> But UNICODE supports a much wider vision of numeric so that there are numeric-equivalent symbols in other languages and groupings and even something like the symbols for numerals in light or dark circles count as numbers. Those can likely safely be excluded in this context but perhaps not in a more general function.
+>
+> But I note as.numeric seems to handle scientific notation as in:
+>
+> as.numeric("1.23e8")
+> [1] 1.23e+08
+>
+> So a single instance of the letters "e" and "E" must be supported if your numbers in string form may contain them. Further, the E cannot be the first or last letter. It cannot have adjacent whitespace. Still, if you are OK with getting an NA in such situations, it should be OK.
+>
+> It gets worse. Hexadecimal is supported:
+>
+> > as.numeric("0X12")
+> [1] 18
+>
+> You now need to support the letters x and X. But only if preceded by a zero!
+>
+> It gets still worse as any characters from [0-9A-F] are supported:
+>
+> > as.numeric("0xAE")
+> [1] 174
+>
+> There may be other scenarios it handles. The filter applied might remove valid numbers so you may want to carefully document it if your program only handles a restricted set.
+>
+> A possible idea might be to make two passes and only  evaluate any resulting NA from as.numeric() by doing a substitution like Ivan suggests to try to fix any broken ones. But note it may fix too much as "1.2 e 5" might become "1.2e5" as spaces are removed.
+>
+> -----Original Message-----
+> From: R-help <r-help-bounces at r-project.org> On Behalf Of Ivan Krylov via R-help
+> Sent: Monday, March 3, 2025 3:09 AM
+> To: Christofer Bogaso <bogaso.christofer at gmail.com>
+> Cc: r-help <r-help at r-project.org>
+> Subject: Re: [R] Failed to convert data to numeric
+>
+> ? Mon, 3 Mar 2025 13:21:31 +0530
+> Christofer Bogaso <bogaso.christofer at gmail.com> ?????:
+>
+> > Is there any way to remove all possible "Unicode character" that may
+> > be present in the array at once?
+>
+> Define a range of characters you consider acceptable, and you'll be
+> able to use regular expressions to remove everything else. For example,
+> the following expression should remove everything except ASCII digits,
+> dots, and hyphen-minus:
+>
+> gsub('[^0-9.-]+', '', dat2)
+>
+> There is a brief introduction to regular expressions in ?regex and
+> various online resources such as <https://regex101.com/>.
+>
+> --
+> Best regards,
+> Ivan
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
