@@ -2852,3 +2852,340 @@ Director, School of Computational Science and Engineering
 working hours.
 
 
+From tebert @end|ng |rom u||@edu  Mon Mar 10 03:24:05 2025
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Mon, 10 Mar 2025 02:24:05 +0000
+Subject: [R] Number changed weirdly when converting to numeric
+In-Reply-To: <CA+dpOJm_biYUo80HF3UG=tu2LggK9pidk2nBUD2NbKsskE9ujA@mail.gmail.com>
+References: <CA+dpOJm_biYUo80HF3UG=tu2LggK9pidk2nBUD2NbKsskE9ujA@mail.gmail.com>
+Message-ID: <CH3PR22MB4514D7C6FD5AE27B34B3850ACFD62@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+This is a general problem across all software. A computer has finite memory but a floating-point value can have an infinite number of digits. Consider trying to store the exact value of pi. All computer software has a limit to available precision, and that value is specific to each piece of software. You can play games to find that limit. Ask the computer what is 1 + 0.1?
+Then keep going
+1 + 0.01
+1 + 0.001
+And so forth, until the answer is 1. In this game be careful in what the computer displays (as a default) and what it calculates. My version of Excel will display a result of 1 after 1 + 0.0000001. However by changing the display you can see that Excel continues out to 1E-15 before everything equals 1. Keep in mind that this is significant digits. So if I change the problem to 1000 + 0.1 then Excel will display everything equals 1000 after 1000.001, and keep calculating until 1E-11.
+
+You can correctly process the string. This is one solution:
+
+install.packages("Rmpfr")
+library(Rmpfr)
+
+x <- "-177253333.333333343267441"
+mpfr_x <- mpfr(x, precBits = 128)  # Increase precision
+
+sprintf("%0.15f", as.numeric(mpfr_x))
+
+Mathematical operations on mpfr_x give an answer -354506666.6666666865348819999999999999992 if I multiply by 2.
+
+If I increase precBits=256 then I get -354506666.666666686534882
+
+This approach will let you read the numbers in correctly. You will need to revisit this issue if you use these numbers in data analyses or even simple calculations. Also consider how much memory is being consumed by the increase in precision versus the available memory. This will become more problematic in using these values in matrix algebra necessary in many data analyses.
+
+
+Tim
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Christofer Bogaso
+Sent: Sunday, March 9, 2025 1:13 PM
+To: r-help <r-help at r-project.org>
+Subject: [R] Number changed weirdly when converting to numeric
+
+[External Email]
+
+Hi,
+
+I have below simple conversion
+
+> sprintf("%0.15f", as.numeric("-177253333.333333343267441"))
+
+[1] "-177253333.333333373069763"
+
+I could not figure out why the input and output is different?
+
+Clearly this conversion is incorrect. Is there any way to convert to numerical properly?
+
+> sessionInfo()
+
+R version 4.4.0 (2024-04-24)
+
+Platform: aarch64-apple-darwin20
+
+Running under: macOS 15.3.1
+
+
+Matrix products: default
+
+BLAS:   /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRblas.0.dylib
+
+LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;
+ LAPACK version 3.12.0
+
+
+locale:
+
+[1] C/UTF-8/C/C/C/C
+
+
+time zone: Asia
+
+tzcode source: internal
+
+
+attached base packages:
+
+[1] stats     graphics  grDevices utils     datasets  methods   base
+
+
+loaded via a namespace (and not attached):
+
+[1] compiler_4.4.0
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From m@ech|er @end|ng |rom @t@t@m@th@ethz@ch  Mon Mar 10 11:27:31 2025
+From: m@ech|er @end|ng |rom @t@t@m@th@ethz@ch (Martin Maechler)
+Date: Mon, 10 Mar 2025 11:27:31 +0100
+Subject: [R] Number changed weirdly when converting to numeric
+In-Reply-To: <d15df42b-ccff-4d9f-a650-1c5920cff105@gmail.com>
+References: <CA+dpOJm_biYUo80HF3UG=tu2LggK9pidk2nBUD2NbKsskE9ujA@mail.gmail.com>
+ <4908AE38-EA36-41F1-B899-FBA17569E2B5@dcn.davis.ca.us>
+ <A16FBCC8-9FFD-41EE-ACE7-B6DE9B62B988@collocations.de>
+ <d15df42b-ccff-4d9f-a650-1c5920cff105@gmail.com>
+Message-ID: <26574.48787.187485.773401@stat.math.ethz.ch>
+
+>>>>> J C Nash 
+>>>>>     on Sun, 9 Mar 2025 14:19:00 -0400 writes:
+
+    > This may be way off the mark, but is it possible that the ARM machine is using
+    > the "new" IEEE-754 arithmetic that does not have 80 bit extended? The standard
+    > was changed (in ways to allow non-compliant systems to be compliant) because
+    > ARM does not have the hardware registers. There are reasons why this might be
+    > sensible, but we need more awareness of the consequences to avoid some of the
+    > resulting changes in results. I've had to "fix" things that weren't broken because
+    > M1 and later Macs gave different outputs, actually not in my code but in vignettes
+    > where I compared to other packages.
+
+Yes, indeed; very much the same here, thank you, John.
+and yes, the consequences I've seen (in the R world) have been
+considerably larger than many would have expected.
+
+OTOH, I agree (with people saying) that I (and others) had
+become too much dependent on assuming quite specific floating
+point arithmetic behavior (basically something like "x86_64 everywhere")
+which has not been a good long term behaviour.
+
+and "yes" (nr. 3): I tell everybody that indeed, the speed of
+the M{1,2,3,4,..} chips is amazing and beating all competition
+at the moment, *BUT* the cost is decreased accuracy in amazingly
+many situations.
+
+Martin
+
+    > Cheers,
+
+    > John Nash
+    > (who actually was part of 1985 IEEE 754 committee, though a VERY minor player)
+
+    > On 2025-03-09 14:06, Stephanie Evert wrote:
+    >> For once, that doesn't seem to be the issue here. The bug only seems to happen on arm64 and doesn't reproduce on x86_64 hardware.
+    >> 
+    >>> x <- as.numeric("-177253333.333333343267441")
+    >>> sprintf("%.15f", x)
+    >> [1] "-177253333.333333373069763"
+    >> 
+    >> This is the number adjacent to -177253333.333333343267441 in IEEE 754.
+    >> 
+    >>> writeBin(x, raw(8))
+    >> [1] ac aa aa aa 57 21 a5 c1
+    >> 
+    >> If you look at the hexadecimal representation, the least significant bit appears to be off by one: the first byte should be 0xAB rather than 0xAC (according to online calculators such as https://numeral-systems.com/ieee-754-converter/).
+    >> 
+    >> Seems that decimal-to-float conversion has a bug on arm64. Note that I get the same result with
+    >> 
+    >>> x <- -177253333.333333343267441
+    >> 
+    >> so it's not specific to as.numeric().
+    >> 
+    >> Best,
+    >> Stephanie
+    >> 
+    >> 
+    >> 
+    >> 
+    >>> On 9 Mar 2025, at 18:46, Jeff Newmiller via R-help <r-help at r-project.org> wrote:
+    >>> 
+    >>> https://cran.r-project.org/doc/FAQ/R-FAQ.html#Why-doesn_0027t-R-think-these-numbers-are-equal_003f
+    >>> 
+    >>> https://0.30000000000000004.com/
+    >>> 
+    >>> On March 9, 2025 10:12:47 AM PDT, Christofer Bogaso <bogaso.christofer at gmail.com> wrote:
+    >>>> Hi,
+    >>>> 
+    >>>> I have below simple conversion
+    >>>> 
+    >>>>> sprintf("%0.15f", as.numeric("-177253333.333333343267441"))
+    >>>> 
+    >>>> [1] "-177253333.333333373069763"
+    >>>> 
+    >>>> I could not figure out why the input and output is different?
+    >>>> 
+    >>>> Clearly this conversion is incorrect. Is there any way to convert to
+    >>>> numerical properly?
+    >>>> 
+    >>>>> sessionInfo()
+    >>>> 
+    >>>> R version 4.4.0 (2024-04-24)
+    >>>> 
+    >>>> Platform: aarch64-apple-darwin20
+    >>>> 
+    >>>> Running under: macOS 15.3.1
+    >>>> 
+    >>>> 
+    >>>> Matrix products: default
+    >>>> 
+    >>>> BLAS:   /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRblas.0.dylib
+    >>>> 
+    >>>> LAPACK: /Library/Frameworks/R.framework/Versions/4.4-arm64/Resources/lib/libRlapack.dylib;
+    >>>> LAPACK version 3.12.0
+    >>>> 
+    >>>> 
+    >>>> locale:
+    >>>> 
+    >>>> [1] C/UTF-8/C/C/C/C
+    >>>> 
+    >>>> 
+    >>>> time zone: Asia
+    >>>> 
+    >>>> tzcode source: internal
+    >>>> 
+    >>>> 
+    >>>> attached base packages:
+    >>>> 
+    >>>> [1] stats     graphics  grDevices utils     datasets  methods   base
+    >>>> 
+    >>>> 
+    >>>> loaded via a namespace (and not attached):
+    >>>> 
+    >>>> [1] compiler_4.4.0
+    >>>> 
+    >>>> ______________________________________________
+    >>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+    >>>> https://stat.ethz.ch/mailman/listinfo/r-help
+    >>>> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+    >>>> and provide commented, minimal, self-contained, reproducible code.
+    >>> 
+    >>> -- 
+    >>> Sent from my phone. Please excuse my brevity.
+    >>> 
+    >>> ______________________________________________
+    >>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+    >>> https://stat.ethz.ch/mailman/listinfo/r-help
+    >>> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+    >>> and provide commented, minimal, self-contained, reproducible code.
+    >> 
+    >> 
+    >> [[alternative HTML version deleted]]
+    >> 
+    >> ______________________________________________
+    >> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+    >> https://stat.ethz.ch/mailman/listinfo/r-help
+    >> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+    >> and provide commented, minimal, self-contained, reproducible code.
+
+    > ______________________________________________
+    > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+    > https://stat.ethz.ch/mailman/listinfo/r-help
+    > PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+    > and provide commented, minimal, self-contained, reproducible code.
+
+
+From @te|@nML @end|ng |rom co||oc@t|on@@de  Mon Mar 10 13:51:02 2025
+From: @te|@nML @end|ng |rom co||oc@t|on@@de (Stephanie Evert)
+Date: Mon, 10 Mar 2025 13:51:02 +0100
+Subject: [R] Number changed weirdly when converting to numeric
+In-Reply-To: <d565b28e-a601-49d4-be24-1aba2e0646be@gmail.com>
+References: <CA+dpOJm_biYUo80HF3UG=tu2LggK9pidk2nBUD2NbKsskE9ujA@mail.gmail.com>
+ <4908AE38-EA36-41F1-B899-FBA17569E2B5@dcn.davis.ca.us>
+ <A16FBCC8-9FFD-41EE-ACE7-B6DE9B62B988@collocations.de>
+ <d565b28e-a601-49d4-be24-1aba2e0646be@gmail.com>
+Message-ID: <0DE187BC-F252-42F9-9ED8-19C3CF0F2597@collocations.de>
+
+Both atof() and strtod() give the correct result on my M1 MacBook. So it looks to me like a bug in R_strtod5(), possibly something that requires extended 80-bit precision to get the conversion right.
+
+Doesn't seem to be the fault of the ARM chip, so I'd say it warrants a bug report.
+
+Perhaps we can learn from SQLite, which has recently put some work into making decimal / double conversion more reliable IIRC (possibly even triggered by similar problems on arm64).
+
+	https://github.com/sqlite/sqlite/blob/eed4e1d2df599952f191182cf51646de11b110a6/src/util.c#L577
+
+A key difference seems to be that SQLite accumulates the significand in an uint64_t in order to get 18 or 19 digits of precision before conversion to double.
+
+Best,
+Stephanie
+
+
+> On 9 Mar 2025, at 19:24, Ben Bolker <bbolker at gmail.com> wrote:
+> 
+>   Out of curiosity, what does atof() do on that platform? What does the following C program do on arm64? (I don't know exactly what R does to coerce character to double, but this is what I would guess ...)
+> 
+> #include <stdio.h>
+> #include <stdlib.h>
+> int main(void) {
+>  const char *str = "-177253333.333333343267441";
+>  double x = atof(str);
+>  printf("%0.15f\n", x);
+>  return 0;
+> }
+> 
+>  To my surprise, apparently R doesn't use stdlib to convert.
+> 
+> From https://github.com/r-devel/r-svn/blob/bb64b28d8cc2e2863eb664e7f83b0a7206b4b1d4/src/main/util.c#L2087C1-L2107:
+> 
+> /* ...
+> 
+>       use our own strtod/atof to mitigate effects of setting LC_NUMERIC
+> 
+>   Also allows complete control of which non-numeric strings are
+>   accepted; e.g. glibc allows NANxxxx, macOS NAN(s), this accepts "NA".
+> 
+> ... */
+> 
+>  Should this be escalated to r-devel (or r-bugzilla)?  Nothing pops out at me from the recent NEWS ...
+> 
+
+
+	[[alternative HTML version deleted]]
+
+
+From pd@|gd @end|ng |rom gm@||@com  Mon Mar 10 14:19:50 2025
+From: pd@|gd @end|ng |rom gm@||@com (peter dalgaard)
+Date: Mon, 10 Mar 2025 14:19:50 +0100
+Subject: [R] [Rd] R 4.5.0 scheduled for April 11
+Message-ID: <983AEC97-BB06-46E4-8691-4C0F90F76F7B@gmail.com>
+
+Full schedule is available on developer.r-project.org (pending update from SVN).
+
+-- 
+Peter Dalgaard, Professor,
+Center for Statistics, Copenhagen Business School
+Solbjerg Plads 3, 2000 Frederiksberg, Denmark
+Phone: (+45)38153501
+Office: A 4.23
+Email: pd.mes at cbs.dk  Priv: PDalgd at gmail.com
+
+______________________________________________
+R-devel at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-devel
+
+_______________________________________________
+R-announce at r-project.org mailing list
+https://stat.ethz.ch/mailman/listinfo/r-announce
+
+
