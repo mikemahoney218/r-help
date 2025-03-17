@@ -4809,3 +4809,1128 @@ PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
 
+From r@oknz @end|ng |rom gm@||@com  Sat Mar 15 09:27:24 2025
+From: r@oknz @end|ng |rom gm@||@com (Richard O'Keefe)
+Date: Sat, 15 Mar 2025 21:27:24 +1300
+Subject: [R] What don't I understand about sample()?
+In-Reply-To: <0100019595ffab79-081b554a-5ceb-426d-8f67-af62ed03b770-000000@email.amazonses.com>
+References: <d5fce1d0fd242f05c6bdafc94779662c6e06809b.camel@zembower.org>
+ <4aafb881ce10fff0caa3cee0096d99fa285501b1.camel@zembower.org>
+ <0100019595ffab79-081b554a-5ceb-426d-8f67-af62ed03b770-000000@email.amazonses.com>
+Message-ID: <CABcYAdJjtg_Lzqy1Z6MDFinJ6JamN-5FV-xg1g0N5kWXFCqerQ@mail.gmail.com>
+
+Not having the book (and which of the three editions are you using?),
+I downloaded the data and played with it for a bit.
+dotchart() showed the Dark and Light conditions looked quite
+different, but also showed that there are not very many cases.
+After trying t.test, it occurred to me that I did not know whether
+"BMGain" means gain in *grams* or gain in *percent*.
+Reflection told me that for a growth experiment, percent made more
+sense, which reminded my of one of my first
+student advising experiences, where I said "never give the computer
+percentages; let IT calculate the percentages
+from the baseline and outcome, because once you've thrown away
+information, the computer can't magically get it back."
+In particular, in the real world I'd be worried about the possibility
+that there was some confounding going on, so I would
+much rather have initial weight and final weight as variables.
+If BMGain is an absolute measure, the p value for a t test is teeny tiny.
+If BMGain is a percentage, the p value for a sensible t test is about 0.03.
+
+A permutation test went like this.
+is.light <- d$Group == "Light"
+is.dark <- d$Group == "Dark"
+score <- function (g) mean(g[is.light]) - mean(g[is.dark])
+base.score <- score(d$BMGain)
+perm.scores <- sapply(1:997, function (i) score(sample(d$BMGain)))
+sum(perm.scores >= base.score) / length(perm.scores)
+
+I don't actually see where matrix() comes into it, still less anything
+in the tidyverse.
+
+
+On Sat, 15 Mar 2025 at 07:52, Kevin Zembower via R-help
+<r-help at r-project.org> wrote:
+>
+> Thank you all, very much, for your kind and detailed explanations. I
+> didn't understand, mainly, that the matrix() call only called its
+> parameters once. I was certain that this was a bug with sample()
+> getting seeded with a constant value, and giving the same permutation.
+>
+> I think I need to make my MWE a little less minimal to continue
+> learning. If you're familiar with the Lock5 statistics textbook, I'm
+> working on the Light and Dark mice example, where groups of mice were
+> exposed or not to light at night, then measured for weight gain. The
+> statistic is mean difference in weight gain between the two groups.
+>
+> My understanding of how I'm supposed to construct a randomized
+> distribution is to join the weight gains of the 10 mice exposed to
+> light at night to the 8 mice not exposed to light at night. After
+> shuffling this data, I arbitrarily group the first 10 values into the
+> 'light' group, and the last 8 into the 'dark' group, and find the
+> difference in their means.
+>
+> I think I can do this correctly with:
+> ===================
+> ## Less-minimal working example
+> library(tidyverse)
+>
+> library(Lock5Data)
+> data(LightatNight)
+> str(LightatNight)
+>
+> ## Or, if you don't have the Lock5Data library:
+> (d <-
+> read_csv("https://www.lock5stat.com/datasets3e/LigthtatNight.csv"))
+>
+> (lt <- d$BMGain[d$Group == "Light"])
+> (dk <- d$BMGain[d$Group == "Dark"])
+> (n_lt <- length(lt))
+> (n_dk <- length(dk))
+>
+> (data <- c(lt, dk))
+>
+> B <- 10 #Will be 1000
+> n <- length(data)
+>
+> random.samples <- matrix(NA, B, n)
+> random.statistics <- rep(NA, B)
+>
+> for(i in 1:B) {
+>     random.samples[i,] <- sample(data)
+>     random.statistics[i] <- mean(random.samples[i, 1:n_lt]) -
+>         mean(random.samples[i, (n_lt + 1):(n_lt + n_dk)])
+> }
+> random.samples
+> random.statistics
+>
+> ## Trying to do it without a for(), using Peter's suggestion:
+> (random.samples <- matrix(replicate(B, sample(data)), B, n,
+> byrow=TRUE))
+> compute.diff.means <- function(x) {
+>     return(mean(x[1:n_lt]) - mean(x[(n_lt+1):(n_lt+n_dk)]))
+> }
+> (random.statistics <- apply(random.samples, 1, compute.diff.means))
+> =======================
+>
+> I think both of these methods give me the data I'm trying for. Any
+> suggestions on my R coding techniques are welcome.
+>
+> Thank you all, again, for taking the time and effort to help me. Your
+> help is greatly appreciated.
+>
+> -Kevin
+>
+> On Thu, 2025-03-13 at 17:00 -0400, Kevin Zembower wrote:
+> > Hello, all,
+> >
+> > I'm learning to do randomized distributions in my Stats 101 class*. I
+> > thought I could do it with a call to sample() inside a matrix(),
+> > like:
+> >
+> > > matrix(sample(1:10, replace=TRUE), 5, 10, byrow=TRUE)
+> >      [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
+> > [1,]    8    2    3    1    8    2    8    8    9     8
+> > [2,]    8    2    3    1    8    2    8    8    9     8
+> > [3,]    8    2    3    1    8    2    8    8    9     8
+> > [4,]    8    2    3    1    8    2    8    8    9     8
+> > [5,]    8    2    3    1    8    2    8    8    9     8
+> > >
+> >
+> > Imagine my surprise to learn that all the rows were the same
+> > permutation. I thought each time sample() was called inside the
+> > matrix,
+> > it would generate a different permutation.
+> >
+> > I modeled this after the bootstrap sample techniques in
+> > https://pages.stat.wisc.edu/~larget/stat302/chap3.pdf. I don't
+> > understand why it works in bootstrap samples (with replace=TRUE), but
+> > not in randomized distributions (with replace=FALSE).
+> >
+> > Thanks for any insight you can share with me, and any suggestions for
+> > getting rows in a matrix with different permutations.
+> >
+> > -Kevin
+> >
+> > *No, this isn't a homework problem. We're using Lock5 as the text in
+> > class, along with its StatKey web application. I'm just trying to get
+> > more out of the class by also solving our problems using R, for which
+> > I'm not receiving any class credit.
+>
+>
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+From kev|n @end|ng |rom zembower@org  Sat Mar 15 18:03:48 2025
+From: kev|n @end|ng |rom zembower@org (=?UTF-8?Q?Kevin_Zembower?=)
+Date: Sat, 15 Mar 2025 17:03:48 +0000
+Subject: [R] [SPAM | WERBUNG] Re:  What don't I understand about sample()?
+In-Reply-To: <mailman.372647.0.1742036401.60374.r-help@r-project.org>
+References: <mailman.372647.0.1742036401.60374.r-help@r-project.org> 
+ <4ee3bcfe192808ce7a7a2a0b56ac8dc923634802.camel@zembower.org>
+Message-ID: <010001959ac30aa1-b06b10f1-9351-45c1-bd55-63acb07377dc-000000@email.amazonses.com>
+
+Avi, hi, thanks for your reply. I was vaguely aware of the '...'
+construct, but hadn't ever worked out how to actually use it. Thank you
+so much for teaching me that. I agree that I should use it in my
+function.
+
+Yeah, I just used the parentheses around some of my assignments to
+avoid the trouble of typing the variable into R to verify the contents.
+My work is all contained in a Rmarkdown file, that I finally export and
+file with my notes from class to help me study for exams.
+
+Thank you, again, for your generous help for me.
+
+-Kevin
+
+On Sat, 2025-03-15 at 12:00 +0100, r-help-request at r-project.org wrote:
+> Kevin,
+> 
+> I was amused by the use of the parentheses wrapping to get the REPL
+> to show the effects of an assignment but would remove that in any
+> final program if the output is not needed. 
+> 
+> I am not saying this is wrong, nor what I describe below, but just a
+> discussion of how others might do it.
+> 
+> I do somewhat wonder? about the way you define the function below:
+> 
+> compute.diff.means <- function(x) {
+> ??? return(mean(x[1:n_lt]) - mean(x[(n_lt+1):(n_lt+n_dk)]))
+> }
+> 
+> It is a function of x which you pass in but makes use of an external
+> variable that it needs to find in the environment several times,
+> n_lt, as well as n_dk. But these assignments happen just once in your
+> code:
+> 
+> (n_lt <- length(lt))
+> (n_dk <- length(dk))
+> 
+> Some people would write the function to include the variables as in:
+> 
+> compute.diff.means <- function(x, n_lt, n_dk) {
+> ??? return(mean(x[1:n_lt]) - mean(x[(n_lt+1):(n_lt+n_dk)]))
+> }
+> 
+> The names of the variables can be the same or new ones.
+> 
+> The reason you do this seems to be that you are using "apply" as
+> shown below and may not know it can accommodate additional argument.
+> 
+> (random.statistics <- apply(random.samples, 1, compute.diff.means))
+> 
+> The above is an implicit loop that calls compute.diff.means()
+> repeatedly over each row of your matrix. It passes the specific row
+> as a vector as the first and only argument.
+> 
+> If you ask "?apply" to document what the apply function does, you may
+> note that like some other such functions, there is a "..." that
+> actually means anything else you supply as extra arguments are passed
+> along to the function. So, since your variables are not changing,
+> then code like this:
+> 
+> (random.statistics <- apply(random.samples, 1, compute.diff.means,
+> n_lt, n_dk))
+> 
+> Will call a function with a row vector and then the additional two
+> arguments so each call will be to:
+> 
+> compute.diff.means(ROW, n_lt, n_dk)
+> 
+> Arguably, this approach may be no better but in some sense makes your
+> function more portable and cleaner. If your code continued and did
+> additional analyses like this, the function might be more easily re-
+> usable.
+> 
+> 
+
+
+
+
+From kev|n @end|ng |rom zembower@org  Sat Mar 15 18:28:42 2025
+From: kev|n @end|ng |rom zembower@org (=?UTF-8?Q?Kevin_Zembower?=)
+Date: Sat, 15 Mar 2025 17:28:42 +0000
+Subject: [R] What don't I understand about sample()?
+In-Reply-To: <mailman.372647.0.1742036401.60374.r-help@r-project.org>
+References: <mailman.372647.0.1742036401.60374.r-help@r-project.org> 
+ <4c982e51255c5b83097fba1d7cf12341988eeb4e.camel@zembower.org>
+Message-ID: <010001959ad9d794-3dea3f0a-037e-4cb9-bf19-28979a0d147b-000000@email.amazonses.com>
+
+Hi, Richard, thanks for replying. I should have mentioned the third
+edition, which we're using. The data file didn't change between the
+second and third editions, and the data on Body Mass Gain was the same
+as in the first edition, although the first edition data file contained
+additional variables.
+
+According to my text, the BMGain was measured in grams. Thanks for
+pointing out that my statement of the problem lacked crucial
+information.
+
+The matrix in my example comes from an example in
+https://pages.stat.wisc.edu/~larget/stat302/chap3.pdf, where the author
+created a bootstrap example with a matrix that consisted of one row for
+every sample in the bootstrap, and one column for each mean in the
+original data. This allowed him to find the mean for each row to create
+the bootstrap statistics.
+
+The only need for the tidyverse is to use the read_csv() function. I'm
+regrettably lazy in not determining which of the multiple functions in
+the tidyverse library loads read_csv(), and just using that one.
+
+Thanks, again, for helping me to further understand R and this problem.
+
+-Kevin
+
+On Sat, 2025-03-15 at 12:00 +0100, r-help-request at r-project.org wrote:
+> Not having the book (and which of the three editions are you using?),
+> I downloaded the data and played with it for a bit.
+> dotchart() showed the Dark and Light conditions looked quite
+> different, but also showed that there are not very many cases.
+> After trying t.test, it occurred to me that I did not know whether
+> "BMGain" means gain in *grams* or gain in *percent*.
+> Reflection told me that for a growth experiment, percent made more
+> sense, which reminded my of one of my first
+> student advising experiences, where I said "never give the computer
+> percentages; let IT calculate the percentages
+> from the baseline and outcome, because once you've thrown away
+> information, the computer can't magically get it back."
+> In particular, in the real world I'd be worried about the possibility
+> that there was some confounding going on, so I would
+> much rather have initial weight and final weight as variables.
+> If BMGain is an absolute measure, the p value for a t test is teeny
+> tiny.
+> If BMGain is a percentage, the p value for a sensible t test is about
+> 0.03.
+> 
+> A permutation test went like this.
+> is.light <- d$Group == "Light"
+> is.dark <- d$Group == "Dark"
+> score <- function (g) mean(g[is.light]) - mean(g[is.dark])
+> base.score <- score(d$BMGain)
+> perm.scores <- sapply(1:997, function (i) score(sample(d$BMGain)))
+> sum(perm.scores >= base.score) / length(perm.scores)
+> 
+> I don't actually see where matrix() comes into it, still less
+> anything
+> in the tidyverse.
+>
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sat Mar 15 18:55:04 2025
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 15 Mar 2025 13:55:04 -0400
+Subject: [R] What don't I understand about sample()?
+In-Reply-To: <010001959ad9d794-3dea3f0a-037e-4cb9-bf19-28979a0d147b-000000@email.amazonses.com>
+References: <mailman.372647.0.1742036401.60374.r-help@r-project.org>
+ <4c982e51255c5b83097fba1d7cf12341988eeb4e.camel@zembower.org>
+ <010001959ad9d794-3dea3f0a-037e-4cb9-bf19-28979a0d147b-000000@email.amazonses.com>
+Message-ID: <003d01db95d3$6189cae0$249d60a0$@gmail.com>
+
+Kevin & Richard, and of course everyone,
+
+As the main topic here is not the tidyverse, I will mention the perils of loading in more than needed in general.
+
+If you want to use one or a very few functions, it can be more efficient and safe to load exactly what is needed. In the case of wanting to use read_csv(), I think this suffices:
+
+library(readr)
+
+If you instead use:
+
+library(tidyverse)
+
+You load a varying number of packages (it may change) including some like lubridate or forcats or ggplot2 that you may not be even thinking of using or never heard of.
+
+The bigger problem is shadowing that happens. For example, you may be getting warning messages like:
+
+? dplyr::filter() masks stats::filter()
+? dplyr::lag()    masks stats::lag()
+
+This can interfere with some other package you had already loaded unless it uses a notation like mypackage::filter(...) in their code to avoid being easily replaced but even then, if you yourself called what you though was filter() from base R or some package, you have a problem unless you invoke it like base::filter(...)
+
+The order packages like this load can matter as well as when you define a function of your own. So, it may be worth some effort to zoom in and call exactly what you need and only when you need it. I have seen code that only needs a package in rare conditions and only loads the package in one branch of an IF statement right before using in.
+.
+Packages can also be unloaded after use.
+
+>From what you describe, none of this is crucially important as you are using R for your own purposes in your own RMarkDown file that you may not be distributing. And, when I write programs where I keep adjusting and adding things from the tidyverse, it is indeed much easier to just get the grouping on top and forget about it. That is, until I decide to do something with functional programming that uses reduce/filter/map... and have an odd error!
+
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Kevin Zembower via R-help
+Sent: Saturday, March 15, 2025 1:29 PM
+To: r-help at r-project.org
+Subject: Re: [R] What don't I understand about sample()?
+
+Hi, Richard, thanks for replying. I should have mentioned the third
+edition, which we're using. The data file didn't change between the
+second and third editions, and the data on Body Mass Gain was the same
+as in the first edition, although the first edition data file contained
+additional variables.
+
+According to my text, the BMGain was measured in grams. Thanks for
+pointing out that my statement of the problem lacked crucial
+information.
+
+The matrix in my example comes from an example in
+https://pages.stat.wisc.edu/~larget/stat302/chap3.pdf, where the author
+created a bootstrap example with a matrix that consisted of one row for
+every sample in the bootstrap, and one column for each mean in the
+original data. This allowed him to find the mean for each row to create
+the bootstrap statistics.
+
+The only need for the tidyverse is to use the read_csv() function. I'm
+regrettably lazy in not determining which of the multiple functions in
+the tidyverse library loads read_csv(), and just using that one.
+
+Thanks, again, for helping me to further understand R and this problem.
+
+-Kevin
+
+On Sat, 2025-03-15 at 12:00 +0100, r-help-request at r-project.org wrote:
+> Not having the book (and which of the three editions are you using?),
+> I downloaded the data and played with it for a bit.
+> dotchart() showed the Dark and Light conditions looked quite
+> different, but also showed that there are not very many cases.
+> After trying t.test, it occurred to me that I did not know whether
+> "BMGain" means gain in *grams* or gain in *percent*.
+> Reflection told me that for a growth experiment, percent made more
+> sense, which reminded my of one of my first
+> student advising experiences, where I said "never give the computer
+> percentages; let IT calculate the percentages
+> from the baseline and outcome, because once you've thrown away
+> information, the computer can't magically get it back."
+> In particular, in the real world I'd be worried about the possibility
+> that there was some confounding going on, so I would
+> much rather have initial weight and final weight as variables.
+> If BMGain is an absolute measure, the p value for a t test is teeny
+> tiny.
+> If BMGain is a percentage, the p value for a sensible t test is about
+> 0.03.
+> 
+> A permutation test went like this.
+> is.light <- d$Group == "Light"
+> is.dark <- d$Group == "Dark"
+> score <- function (g) mean(g[is.light]) - mean(g[is.dark])
+> base.score <- score(d$BMGain)
+> perm.scores <- sapply(1:997, function (i) score(sample(d$BMGain)))
+> sum(perm.scores >= base.score) / length(perm.scores)
+> 
+> I don't actually see where matrix() comes into it, still less
+> anything
+> in the tidyverse.
+>
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From tebert @end|ng |rom u||@edu  Sat Mar 15 20:51:19 2025
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Sat, 15 Mar 2025 19:51:19 +0000
+Subject: [R] What don't I understand about sample()?
+In-Reply-To: <CABcYAdJjtg_Lzqy1Z6MDFinJ6JamN-5FV-xg1g0N5kWXFCqerQ@mail.gmail.com>
+References: <d5fce1d0fd242f05c6bdafc94779662c6e06809b.camel@zembower.org>
+ <4aafb881ce10fff0caa3cee0096d99fa285501b1.camel@zembower.org>
+ <0100019595ffab79-081b554a-5ceb-426d-8f67-af62ed03b770-000000@email.amazonses.com>
+ <CABcYAdJjtg_Lzqy1Z6MDFinJ6JamN-5FV-xg1g0N5kWXFCqerQ@mail.gmail.com>
+Message-ID: <CH3PR22MB4514D1886A0CDC2933C5E963CFDD2@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+Brian Manly wrote a nice book about computer intensive methods in data analysis: https://www.amazon.com/Randomization-Bootstrap-Methods-Biology-Statistical/dp/1584885416. Therein there is a distinction between permutation tests and randomization tests. A permutation test uses every permutation while a randomization test uses a random selection of all permutations. In this case there are exactly 18 choose 2 possible permutations, or 18!/(10!*8!) = 43758. With such a small number, a permutation test is better. The permutation test is exact while the randomization test is approximate (you get a different quantitative answer each time you run the test). At around one million permutations is where I switch from permutation test to randomization test. A bootstrap test takes a random sample of the available data with replacement. The same observation can appear multiple times in each sample. This reduces the influence of rare events.
+
+My guess is that the variable BMGain is body mass gain, and the units should be grams.
+
+There are many ways to program this. A matrix is one approach. The matrix is filled with possible orderings of the data and two groups are formed by splitting the matrix. There are many ways to do this if you just want a number, but plotting the distribution of possible answers lets you see some of the mechanics of this process.
+df <- read_csv("https://www.lock5stat.com/datasets3e/LightatNight.csv")
+
+# Generate unique group assignments
+unique_partitions <- t(combn(18, 10))
+
+# Compute mean differences for unique partitions
+diffs <- apply(unique_partitions, 1, function(idx) {
+  group_A <- df$BMGain[idx]        # Values assigned to group A
+  group_B <- df$BMGain[-idx]       # Remaining values assigned to group B
+  abs(mean(group_A) - mean(group_B))  # Difference in means
+})
+
+# Convert to data frame for plotting
+diff_df <- data.frame(Difference = diffs)
+
+# Calculate observed difference in original data
+obs_diff <- abs(mean(df$BMGain[df$Group == "Light"]) - mean(df$BMGain[df$Group == "Dark"]))
+
+num_below <- sum(diff_df$Difference <= obs_diff)
+num_above <- sum(diff_df$Difference > obs_diff)
+
+# Compute p-value (proportion of random diffs as extreme as observed)
+p_value <- mean(abs(diffs) >= abs(obs_diff))
+
+# Plot histogram with vline for observed difference
+p <- ggplot(diff_df, aes(x = Difference)) +
+  geom_histogram(binwidth = 0.05, fill = "blue", alpha = 0.5, color = "black") +
+  geom_vline(xintercept = obs_diff, color = "red", linetype = "dashed", size = 1) +
+  theme_minimal() +
+  ggtitle("Distribution of Mean Differences") +
+  xlab("Mean Difference") +
+  ylab("Frequency")
+
+# Extract histogram bin data
+hist_data <- ggplot_build(p)$data[[1]]
+max_y <- max(hist_data$count)  # Get the max count from the histogram
+
+# Add annotation with dynamic max_y
+p +
+  annotate("text", x = obs_diff - 0.1, y = max_y -(max_y*.17),
+           label = paste("Below:", num_below),
+           hjust = 1, color = "blue", fontface = "bold") +
+  annotate("text", x = obs_diff + 0.1, y = max_y -(max_y*.17),
+           label = paste("Above:", num_above),
+           hjust = 0, color = "blue", fontface = "bold") +
+  annotate("text", x = obs_diff, y = max_y -(max_y*.1),
+           label = paste("Observed Diff =", round(obs_diff, 2)),
+           vjust = 0, color = "red", fontface = "bold")
+# Print observed difference and p-value
+cat("Observed Difference:", obs_diff, "\n")
+cat("P-value:", p_value, "\n")
+
+
+Note that unique_partitions can easily exceed the memory capacity of your computer. In that case a randomization test will be more useful. Note that the set seed part is commented out, and each run of the program will give a slightly different outcome.
+library(ggplot2)
+
+# Set number of randomizations
+rand_number <- 1000  # Adjust as needed
+
+# Create dataset
+df <- read_csv("https://www.lock5stat.com/datasets3e/LightatNight.csv")
+
+# Compute observed difference in original data
+obs_diff <- abs(mean(df$BMGain[df$Group == "Light"]) - mean(df$BMGain[df$Group == "Dark"]))
+
+# Perform randomization test
+#set.seed(123)  # For reproducibility in coding, Do Not Use in analyses
+rand_diffs <- numeric(rand_number)
+
+for (i in 1:rand_number) {
+  shuffled <- sample(df$BMGain)  # Shuffle values
+  group_A <- shuffled[1:10]  # First 10 as Light group
+  group_B <- shuffled[11:18]  # Remaining 8 as Dark group
+  rand_diffs[i] <- abs(mean(group_A) - mean(group_B))
+}
+
+# Convert to data frame for plotting
+diff_df <- data.frame(Difference = rand_diffs)
+
+# Count how many are above/below observed difference
+num_below <- sum(rand_diffs <= obs_diff)
+num_above <- sum(rand_diffs > obs_diff)
+
+# Compute p-value (proportion as extreme as observed)
+p_value <- mean(abs(rand_diffs) >= abs(obs_diff))
+
+# Create the base plot
+p <- ggplot(diff_df, aes(x = Difference)) +
+  geom_histogram(binwidth = 0.05, fill = "blue", alpha = 0.5, color = "black") +
+  geom_vline(xintercept = obs_diff, color = "red", linetype = "dashed", size = 1) +
+  theme_minimal() +
+  ggtitle("Randomization Test: Distribution of Mean Differences") +
+  xlab("Mean Difference") +
+  ylab("Frequency")
+
+# Extract histogram data for dynamic text placement
+hist_data <- ggplot_build(p)$data[[1]]
+max_y <- max(hist_data$count)  # Highest bar in the histogram
+
+# Annotate counts on either side of vline
+p +
+  annotate("text", x = obs_diff - 0.1, y = max_y * 0.8,
+           label = paste("Below:", num_below),
+           hjust = 1, color = "blue", fontface = "bold") +
+  annotate("text", x = obs_diff + 0.1, y = max_y * 0.8,
+           label = paste("Above:", num_above),
+           hjust = 0, color = "blue", fontface = "bold") +
+  annotate("text", x = obs_diff, y = max_y * 0.9,
+           label = paste("Observed Diff =", round(obs_diff, 2)),
+           vjust = 0, color = "red", fontface = "bold")
+
+# Print observed difference and p-value
+cat("Observed Difference:", obs_diff, "\n")
+cat("P-value:", p_value, "\n")
+
+
+Regards,
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Richard O'Keefe
+Sent: Saturday, March 15, 2025 4:27 AM
+To: Kevin Zembower <kevin at zembower.org>
+Cc: r-help at r-project.org
+Subject: Re: [R] What don't I understand about sample()?
+
+[External Email]
+
+Not having the book (and which of the three editions are you using?), I downloaded the data and played with it for a bit.
+dotchart() showed the Dark and Light conditions looked quite different, but also showed that there are not very many cases.
+After trying t.test, it occurred to me that I did not know whether "BMGain" means gain in *grams* or gain in *percent*.
+Reflection told me that for a growth experiment, percent made more sense, which reminded my of one of my first student advising experiences, where I said "never give the computer percentages; let IT calculate the percentages from the baseline and outcome, because once you've thrown away information, the computer can't magically get it back."
+In particular, in the real world I'd be worried about the possibility that there was some confounding going on, so I would much rather have initial weight and final weight as variables.
+If BMGain is an absolute measure, the p value for a t test is teeny tiny.
+If BMGain is a percentage, the p value for a sensible t test is about 0.03.
+
+A permutation test went like this.
+is.light <- d$Group == "Light"
+is.dark <- d$Group == "Dark"
+score <- function (g) mean(g[is.light]) - mean(g[is.dark]) base.score <- score(d$BMGain) perm.scores <- sapply(1:997, function (i) score(sample(d$BMGain))) sum(perm.scores >= base.score) / length(perm.scores)
+
+I don't actually see where matrix() comes into it, still less anything in the tidyverse.
+
+
+On Sat, 15 Mar 2025 at 07:52, Kevin Zembower via R-help <r-help at r-project.org> wrote:
+>
+> Thank you all, very much, for your kind and detailed explanations. I
+> didn't understand, mainly, that the matrix() call only called its
+> parameters once. I was certain that this was a bug with sample()
+> getting seeded with a constant value, and giving the same permutation.
+>
+> I think I need to make my MWE a little less minimal to continue
+> learning. If you're familiar with the Lock5 statistics textbook, I'm
+> working on the Light and Dark mice example, where groups of mice were
+> exposed or not to light at night, then measured for weight gain. The
+> statistic is mean difference in weight gain between the two groups.
+>
+> My understanding of how I'm supposed to construct a randomized
+> distribution is to join the weight gains of the 10 mice exposed to
+> light at night to the 8 mice not exposed to light at night. After
+> shuffling this data, I arbitrarily group the first 10 values into the
+> 'light' group, and the last 8 into the 'dark' group, and find the
+> difference in their means.
+>
+> I think I can do this correctly with:
+> ===================
+> ## Less-minimal working example
+> library(tidyverse)
+>
+> library(Lock5Data)
+> data(LightatNight)
+> str(LightatNight)
+>
+> ## Or, if you don't have the Lock5Data library:
+> (d <-
+> read_csv("https://nam10.safelinks.protection.outlook.com/?url=https%3A
+> %2F%2Fwww.lock5stat.com%2Fdatasets3e%2FLigthtatNight.csv&data=05%7C02%
+> 7Ctebert%40ufl.edu%7Cd58e9cb0dd1d493dfd3708dd639b4e26%7C0d4da0f84a314d
+> 76ace60a62331e1b84%7C0%7C0%7C638776241003988479%7CUnknown%7CTWFpbGZsb3
+> d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoi
+> TWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=xICk3ewMwgDmCgvFq52yCaplry
+> 5qZseKtrp2yBgIO%2FY%3D&reserved=0"))
+>
+> (lt <- d$BMGain[d$Group == "Light"])
+> (dk <- d$BMGain[d$Group == "Dark"])
+> (n_lt <- length(lt))
+> (n_dk <- length(dk))
+>
+> (data <- c(lt, dk))
+>
+> B <- 10 #Will be 1000
+> n <- length(data)
+>
+> random.samples <- matrix(NA, B, n)
+> random.statistics <- rep(NA, B)
+>
+> for(i in 1:B) {
+>     random.samples[i,] <- sample(data)
+>     random.statistics[i] <- mean(random.samples[i, 1:n_lt]) -
+>         mean(random.samples[i, (n_lt + 1):(n_lt + n_dk)]) }
+> random.samples random.statistics
+>
+> ## Trying to do it without a for(), using Peter's suggestion:
+> (random.samples <- matrix(replicate(B, sample(data)), B, n,
+> byrow=TRUE))
+> compute.diff.means <- function(x) {
+>     return(mean(x[1:n_lt]) - mean(x[(n_lt+1):(n_lt+n_dk)])) }
+> (random.statistics <- apply(random.samples, 1, compute.diff.means))
+> =======================
+>
+> I think both of these methods give me the data I'm trying for. Any
+> suggestions on my R coding techniques are welcome.
+>
+> Thank you all, again, for taking the time and effort to help me. Your
+> help is greatly appreciated.
+>
+> -Kevin
+>
+> On Thu, 2025-03-13 at 17:00 -0400, Kevin Zembower wrote:
+> > Hello, all,
+> >
+> > I'm learning to do randomized distributions in my Stats 101 class*.
+> > I thought I could do it with a call to sample() inside a matrix(),
+> > like:
+> >
+> > > matrix(sample(1:10, replace=TRUE), 5, 10, byrow=TRUE)
+> >      [,1] [,2] [,3] [,4] [,5] [,6] [,7] [,8] [,9] [,10]
+> > [1,]    8    2    3    1    8    2    8    8    9     8
+> > [2,]    8    2    3    1    8    2    8    8    9     8
+> > [3,]    8    2    3    1    8    2    8    8    9     8
+> > [4,]    8    2    3    1    8    2    8    8    9     8
+> > [5,]    8    2    3    1    8    2    8    8    9     8
+> > >
+> >
+> > Imagine my surprise to learn that all the rows were the same
+> > permutation. I thought each time sample() was called inside the
+> > matrix, it would generate a different permutation.
+> >
+> > I modeled this after the bootstrap sample techniques in
+> > https://pa/
+> > ges.stat.wisc.edu%2F~larget%2Fstat302%2Fchap3.pdf&data=05%7C02%7Cteb
+> > ert%40ufl.edu%7Cd58e9cb0dd1d493dfd3708dd639b4e26%7C0d4da0f84a314d76ace60a62331e1b84%7C0%7C0%7C638776241004291461%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=mTfoalDp1qnXCWjy4EaThFXMRC7b2HyhGV75nrI01sw%3D&reserved=0. I don't understand why it works in bootstrap samples (with replace=TRUE), but not in randomized distributions (with replace=FALSE).
+> >
+> > Thanks for any insight you can share with me, and any suggestions
+> > for getting rows in a matrix with different permutations.
+> >
+> > -Kevin
+> >
+> > *No, this isn't a homework problem. We're using Lock5 as the text in
+> > class, along with its StatKey web application. I'm just trying to
+> > get more out of the class by also solving our problems using R, for
+> > which I'm not receiving any class credit.
+>
+>
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat/
+> .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C02%7Ctebert%40ufl.edu
+> %7Cd58e9cb0dd1d493dfd3708dd639b4e26%7C0d4da0f84a314d76ace60a62331e1b84
+> %7C0%7C0%7C638776241004299940%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGki
+> OnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ
+> %3D%3D%7C0%7C%7C%7C&sdata=8U3Tea5HC8uDM4G%2FAKsE%2BStdoeMB7Kd%2BCgM3v6
+> DG5XI%3D&reserved=0 PLEASE do read the posting guide
+> https://www/.
+> r-project.org%2Fposting-guide.html&data=05%7C02%7Ctebert%40ufl.edu%7Cd
+> 58e9cb0dd1d493dfd3708dd639b4e26%7C0d4da0f84a314d76ace60a62331e1b84%7C0
+> %7C0%7C638776241004308034%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRy
+> dWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%
+> 3D%7C0%7C%7C%7C&sdata=yeQqG29qVGgeTEEmxIG6e879bRn0sBMJjLEFwfYWOxk%3D&r
+> eserved=0 and provide commented, minimal, self-contained, reproducible
+> code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Sat Mar 15 22:27:56 2025
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Sat, 15 Mar 2025 21:27:56 +0000
+Subject: [R] What don't I understand about sample()?
+In-Reply-To: <010001959ad9d794-3dea3f0a-037e-4cb9-bf19-28979a0d147b-000000@email.amazonses.com>
+References: <mailman.372647.0.1742036401.60374.r-help@r-project.org>
+ <4c982e51255c5b83097fba1d7cf12341988eeb4e.camel@zembower.org>
+ <010001959ad9d794-3dea3f0a-037e-4cb9-bf19-28979a0d147b-000000@email.amazonses.com>
+Message-ID: <3014e1fb-3c66-4756-98ef-0995bd0b45a9@sapo.pt>
+
+Hello,
+
+I have been following this thread and though answers have been given, 
+some of them address R coding in general, not necessarily the sample() 
+function. Here are some random notes I think the OP could use, prompted 
+by the text linked to, chap3.pdf.
+
+1.
+Throughout the text, assignments use the equal sign instead of the left 
+arrow. The left arrow is generally considered more idiomatic and there 
+is an important diference beteewn he wo, see help("assignOps").
+
+
+time.mean = with(CommuteAtlanta, mean(Time))
+B = 1000
+n = nrow(CommuteAtlanta)
+
+# This should be used, not the above.
+time.mean <- with(CommuteAtlanta, mean(Time))
+B <- 1000
+n <- nrow(CommuteAtlanta)
+
+
+2.
+Systematic use of apply(., 1, mean).
+rowMeans (and colMeans) are much faster.
+
+
+boot.statistics <- apply(boot.samples, 1, mean)
+boot.statistics <- rowMeans(boot.samples)
+
+
+3.
+The first confidence interval computation seems awkward. I had never 
+seen this way of computing a CI95.
+Moreover, it's plain common sense to keep the results with the returned 
+decimals and round for display purposes only.
+And the normal intervals are computed in a more usual way later in the 
+text, see sections 1.2 and 1.3.
+
+
+me <- ceiling(10 * 2 * time.se)/10
+round(time.mean, 1) + c(-1, 1) * me
+
+# Straightforward.
+normal_ci95 <- time.mean + c(-1, 1) * 2 * time.se
+normal_ci95
+round(normal_ci95, 1)
+
+# section 1.2 , function boot.mean
+interval = mean(x) + c(-1,1)*2*se
+
+# section 1.3
+with(students, mean(Height) + c(-1, 1) * 2 * sd(result))
+
+
+
+4.
+In section 1.2 there is a bootstrap function boot.mean().
+The function could be improved to let users pass a conf.level of their 
+choice.
+And why force the function user to always have the plot displayed? Base 
+functions hist() and barplot() have na argument 'plot' with default TRUE 
+allowing the user to choose.
+
+The following seems more user friendly.
+
+
+boot.mean <- function(x, B, binwidth = NULL, conf.level = 0.95, plot = 
+TRUE) {
+   require(ggplot2)
+   n <- length(x)
+   boot.samples <- matrix( sample(x, size = n*B, replace = TRUE), B, n)
+   boot.statistics <- rowMeans(boot.samples)
+   se <- sd(boot.statistics)
+   if ( is.null(binwidth) )
+     binwidth <- diff(range(boot.statistics))/30
+
+   p <- ggplot(data.frame(x = boot.statistics), aes(x = x)) +
+     geom_histogram(aes(y = ..density..),binwidth = binwidth) +
+     geom_density(color = "red")
+
+   alpha <- 1 - (1 - conf.level)/2
+   interval <- mean(x) + c(-1, 1) * qnorm(alpha) * se
+
+   if(plot) {
+     plot(p)
+   }
+
+   list(boot.statistics = boot.statistics, interval = interval, se = se, 
+plot = p)
+}
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+
+?s 17:28 de 15/03/2025, Kevin Zembower via R-help escreveu:
+> Hi, Richard, thanks for replying. I should have mentioned the third
+> edition, which we're using. The data file didn't change between the
+> second and third editions, and the data on Body Mass Gain was the same
+> as in the first edition, although the first edition data file contained
+> additional variables.
+> 
+> According to my text, the BMGain was measured in grams. Thanks for
+> pointing out that my statement of the problem lacked crucial
+> information.
+> 
+> The matrix in my example comes from an example in
+> https://pages.stat.wisc.edu/~larget/stat302/chap3.pdf, where the author
+> created a bootstrap example with a matrix that consisted of one row for
+> every sample in the bootstrap, and one column for each mean in the
+> original data. This allowed him to find the mean for each row to create
+> the bootstrap statistics.
+> 
+> The only need for the tidyverse is to use the read_csv() function. I'm
+> regrettably lazy in not determining which of the multiple functions in
+> the tidyverse library loads read_csv(), and just using that one.
+> 
+> Thanks, again, for helping me to further understand R and this problem.
+> 
+> -Kevin
+> 
+> On Sat, 2025-03-15 at 12:00 +0100, r-help-request at r-project.org wrote:
+>> Not having the book (and which of the three editions are you using?),
+>> I downloaded the data and played with it for a bit.
+>> dotchart() showed the Dark and Light conditions looked quite
+>> different, but also showed that there are not very many cases.
+>> After trying t.test, it occurred to me that I did not know whether
+>> "BMGain" means gain in *grams* or gain in *percent*.
+>> Reflection told me that for a growth experiment, percent made more
+>> sense, which reminded my of one of my first
+>> student advising experiences, where I said "never give the computer
+>> percentages; let IT calculate the percentages
+>> from the baseline and outcome, because once you've thrown away
+>> information, the computer can't magically get it back."
+>> In particular, in the real world I'd be worried about the possibility
+>> that there was some confounding going on, so I would
+>> much rather have initial weight and final weight as variables.
+>> If BMGain is an absolute measure, the p value for a t test is teeny
+>> tiny.
+>> If BMGain is a percentage, the p value for a sensible t test is about
+>> 0.03.
+>>
+>> A permutation test went like this.
+>> is.light <- d$Group == "Light"
+>> is.dark <- d$Group == "Dark"
+>> score <- function (g) mean(g[is.light]) - mean(g[is.dark])
+>> base.score <- score(d$BMGain)
+>> perm.scores <- sapply(1:997, function (i) score(sample(d$BMGain)))
+>> sum(perm.scores >= base.score) / length(perm.scores)
+>>
+>> I don't actually see where matrix() comes into it, still less
+>> anything
+>> in the tidyverse.
+>>
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From @vi@e@gross m@iii@g oii gm@ii@com  Sun Mar 16 02:31:45 2025
+From: @vi@e@gross m@iii@g oii gm@ii@com (@vi@e@gross m@iii@g oii gm@ii@com)
+Date: Sat, 15 Mar 2025 21:31:45 -0400
+Subject: [R] What don't I understand about sample()?
+In-Reply-To: <3014e1fb-3c66-4756-98ef-0995bd0b45a9@sapo.pt>
+References: <mailman.372647.0.1742036401.60374.r-help@r-project.org>
+ <4c982e51255c5b83097fba1d7cf12341988eeb4e.camel@zembower.org>
+ <010001959ad9d794-3dea3f0a-037e-4cb9-bf19-28979a0d147b-000000@email.amazonses.com>
+ <3014e1fb-3c66-4756-98ef-0995bd0b45a9@sapo.pt>
+Message-ID: <005e01db9613$2e439e50$8acadaf0$@gmail.com>
+
+Rui,
+
+I just want to discuss this point you made for now:
+
+	2.
+	Systematic use of apply(., 1, mean).
+	rowMeans (and colMeans) are much faster.
+
+You are, of course, technically correct. I consider an alternative aspect in which you are teaching a programming language as a small set of "commands" that can do quite a bit in various legal combinations. These are often reserved words and primitives like "if" or operators like "<-" and so on.
+
+You then can discuss various built-in functionality that extends your abilities such as an array of built in functions commonly used. I see these in several categories. Some, can be examined in R at the prompt to see what R code produces it. You can learn how it works and perhaps cannibalize from it to make your own code that uses helpful parts and perhaps avoids functionality you do not need.
+
+The other kinds are relatively hidden as .Internal or a function that after someprocessing then calls .Internal(...) and can be code written in various (perhaps usually compiled) languages such as a version of C,  or perhaps pulled from libraries such as FORTRAN mathematical functions. These are sometimes faster partially because they are not being read and interpreted, or perhaps use cute programming tricks.
+
+So, as I see it, whatever teacher or book or course is being used by the OP, they are supposedly learning ways to approach problems from some level in which they want them to learn about ideas. The goal is not just learning how to do one problem, but to add to your tool bag for additional problems. And, in R, some of those ideas revolve in how to do implicit loops and in some sense do vectorized operations. 
+
+So, if I understood it, the assignment included getting some number of equal-sized vectors and instead of working on them one at a time, assemble them into a collection of vectors. Besides generalized lists, R supports dataframes as a list of vectors (or actually other things) and matrices implemented as vectors with attributes and some other structures.
+
+The assignment seems to ask them to assemble the vectors into rows of a matrix object and then use something that operates on one row at a time, as already discussed. Clearly, someone has already made implementations that allow you to avoid directly using apply() and get the same, faster result, using rowMeans. But note that although there are perhaps additional rowwise operations available this way, such as rowSums, in the general case, there are many possible functions not already supplied.
+
+If I want something like a rowMinMax, or something exotic where I consider the row to contain the coefficients of a polynomial to evaluate for some given value for X, then a less efficient solution can easily be put together using something like apply, or if using other data structures, using cousins like lapply/sapply/vapply and quite a few other methods in packages including functions like pmap and interesting methods in dplyr such as rowwise that allow per row calculations easily.
+
+There are usually many ways you can do something in R, as in many languages, and sometimes a highly efficient solution for some situations is not the best or most efficient. An example might be how some forms of looping are better suited when the number of items is not known in advance. Often a compiled language will optimize away a loop over a fixed small number of items like asking for index going from 1 to 2 to calculate the squares of the index and storing them in an array of two. It may get replaced without a loop and calling a function twice, or even doing the calculation at compile them and inserting a data structure with the results and not doing anything major at run time.
+
+In this case, the OP may actually have a small fixed number of such results and possibly there are faster ways to do the calculation. But, if the point is to learn how to do arbitrary calculations when the magnitude of the parts may vary, then this is reasonable. Of course, if the samples being used are not all the same length, this method can fail badly while other methods may still work well.
+
+I note relatedly, that one of us here has expressed a wish to do some of their code as near to using base R as possible rather than jump right away into the tidyverse. I can respect that even as, I, personally, prefer using whatever works for me faster and easier. At least, that is true when I am prototyping or doing something one-off. If the code turns out to be used a lot and is slow, I might reconsider. But, having said that, I suspect some packages may allow faster code than the basics. Of course, things like the built-in native pipe |> can change things so an altered package using a slower pipe may no longer ...
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Rui Barradas
+Sent: Saturday, March 15, 2025 5:28 PM
+To: Kevin Zembower <kevin at zembower.org>; r-help at r-project.org
+Subject: Re: [R] What don't I understand about sample()?
+
+Hello,
+
+I have been following this thread and though answers have been given, 
+some of them address R coding in general, not necessarily the sample() 
+function. Here are some random notes I think the OP could use, prompted 
+by the text linked to, chap3.pdf.
+
+1.
+Throughout the text, assignments use the equal sign instead of the left 
+arrow. The left arrow is generally considered more idiomatic and there 
+is an important diference beteewn he wo, see help("assignOps").
+
+
+time.mean = with(CommuteAtlanta, mean(Time))
+B = 1000
+n = nrow(CommuteAtlanta)
+
+# This should be used, not the above.
+time.mean <- with(CommuteAtlanta, mean(Time))
+B <- 1000
+n <- nrow(CommuteAtlanta)
+
+
+2.
+Systematic use of apply(., 1, mean).
+rowMeans (and colMeans) are much faster.
+
+
+boot.statistics <- apply(boot.samples, 1, mean)
+boot.statistics <- rowMeans(boot.samples)
+
+
+3.
+The first confidence interval computation seems awkward. I had never 
+seen this way of computing a CI95.
+Moreover, it's plain common sense to keep the results with the returned 
+decimals and round for display purposes only.
+And the normal intervals are computed in a more usual way later in the 
+text, see sections 1.2 and 1.3.
+
+
+me <- ceiling(10 * 2 * time.se)/10
+round(time.mean, 1) + c(-1, 1) * me
+
+# Straightforward.
+normal_ci95 <- time.mean + c(-1, 1) * 2 * time.se
+normal_ci95
+round(normal_ci95, 1)
+
+# section 1.2 , function boot.mean
+interval = mean(x) + c(-1,1)*2*se
+
+# section 1.3
+with(students, mean(Height) + c(-1, 1) * 2 * sd(result))
+
+
+
+4.
+In section 1.2 there is a bootstrap function boot.mean().
+The function could be improved to let users pass a conf.level of their 
+choice.
+And why force the function user to always have the plot displayed? Base 
+functions hist() and barplot() have na argument 'plot' with default TRUE 
+allowing the user to choose.
+
+The following seems more user friendly.
+
+
+boot.mean <- function(x, B, binwidth = NULL, conf.level = 0.95, plot = 
+TRUE) {
+   require(ggplot2)
+   n <- length(x)
+   boot.samples <- matrix( sample(x, size = n*B, replace = TRUE), B, n)
+   boot.statistics <- rowMeans(boot.samples)
+   se <- sd(boot.statistics)
+   if ( is.null(binwidth) )
+     binwidth <- diff(range(boot.statistics))/30
+
+   p <- ggplot(data.frame(x = boot.statistics), aes(x = x)) +
+     geom_histogram(aes(y = ..density..),binwidth = binwidth) +
+     geom_density(color = "red")
+
+   alpha <- 1 - (1 - conf.level)/2
+   interval <- mean(x) + c(-1, 1) * qnorm(alpha) * se
+
+   if(plot) {
+     plot(p)
+   }
+
+   list(boot.statistics = boot.statistics, interval = interval, se = se, 
+plot = p)
+}
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+
+?s 17:28 de 15/03/2025, Kevin Zembower via R-help escreveu:
+> Hi, Richard, thanks for replying. I should have mentioned the third
+> edition, which we're using. The data file didn't change between the
+> second and third editions, and the data on Body Mass Gain was the same
+> as in the first edition, although the first edition data file contained
+> additional variables.
+> 
+> According to my text, the BMGain was measured in grams. Thanks for
+> pointing out that my statement of the problem lacked crucial
+> information.
+> 
+> The matrix in my example comes from an example in
+> https://pages.stat.wisc.edu/~larget/stat302/chap3.pdf, where the author
+> created a bootstrap example with a matrix that consisted of one row for
+> every sample in the bootstrap, and one column for each mean in the
+> original data. This allowed him to find the mean for each row to create
+> the bootstrap statistics.
+> 
+> The only need for the tidyverse is to use the read_csv() function. I'm
+> regrettably lazy in not determining which of the multiple functions in
+> the tidyverse library loads read_csv(), and just using that one.
+> 
+> Thanks, again, for helping me to further understand R and this problem.
+> 
+> -Kevin
+> 
+> On Sat, 2025-03-15 at 12:00 +0100, r-help-request at r-project.org wrote:
+>> Not having the book (and which of the three editions are you using?),
+>> I downloaded the data and played with it for a bit.
+>> dotchart() showed the Dark and Light conditions looked quite
+>> different, but also showed that there are not very many cases.
+>> After trying t.test, it occurred to me that I did not know whether
+>> "BMGain" means gain in *grams* or gain in *percent*.
+>> Reflection told me that for a growth experiment, percent made more
+>> sense, which reminded my of one of my first
+>> student advising experiences, where I said "never give the computer
+>> percentages; let IT calculate the percentages
+>> from the baseline and outcome, because once you've thrown away
+>> information, the computer can't magically get it back."
+>> In particular, in the real world I'd be worried about the possibility
+>> that there was some confounding going on, so I would
+>> much rather have initial weight and final weight as variables.
+>> If BMGain is an absolute measure, the p value for a t test is teeny
+>> tiny.
+>> If BMGain is a percentage, the p value for a sensible t test is about
+>> 0.03.
+>>
+>> A permutation test went like this.
+>> is.light <- d$Group == "Light"
+>> is.dark <- d$Group == "Dark"
+>> score <- function (g) mean(g[is.light]) - mean(g[is.dark])
+>> base.score <- score(d$BMGain)
+>> perm.scores <- sapply(1:997, function (i) score(sample(d$BMGain)))
+>> sum(perm.scores >= base.score) / length(perm.scores)
+>>
+>> I don't actually see where matrix() comes into it, still less
+>> anything
+>> in the tidyverse.
+>>
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
