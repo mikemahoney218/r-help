@@ -8774,3 +8774,666 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From @tephen@cbond @end|ng |rom y@hoo@com  Sun Mar 23 18:47:29 2025
+From: @tephen@cbond @end|ng |rom y@hoo@com (Stephen Bond)
+Date: Sun, 23 Mar 2025 13:47:29 -0400
+Subject: [R] how to create model matrix of second order terms
+References: <9a67aeab7406246dbeddd6653b642bf421c3093c.camel.ref@yahoo.com>
+Message-ID: <9a67aeab7406246dbeddd6653b642bf421c3093c.camel@yahoo.com>
+
+I am sending to this forum as stackoverflow has devolved into sth
+pretty bad.
+Below code shows how to get what I want in a clumsy way.
+
+cols <- letters[1:4]
+a1 <- outer(cols,cols,paste0)
+b1 <- a1[!lower.tri(a1)]
+
+X <- matrix(rnorm(80),ncol=4)
+colnames(X) <- cols
+X <- as.data.frame(X)
+XX <- matrix(0,nrow=nrow(X),ncol=length(b1))
+colnames(XX) <- b1
+
+for (k in 1:length(b1)){
+    XX[,k] <- X[,substr(b1[k],1,1)]*X[,substr(b1[k],2,2)]
+}
+
+
+
+Is there a way to get that using a formula or some neat trick? The
+above will not work for factors, so I will need to create the factor
+crossings using formula a*b*c and then cross with the numerics, which
+is even more clumsy.
+Thanks everybody
+
+
+From djnord|und @end|ng |rom gm@||@com  Mon Mar 24 10:07:47 2025
+From: djnord|und @end|ng |rom gm@||@com (Daniel Nordlund)
+Date: Mon, 24 Mar 2025 02:07:47 -0700
+Subject: [R] how to create model matrix of second order terms
+In-Reply-To: <9a67aeab7406246dbeddd6653b642bf421c3093c.camel@yahoo.com>
+References: <9a67aeab7406246dbeddd6653b642bf421c3093c.camel.ref@yahoo.com>
+ <9a67aeab7406246dbeddd6653b642bf421c3093c.camel@yahoo.com>
+Message-ID: <55dfe5e4-17a4-41cf-b7c9-ad055a86ea29@gmail.com>
+
+Depending on what your ultimate goal is, you could use something like
+
+want <- model.matrix(? ~ (a + b + c + d)^2 , data=your_data)
+
+This will create a matrix with the appropriate main effects and first 
+order interactions.? If you just want to run a simple regression, you 
+could do it directly
+
+lm(y ~ (a + b + c + d)^2 , data=your_data)
+
+but the formula (a + b + c + d)^2 isn't accepted by all packages that do 
+some form of regression.
+
+
+Hope this is helpful,
+
+Dan
+
+
+On 3/23/2025 10:47 AM, Stephen Bond via R-help wrote:
+> I am sending to this forum as stackoverflow has devolved into sth
+> pretty bad.
+> Below code shows how to get what I want in a clumsy way.
+>
+> cols <- letters[1:4]
+> a1 <- outer(cols,cols,paste0)
+> b1 <- a1[!lower.tri(a1)]
+>
+> X <- matrix(rnorm(80),ncol=4)
+> colnames(X) <- cols
+> X <- as.data.frame(X)
+> XX <- matrix(0,nrow=nrow(X),ncol=length(b1))
+> colnames(XX) <- b1
+>
+> for (k in 1:length(b1)){
+>      XX[,k] <- X[,substr(b1[k],1,1)]*X[,substr(b1[k],2,2)]
+> }
+>
+>
+>
+> Is there a way to get that using a formula or some neat trick? The
+> above will not work for factors, so I will need to create the factor
+> crossings using formula a*b*c and then cross with the numerics, which
+> is even more clumsy.
+> Thanks everybody
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Daniel Nordlund
+Port Townsend, WA
+(425) 273-5256
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Mon Mar 24 10:43:07 2025
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Mon, 24 Mar 2025 02:43:07 -0700
+Subject: [R] how to create model matrix of second order terms
+In-Reply-To: <9a67aeab7406246dbeddd6653b642bf421c3093c.camel@yahoo.com>
+References: <9a67aeab7406246dbeddd6653b642bf421c3093c.camel.ref@yahoo.com>
+ <9a67aeab7406246dbeddd6653b642bf421c3093c.camel@yahoo.com>
+Message-ID: <CAGxFJbSCPLUy5C-_dT3bj0r6r6WbYBuBYrsFmqAboDJpQEx2QA@mail.gmail.com>
+
+Full disclosure: I did not attempt to decipher your code.
+
+But ~(A+B +C)^2 - (A + B + C)
+gives all 2nd order interactions whether the terms are factors or numeric.
+
+~I(A^2) + I(B^2) gives quadratics in A and B, which must be numeric, not
+factors, of course
+
+You can combine these as necessary to get a formula expression for just 2nd
+order terms. Wrapping this in model.matrix() should then give you the model
+matrix using "treatment" contrasts for the contrasts involving factors (you
+can change the contrast types using the 'contrasts.arg' argument of
+model.matrix())
+
+1. Does this help?
+2. Do check this to make sure I'm correct
+
+Cheers,
+Bert
+
+"An educated person is one who can entertain new ideas, entertain others,
+and entertain herself."
+
+
+
+On Mon, Mar 24, 2025 at 12:22?AM Stephen Bond via R-help <
+r-help at r-project.org> wrote:
+
+> I am sending to this forum as stackoverflow has devolved into sth
+> pretty bad.
+> Below code shows how to get what I want in a clumsy way.
+>
+> cols <- letters[1:4]
+> a1 <- outer(cols,cols,paste0)
+> b1 <- a1[!lower.tri(a1)]
+>
+> X <- matrix(rnorm(80),ncol=4)
+> colnames(X) <- cols
+> X <- as.data.frame(X)
+> XX <- matrix(0,nrow=nrow(X),ncol=length(b1))
+> colnames(XX) <- b1
+>
+> for (k in 1:length(b1)){
+>     XX[,k] <- X[,substr(b1[k],1,1)]*X[,substr(b1[k],2,2)]
+> }
+>
+>
+>
+> Is there a way to get that using a formula or some neat trick? The
+> above will not work for factors, so I will need to create the factor
+> crossings using formula a*b*c and then cross with the numerics, which
+> is even more clumsy.
+> Thanks everybody
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Mon Mar 24 19:01:11 2025
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Mon, 24 Mar 2025 11:01:11 -0700
+Subject: [R] Fwd:  how to create model matrix of second order terms
+In-Reply-To: <CAGxFJbTHaqtMMNcG14hSsM3mqLc5pF2geAP+jbHMwg4ekM_v2A@mail.gmail.com>
+References: <9a67aeab7406246dbeddd6653b642bf421c3093c.camel.ref@yahoo.com>
+ <9a67aeab7406246dbeddd6653b642bf421c3093c.camel@yahoo.com>
+ <CAGxFJbSCPLUy5C-_dT3bj0r6r6WbYBuBYrsFmqAboDJpQEx2QA@mail.gmail.com>
+ <4fddc7589dcdf2488127302168beb10618c490a8.camel@yahoo.com>
+ <CAGxFJbTHaqtMMNcG14hSsM3mqLc5pF2geAP+jbHMwg4ekM_v2A@mail.gmail.com>
+Message-ID: <CAGxFJbSXifujJcdLdWigpeh+xvC-EM1-fWEaQtXL8mVrNsSmTw@mail.gmail.com>
+
+(I neglected to cc the list)
+
+
+---------- Forwarded message ---------
+From: Bert Gunter <bgunter.4567 at gmail.com>
+Date: Mon, Mar 24, 2025 at 11:00?AM
+Subject: Re: [R] how to create model matrix of second order terms
+To: Stephen Bond <stephen.cbond at yahoo.com>
+
+
+In view of the fact that your claim that:
+"The current setup for formulas does not allow for I(x^2) terms"
+is incorrect , e.g.
+
+> x <- 1:5
+> model.matrix(~ x + I(x^2))
+  (Intercept) x I(x^2)
+1           1 1      1
+2           1 2      4
+3           1 3      9
+4           1 4     16
+5           1 5     25
+attr(,"assign")
+[1] 0 1 2
+
+(it explicitly works for a numeric x and is nonsense for a factor, as I
+explicitly noted in my response)
+So my idea is that you should:
+
+a) Study ?formula *carefully*, including the examples.
+b) Do as I and  Dan Nordlund suggested in our responses
+
+I won't trouble you with any further replies.
+
+Cheers,
+Bert
+
+
+
+
+On Mon, Mar 24, 2025 at 8:28?AM Stephen Bond <stephen.cbond at yahoo.com>
+wrote:
+
+> Folks,
+>
+> I appreciate your effort, but maybe I was not explicit enough, so let
+> me try again.
+>
+> The current setup for formulas does not allow for I(x^2) terms as
+> explained in the MASS book at the end of Section 6.2 the x:x
+> interaction is treated as x.
+>
+> So I need to write my own code, which is clumsy unless you can refer me
+> to a package that already exists or give me an idea how to improve my
+> code. Also, writing out terms is not feasible when there are 1000
+> variables, so the code needs to deal with taking a wide data frame or
+> matrix with column names for convenience.
+>
+> Let me know your ideas :-)
+>
+> On Mon, 2025-03-24 at 02:43 -0700, Bert Gunter wrote:
+> > Full disclosure: I did not attempt to decipher your code.
+> >
+> > But ~(A+B +C)^2 - (A + B + C)
+> > gives all 2nd order interactions whether the terms are factors or
+> > numeric.
+> >
+> > ~I(A^2) + I(B^2) gives quadratics in A and B, which must be numeric,
+> > not factors, of course
+> >
+> > You can combine these as necessary to get a formula expression for
+> > just 2nd order terms. Wrapping this in model.matrix() should then
+> > give you the model matrix using "treatment" contrasts for the
+> > contrasts involving factors (you can change the contrast types using
+> > the 'contrasts.arg' argument of model.matrix())
+> >
+> > 1. Does this help?
+> > 2. Do check this to make sure I'm correct
+> >
+> > Cheers,
+> > Bert
+> >
+> > "An educated person is one who can entertain new ideas, entertain
+> > others, and entertain herself."
+> >
+> >
+> >
+> > On Mon, Mar 24, 2025 at 12:22?AM Stephen Bond via R-help
+> > <r-help at r-project.org> wrote:
+> > > I am sending to this forum as stackoverflow has devolved into sth
+> > > pretty bad.
+> > > Below code shows how to get what I want in a clumsy way.
+> > >
+> > > cols <- letters[1:4]
+> > > a1 <- outer(cols,cols,paste0)
+> > > b1 <- a1[!lower.tri(a1)]
+> > >
+> > > X <- matrix(rnorm(80),ncol=4)
+> > > colnames(X) <- cols
+> > > X <- as.data.frame(X)
+> > > XX <- matrix(0,nrow=nrow(X),ncol=length(b1))
+> > > colnames(XX) <- b1
+> > >
+> > > for (k in 1:length(b1)){
+> > >     XX[,k] <- X[,substr(b1[k],1,1)]*X[,substr(b1[k],2,2)]
+> > > }
+> > >
+> > >
+> > >
+> > > Is there a way to get that using a formula or some neat trick? The
+> > > above will not work for factors, so I will need to create the
+> > > factor
+> > > crossings using formula a*b*c and then cross with the numerics,
+> > > which
+> > > is even more clumsy.
+> > > Thanks everybody
+> > >
+> > > ______________________________________________
+> > > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > PLEASE do read the posting guide
+> > > https://www.R-project.org/posting-guide.html
+> > > and provide commented, minimal, self-contained, reproducible code.
+>
+>
+
+	[[alternative HTML version deleted]]
+
+
+From @tephen@cbond @end|ng |rom y@hoo@com  Mon Mar 24 16:28:36 2025
+From: @tephen@cbond @end|ng |rom y@hoo@com (Stephen Bond)
+Date: Mon, 24 Mar 2025 11:28:36 -0400
+Subject: [R] how to create model matrix of second order terms
+In-Reply-To: <CAGxFJbSCPLUy5C-_dT3bj0r6r6WbYBuBYrsFmqAboDJpQEx2QA@mail.gmail.com>
+References: <9a67aeab7406246dbeddd6653b642bf421c3093c.camel.ref@yahoo.com>
+ <9a67aeab7406246dbeddd6653b642bf421c3093c.camel@yahoo.com>
+ <CAGxFJbSCPLUy5C-_dT3bj0r6r6WbYBuBYrsFmqAboDJpQEx2QA@mail.gmail.com>
+Message-ID: <4fddc7589dcdf2488127302168beb10618c490a8.camel@yahoo.com>
+
+Folks,
+
+I appreciate your effort, but maybe I was not explicit enough, so let
+me try again.
+
+The current setup for formulas does not allow for I(x^2) terms as
+explained in the MASS book at the end of Section 6.2 the x:x
+interaction is treated as x.
+
+So I need to write my own code, which is clumsy unless you can refer me
+to a package that already exists or give me an idea how to improve my
+code. Also, writing out terms is not feasible when there are 1000
+variables, so the code needs to deal with taking a wide data frame or
+matrix with column names for convenience. 
+
+Let me know your ideas :-)
+
+On Mon, 2025-03-24 at 02:43 -0700, Bert Gunter wrote:
+> Full disclosure: I did not attempt to decipher your code.
+> 
+> But ~(A+B +C)^2 - (A?+ B?+ C)
+> gives all 2nd order interactions whether the terms are factors or
+> numeric.
+> 
+> ~I(A^2) + I(B^2) gives quadratics in A and B, which must be numeric,
+> not factors, of course
+> 
+> You can combine these as necessary to get a formula expression for
+> just 2nd order terms. Wrapping this in model.matrix() should then
+> give you the model matrix using "treatment" contrasts for the
+> contrasts involving factors (you can change the contrast types using
+> the 'contrasts.arg' argument of model.matrix())
+> 
+> 1. Does this help?
+> 2. Do check this to make sure I'm correct
+> 
+> Cheers,
+> Bert
+> 
+> "An educated person is one who can entertain new ideas, entertain
+> others, and entertain herself."
+> 
+> 
+> 
+> On Mon, Mar 24, 2025 at 12:22?AM Stephen Bond via R-help
+> <r-help at r-project.org> wrote:
+> > I am sending to this forum as stackoverflow has devolved into sth
+> > pretty bad.
+> > Below code shows how to get what I want in a clumsy way.
+> > 
+> > cols <- letters[1:4]
+> > a1 <- outer(cols,cols,paste0)
+> > b1 <- a1[!lower.tri(a1)]
+> > 
+> > X <- matrix(rnorm(80),ncol=4)
+> > colnames(X) <- cols
+> > X <- as.data.frame(X)
+> > XX <- matrix(0,nrow=nrow(X),ncol=length(b1))
+> > colnames(XX) <- b1
+> > 
+> > for (k in 1:length(b1)){
+> > ? ? XX[,k] <- X[,substr(b1[k],1,1)]*X[,substr(b1[k],2,2)]
+> > }
+> > 
+> > 
+> > 
+> > Is there a way to get that using a formula or some neat trick? The
+> > above will not work for factors, so I will need to create the
+> > factor
+> > crossings using formula a*b*c and then cross with the numerics,
+> > which
+> > is even more clumsy.
+> > Thanks everybody
+> > 
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> > https://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+
+From bbo|ker @end|ng |rom gm@||@com  Mon Mar 24 23:45:57 2025
+From: bbo|ker @end|ng |rom gm@||@com (Ben Bolker)
+Date: Mon, 24 Mar 2025 18:45:57 -0400
+Subject: [R] how to create model matrix of second order terms
+In-Reply-To: <4fddc7589dcdf2488127302168beb10618c490a8.camel@yahoo.com>
+References: <9a67aeab7406246dbeddd6653b642bf421c3093c.camel.ref@yahoo.com>
+ <9a67aeab7406246dbeddd6653b642bf421c3093c.camel@yahoo.com>
+ <CAGxFJbSCPLUy5C-_dT3bj0r6r6WbYBuBYrsFmqAboDJpQEx2QA@mail.gmail.com>
+ <4fddc7589dcdf2488127302168beb10618c490a8.camel@yahoo.com>
+Message-ID: <98416a45-b81b-4180-928d-59ee510206f0@gmail.com>
+
+   I'm still not entirely clear what you want, in particular what you 
+want to with factor variables ('squaring' them doesn't really seem to 
+make sense).
+
+Some combination of sprintf/paste/reformulate might do what you want:
+
+## get all second-order terms (doesn't square numeric values)
+quad_terms <- sprintf("(%s)^2", paste(b1, collapse = "+"))
+
+## get squared terms
+square_terms <- paste(sprintf("I(%s^2)", b1))
+
+reformulate(c(quad_terms, square_terms))
+
+The other alternative would be to construct a second-order polynomial 
+across all of your terms (and then insert this into reformulate())
+
+poly_term <- sprintf("poly(%s, degree = 2, raw = TRUE)",
+              paste(b1, collapse = ", "))
+
+
+
+On 2025-03-24 11:28 a.m., Stephen Bond via R-help wrote:
+> Folks,
+> 
+> I appreciate your effort, but maybe I was not explicit enough, so let
+> me try again.
+> 
+> The current setup for formulas does not allow for I(x^2) terms as
+> explained in the MASS book at the end of Section 6.2 the x:x
+> interaction is treated as x.
+> 
+> So I need to write my own code, which is clumsy unless you can refer me
+> to a package that already exists or give me an idea how to improve my
+> code. Also, writing out terms is not feasible when there are 1000
+> variables, so the code needs to deal with taking a wide data frame or
+> matrix with column names for convenience.
+> 
+> Let me know your ideas :-)
+> 
+> On Mon, 2025-03-24 at 02:43 -0700, Bert Gunter wrote:
+>> Full disclosure: I did not attempt to decipher your code.
+>>
+>> But ~(A+B +C)^2 - (A?+ B?+ C)
+>> gives all 2nd order interactions whether the terms are factors or
+>> numeric.
+>>
+>> ~I(A^2) + I(B^2) gives quadratics in A and B, which must be numeric,
+>> not factors, of course
+>>
+>> You can combine these as necessary to get a formula expression for
+>> just 2nd order terms. Wrapping this in model.matrix() should then
+>> give you the model matrix using "treatment" contrasts for the
+>> contrasts involving factors (you can change the contrast types using
+>> the 'contrasts.arg' argument of model.matrix())
+>>
+>> 1. Does this help?
+>> 2. Do check this to make sure I'm correct
+>>
+>> Cheers,
+>> Bert
+>>
+>> "An educated person is one who can entertain new ideas, entertain
+>> others, and entertain herself."
+>>
+>>
+>>
+>> On Mon, Mar 24, 2025 at 12:22?AM Stephen Bond via R-help
+>> <r-help at r-project.org> wrote:
+>>> I am sending to this forum as stackoverflow has devolved into sth
+>>> pretty bad.
+>>> Below code shows how to get what I want in a clumsy way.
+>>>
+>>> cols <- letters[1:4]
+>>> a1 <- outer(cols,cols,paste0)
+>>> b1 <- a1[!lower.tri(a1)]
+>>>
+>>> X <- matrix(rnorm(80),ncol=4)
+>>> colnames(X) <- cols
+>>> X <- as.data.frame(X)
+>>> XX <- matrix(0,nrow=nrow(X),ncol=length(b1))
+>>> colnames(XX) <- b1
+>>>
+>>> for (k in 1:length(b1)){
+>>>  ? ? XX[,k] <- X[,substr(b1[k],1,1)]*X[,substr(b1[k],2,2)]
+>>> }
+>>>
+>>>
+>>>
+>>> Is there a way to get that using a formula or some neat trick? The
+>>> above will not work for factors, so I will need to create the
+>>> factor
+>>> crossings using formula a*b*c and then cross with the numerics,
+>>> which
+>>> is even more clumsy.
+>>> Thanks everybody
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> https://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Dr. Benjamin Bolker
+Professor, Mathematics & Statistics and Biology, McMaster University
+Director, School of Computational Science and Engineering
+ > E-mail is sent at my convenience; I don't expect replies outside of 
+working hours.
+
+
+From tebert @end|ng |rom u||@edu  Tue Mar 25 00:52:56 2025
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Mon, 24 Mar 2025 23:52:56 +0000
+Subject: [R] how to create model matrix of second order terms
+In-Reply-To: <4fddc7589dcdf2488127302168beb10618c490a8.camel@yahoo.com>
+References: <9a67aeab7406246dbeddd6653b642bf421c3093c.camel.ref@yahoo.com>
+ <9a67aeab7406246dbeddd6653b642bf421c3093c.camel@yahoo.com>
+ <CAGxFJbSCPLUy5C-_dT3bj0r6r6WbYBuBYrsFmqAboDJpQEx2QA@mail.gmail.com>
+ <4fddc7589dcdf2488127302168beb10618c490a8.camel@yahoo.com>
+Message-ID: <CH3PR22MB45142A26B0EA3BE5D3F9E613CFA42@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+You could try writing code to write code. However, you need to tell the program which variables are factor and which are continuous. If you are lucky and all integer data are factor and all non-integers are continuous, then you can sort for that. However, in a broad data perspective this is a bad assumption.
+
+I have (somehow) sorted the variables into factor and non-factor variables. Non-factor variables are in vars1, and factor variables are in vars2. The code might look something like this.
+
+vars1 <- c("x1", "x2", "x3")
+vars2 <- c("F1", "F2", "F3")
+interactions <- as.vector(outer(vars1, vars1, function(x, y) ifelse(x < y, paste(x, y, sep = ":"), NA)))
+interactions <- interactions[!is.na(interactions)]
+result <- c(vars1, interactions)
+result <- c(result, vars2)
+formula <- as.formula(paste("y ~", paste(result, collapse = " + ")))
+model <- lda(formula, data = mydata)
+
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Stephen Bond via R-help
+Sent: Monday, March 24, 2025 11:29 AM
+To: Bert Gunter <bgunter.4567 at gmail.com>
+Cc: r-help at r-project.org
+Subject: Re: [R] how to create model matrix of second order terms
+
+[External Email]
+
+Folks,
+
+I appreciate your effort, but maybe I was not explicit enough, so let me try again.
+
+The current setup for formulas does not allow for I(x^2) terms as explained in the MASS book at the end of Section 6.2 the x:x interaction is treated as x.
+
+So I need to write my own code, which is clumsy unless you can refer me to a package that already exists or give me an idea how to improve my code. Also, writing out terms is not feasible when there are 1000 variables, so the code needs to deal with taking a wide data frame or matrix with column names for convenience.
+
+Let me know your ideas :-)
+
+On Mon, 2025-03-24 at 02:43 -0700, Bert Gunter wrote:
+> Full disclosure: I did not attempt to decipher your code.
+>
+> But ~(A+B +C)^2 - (A + B + C)
+> gives all 2nd order interactions whether the terms are factors or
+> numeric.
+>
+> ~I(A^2) + I(B^2) gives quadratics in A and B, which must be numeric,
+> not factors, of course
+>
+> You can combine these as necessary to get a formula expression for
+> just 2nd order terms. Wrapping this in model.matrix() should then give
+> you the model matrix using "treatment" contrasts for the contrasts
+> involving factors (you can change the contrast types using the
+> 'contrasts.arg' argument of model.matrix())
+>
+> 1. Does this help?
+> 2. Do check this to make sure I'm correct
+>
+> Cheers,
+> Bert
+>
+> "An educated person is one who can entertain new ideas, entertain
+> others, and entertain herself."
+>
+>
+>
+> On Mon, Mar 24, 2025 at 12:22?AM Stephen Bond via R-help
+> <r-help at r-project.org> wrote:
+> > I am sending to this forum as stackoverflow has devolved into sth
+> > pretty bad.
+> > Below code shows how to get what I want in a clumsy way.
+> >
+> > cols <- letters[1:4]
+> > a1 <- outer(cols,cols,paste0)
+> > b1 <- a1[!lower.tri(a1)]
+> >
+> > X <- matrix(rnorm(80),ncol=4)
+> > colnames(X) <- cols
+> > X <- as.data.frame(X)
+> > XX <- matrix(0,nrow=nrow(X),ncol=length(b1))
+> > colnames(XX) <- b1
+> >
+> > for (k in 1:length(b1)){
+> >     XX[,k] <- X[,substr(b1[k],1,1)]*X[,substr(b1[k],2,2)]
+> > }
+> >
+> >
+> >
+> > Is there a way to get that using a formula or some neat trick? The
+> > above will not work for factors, so I will need to create the factor
+> > crossings using formula a*b*c and then cross with the numerics,
+> > which is even more clumsy.
+> > Thanks everybody
+> >
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://st/
+> > at.ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C02%7Ctebert%40ufl
+> > .edu%7C4e92d4943a594be971d508dd6b2270b0%7C0d4da0f84a314d76ace60a6233
+> > 1e1b84%7C0%7C0%7C638784517844383573%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0
+> > eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIs
+> > IldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=%2FXX2ZHU5NpqeUYbjKRLzBa%2BXpGu%
+> > 2F2ddcdqXfbdnUW50%3D&reserved=0
+> > PLEASE do read the posting guide
+> > https://ww/
+> > w.r-project.org%2Fposting-guide.html&data=05%7C02%7Ctebert%40ufl.edu
+> > %7C4e92d4943a594be971d508dd6b2270b0%7C0d4da0f84a314d76ace60a62331e1b
+> > 84%7C0%7C0%7C638784517844402770%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1h
+> > cGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldU
+> > IjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=CW0bStnd5O6BPQECRuyfTJDnWXPDIZMlDIUm
+> > DUoQTJc%3D&reserved=0 and provide commented, minimal,
+> > self-contained, reproducible code.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
