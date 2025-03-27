@@ -9437,3 +9437,1310 @@ https://stat.ethz.ch/mailman/listinfo/r-help
 PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
 and provide commented, minimal, self-contained, reproducible code.
 
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Tue Mar 25 07:15:38 2025
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 25 Mar 2025 06:15:38 +0000
+Subject: [R] how to create model matrix of second order terms
+In-Reply-To: <4fddc7589dcdf2488127302168beb10618c490a8.camel@yahoo.com>
+References: <9a67aeab7406246dbeddd6653b642bf421c3093c.camel.ref@yahoo.com>
+ <9a67aeab7406246dbeddd6653b642bf421c3093c.camel@yahoo.com>
+ <CAGxFJbSCPLUy5C-_dT3bj0r6r6WbYBuBYrsFmqAboDJpQEx2QA@mail.gmail.com>
+ <4fddc7589dcdf2488127302168beb10618c490a8.camel@yahoo.com>
+Message-ID: <f4ce1bcc-f4a5-4c88-97b8-8dee75337a92@sapo.pt>
+
+?s 15:28 de 24/03/2025, Stephen Bond via R-help escreveu:
+> Folks,
+> 
+> I appreciate your effort, but maybe I was not explicit enough, so let
+> me try again.
+> 
+> The current setup for formulas does not allow for I(x^2) terms as
+> explained in the MASS book at the end of Section 6.2 the x:x
+> interaction is treated as x.
+> 
+> So I need to write my own code, which is clumsy unless you can refer me
+> to a package that already exists or give me an idea how to improve my
+> code. Also, writing out terms is not feasible when there are 1000
+> variables, so the code needs to deal with taking a wide data frame or
+> matrix with column names for convenience.
+> 
+> Let me know your ideas :-)
+> 
+> On Mon, 2025-03-24 at 02:43 -0700, Bert Gunter wrote:
+>> Full disclosure: I did not attempt to decipher your code.
+>>
+>> But ~(A+B +C)^2 - (A?+ B?+ C)
+>> gives all 2nd order interactions whether the terms are factors or
+>> numeric.
+>>
+>> ~I(A^2) + I(B^2) gives quadratics in A and B, which must be numeric,
+>> not factors, of course
+>>
+>> You can combine these as necessary to get a formula expression for
+>> just 2nd order terms. Wrapping this in model.matrix() should then
+>> give you the model matrix using "treatment" contrasts for the
+>> contrasts involving factors (you can change the contrast types using
+>> the 'contrasts.arg' argument of model.matrix())
+>>
+>> 1. Does this help?
+>> 2. Do check this to make sure I'm correct
+>>
+>> Cheers,
+>> Bert
+>>
+>> "An educated person is one who can entertain new ideas, entertain
+>> others, and entertain herself."
+>>
+>>
+>>
+>> On Mon, Mar 24, 2025 at 12:22?AM Stephen Bond via R-help
+>> <r-help at r-project.org> wrote:
+>>> I am sending to this forum as stackoverflow has devolved into sth
+>>> pretty bad.
+>>> Below code shows how to get what I want in a clumsy way.
+>>>
+>>> cols <- letters[1:4]
+>>> a1 <- outer(cols,cols,paste0)
+>>> b1 <- a1[!lower.tri(a1)]
+>>>
+>>> X <- matrix(rnorm(80),ncol=4)
+>>> colnames(X) <- cols
+>>> X <- as.data.frame(X)
+>>> XX <- matrix(0,nrow=nrow(X),ncol=length(b1))
+>>> colnames(XX) <- b1
+>>>
+>>> for (k in 1:length(b1)){
+>>>  ? ? XX[,k] <- X[,substr(b1[k],1,1)]*X[,substr(b1[k],2,2)]
+>>> }
+>>>
+>>>
+>>>
+>>> Is there a way to get that using a formula or some neat trick? The
+>>> above will not work for factors, so I will need to create the
+>>> factor
+>>> crossings using formula a*b*c and then cross with the numerics,
+>>> which
+>>> is even more clumsy.
+>>> Thanks everybody
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> https://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Are you looking for ?poly to generate all 1st and 2nd order combinations?
+In the outputs below, dimnames[[2]] tell which term corresponds to which 
+column.
+So 1.0.0.0 is 'a' only and 2.0.0.0 is 'a^2'.
+
+
+
+cols <- letters[1:4]
+a1 <- outer(cols,cols,paste0)
+b1 <- a1[!lower.tri(a1)]
+
+X <- matrix(rnorm(80),ncol=4)
+colnames(X) <- cols
+X <- as.data.frame(X)
+XX <- matrix(0,nrow=nrow(X),ncol=length(b1))
+colnames(XX) <- b1
+
+for (k in 1:length(b1)){
+   XX[,k] <- X[,substr(b1[k],1,1)]*X[,substr(b1[k],2,2)]
+}
+# XX
+# model.matrix(  ~ (a + b + c + d)^2 , data=X)
+# model.matrix(  ~ (a + b + c + d)^2 - (a + b + c +d), data=X)
+
+# Is this what you want?
+# Ugly colnames
+m <- model.matrix( ~ poly(a, b, c, d, degree = 2L) , data = X)
+dimnames(m)
+#> [[1]]
+#>  [1] "1"  "2"  "3"  "4"  "5"  "6"  "7"  "8"  "9"  "10" "11" "12" "13" 
+"14" "15"
+#> [16] "16" "17" "18" "19" "20"
+#>
+#> [[2]]
+#>  [1] "(Intercept)"                         "poly(a, b, c, d, degree = 
+2)1.0.0.0"
+#>  [3] "poly(a, b, c, d, degree = 2)2.0.0.0" "poly(a, b, c, d, degree = 
+2)0.1.0.0"
+#>  [5] "poly(a, b, c, d, degree = 2)1.1.0.0" "poly(a, b, c, d, degree = 
+2)0.2.0.0"
+#>  [7] "poly(a, b, c, d, degree = 2)0.0.1.0" "poly(a, b, c, d, degree = 
+2)1.0.1.0"
+#>  [9] "poly(a, b, c, d, degree = 2)0.1.1.0" "poly(a, b, c, d, degree = 
+2)0.0.2.0"
+#> [11] "poly(a, b, c, d, degree = 2)0.0.0.1" "poly(a, b, c, d, degree = 
+2)1.0.0.1"
+#> [13] "poly(a, b, c, d, degree = 2)0.1.0.1" "poly(a, b, c, d, degree = 
+2)0.0.1.1"
+#> [15] "poly(a, b, c, d, degree = 2)0.0.0.2"
+
+# These colnames are nicer
+p <- with(X, poly(a, b, c, d, degree = 2L))
+attributes(p)
+#> $dim
+#> [1] 20 14
+#>
+#> $dimnames
+#> $dimnames[[1]]
+#> NULL
+#>
+#> $dimnames[[2]]
+#>         2         3         4         5         7        10        11 
+        13
+#> "1.0.0.0" "2.0.0.0" "0.1.0.0" "1.1.0.0" "0.2.0.0" "0.0.1.0" "1.0.1.0" 
+"0.1.1.0"
+#>        19        28        29        31        37        55
+#> "0.0.2.0" "0.0.0.1" "1.0.0.1" "0.1.0.1" "0.0.1.1" "0.0.0.2"
+#>
+#>
+#> $degree
+#>  [1] 1 2 1 2 2 1 2 2 2 1 2 2 2 2
+#>
+#> $coefs
+#> $coefs[[1]]
+#> $coefs[[1]]$alpha
+#> [1] 0.1134201 0.4901752
+#>
+#> $coefs[[1]]$norm2
+#> [1]   1.00000  20.00000  34.11147 140.62467
+#>
+#>
+#> $coefs[[2]]
+#> $coefs[[2]]$alpha
+#> [1] 0.1356218 1.0041956
+#>
+#> $coefs[[2]]$norm2
+#> [1]  1.00000 20.00000 21.53021 39.73742
+#>
+#>
+#> $coefs[[3]]
+#> $coefs[[3]]$alpha
+#> [1] 0.2533081 0.1689801
+#>
+#> $coefs[[3]]$norm2
+#> [1]  1.00000 20.00000 19.08499 19.83333
+#>
+#>
+#> $coefs[[4]]
+#> $coefs[[4]]$alpha
+#> [1] -0.03597259 -0.87409789
+#>
+#> $coefs[[4]]$norm2
+#> [1]  1.00000 20.00000 24.68273 73.41893
+#>
+#>
+#>
+#> $class
+#> [1] "poly"   "matrix"
+
+dimnames(p)
+#> [[1]]
+#> NULL
+#>
+#> [[2]]
+#>         2         3         4         5         7        10        11 
+        13
+#> "1.0.0.0" "2.0.0.0" "0.1.0.0" "1.1.0.0" "0.2.0.0" "0.0.1.0" "1.0.1.0" 
+"0.1.1.0"
+#>        19        28        29        31        37        55
+#> "0.0.2.0" "0.0.0.1" "1.0.0.1" "0.1.0.1" "0.0.1.1" "0.0.0.2"
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Tue Mar 25 14:58:19 2025
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 25 Mar 2025 13:58:19 +0000
+Subject: [R] how to create model matrix of second order terms
+In-Reply-To: <9151edf35ec05721da9b3fa3fedfb2536e78e147.camel@yahoo.com>
+References: <9a67aeab7406246dbeddd6653b642bf421c3093c.camel.ref@yahoo.com>
+ <9a67aeab7406246dbeddd6653b642bf421c3093c.camel@yahoo.com>
+ <CAGxFJbSCPLUy5C-_dT3bj0r6r6WbYBuBYrsFmqAboDJpQEx2QA@mail.gmail.com>
+ <4fddc7589dcdf2488127302168beb10618c490a8.camel@yahoo.com>
+ <f4ce1bcc-f4a5-4c88-97b8-8dee75337a92@sapo.pt>
+ <9151edf35ec05721da9b3fa3fedfb2536e78e147.camel@yahoo.com>
+Message-ID: <f86d5bea-69df-476d-ab8b-f435a96cb5ed@sapo.pt>
+
+Hello,
+
+This seems to work and is independent of the number of columns. 'p' is 
+the output in my previous post.
+
+
+f <- function(x, data = X) with(data, eval(parse(text = x)))
+p2 <- poly(sapply(names(X), f), degree = 2L)
+identical(p, p2)
+# [1] TRUE
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+
+?s 13:42 de 25/03/2025, Stephen Bond escreveu:
+> @ Rui
+> 
+> that is the idea, but how do I apply this to a matrix with 200 columns?
+> I cannot write out the expression.
+> The colnames seem very messy, but they would be messy even under my
+> scheme with as little as 100 vars.
+> 
+> On Tue, 2025-03-25 at 06:15 +0000, Rui Barradas wrote:
+>> ?s 15:28 de 24/03/2025, Stephen Bond via R-help escreveu:
+>>> Folks,
+>>>
+>>> I appreciate your effort, but maybe I was not explicit enough, so
+>>> let
+>>> me try again.
+>>>
+>>> The current setup for formulas does not allow for I(x^2) terms as
+>>> explained in the MASS book at the end of Section 6.2 the x:x
+>>> interaction is treated as x.
+>>>
+>>> So I need to write my own code, which is clumsy unless you can
+>>> refer me
+>>> to a package that already exists or give me an idea how to improve
+>>> my
+>>> code. Also, writing out terms is not feasible when there are 1000
+>>> variables, so the code needs to deal with taking a wide data frame
+>>> or
+>>> matrix with column names for convenience.
+>>>
+>>> Let me know your ideas :-)
+>>>
+>>> On Mon, 2025-03-24 at 02:43 -0700, Bert Gunter wrote:
+>>>> Full disclosure: I did not attempt to decipher your code.
+>>>>
+>>>> But ~(A+B +C)^2 - (A?+ B?+ C)
+>>>> gives all 2nd order interactions whether the terms are factors or
+>>>> numeric.
+>>>>
+>>>> ~I(A^2) + I(B^2) gives quadratics in A and B, which must be
+>>>> numeric,
+>>>> not factors, of course
+>>>>
+>>>> You can combine these as necessary to get a formula expression
+>>>> for
+>>>> just 2nd order terms. Wrapping this in model.matrix() should then
+>>>> give you the model matrix using "treatment" contrasts for the
+>>>> contrasts involving factors (you can change the contrast types
+>>>> using
+>>>> the 'contrasts.arg' argument of model.matrix())
+>>>>
+>>>> 1. Does this help?
+>>>> 2. Do check this to make sure I'm correct
+>>>>
+>>>> Cheers,
+>>>> Bert
+>>>>
+>>>> "An educated person is one who can entertain new ideas, entertain
+>>>> others, and entertain herself."
+>>>>
+>>>>
+>>>>
+>>>> On Mon, Mar 24, 2025 at 12:22?AM Stephen Bond via R-help
+>>>> <r-help at r-project.org> wrote:
+>>>>> I am sending to this forum as stackoverflow has devolved into
+>>>>> sth
+>>>>> pretty bad.
+>>>>> Below code shows how to get what I want in a clumsy way.
+>>>>>
+>>>>> cols <- letters[1:4]
+>>>>> a1 <- outer(cols,cols,paste0)
+>>>>> b1 <- a1[!lower.tri(a1)]
+>>>>>
+>>>>> X <- matrix(rnorm(80),ncol=4)
+>>>>> colnames(X) <- cols
+>>>>> X <- as.data.frame(X)
+>>>>> XX <- matrix(0,nrow=nrow(X),ncol=length(b1))
+>>>>> colnames(XX) <- b1
+>>>>>
+>>>>> for (k in 1:length(b1)){
+>>>>>  ?? ? XX[,k] <- X[,substr(b1[k],1,1)]*X[,substr(b1[k],2,2)]
+>>>>> }
+>>>>>
+>>>>>
+>>>>>
+>>>>> Is there a way to get that using a formula or some neat trick?
+>>>>> The
+>>>>> above will not work for factors, so I will need to create the
+>>>>> factor
+>>>>> crossings using formula a*b*c and then cross with the numerics,
+>>>>> which
+>>>>> is even more clumsy.
+>>>>> Thanks everybody
+>>>>>
+>>>>> ______________________________________________
+>>>>> R-help at r-project.org?mailing list -- To UNSUBSCRIBE and more,
+>>>>> see
+>>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>>> PLEASE do read the posting guide
+>>>>> https://www.R-project.org/posting-guide.html
+>>>>> and provide commented, minimal, self-contained, reproducible
+>>>>> code.
+>>>
+>>> ______________________________________________
+>>> R-help at r-project.org?mailing list -- To UNSUBSCRIBE and more, see
+>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>> PLEASE do read the posting guide
+>>> https://www.R-project.org/posting-guide.html
+>>> and provide commented, minimal, self-contained, reproducible code.
+>> Hello,
+>>
+>> Are you looking for ?poly to generate all 1st and 2nd order
+>> combinations?
+>> In the outputs below, dimnames[[2]] tell which term corresponds to
+>> which
+>> column.
+>> So 1.0.0.0 is 'a' only and 2.0.0.0 is 'a^2'.
+>>
+>>
+>>
+>> cols <- letters[1:4]
+>> a1 <- outer(cols,cols,paste0)
+>> b1 <- a1[!lower.tri(a1)]
+>>
+>> X <- matrix(rnorm(80),ncol=4)
+>> colnames(X) <- cols
+>> X <- as.data.frame(X)
+>> XX <- matrix(0,nrow=nrow(X),ncol=length(b1))
+>> colnames(XX) <- b1
+>>
+>> for (k in 1:length(b1)){
+>>  ?? XX[,k] <- X[,substr(b1[k],1,1)]*X[,substr(b1[k],2,2)]
+>> }
+>> # XX
+>> # model.matrix(? ~ (a + b + c + d)^2 , data=X)
+>> # model.matrix(? ~ (a + b + c + d)^2 - (a + b + c +d), data=X)
+>>
+>> # Is this what you want?
+>> # Ugly colnames
+>> m <- model.matrix( ~ poly(a, b, c, d, degree = 2L) , data = X)
+>> dimnames(m)
+>> #> [[1]]
+>> #>? [1] "1"? "2"? "3"? "4"? "5"? "6"? "7"? "8"? "9"? "10" "11" "12"
+>> "13"
+>> "14" "15"
+>> #> [16] "16" "17" "18" "19" "20"
+>> #>
+>> #> [[2]]
+>> #>? [1] "(Intercept)"???????????????????????? "poly(a, b, c, d,
+>> degree =
+>> 2)1.0.0.0"
+>> #>? [3] "poly(a, b, c, d, degree = 2)2.0.0.0" "poly(a, b, c, d,
+>> degree =
+>> 2)0.1.0.0"
+>> #>? [5] "poly(a, b, c, d, degree = 2)1.1.0.0" "poly(a, b, c, d,
+>> degree =
+>> 2)0.2.0.0"
+>> #>? [7] "poly(a, b, c, d, degree = 2)0.0.1.0" "poly(a, b, c, d,
+>> degree =
+>> 2)1.0.1.0"
+>> #>? [9] "poly(a, b, c, d, degree = 2)0.1.1.0" "poly(a, b, c, d,
+>> degree =
+>> 2)0.0.2.0"
+>> #> [11] "poly(a, b, c, d, degree = 2)0.0.0.1" "poly(a, b, c, d,
+>> degree =
+>> 2)1.0.0.1"
+>> #> [13] "poly(a, b, c, d, degree = 2)0.1.0.1" "poly(a, b, c, d,
+>> degree =
+>> 2)0.0.1.1"
+>> #> [15] "poly(a, b, c, d, degree = 2)0.0.0.2"
+>>
+>> # These colnames are nicer
+>> p <- with(X, poly(a, b, c, d, degree = 2L))
+>> attributes(p)
+>> #> $dim
+>> #> [1] 20 14
+>> #>
+>> #> $dimnames
+>> #> $dimnames[[1]]
+>> #> NULL
+>> #>
+>> #> $dimnames[[2]]
+>> #>???????? 2???????? 3???????? 4???????? 5???????? 7??????? 10
+>> 11
+>>  ??????? 13
+>> #> "1.0.0.0" "2.0.0.0" "0.1.0.0" "1.1.0.0" "0.2.0.0" "0.0.1.0"
+>> "1.0.1.0"
+>> "0.1.1.0"
+>> #>??????? 19??????? 28??????? 29??????? 31??????? 37??????? 55
+>> #> "0.0.2.0" "0.0.0.1" "1.0.0.1" "0.1.0.1" "0.0.1.1" "0.0.0.2"
+>> #>
+>> #>
+>> #> $degree
+>> #>? [1] 1 2 1 2 2 1 2 2 2 1 2 2 2 2
+>> #>
+>> #> $coefs
+>> #> $coefs[[1]]
+>> #> $coefs[[1]]$alpha
+>> #> [1] 0.1134201 0.4901752
+>> #>
+>> #> $coefs[[1]]$norm2
+>> #> [1]?? 1.00000? 20.00000? 34.11147 140.62467
+>> #>
+>> #>
+>> #> $coefs[[2]]
+>> #> $coefs[[2]]$alpha
+>> #> [1] 0.1356218 1.0041956
+>> #>
+>> #> $coefs[[2]]$norm2
+>> #> [1]? 1.00000 20.00000 21.53021 39.73742
+>> #>
+>> #>
+>> #> $coefs[[3]]
+>> #> $coefs[[3]]$alpha
+>> #> [1] 0.2533081 0.1689801
+>> #>
+>> #> $coefs[[3]]$norm2
+>> #> [1]? 1.00000 20.00000 19.08499 19.83333
+>> #>
+>> #>
+>> #> $coefs[[4]]
+>> #> $coefs[[4]]$alpha
+>> #> [1] -0.03597259 -0.87409789
+>> #>
+>> #> $coefs[[4]]$norm2
+>> #> [1]? 1.00000 20.00000 24.68273 73.41893
+>> #>
+>> #>
+>> #>
+>> #> $class
+>> #> [1] "poly"?? "matrix"
+>>
+>> dimnames(p)
+>> #> [[1]]
+>> #> NULL
+>> #>
+>> #> [[2]]
+>> #>???????? 2???????? 3???????? 4???????? 5???????? 7??????? 10
+>> 11
+>>  ??????? 13
+>> #> "1.0.0.0" "2.0.0.0" "0.1.0.0" "1.1.0.0" "0.2.0.0" "0.0.1.0"
+>> "1.0.1.0"
+>> "0.1.1.0"
+>> #>??????? 19??????? 28??????? 29??????? 31??????? 37??????? 55
+>> #> "0.0.2.0" "0.0.0.1" "1.0.0.1" "0.1.0.1" "0.0.1.1" "0.0.0.2"
+>>
+>>
+>> Hope this helps,
+>>
+>> Rui Barradas
+>>
+>>
+> 
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Tue Mar 25 15:01:47 2025
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 25 Mar 2025 14:01:47 +0000
+Subject: [R] how to create model matrix of second order terms
+In-Reply-To: <f86d5bea-69df-476d-ab8b-f435a96cb5ed@sapo.pt>
+References: <9a67aeab7406246dbeddd6653b642bf421c3093c.camel.ref@yahoo.com>
+ <9a67aeab7406246dbeddd6653b642bf421c3093c.camel@yahoo.com>
+ <CAGxFJbSCPLUy5C-_dT3bj0r6r6WbYBuBYrsFmqAboDJpQEx2QA@mail.gmail.com>
+ <4fddc7589dcdf2488127302168beb10618c490a8.camel@yahoo.com>
+ <f4ce1bcc-f4a5-4c88-97b8-8dee75337a92@sapo.pt>
+ <9151edf35ec05721da9b3fa3fedfb2536e78e147.camel@yahoo.com>
+ <f86d5bea-69df-476d-ab8b-f435a96cb5ed@sapo.pt>
+Message-ID: <70dea91d-c720-48dd-8b80-9ad6c0140c80@sapo.pt>
+
+Hello,
+
+Sorry, much simpler:
+
+
+poly(as.matrix(X), degree = 2L)
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+?s 13:58 de 25/03/2025, Rui Barradas escreveu:
+> Hello,
+> 
+> This seems to work and is independent of the number of columns. 'p' is 
+> the output in my previous post.
+> 
+> 
+> f <- function(x, data = X) with(data, eval(parse(text = x)))
+> p2 <- poly(sapply(names(X), f), degree = 2L)
+> identical(p, p2)
+> # [1] TRUE
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> 
+> 
+> ?s 13:42 de 25/03/2025, Stephen Bond escreveu:
+>> @ Rui
+>>
+>> that is the idea, but how do I apply this to a matrix with 200 columns?
+>> I cannot write out the expression.
+>> The colnames seem very messy, but they would be messy even under my
+>> scheme with as little as 100 vars.
+>>
+>> On Tue, 2025-03-25 at 06:15 +0000, Rui Barradas wrote:
+>>> ?s 15:28 de 24/03/2025, Stephen Bond via R-help escreveu:
+>>>> Folks,
+>>>>
+>>>> I appreciate your effort, but maybe I was not explicit enough, so
+>>>> let
+>>>> me try again.
+>>>>
+>>>> The current setup for formulas does not allow for I(x^2) terms as
+>>>> explained in the MASS book at the end of Section 6.2 the x:x
+>>>> interaction is treated as x.
+>>>>
+>>>> So I need to write my own code, which is clumsy unless you can
+>>>> refer me
+>>>> to a package that already exists or give me an idea how to improve
+>>>> my
+>>>> code. Also, writing out terms is not feasible when there are 1000
+>>>> variables, so the code needs to deal with taking a wide data frame
+>>>> or
+>>>> matrix with column names for convenience.
+>>>>
+>>>> Let me know your ideas :-)
+>>>>
+>>>> On Mon, 2025-03-24 at 02:43 -0700, Bert Gunter wrote:
+>>>>> Full disclosure: I did not attempt to decipher your code.
+>>>>>
+>>>>> But ~(A+B +C)^2 - (A?+ B?+ C)
+>>>>> gives all 2nd order interactions whether the terms are factors or
+>>>>> numeric.
+>>>>>
+>>>>> ~I(A^2) + I(B^2) gives quadratics in A and B, which must be
+>>>>> numeric,
+>>>>> not factors, of course
+>>>>>
+>>>>> You can combine these as necessary to get a formula expression
+>>>>> for
+>>>>> just 2nd order terms. Wrapping this in model.matrix() should then
+>>>>> give you the model matrix using "treatment" contrasts for the
+>>>>> contrasts involving factors (you can change the contrast types
+>>>>> using
+>>>>> the 'contrasts.arg' argument of model.matrix())
+>>>>>
+>>>>> 1. Does this help?
+>>>>> 2. Do check this to make sure I'm correct
+>>>>>
+>>>>> Cheers,
+>>>>> Bert
+>>>>>
+>>>>> "An educated person is one who can entertain new ideas, entertain
+>>>>> others, and entertain herself."
+>>>>>
+>>>>>
+>>>>>
+>>>>> On Mon, Mar 24, 2025 at 12:22?AM Stephen Bond via R-help
+>>>>> <r-help at r-project.org> wrote:
+>>>>>> I am sending to this forum as stackoverflow has devolved into
+>>>>>> sth
+>>>>>> pretty bad.
+>>>>>> Below code shows how to get what I want in a clumsy way.
+>>>>>>
+>>>>>> cols <- letters[1:4]
+>>>>>> a1 <- outer(cols,cols,paste0)
+>>>>>> b1 <- a1[!lower.tri(a1)]
+>>>>>>
+>>>>>> X <- matrix(rnorm(80),ncol=4)
+>>>>>> colnames(X) <- cols
+>>>>>> X <- as.data.frame(X)
+>>>>>> XX <- matrix(0,nrow=nrow(X),ncol=length(b1))
+>>>>>> colnames(XX) <- b1
+>>>>>>
+>>>>>> for (k in 1:length(b1)){
+>>>>>> ??? ? XX[,k] <- X[,substr(b1[k],1,1)]*X[,substr(b1[k],2,2)]
+>>>>>> }
+>>>>>>
+>>>>>>
+>>>>>>
+>>>>>> Is there a way to get that using a formula or some neat trick?
+>>>>>> The
+>>>>>> above will not work for factors, so I will need to create the
+>>>>>> factor
+>>>>>> crossings using formula a*b*c and then cross with the numerics,
+>>>>>> which
+>>>>>> is even more clumsy.
+>>>>>> Thanks everybody
+>>>>>>
+>>>>>> ______________________________________________
+>>>>>> R-help at r-project.org?mailing list -- To UNSUBSCRIBE and more,
+>>>>>> see
+>>>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>>>> PLEASE do read the posting guide
+>>>>>> https://www.R-project.org/posting-guide.html
+>>>>>> and provide commented, minimal, self-contained, reproducible
+>>>>>> code.
+>>>>
+>>>> ______________________________________________
+>>>> R-help at r-project.org?mailing list -- To UNSUBSCRIBE and more, see
+>>>> https://stat.ethz.ch/mailman/listinfo/r-help
+>>>> PLEASE do read the posting guide
+>>>> https://www.R-project.org/posting-guide.html
+>>>> and provide commented, minimal, self-contained, reproducible code.
+>>> Hello,
+>>>
+>>> Are you looking for ?poly to generate all 1st and 2nd order
+>>> combinations?
+>>> In the outputs below, dimnames[[2]] tell which term corresponds to
+>>> which
+>>> column.
+>>> So 1.0.0.0 is 'a' only and 2.0.0.0 is 'a^2'.
+>>>
+>>>
+>>>
+>>> cols <- letters[1:4]
+>>> a1 <- outer(cols,cols,paste0)
+>>> b1 <- a1[!lower.tri(a1)]
+>>>
+>>> X <- matrix(rnorm(80),ncol=4)
+>>> colnames(X) <- cols
+>>> X <- as.data.frame(X)
+>>> XX <- matrix(0,nrow=nrow(X),ncol=length(b1))
+>>> colnames(XX) <- b1
+>>>
+>>> for (k in 1:length(b1)){
+>>> ??? XX[,k] <- X[,substr(b1[k],1,1)]*X[,substr(b1[k],2,2)]
+>>> }
+>>> # XX
+>>> # model.matrix(? ~ (a + b + c + d)^2 , data=X)
+>>> # model.matrix(? ~ (a + b + c + d)^2 - (a + b + c +d), data=X)
+>>>
+>>> # Is this what you want?
+>>> # Ugly colnames
+>>> m <- model.matrix( ~ poly(a, b, c, d, degree = 2L) , data = X)
+>>> dimnames(m)
+>>> #> [[1]]
+>>> #>? [1] "1"? "2"? "3"? "4"? "5"? "6"? "7"? "8"? "9"? "10" "11" "12"
+>>> "13"
+>>> "14" "15"
+>>> #> [16] "16" "17" "18" "19" "20"
+>>> #>
+>>> #> [[2]]
+>>> #>? [1] "(Intercept)"???????????????????????? "poly(a, b, c, d,
+>>> degree =
+>>> 2)1.0.0.0"
+>>> #>? [3] "poly(a, b, c, d, degree = 2)2.0.0.0" "poly(a, b, c, d,
+>>> degree =
+>>> 2)0.1.0.0"
+>>> #>? [5] "poly(a, b, c, d, degree = 2)1.1.0.0" "poly(a, b, c, d,
+>>> degree =
+>>> 2)0.2.0.0"
+>>> #>? [7] "poly(a, b, c, d, degree = 2)0.0.1.0" "poly(a, b, c, d,
+>>> degree =
+>>> 2)1.0.1.0"
+>>> #>? [9] "poly(a, b, c, d, degree = 2)0.1.1.0" "poly(a, b, c, d,
+>>> degree =
+>>> 2)0.0.2.0"
+>>> #> [11] "poly(a, b, c, d, degree = 2)0.0.0.1" "poly(a, b, c, d,
+>>> degree =
+>>> 2)1.0.0.1"
+>>> #> [13] "poly(a, b, c, d, degree = 2)0.1.0.1" "poly(a, b, c, d,
+>>> degree =
+>>> 2)0.0.1.1"
+>>> #> [15] "poly(a, b, c, d, degree = 2)0.0.0.2"
+>>>
+>>> # These colnames are nicer
+>>> p <- with(X, poly(a, b, c, d, degree = 2L))
+>>> attributes(p)
+>>> #> $dim
+>>> #> [1] 20 14
+>>> #>
+>>> #> $dimnames
+>>> #> $dimnames[[1]]
+>>> #> NULL
+>>> #>
+>>> #> $dimnames[[2]]
+>>> #>???????? 2???????? 3???????? 4???????? 5???????? 7??????? 10
+>>> 11
+>>> ???????? 13
+>>> #> "1.0.0.0" "2.0.0.0" "0.1.0.0" "1.1.0.0" "0.2.0.0" "0.0.1.0"
+>>> "1.0.1.0"
+>>> "0.1.1.0"
+>>> #>??????? 19??????? 28??????? 29??????? 31??????? 37??????? 55
+>>> #> "0.0.2.0" "0.0.0.1" "1.0.0.1" "0.1.0.1" "0.0.1.1" "0.0.0.2"
+>>> #>
+>>> #>
+>>> #> $degree
+>>> #>? [1] 1 2 1 2 2 1 2 2 2 1 2 2 2 2
+>>> #>
+>>> #> $coefs
+>>> #> $coefs[[1]]
+>>> #> $coefs[[1]]$alpha
+>>> #> [1] 0.1134201 0.4901752
+>>> #>
+>>> #> $coefs[[1]]$norm2
+>>> #> [1]?? 1.00000? 20.00000? 34.11147 140.62467
+>>> #>
+>>> #>
+>>> #> $coefs[[2]]
+>>> #> $coefs[[2]]$alpha
+>>> #> [1] 0.1356218 1.0041956
+>>> #>
+>>> #> $coefs[[2]]$norm2
+>>> #> [1]? 1.00000 20.00000 21.53021 39.73742
+>>> #>
+>>> #>
+>>> #> $coefs[[3]]
+>>> #> $coefs[[3]]$alpha
+>>> #> [1] 0.2533081 0.1689801
+>>> #>
+>>> #> $coefs[[3]]$norm2
+>>> #> [1]? 1.00000 20.00000 19.08499 19.83333
+>>> #>
+>>> #>
+>>> #> $coefs[[4]]
+>>> #> $coefs[[4]]$alpha
+>>> #> [1] -0.03597259 -0.87409789
+>>> #>
+>>> #> $coefs[[4]]$norm2
+>>> #> [1]? 1.00000 20.00000 24.68273 73.41893
+>>> #>
+>>> #>
+>>> #>
+>>> #> $class
+>>> #> [1] "poly"?? "matrix"
+>>>
+>>> dimnames(p)
+>>> #> [[1]]
+>>> #> NULL
+>>> #>
+>>> #> [[2]]
+>>> #>???????? 2???????? 3???????? 4???????? 5???????? 7??????? 10
+>>> 11
+>>> ???????? 13
+>>> #> "1.0.0.0" "2.0.0.0" "0.1.0.0" "1.1.0.0" "0.2.0.0" "0.0.1.0"
+>>> "1.0.1.0"
+>>> "0.1.1.0"
+>>> #>??????? 19??????? 28??????? 29??????? 31??????? 37??????? 55
+>>> #> "0.0.2.0" "0.0.0.1" "1.0.0.1" "0.1.0.1" "0.0.1.1" "0.0.0.2"
+>>>
+>>>
+>>> Hope this helps,
+>>>
+>>> Rui Barradas
+>>>
+>>>
+>>
+> 
+> 
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From @tephen@cbond @end|ng |rom y@hoo@com  Tue Mar 25 14:42:30 2025
+From: @tephen@cbond @end|ng |rom y@hoo@com (Stephen Bond)
+Date: Tue, 25 Mar 2025 09:42:30 -0400
+Subject: [R] how to create model matrix of second order terms
+In-Reply-To: <f4ce1bcc-f4a5-4c88-97b8-8dee75337a92@sapo.pt>
+References: <9a67aeab7406246dbeddd6653b642bf421c3093c.camel.ref@yahoo.com>
+ <9a67aeab7406246dbeddd6653b642bf421c3093c.camel@yahoo.com>
+ <CAGxFJbSCPLUy5C-_dT3bj0r6r6WbYBuBYrsFmqAboDJpQEx2QA@mail.gmail.com>
+ <4fddc7589dcdf2488127302168beb10618c490a8.camel@yahoo.com>
+ <f4ce1bcc-f4a5-4c88-97b8-8dee75337a92@sapo.pt>
+Message-ID: <9151edf35ec05721da9b3fa3fedfb2536e78e147.camel@yahoo.com>
+
+@ Rui
+
+that is the idea, but how do I apply this to a matrix with 200 columns?
+I cannot write out the expression.?
+The colnames seem very messy, but they would be messy even under my
+scheme with as little as 100 vars.
+
+On Tue, 2025-03-25 at 06:15 +0000, Rui Barradas wrote:
+> ?s 15:28 de 24/03/2025, Stephen Bond via R-help escreveu:
+> > Folks,
+> > 
+> > I appreciate your effort, but maybe I was not explicit enough, so
+> > let
+> > me try again.
+> > 
+> > The current setup for formulas does not allow for I(x^2) terms as
+> > explained in the MASS book at the end of Section 6.2 the x:x
+> > interaction is treated as x.
+> > 
+> > So I need to write my own code, which is clumsy unless you can
+> > refer me
+> > to a package that already exists or give me an idea how to improve
+> > my
+> > code. Also, writing out terms is not feasible when there are 1000
+> > variables, so the code needs to deal with taking a wide data frame
+> > or
+> > matrix with column names for convenience.
+> > 
+> > Let me know your ideas :-)
+> > 
+> > On Mon, 2025-03-24 at 02:43 -0700, Bert Gunter wrote:
+> > > Full disclosure: I did not attempt to decipher your code.
+> > > 
+> > > But ~(A+B +C)^2 - (A?+ B?+ C)
+> > > gives all 2nd order interactions whether the terms are factors or
+> > > numeric.
+> > > 
+> > > ~I(A^2) + I(B^2) gives quadratics in A and B, which must be
+> > > numeric,
+> > > not factors, of course
+> > > 
+> > > You can combine these as necessary to get a formula expression
+> > > for
+> > > just 2nd order terms. Wrapping this in model.matrix() should then
+> > > give you the model matrix using "treatment" contrasts for the
+> > > contrasts involving factors (you can change the contrast types
+> > > using
+> > > the 'contrasts.arg' argument of model.matrix())
+> > > 
+> > > 1. Does this help?
+> > > 2. Do check this to make sure I'm correct
+> > > 
+> > > Cheers,
+> > > Bert
+> > > 
+> > > "An educated person is one who can entertain new ideas, entertain
+> > > others, and entertain herself."
+> > > 
+> > > 
+> > > 
+> > > On Mon, Mar 24, 2025 at 12:22?AM Stephen Bond via R-help
+> > > <r-help at r-project.org> wrote:
+> > > > I am sending to this forum as stackoverflow has devolved into
+> > > > sth
+> > > > pretty bad.
+> > > > Below code shows how to get what I want in a clumsy way.
+> > > > 
+> > > > cols <- letters[1:4]
+> > > > a1 <- outer(cols,cols,paste0)
+> > > > b1 <- a1[!lower.tri(a1)]
+> > > > 
+> > > > X <- matrix(rnorm(80),ncol=4)
+> > > > colnames(X) <- cols
+> > > > X <- as.data.frame(X)
+> > > > XX <- matrix(0,nrow=nrow(X),ncol=length(b1))
+> > > > colnames(XX) <- b1
+> > > > 
+> > > > for (k in 1:length(b1)){
+> > > > ?? ? XX[,k] <- X[,substr(b1[k],1,1)]*X[,substr(b1[k],2,2)]
+> > > > }
+> > > > 
+> > > > 
+> > > > 
+> > > > Is there a way to get that using a formula or some neat trick?
+> > > > The
+> > > > above will not work for factors, so I will need to create the
+> > > > factor
+> > > > crossings using formula a*b*c and then cross with the numerics,
+> > > > which
+> > > > is even more clumsy.
+> > > > Thanks everybody
+> > > > 
+> > > > ______________________________________________
+> > > > R-help at r-project.org?mailing list -- To UNSUBSCRIBE and more,
+> > > > see
+> > > > https://stat.ethz.ch/mailman/listinfo/r-help
+> > > > PLEASE do read the posting guide
+> > > > https://www.R-project.org/posting-guide.html
+> > > > and provide commented, minimal, self-contained, reproducible
+> > > > code.
+> > 
+> > ______________________________________________
+> > R-help at r-project.org?mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> > https://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+> Hello,
+> 
+> Are you looking for ?poly to generate all 1st and 2nd order
+> combinations?
+> In the outputs below, dimnames[[2]] tell which term corresponds to
+> which 
+> column.
+> So 1.0.0.0 is 'a' only and 2.0.0.0 is 'a^2'.
+> 
+> 
+> 
+> cols <- letters[1:4]
+> a1 <- outer(cols,cols,paste0)
+> b1 <- a1[!lower.tri(a1)]
+> 
+> X <- matrix(rnorm(80),ncol=4)
+> colnames(X) <- cols
+> X <- as.data.frame(X)
+> XX <- matrix(0,nrow=nrow(X),ncol=length(b1))
+> colnames(XX) <- b1
+> 
+> for (k in 1:length(b1)){
+> ?? XX[,k] <- X[,substr(b1[k],1,1)]*X[,substr(b1[k],2,2)]
+> }
+> # XX
+> # model.matrix(? ~ (a + b + c + d)^2 , data=X)
+> # model.matrix(? ~ (a + b + c + d)^2 - (a + b + c +d), data=X)
+> 
+> # Is this what you want?
+> # Ugly colnames
+> m <- model.matrix( ~ poly(a, b, c, d, degree = 2L) , data = X)
+> dimnames(m)
+> #> [[1]]
+> #>? [1] "1"? "2"? "3"? "4"? "5"? "6"? "7"? "8"? "9"? "10" "11" "12"
+> "13" 
+> "14" "15"
+> #> [16] "16" "17" "18" "19" "20"
+> #>
+> #> [[2]]
+> #>? [1] "(Intercept)"???????????????????????? "poly(a, b, c, d,
+> degree = 
+> 2)1.0.0.0"
+> #>? [3] "poly(a, b, c, d, degree = 2)2.0.0.0" "poly(a, b, c, d,
+> degree = 
+> 2)0.1.0.0"
+> #>? [5] "poly(a, b, c, d, degree = 2)1.1.0.0" "poly(a, b, c, d,
+> degree = 
+> 2)0.2.0.0"
+> #>? [7] "poly(a, b, c, d, degree = 2)0.0.1.0" "poly(a, b, c, d,
+> degree = 
+> 2)1.0.1.0"
+> #>? [9] "poly(a, b, c, d, degree = 2)0.1.1.0" "poly(a, b, c, d,
+> degree = 
+> 2)0.0.2.0"
+> #> [11] "poly(a, b, c, d, degree = 2)0.0.0.1" "poly(a, b, c, d,
+> degree = 
+> 2)1.0.0.1"
+> #> [13] "poly(a, b, c, d, degree = 2)0.1.0.1" "poly(a, b, c, d,
+> degree = 
+> 2)0.0.1.1"
+> #> [15] "poly(a, b, c, d, degree = 2)0.0.0.2"
+> 
+> # These colnames are nicer
+> p <- with(X, poly(a, b, c, d, degree = 2L))
+> attributes(p)
+> #> $dim
+> #> [1] 20 14
+> #>
+> #> $dimnames
+> #> $dimnames[[1]]
+> #> NULL
+> #>
+> #> $dimnames[[2]]
+> #>???????? 2???????? 3???????? 4???????? 5???????? 7??????? 10???????
+> 11 
+> ??????? 13
+> #> "1.0.0.0" "2.0.0.0" "0.1.0.0" "1.1.0.0" "0.2.0.0" "0.0.1.0"
+> "1.0.1.0" 
+> "0.1.1.0"
+> #>??????? 19??????? 28??????? 29??????? 31??????? 37??????? 55
+> #> "0.0.2.0" "0.0.0.1" "1.0.0.1" "0.1.0.1" "0.0.1.1" "0.0.0.2"
+> #>
+> #>
+> #> $degree
+> #>? [1] 1 2 1 2 2 1 2 2 2 1 2 2 2 2
+> #>
+> #> $coefs
+> #> $coefs[[1]]
+> #> $coefs[[1]]$alpha
+> #> [1] 0.1134201 0.4901752
+> #>
+> #> $coefs[[1]]$norm2
+> #> [1]?? 1.00000? 20.00000? 34.11147 140.62467
+> #>
+> #>
+> #> $coefs[[2]]
+> #> $coefs[[2]]$alpha
+> #> [1] 0.1356218 1.0041956
+> #>
+> #> $coefs[[2]]$norm2
+> #> [1]? 1.00000 20.00000 21.53021 39.73742
+> #>
+> #>
+> #> $coefs[[3]]
+> #> $coefs[[3]]$alpha
+> #> [1] 0.2533081 0.1689801
+> #>
+> #> $coefs[[3]]$norm2
+> #> [1]? 1.00000 20.00000 19.08499 19.83333
+> #>
+> #>
+> #> $coefs[[4]]
+> #> $coefs[[4]]$alpha
+> #> [1] -0.03597259 -0.87409789
+> #>
+> #> $coefs[[4]]$norm2
+> #> [1]? 1.00000 20.00000 24.68273 73.41893
+> #>
+> #>
+> #>
+> #> $class
+> #> [1] "poly"?? "matrix"
+> 
+> dimnames(p)
+> #> [[1]]
+> #> NULL
+> #>
+> #> [[2]]
+> #>???????? 2???????? 3???????? 4???????? 5???????? 7??????? 10???????
+> 11 
+> ??????? 13
+> #> "1.0.0.0" "2.0.0.0" "0.1.0.0" "1.1.0.0" "0.2.0.0" "0.0.1.0"
+> "1.0.1.0" 
+> "0.1.1.0"
+> #>??????? 19??????? 28??????? 29??????? 31??????? 37??????? 55
+> #> "0.0.2.0" "0.0.0.1" "1.0.0.1" "0.1.0.1" "0.0.1.1" "0.0.0.2"
+> 
+> 
+> Hope this helps,
+> 
+> Rui Barradas
+> 
+> 
+
+
+From m@r|@mo|dowu1 @end|ng |rom gm@||@com  Tue Mar 25 15:02:30 2025
+From: m@r|@mo|dowu1 @end|ng |rom gm@||@com (Mariam Idowu)
+Date: Tue, 25 Mar 2025 15:02:30 +0100
+Subject: [R] PLOTTING ODE MODEL RESULTS USING PLOT.DESOLVE FROM THE DESOLVE
+ PACKAGE
+Message-ID: <CAAjz2jNae2E=AhLS92R2KupSrmaBfrx8fbQvdU4M__HNPQVtvA@mail.gmail.com>
+
+Hi Everyone,
+
+I trust this email finds you well, I am currently running an ODE model
+using the plot.desolve method from the deSolve package. For context my
+model is a box model with 75 boxes, therefore for each variable I will get
+75 outputs.  I am currently comparing the results of my model
+to observations, however adding a legend to each of these outputs seems to
+be very difficult. The legend only appears at the last output which is the
+75th box.
+Does anyone know how this can be fixed?
+
+Furthermore, I want to also add an RMSE metric that compares the distance
+between my scenarios and observations using the deSolve package to quantify
+how much the model has trailed away from the observations. I checked the
+vignettes but did not see this incorporated.
+
+Mariam.
+
+	[[alternative HTML version deleted]]
+
+
+From jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@  Tue Mar 25 17:27:14 2025
+From: jdnewm|| @end|ng |rom dcn@d@v|@@c@@u@ (Jeff Newmiller)
+Date: Tue, 25 Mar 2025 09:27:14 -0700
+Subject: [R] 
+ PLOTTING ODE MODEL RESULTS USING PLOT.DESOLVE FROM THE DESOLVE
+ PACKAGE
+In-Reply-To: <CAAjz2jNae2E=AhLS92R2KupSrmaBfrx8fbQvdU4M__HNPQVtvA@mail.gmail.com>
+References: <CAAjz2jNae2E=AhLS92R2KupSrmaBfrx8fbQvdU4M__HNPQVtvA@mail.gmail.com>
+Message-ID: <9B3DFF16-890E-4755-AF7C-91918EC4A6FF@dcn.davis.ca.us>
+
+a) Do be sure to read the Posting Guide... for example changes to contributed packages is appropriate for communicating directly to the maintainer or via the recommended forum for that contributed package. Also, you will avoid mis-communication more reliably if you follow the guide recommendation to post your email using plain text (a setting in your email program).
+
+b) I highly recommend that you extract the data that these convenience functions are using as input and making the plots and summary metrics that you want to see yourself. This will give you fastest results, and will provide a basis for a conversation about package enhancement with the maintainer of the package.
+
+On March 25, 2025 7:02:30 AM PDT, Mariam Idowu <mariamoidowu1 at gmail.com> wrote:
+>Hi Everyone,
+>
+>I trust this email finds you well, I am currently running an ODE model
+>using the plot.desolve method from the deSolve package. For context my
+>model is a box model with 75 boxes, therefore for each variable I will get
+>75 outputs.  I am currently comparing the results of my model
+>to observations, however adding a legend to each of these outputs seems to
+>be very difficult. The legend only appears at the last output which is the
+>75th box.
+>Does anyone know how this can be fixed?
+>
+>Furthermore, I want to also add an RMSE metric that compares the distance
+>between my scenarios and observations using the deSolve package to quantify
+>how much the model has trailed away from the observations. I checked the
+>vignettes but did not see this incorporated.
+>
+>Mariam.
+>
+>	[[alternative HTML version deleted]]
+>
+>______________________________________________
+>R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>https://stat.ethz.ch/mailman/listinfo/r-help
+>PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+>and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Sent from my phone. Please excuse my brevity.
+
+
+From v@r|n@@ch@ @end|ng |rom y@hoo@|r  Tue Mar 25 18:43:01 2025
+From: v@r|n@@ch@ @end|ng |rom y@hoo@|r (varin sacha)
+Date: Tue, 25 Mar 2025 17:43:01 +0000 (UTC)
+Subject: [R] 3 way crosstable not working
+References: <1741705140.2895946.1742924581903.ref@mail.yahoo.com>
+Message-ID: <1741705140.2895946.1742924581903@mail.yahoo.com>
+
+Dear R-experts,
+
+Here below a toy example not working. After some researches on the Net, still don't get it !
+
+Many thanks for your precious help.
+
+
+#############################
+library(knitr)
+library(ggplot2)
+library(pollster)
+library(dplyr)
+?
+statut=c("married","not married","not married","married","divorced","divorced","married","not married","divorced","not married")
+?
+sex=c("male","female","female","male","female","female","male","female","male","male")
+?
+color=c("red","blue","green","green","blue","red","blue","green","red","blue")
+data<-?data.frame(statut, sex,color)?
+?
+crosstab_3way(df=data,x=statut, y= sex,z= color)
+kable(digits=0,caption="Tableau 3 variables", format="html")
+####################################
+?
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Tue Mar 25 21:21:31 2025
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Tue, 25 Mar 2025 20:21:31 +0000
+Subject: [R] 3 way crosstable not working
+In-Reply-To: <1741705140.2895946.1742924581903@mail.yahoo.com>
+References: <1741705140.2895946.1742924581903.ref@mail.yahoo.com>
+ <1741705140.2895946.1742924581903@mail.yahoo.com>
+Message-ID: <7ea7b9d9-c508-4d72-aa5c-8846c84c0b89@sapo.pt>
+
+?s 17:43 de 25/03/2025, varin sacha via R-help escreveu:
+> Dear R-experts,
+> 
+> Here below a toy example not working. After some researches on the Net, still don't get it !
+> 
+> Many thanks for your precious help.
+> 
+> 
+> #############################
+> library(knitr)
+> library(ggplot2)
+> library(pollster)
+> library(dplyr)
+>   
+> statut=c("married","not married","not married","married","divorced","divorced","married","not married","divorced","not married")
+>   
+> sex=c("male","female","female","male","female","female","male","female","male","male")
+>   
+> color=c("red","blue","green","green","blue","red","blue","green","red","blue")
+> data<-?data.frame(statut, sex,color)
+>   
+> crosstab_3way(df=data,x=statut, y= sex,z= color)
+> kable(digits=0,caption="Tableau 3 variables", format="html")
+> ####################################
+>   
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+You need a weight variable to crosstab_3way.
+Since there is none in the data, I have created a
+
+weight = rep(1, length(color))
+
+
+
+library(knitr)
+library(ggplot2)
+library(pollster)
+library(dplyr)
+#>
+#> Attaching package: 'dplyr'
+#> The following objects are masked from 'package:stats':
+#>
+#>     filter, lag
+#> The following objects are masked from 'package:base':
+#>
+#>     intersect, setdiff, setequal, union
+
+statut <- c("married","not married","not 
+married","married","divorced","divorced","married","not 
+married","divorced","not married")
+sex <- 
+c("male","female","female","male","female","female","male","female","male","male")
+color <- 
+c("red","blue","green","green","blue","red","blue","green","red","blue")
+
+data <- data.frame(statut, sex, color, weight = rep(1, length(color)))
+
+crosstab_3way(df = data, x = statut, y = sex, z = color, weight = weight)
+#> # A tibble: 7 ? 5
+#>   statut      color female  male     n
+#>   <fct>       <fct>  <dbl> <dbl> <dbl>
+#> 1 divorced    blue     100     0     1
+#> 2 divorced    red       50    50     2
+#> 3 married     blue       0   100     1
+#> 4 married     green      0   100     1
+#> 5 married     red        0   100     1
+#> 6 not married blue      50    50     2
+#> 7 not married green    100     0     2
+
+
+You can now pipe to kable. WHich was also missing an argument, x, what 
+to plot(!)
+
+
+crosstab_3way(df = data, x = statut, y = sex, z = color, weight = 
+weight) %>%
+   kable(digits = 0, caption = "Tableau 3 variables", format = "html") %>%
+   writeLines(con = "./Temp/varin_sacha_2025_03_25.html")
+
+# unlink("./Temp/varin_sacha_2025_03_25.html")
+
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
