@@ -1643,3 +1643,604 @@ wrote:
 	[[alternative HTML version deleted]]
 
 
+From @rn@ud@g@boury @end|ng |rom gm@||@com  Thu Apr  3 03:42:44 2025
+From: @rn@ud@g@boury @end|ng |rom gm@||@com (Arnaud Gaboury)
+Date: Thu, 03 Apr 2025 03:42:44 +0200
+Subject: [R] join/merge two data frames
+In-Reply-To: <CAGxFJbQ2yXrNYAOnvqHWDgYoJJ_uhnhs1KmhN8qq-M1X_0mjVQ@mail.gmail.com>
+References: <43c9b7071c0e82bb16be4f078a7374e096bceb81.camel@gmail.com>
+ <LV8PR22MB4528E0C3C8F4A869D72EE0A3CFAF2@LV8PR22MB4528.namprd22.prod.outlook.com>
+ <d9f0a740b548eb9565ad31e5fe10c8b539ec9789.camel@gmail.com>
+ <00bb01dba407$4a706d90$df5148b0$@gmail.com>
+ <a26ad30dc71bc759b97d4873852a44e7b55c862f.camel@gmail.com>
+ <CAGxFJbQ2yXrNYAOnvqHWDgYoJJ_uhnhs1KmhN8qq-M1X_0mjVQ@mail.gmail.com>
+Message-ID: <c7b22fe8b03eb84565abba79339d50ef83452ae6.camel@gmail.com>
+
+On Wed, 2025-04-02 at 17:39 -0700, Bert Gunter wrote:
+> You might do better posting here:
+> 
+> https://stat.ethz.ch/mailman/listinfo/r-sig-finance
+> 
+> Cheers,
+> Bert
+
+I will do, even if my last experience with this list was a little bit
+annoying:
+<Rather than flood the R-SIG with the step-by-step extended diagnosis
+of your particular problem, could I perhaps ask you to continue your
+exchanges without cc:'ing the entire list?>
+
+Spam according to this user was 2 posts.
+I thought the rule was to post to the whole list members and not start
+private conversation.
+
+
+
+> 
+> "An educated person is one who can entertain new ideas, entertain
+> others, and entertain herself."
+> 
+> 
+> 
+> On Wed, Apr 2, 2025 at 4:39?PM Arnaud Gaboury
+> <arnaud.gaboury at gmail.com> wrote:
+> > I will try to be more precised. Here is the very final table I
+> > want:
+> > portfolio_valuation <- structure(list(time =
+> > structure(c(1735153199,
+> > 1735239599), tzone = "", class = c("POSIXct", "POSIXt")),
+> > BTCUSDC = c(107000, 106000), SUIUSDC = c(4.7, 4.5), USDT = c(0,
+> > 320000), BTCUSDC_qty = c(5, 2), SUIUSDC_qty = c(200, 250),
+> > valuation = c(535940, 533125), return = c(NA_real_, -0.525)),
+> > row.names
+> > = c(NA, -2L), class = c("tbl_df", "tbl", "data.frame"))
+> > 
+> > ?portfolio_valuation
+> > # A tibble: 2 ? 8
+> > ? time? ? ? ? ? ? ? ? BTCUSDC SUIUSDC? ?USDT BTCUSDC_qty
+> > SUIUSDC_qty
+> > valuation return
+> > ? <dttm>? ? ? ? ? ? ? ? <dbl>? ?<dbl>? <dbl>? ? ? ?<dbl>? ? ?
+> > ?<dbl>? 
+> > <dbl>? <dbl>
+> > 1 2024-12-25 18:59:59? 107000? ? ?4.7? ? ? 0? ? ? ? ? ?5? ? ? ?
+> > ?200? 
+> > 535940 NA? ? 
+> > 2 2024-12-26 18:59:59? 106000? ? ?4.5 320000? ? ? ? ? ?2? ? ? ?
+> > ?250? 
+> > 533125 -0.525
+> > 
+> > As you can see, I will keep only a few things. I want one line per
+> > day,
+> > @ 18:59:59. The line will show:
+> > - the token I have in my portfolio (can be zero)?
+> > - which quantity
+> > - their closing price for the day
+> > - valuation (sum of token_qty x token_price + USDT). Note: USDT is
+> > numeric dollar (cash). 
+> > - return: (diff ptf val day 1 - diff ptf val day 0)/ptf val day 0
+> > 
+> > The two tibbles I start with are:
+> > - token_close_sample: daily closing price for each token. The token
+> > list is > the token in my portfolio. I will fetch a regularly
+> > refreshed
+> > list of token I usually trade. USDT value is 1
+> > - all_trade_sample: a tibble with all my trades. One trade per line
+> > with its timestamp, and some trade info (price, quantity etc).
+> > 
+> > I hope this details will help to clarify. 
+> > 
+> > On Wed, 2025-04-02 at 15:41 -0400, avi.e.gross at gmail.com wrote:
+> > > Arnaud,
+> > > 
+> > > I won't comment on other aspects but want to ask how sure you are
+> > > that your data is guaranteed to have a single row reflecting a
+> > > closing price at 18:59:59 exactly?
+> > > 
+> > > It may be true for your data source. I note that markets
+> > > technically
+> > > close at 4:00 PM, New York time, but many have after-hours
+> > > trading,
+> > > and there are days it closes early (such as 1 PM) and times when
+> > > trading is halted.
+> > > 
+> > > Generally, you can get closing prices (or other data) from other
+> > > reliable sources and you could choose to merge data from such a
+> > > source in rather than calculating them from your data. If you do
+> > > want
+> > > to use your data, one suggestion is to use the LAST record in
+> > > each
+> > > grouping for a day. I find that easy to do in dplyr by having a
+> > > column containing the date info except for the time, and another
+> > > containing the time in a sortable format. You can then sort the
+> > > data.frame by the date and then time and then? group your
+> > > data.frame?
+> > > by the date and? and select only last record in each group and
+> > > you
+> > > have the last time, whatever that may be.
+> > > 
+> > > Again, this may not apply in your case. As you note, you are
+> > > planning
+> > > on doing many things, one step at a time, and early stages can
+> > > set up
+> > > your data.frames in ways that make later stages easier to do. As
+> > > one
+> > > example, you could create a column in early stages that marks if
+> > > the
+> > > current row is a closing row or not.
+> > > 
+> > > -----Original Message-----
+> > > From: R-help <r-help-bounces at r-project.org> On Behalf Of Arnaud
+> > > Gaboury
+> > > Sent: Wednesday, April 2, 2025 2:10 PM
+> > > To: Ebert,Timothy Aaron <tebert at ufl.edu>; r-help at r-project.org
+> > > Subject: Re: [R] join/merge two data frames
+> > > 
+> > > 
+> > > 
+> > > On Wed, 2025-04-02 at 16:55 +0000, Ebert,Timothy Aaron wrote:
+> > > > Your result data frame example makes no sense to me. The price
+> > > > and
+> > > > executed_qty are the same for all symbols?
+> > > > 
+> > > > To get it all into one data frame you need a common variable
+> > > > that
+> > > > is
+> > > > used to join the data frames.
+> > > > My guess is that all_trade_sample$symbol has equivalents to the
+> > > > variables in token_close_sample.
+> > > > 
+> > > > You need to pivot one of the tables, and then full join them.
+> > > > Please look at the join functions. In base R it is "merge()"
+> > > > and in
+> > > > dyply it is full_join(), left_join() and similar.
+> > > > 
+> > > > I will pivot all_trade_sample to make all of the elements in
+> > > > "symbol"
+> > > > into variables.
+> > > > 
+> > > > I will do this in tidyverse. There are some parts of this that
+> > > > I
+> > > > really like. However, it can as easily be done using base R.
+> > > > Library(tidyr)
+> > > > Library(dplyr)
+> > > > token_close_long <- token_close_sample %>%
+> > > > ? pivot_longer(cols = -time, names_to = "symbol", values_to =
+> > > > "close_price")
+> > > > #I rename time in token_close_long so that it will be preserved
+> > > > colnames(token_close_long) <- c("time_close", "symbol",
+> > > > "close_price")
+> > > > combined <- full_join(all_trade_sample,token_close_long,
+> > > > by="symbol")
+> > > > 
+> > > > This generates errors. This is ok, but I need to know more
+> > > > about
+> > > > all_trade_sample. Each symbol appears multiple times in
+> > > > all_trade_sample. Each instance of "AAVEUSIX" has a different
+> > > > time
+> > > > stamp. So maybe filter to eliminate all but the first
+> > > > (earliest)
+> > > > time?
+> > > > 
+> > > > The program looks something like this:
+> > > > token_close_long <- token_close_sample %>%
+> > > > ? pivot_longer(cols = -time, names_to = "symbol", values_to =
+> > > > "close_price")
+> > > > 
+> > > > #I will rename time in token_close_long so that it will be
+> > > > preserved
+> > > > colnames(token_close_long) <- c("time_close", "symbol",
+> > > > "close_price")
+> > > > combined <- full_join(all_trade_sample,token_close_long,
+> > > > by="symbol")
+> > > > 
+> > > > filtered_trades <- all_trade_sample |>
+> > > > ? group_by(symbol) |>
+> > > > ? slice_min(time, n = 1)|>
+> > > > ? ungroup()
+> > > > 
+> > > > combined <- full_join(filtered_trades,token_close_long,
+> > > > by="symbol")
+> > > > 
+> > > > I did not do something right, as there are four closing prices
+> > > > for
+> > > > each symbol. However, the general approach should work even if
+> > > > it
+> > > > needs a little modification to give the correct result. Your
+> > > > closing
+> > > > price is only relevant based on some other price (probably
+> > > > buying
+> > > > price, but could be opening price).
+> > > > 
+> > > > Tim
+> > > 
+> > > Thank you Tim for your answer. I will have a close look at it
+> > > later
+> > > today. But in short:
+> > > - I will do some work on my data later in the script. The tibble
+> > > I
+> > > want
+> > > is far from being the result.
+> > > - Time of closing price is everyday the same: 18:59:59. I will
+> > > compute
+> > > returns, volatility, correlations etc so I need a common
+> > > reference.
+> > > Prices for the trades change and are given by the exchange. I
+> > > don't
+> > > need them, won't do anything.
+> > > - Yes, symbols may be the common variable. 
+> > > - I feel comfortable with tibbles and tidyverse
+> > > - All_trade_sample has the goal to fetch price (price of asset
+> > > when
+> > > the
+> > > trade is done) and executed_qty. btc_price is needed at one point
+> > > of
+> > > my
+> > > calculation, but will not be shown in the very final table.
+> > > - Multiple lines for one only symbol means I made multiple trades
+> > > of
+> > > this asset during the same day.
+> > > 
+> > > I will test your suggestions.
+> > > Thank you again.
+> > > 
+> > > 
+> > > > 
+> > > > -----Original Message-----
+> > > > From: R-help <r-help-bounces at r-project.org> On Behalf Of Arnaud
+> > > > Gaboury
+> > > > Sent: Wednesday, April 2, 2025 6:20 AM
+> > > > To: r-help at r-project.org
+> > > > Subject: [R] join/merge two data frames
+> > > > 
+> > > > [External Email]
+> > > > 
+> > > > I work on a trading journal for a portfolio of crypto
+> > > > currencies.
+> > > > The
+> > > > goal is to fetch from my account (binance exchange) the trades
+> > > > I
+> > > > have
+> > > > done and daily closing prices of my assets.
+> > > > The first part (getting the data from exchange) are in two
+> > > > parts.
+> > > > 
+> > > > 1- get the daily closing prices of my assets. Here is a sample
+> > > > of
+> > > > my
+> > > > data frame:
+> > > > token_close_sample <- structure(list(time =
+> > > > structure(c(1734371999.999, 1734458399.999, 1734544799.999,
+> > > > 1734631199.999), tzone = "", class = c("POSIXct", "POSIXt")),
+> > > > BTCUSDC
+> > > > = c(107112.36, 107517.25, 104630.49, 98692.01 ), SUIUSDC =
+> > > > c(4.7252,
+> > > > 4.6923, 4.7017, 4.2422), ENAUSDC = c(1.1862, 1.1412, 1.0928,
+> > > > 1.0256),
+> > > > AAVEUSDC = c(388, 365.68, 373.15, 316.69 ), ETHUSDC =
+> > > > c(4034.74,
+> > > > 3975.39, 3879.06, 3474.91), FTMUSDC = c(1.381, 1.3596, 1.2222,
+> > > > 1.0445)), row.names = c(NA, -4L), class = c("tbl_df", "tbl",
+> > > > "data.frame"))
+> > > > 
+> > > > the tibble looks like this:
+> > > > time??????????????? BTCUSDC SUIUSDC ENAUSDC AAVEUSDC ETHUSDC
+> > > > FTMUSDC
+> > > > <dttm>??????????????? <dbl>?? <dbl>?? <dbl>??? <dbl>?? <dbl>??
+> > > > <dbl>
+> > > > 1 2024-12-16 18:59:59 107112.??? 4.73??? 1.19???? 388???
+> > > > 4035.?? 
+> > > > 1.38
+> > > > 2 2024-12-17 18:59:59 107517.??? 4.69??? 1.14???? 366.??
+> > > > 3975.?? 
+> > > > 1.36
+> > > > 3 2024-12-18 18:59:59 104630.??? 4.70??? 1.09???? 373.??
+> > > > 3879.?? 
+> > > > 1.22
+> > > > 4 2024-12-19 18:59:59? 98692.??? 4.24??? 1.03???? 317.??
+> > > > 3475.?? 
+> > > > 1.04
+> > > > 
+> > > > 2- get my trades. Here is a sample:
+> > > > all_trade_sample <- structure(list(time =
+> > > > structure(c(1737335082.949,
+> > > > 1737336735.697, 1738059550.671, 1738142709.422, 1738142709.422,
+> > > > 1738169351.788 ), tzone = "UTC", class = c("POSIXct",
+> > > > "POSIXt")),
+> > > > symbol = c("AAVEUSDC", "AAVEUSDC", "SUIUSDC", "AAVEUSDC",
+> > > > "AAVEUSDC",
+> > > > "ETHUSDC"), executed_qty = c(866.666, -834.998, 67649.3, -
+> > > > 0.393, -
+> > > > 0.393, 36.1158), price = c(0.003005, 0.003131, 0.000038,
+> > > > 294.738321,
+> > > > 294.738321, 0.03027), cummulative_quote_qty =
+> > > > c(262699.317950113, -
+> > > > 263696.723173419, 263987.20719179, -115.83216, -115.83216,
+> > > > 111456.491386979
+> > > > ), day = structure(c(20108, 20108, 20116, 20117, 20117, 20117
+> > > > ),
+> > > > class = "Date")), row.names = c(NA, -6L), class = c("tbl_df",
+> > > > "tbl",
+> > > > "data.frame"))
+> > > > 
+> > > > the tibble looks like this:
+> > > > time??????????????? symbol?? executed_qty????? price
+> > > > cummulative_quote_qty day
+> > > > <dttm>????????????? <chr>?????????? <dbl>????? <dbl>
+> > > > <dbl> <date>
+> > > > 1 2025-01-20 01:04:42 AAVEUSDC????? 867.????? 0.00300
+> > > > 262699. 2025-01-20
+> > > > 2 2025-01-20 01:32:15 AAVEUSDC???? -835.?????
+> > > > 0.00313??????????????
+> > > > -
+> > > > 263697. 2025-01-20
+> > > > 3 2025-01-28 10:19:10 SUIUSDC???? 67649.????? 0.000038
+> > > > 263987. 2025-01-28
+> > > > 4 2025-01-29 09:25:09 AAVEUSDC?????? -0.393 295.
+> > > > -116. 2025-01-29
+> > > > 5 2025-01-29 09:25:09 AAVEUSDC?????? -0.393 295.
+> > > > -116. 2025-01-29
+> > > > 6 2025-01-29 16:49:11 ETHUSDC??????? 36.1???? 0.0303
+> > > > 111456. 2025-01-29
+> > > > 
+> > > > Now, to finalize, I want to get all the info in one data frame
+> > > > so I
+> > > > can compute daily valuation (with potential trades, or in/out
+> > > > of
+> > > > asset).
+> > > > The finalized tibble should look something like this:
+> > > > result <- structure(list(time = structure(c(1734371999.999,
+> > > > 1734458399.999, 1734544799.999, 1734631199.999, 1737335082.949,
+> > > > 1737336735.697, 1738059550.671, 1734721199, 1734807599,
+> > > > 1734893999,
+> > > > 1734980399, 1735066799, 1735153199, 1735239599, 1735325999,
+> > > > 1738142709.422, 1735412399, 1738142709.422, 1738169351.788,
+> > > > 1735498799), tzone = "", class = c("POSIXct", "POSIXt")),
+> > > > BTCUSDC =
+> > > > c(107112.36, 107517.25, 104630.49, 98692.01,NA_real_, NA_real_,
+> > > > 102000, 101500, 101700,100300,100400,102300,102300,103100,
+> > > > NA_real_,
+> > > > 99800, NA_real_, NA_real_,NA_real_, 99900 ), SUIUSDC =
+> > > > c(4.7252,
+> > > > 4.6923, 4.7017, 4.2422, NA_real_, NA_real_, 4.25, 4.26, 4.7,
+> > > > 4.65,
+> > > > 4.52, 4.23, 4.17, 4.34, NA_real_, 4.52, NA_real_,
+> > > > NA_real_,NA_real_,
+> > > > 4.44), ENAUSDC = c(1.1862, 1.1412, 1.0928, 1.0256, NA_real_,
+> > > > NA_real_, 1.176, 1.16, 1.163, 1.183, 1.196, 1.165, 1.158,
+> > > > 1.142,
+> > > > NA_real_, 1.196, NA_real_, NA_real_,NA_real_, 1.113), AAVEUSDC
+> > > > =
+> > > > c(388, 365.68, 373.15, 316.69, NA_real_, NA_real_, 102000,
+> > > > 101500,
+> > > > 101700,100300,100400,102300,102300,103100, NA_real_, 99800,
+> > > > NA_real_,
+> > > > NA_real_,NA_real_, 99900 ), ETHUSDC = c(4034.74, 3975.39,
+> > > > 3879.06,
+> > > > 3474.91, NA_real_,NA_real_, 3420, 3410, 3412, 3367, 3388, 3355,
+> > > > 3374,
+> > > > 3392, NA_real_, 3401, NA_real_, NA_real_,NA_real_, 3411),
+> > > > FTMUSDC =
+> > > > c(1.381,1.3596, 1.2222, 1.0445, NA_real_,NA_real_, 1.36, 1.368,
+> > > > 1.342, 1.339, 1.436, 1.562, 1.53, 1.62, NA_real_, 1.31,
+> > > > NA_real_,
+> > > > NA_real_,NA_real_, 1.58), executed_qty = c(NA_real_, NA_real_,
+> > > > NA_real_, NA_real_, 230, 559, NA_real_, NA_real_,NA_real_,
+> > > > NA_real_,
+> > > > NA_real_,NA_real_, NA_real_, NA_real_, 200, NA_real_, 700, 200,
+> > > > 350,
+> > > > NA_real_), price = c( NA_real_, NA_real_, NA_real_, NA_real_,
+> > > > 2, 3,
+> > > > NA_real_, NA_real_,NA_real_, NA_real_, NA_real_,NA_real_,
+> > > > NA_real_,
+> > > > NA_real_, 10, NA_real_, 3, 4, 5, NA_real_) ), row.names = c(NA,
+> > > > -
+> > > > 20L), class = c("tbl_df", "tbl", "data.frame"))
+> > > > 
+> > > > The idea is to have:
+> > > > - one line each day with closing price of my portfolio assets
+> > > > at
+> > > > 18:59:59
+> > > > - one line for each trade where I shall write 'asset', 'price'
+> > > > and
+> > > > 'executed_qty'.
+> > > > 
+> > > > I spent quite some time trying to figure out how to do it, but
+> > > > couldn't. I don't even know if it is possible. Of course, I
+> > > > don't
+> > > > want to add anything (price, date, asset...) by hand.
+> > > > Thank you for any help.
+> > > > 
+> > ______________________________________________
+> > R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> > https://stat.ethz.ch/mailman/listinfo/r-help
+> > PLEASE do read the posting guide
+> > https://www.R-project.org/posting-guide.html
+> > and provide commented, minimal, self-contained, reproducible code.
+
+-------------- next part --------------
+A non-text attachment was scrubbed...
+Name: signature.asc
+Type: application/pgp-signature
+Size: 488 bytes
+Desc: This is a digitally signed message part
+URL: <https://stat.ethz.ch/pipermail/r-help/attachments/20250403/f648223e/attachment.sig>
+
+From c@|||@te@dor|e@n@ @end|ng |rom gm@||@com  Thu Apr  3 14:24:35 2025
+From: c@|||@te@dor|e@n@ @end|ng |rom gm@||@com (Calliste DORLEANS)
+Date: Thu, 3 Apr 2025 14:24:35 +0200
+Subject: [R] Problems with svg() exporting graphics with gradients
+Message-ID: <CAAfBr6Eo3Z2SGRKE1tKei58PrsEizmhyZ3mETrYo52gSigPC8g@mail.gmail.com>
+
+ Hello,
+
+My name is Calliste, I am a postgraduate student in data analysis and I use
+R and R Studio as a daily tool for my work and studies. I am used to
+exporting my plots with the svg() function from the grDevices package. I
+noticed since February 2025 that the ggplot graphics containing gradients
+are not correctly vectorised (see below the difference between the graphics
+from November 2024 and February 2025) when exported with the svg() function
+and are thus of a lesser quality. However, it seems to not happen when
+using a basic plot() function and it doesn't happen either with ggplot
+graphics that don't contain a gradient variable. I looked for solutions on
+the Internet, but I didn't find any information, that is why I contacted
+you. I don't know if the package has had some recent updates, but it would
+be of great help for me if you have any idea how to fix this.
+
+Thanks in advance for your help,
+
+Sincerely,
+
+Calliste Dorl?ans
+
+graph_doub.svg is from November 2024
+graph_serie.svg is from February 2025
+
+From bgunter@4567 @end|ng |rom gm@||@com  Thu Apr  3 20:11:51 2025
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Thu, 3 Apr 2025 11:11:51 -0700
+Subject: [R] Problems with svg() exporting graphics with gradients
+In-Reply-To: <CAAfBr6Eo3Z2SGRKE1tKei58PrsEizmhyZ3mETrYo52gSigPC8g@mail.gmail.com>
+References: <CAAfBr6Eo3Z2SGRKE1tKei58PrsEizmhyZ3mETrYo52gSigPC8g@mail.gmail.com>
+Message-ID: <CAGxFJbSraWRv722Zf7xW5PQNL32KyWQ2=00MQEBksvuDgidRHw@mail.gmail.com>
+
+The R-help listserv deletes most attachments (as security risks) and your
+attachments (I assume) did not come through. Provide code for a minimal
+reprex or a site from which those interested in helping can get your plots
+instead if no one who already knows about this issue responds. You might
+also try posting on the Posit/ggplot Help site, as someone there may be
+able to help.
+
+Cheers,
+Bert
+
+"An educated person is one who can entertain new ideas, entertain others,
+and entertain herself."
+
+
+
+On Thu, Apr 3, 2025 at 11:00?AM Calliste DORLEANS <
+calliste.dorleans at gmail.com> wrote:
+
+>  Hello,
+>
+> My name is Calliste, I am a postgraduate student in data analysis and I use
+> R and R Studio as a daily tool for my work and studies. I am used to
+> exporting my plots with the svg() function from the grDevices package. I
+> noticed since February 2025 that the ggplot graphics containing gradients
+> are not correctly vectorised (see below the difference between the graphics
+> from November 2024 and February 2025) when exported with the svg() function
+> and are thus of a lesser quality. However, it seems to not happen when
+> using a basic plot() function and it doesn't happen either with ggplot
+> graphics that don't contain a gradient variable. I looked for solutions on
+> the Internet, but I didn't find any information, that is why I contacted
+> you. I don't know if the package has had some recent updates, but it would
+> be of great help for me if you have any idea how to fix this.
+>
+> Thanks in advance for your help,
+>
+> Sincerely,
+>
+> Calliste Dorl?ans
+>
+> graph_doub.svg is from November 2024
+> graph_serie.svg is from February 2025
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From p@u| @end|ng |rom @t@t@@uck|@nd@@c@nz  Thu Apr  3 21:40:44 2025
+From: p@u| @end|ng |rom @t@t@@uck|@nd@@c@nz (Paul Murrell)
+Date: Fri, 4 Apr 2025 08:40:44 +1300
+Subject: [R] Problems with svg() exporting graphics with gradients
+In-Reply-To: <CAGxFJbSraWRv722Zf7xW5PQNL32KyWQ2=00MQEBksvuDgidRHw@mail.gmail.com>
+References: <CAAfBr6Eo3Z2SGRKE1tKei58PrsEizmhyZ3mETrYo52gSigPC8g@mail.gmail.com>
+ <CAGxFJbSraWRv722Zf7xW5PQNL32KyWQ2=00MQEBksvuDgidRHw@mail.gmail.com>
+Message-ID: <1a8a8f05-587c-4d88-95e2-6312b436a4aa@stat.auckland.ac.nz>
+
+Hi Calliste
+
+Please feel free to send me the SVG files directly if you like.
+
+However, as Bert says, the R code that produces the files would be very 
+helpful as well.
+
+Thanks
+
+Paul
+
+On 4/04/2025 7:11 am, Bert Gunter wrote:
+> The R-help listserv deletes most attachments (as security risks) and your
+> attachments (I assume) did not come through. Provide code for a minimal
+> reprex or a site from which those interested in helping can get your plots
+> instead if no one who already knows about this issue responds. You might
+> also try posting on the Posit/ggplot Help site, as someone there may be
+> able to help.
+> 
+> Cheers,
+> Bert
+> 
+> "An educated person is one who can entertain new ideas, entertain others,
+> and entertain herself."
+> 
+> 
+> 
+> On Thu, Apr 3, 2025 at 11:00?AM Calliste DORLEANS <
+> calliste.dorleans at gmail.com> wrote:
+> 
+>>   Hello,
+>>
+>> My name is Calliste, I am a postgraduate student in data analysis and I use
+>> R and R Studio as a daily tool for my work and studies. I am used to
+>> exporting my plots with the svg() function from the grDevices package. I
+>> noticed since February 2025 that the ggplot graphics containing gradients
+>> are not correctly vectorised (see below the difference between the graphics
+>> from November 2024 and February 2025) when exported with the svg() function
+>> and are thus of a lesser quality. However, it seems to not happen when
+>> using a basic plot() function and it doesn't happen either with ggplot
+>> graphics that don't contain a gradient variable. I looked for solutions on
+>> the Internet, but I didn't find any information, that is why I contacted
+>> you. I don't know if the package has had some recent updates, but it would
+>> be of great help for me if you have any idea how to fix this.
+>>
+>> Thanks in advance for your help,
+>>
+>> Sincerely,
+>>
+>> Calliste Dorl?ans
+>>
+>> graph_doub.svg is from November 2024
+>> graph_serie.svg is from February 2025
+>> ______________________________________________
+>> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+>> https://stat.ethz.ch/mailman/listinfo/r-help
+>> PLEASE do read the posting guide
+>> https://www.R-project.org/posting-guide.html
+>> and provide commented, minimal, self-contained, reproducible code.
+>>
+> 
+> 	[[alternative HTML version deleted]]
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+
+-- 
+Dr Paul Murrell
+Te Kura Tatauranga | Department of Statistics
+Waipapa Taumata Rau | The University of Auckland
+Private Bag 92019, Auckland, New Zealand
+64 9 3737599 x85392
+paul at stat.auckland.ac.nz
+www.stat.auckland.ac.nz/~paul/
+
+
