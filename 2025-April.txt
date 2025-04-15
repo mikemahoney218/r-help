@@ -7356,3 +7356,450 @@ Best regards,
 Luigi
 
 
+From br|@n@m|th199312 @end|ng |rom gm@||@com  Mon Apr 14 13:26:45 2025
+From: br|@n@m|th199312 @end|ng |rom gm@||@com (Brian Smith)
+Date: Mon, 14 Apr 2025 16:56:45 +0530
+Subject: [R] Drawing a sample based on certain condition
+Message-ID: <CAHUBDY8y_8mhbOr77pUEKPReN0zDRB9qe6OnDEYeabrcT-aVuQ@mail.gmail.com>
+
+Hi,
+
+For my analytical work, I need to draw a sample of certain sample size
+from a denied population, where population members are marked by
+non-negative integers, such that sum of sample members if fixed. For
+example,
+
+Population = 0:100
+Sample_size = 10
+Sample_Sum = 20
+
+Under this setup if my sample members are X1, X2, ..., X10 then I
+should have X1+X2+...+X10 = 20
+
+Sample drawing scheme may be with/without replacement
+
+Is there any R function to achieve this? One possibility is to employ
+naive trial-error approach, but this doesnt seem to be practical as it
+would take long time to get the final sample with desired properties.
+
+Any pointer would be greatly appreciated.
+
+
+From tebert @end|ng |rom u||@edu  Mon Apr 14 14:30:35 2025
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Mon, 14 Apr 2025 12:30:35 +0000
+Subject: [R] Drawing a sample based on certain condition
+In-Reply-To: <CAHUBDY8y_8mhbOr77pUEKPReN0zDRB9qe6OnDEYeabrcT-aVuQ@mail.gmail.com>
+References: <CAHUBDY8y_8mhbOr77pUEKPReN0zDRB9qe6OnDEYeabrcT-aVuQ@mail.gmail.com>
+Message-ID: <CH3PR22MB45143E39064F29EA057D76C3CFB32@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+1) extract relevant observations to a new data frame. Either of these two commands works.
+filter(df, age > 24)
+df[df$age > 24, ]
+2) sample the new data frame
+df[sample(nrow(df), 10, replace = TRUE), ]
+change TRUE to FALSE if you do not want replacement.
+
+
+Tim
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Brian Smith
+Sent: Monday, April 14, 2025 7:27 AM
+To: r-help at r-project.org
+Subject: [R] Drawing a sample based on certain condition
+
+[External Email]
+
+Hi,
+
+For my analytical work, I need to draw a sample of certain sample size from a denied population, where population members are marked by non-negative integers, such that sum of sample members if fixed. For example,
+
+Population = 0:100
+Sample_size = 10
+Sample_Sum = 20
+
+Under this setup if my sample members are X1, X2, ..., X10 then I should have X1+X2+...+X10 = 20
+
+Sample drawing scheme may be with/without replacement
+
+Is there any R function to achieve this? One possibility is to employ naive trial-error approach, but this doesnt seem to be practical as it would take long time to get the final sample with desired properties.
+
+Any pointer would be greatly appreciated.
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
+
+From ru|pb@rr@d@@ @end|ng |rom @@po@pt  Mon Apr 14 15:04:36 2025
+From: ru|pb@rr@d@@ @end|ng |rom @@po@pt (Rui Barradas)
+Date: Mon, 14 Apr 2025 14:04:36 +0100
+Subject: [R] Drawing a sample based on certain condition
+In-Reply-To: <CAHUBDY8y_8mhbOr77pUEKPReN0zDRB9qe6OnDEYeabrcT-aVuQ@mail.gmail.com>
+References: <CAHUBDY8y_8mhbOr77pUEKPReN0zDRB9qe6OnDEYeabrcT-aVuQ@mail.gmail.com>
+Message-ID: <f2e939e5-3177-47f0-9163-50d0fc4568ee@sapo.pt>
+
+?s 12:26 de 14/04/2025, Brian Smith escreveu:
+> Hi,
+> 
+> For my analytical work, I need to draw a sample of certain sample size
+> from a denied population, where population members are marked by
+> non-negative integers, such that sum of sample members if fixed. For
+> example,
+> 
+> Population = 0:100
+> Sample_size = 10
+> Sample_Sum = 20
+> 
+> Under this setup if my sample members are X1, X2, ..., X10 then I
+> should have X1+X2+...+X10 = 20
+> 
+> Sample drawing scheme may be with/without replacement
+> 
+> Is there any R function to achieve this? One possibility is to employ
+> naive trial-error approach, but this doesnt seem to be practical as it
+> would take long time to get the final sample with desired properties.
+> 
+> Any pointer would be greatly appreciated.
+> 
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+Hello,
+
+Use the multinomial distribution. The problem with this is that the 
+population is not part of the solution. But the sum is Sample_Sum.
+
+
+Population <- 0:100
+Sample_size <- 10
+Sample_Sum <- 20
+
+probs <- rep(1/Sample_size, Sample_size)
+
+# one sample
+rmultinom(1, Sample_Sum, prob = probs)
+# five samples
+rmultinom(5, Sample_Sum, prob = probs)
+
+
+Another way, found on StackOverflow.
+
+
+# user: https://stackoverflow.com/users/4996248/john-coleman
+# answer: https://stackoverflow.com/a/49016614/8245406
+rand.nums <- function(a,b,n,k){
+   #finds n random integers in range a:b which sum to k
+   while(TRUE){
+     x <- sample(1:(k - n*a), n - 1, replace = TRUE) #cutpoints
+     x <- sort(x)
+     x <- c(x, k - n*a) - c(0, x)
+     if(max(x) <= b - a) return(a + x)
+   }
+}
+
+rand.nums(0, 100, Sample_size, Sample_Sum)
+
+
+Hope this helps,
+
+Rui Barradas
+
+
+-- 
+Este e-mail foi analisado pelo software antiv?rus AVG para verificar a presen?a de v?rus.
+www.avg.com
+
+
+From murdoch@dunc@n @end|ng |rom gm@||@com  Mon Apr 14 17:36:54 2025
+From: murdoch@dunc@n @end|ng |rom gm@||@com (Duncan Murdoch)
+Date: Mon, 14 Apr 2025 11:36:54 -0400
+Subject: [R] Drawing a sample based on certain condition
+In-Reply-To: <CAHUBDY8y_8mhbOr77pUEKPReN0zDRB9qe6OnDEYeabrcT-aVuQ@mail.gmail.com>
+References: <CAHUBDY8y_8mhbOr77pUEKPReN0zDRB9qe6OnDEYeabrcT-aVuQ@mail.gmail.com>
+Message-ID: <373249a4-440a-4e0e-983b-ae96b24d8441@gmail.com>
+
+On 2025-04-14 7:26 a.m., Brian Smith wrote:
+> Hi,
+> 
+> For my analytical work, I need to draw a sample of certain sample size
+> from a denied population, where population members are marked by
+> non-negative integers, such that sum of sample members if fixed. For
+> example,
+> 
+> Population = 0:100
+> Sample_size = 10
+> Sample_Sum = 20
+> 
+> Under this setup if my sample members are X1, X2, ..., X10 then I
+> should have X1+X2+...+X10 = 20
+> 
+> Sample drawing scheme may be with/without replacement
+> 
+> Is there any R function to achieve this? One possibility is to employ
+> naive trial-error approach, but this doesnt seem to be practical as it
+> would take long time to get the final sample with desired properties.
+> 
+> Any pointer would be greatly appreciated.
+
+One general way to think of this problem is that you are defining a 
+distribution on the space of all possible samples of size 10, such that 
+the probability of a sample is X if the sum is 20, and zero otherwise, 
+and you want to sample from this distribution.
+
+There's probably a slick method to do that for your example, but if 
+you've got a general population instead of that special one, I doubt it.
+
+What I would do is the following:
+
+Define another distribution on samples that has probabilities that 
+depend on the sum of the sample, with the highest probabilities attached 
+to ones with the correct sum, and probabilities for other sums declining 
+with distance from the sum.  For example, maybe
+
+  P(sum) = Y/(1 + abs(sum - 20))
+
+for some constant Y.
+
+You can use MCMC to sample from that distribution and then only keep the 
+samples where the sum is exactly equal to the target sum.  If you do 
+that, you don't need to care about the value of Y. but you do need to 
+think about how proposed moves are made, and you probably need to use a 
+different function than the example above for acceptable efficiency.
+
+Duncan Murdoch
+
+
+From bgunter@4567 @end|ng |rom gm@||@com  Mon Apr 14 22:16:14 2025
+From: bgunter@4567 @end|ng |rom gm@||@com (Bert Gunter)
+Date: Mon, 14 Apr 2025 13:16:14 -0700
+Subject: [R] Drawing a sample based on certain condition
+In-Reply-To: <373249a4-440a-4e0e-983b-ae96b24d8441@gmail.com>
+References: <CAHUBDY8y_8mhbOr77pUEKPReN0zDRB9qe6OnDEYeabrcT-aVuQ@mail.gmail.com>
+ <373249a4-440a-4e0e-983b-ae96b24d8441@gmail.com>
+Message-ID: <CAGxFJbRZKsyTqVA9Ra6H_cBCB1=3Yj48Yjaz4-ed2bjescDOFg@mail.gmail.com>
+
+Just a comment:
+
+You wish to draw subsets of size n with or without replacement -- and I
+suspect without replacement is simpler than with -- from a set of positive
+integers that sum to a fixed value T. This sounds related to the so-called
+subset sum problem in computational complexity theory: Given a set S of
+positive integers and positive total, T, is there *any* subset of S (i.e. a
+sample without replacement) whose sum is T? This is known to be
+NP-complete. So this means that listing all such subsets must be
+NP-complete. I don't know whether specifying that, as you have, the size of
+the subsets must be a fixed number (obviously?) simplifies the problem
+sufficiently to make it computationally tractable; computational wizards or
+suitable web searches might tell you this. But for these reasons,  your
+query about how to sample the set of all such subsets -- both those drawn
+with or without replacement -- seems computationally difficult to me.
+
+
+Cheers,
+Bert
+
+
+
+"An educated person is one who can entertain new ideas, entertain others,
+and entertain herself."
+
+
+
+On Mon, Apr 14, 2025 at 8:37?AM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 2025-04-14 7:26 a.m., Brian Smith wrote:
+> > Hi,
+> >
+> > For my analytical work, I need to draw a sample of certain sample size
+> > from a denied population, where population members are marked by
+> > non-negative integers, such that sum of sample members if fixed. For
+> > example,
+> >
+> > Population = 0:100
+> > Sample_size = 10
+> > Sample_Sum = 20
+> >
+> > Under this setup if my sample members are X1, X2, ..., X10 then I
+> > should have X1+X2+...+X10 = 20
+> >
+> > Sample drawing scheme may be with/without replacement
+> >
+> > Is there any R function to achieve this? One possibility is to employ
+> > naive trial-error approach, but this doesnt seem to be practical as it
+> > would take long time to get the final sample with desired properties.
+> >
+> > Any pointer would be greatly appreciated.
+>
+> One general way to think of this problem is that you are defining a
+> distribution on the space of all possible samples of size 10, such that
+> the probability of a sample is X if the sum is 20, and zero otherwise,
+> and you want to sample from this distribution.
+>
+> There's probably a slick method to do that for your example, but if
+> you've got a general population instead of that special one, I doubt it.
+>
+> What I would do is the following:
+>
+> Define another distribution on samples that has probabilities that
+> depend on the sum of the sample, with the highest probabilities attached
+> to ones with the correct sum, and probabilities for other sums declining
+> with distance from the sum.  For example, maybe
+>
+>   P(sum) = Y/(1 + abs(sum - 20))
+>
+> for some constant Y.
+>
+> You can use MCMC to sample from that distribution and then only keep the
+> samples where the sum is exactly equal to the target sum.  If you do
+> that, you don't need to care about the value of Y. but you do need to
+> think about how proposed moves are made, and you probably need to use a
+> different function than the example above for acceptable efficiency.
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat.ethz.ch/mailman/listinfo/r-help
+> PLEASE do read the posting guide
+> https://www.R-project.org/posting-guide.html
+> and provide commented, minimal, self-contained, reproducible code.
+>
+
+	[[alternative HTML version deleted]]
+
+
+From tebert @end|ng |rom u||@edu  Mon Apr 14 23:49:57 2025
+From: tebert @end|ng |rom u||@edu (Ebert,Timothy Aaron)
+Date: Mon, 14 Apr 2025 21:49:57 +0000
+Subject: [R] Drawing a sample based on certain condition
+In-Reply-To: <CAGxFJbRZKsyTqVA9Ra6H_cBCB1=3Yj48Yjaz4-ed2bjescDOFg@mail.gmail.com>
+References: <CAHUBDY8y_8mhbOr77pUEKPReN0zDRB9qe6OnDEYeabrcT-aVuQ@mail.gmail.com>
+ <373249a4-440a-4e0e-983b-ae96b24d8441@gmail.com>
+ <CAGxFJbRZKsyTqVA9Ra6H_cBCB1=3Yj48Yjaz4-ed2bjescDOFg@mail.gmail.com>
+Message-ID: <CH3PR22MB4514037DAF67F40068A0C128CFB32@CH3PR22MB4514.namprd22.prod.outlook.com>
+
+
+1) select only denied individuals from the original data. This is S.
+2) There is a fixed sample size of exactly t
+3) There is a fixed target sum T such that sum(t values from S) = T
+
+You can reduce the problem. All large values where the max(S) + (t-1 smallest values) > T can be eliminated from S. Likewise if (t-1 max S) + min(S) < T then the smallest values can be eliminated.
+
+You can estimate the number of options by asking how many ways can I draw t objects from the size of S with replacement. This is the size of S raised to the t power. If Joe has a score of 6 and Kim has a score of 6 these are different outcomes. If not, then S can be reduced to the number of unique values.
+
+Could you randomly sample S, filter for the sum=T and then use the random sample? Do you need every case when there are millions of cases (or more)?
+
+Is a long execution time important, or what do you consider a long execution time? Are you planning on looking at all t and T within a range?
+
+Tim
+
+-----Original Message-----
+From: R-help <r-help-bounces at r-project.org> On Behalf Of Bert Gunter
+Sent: Monday, April 14, 2025 4:16 PM
+To: Duncan Murdoch <murdoch.duncan at gmail.com>
+Cc: r-help at r-project.org
+Subject: Re: [R] Drawing a sample based on certain condition
+
+[External Email]
+
+Just a comment:
+
+You wish to draw subsets of size n with or without replacement -- and I suspect without replacement is simpler than with -- from a set of positive integers that sum to a fixed value T. This sounds related to the so-called subset sum problem in computational complexity theory: Given a set S of positive integers and positive total, T, is there *any* subset of S (i.e. a sample without replacement) whose sum is T? This is known to be NP-complete. So this means that listing all such subsets must be NP-complete. I don't know whether specifying that, as you have, the size of the subsets must be a fixed number (obviously?) simplifies the problem sufficiently to make it computationally tractable; computational wizards or suitable web searches might tell you this. But for these reasons,  your query about how to sample the set of all such subsets -- both those drawn with or without replacement -- seems computationally difficult to me.
+
+
+Cheers,
+Bert
+
+
+
+"An educated person is one who can entertain new ideas, entertain others, and entertain herself."
+
+
+
+On Mon, Apr 14, 2025 at 8:37?AM Duncan Murdoch <murdoch.duncan at gmail.com>
+wrote:
+
+> On 2025-04-14 7:26 a.m., Brian Smith wrote:
+> > Hi,
+> >
+> > For my analytical work, I need to draw a sample of certain sample
+> > size from a denied population, where population members are marked
+> > by non-negative integers, such that sum of sample members if fixed.
+> > For example,
+> >
+> > Population = 0:100
+> > Sample_size = 10
+> > Sample_Sum = 20
+> >
+> > Under this setup if my sample members are X1, X2, ..., X10 then I
+> > should have X1+X2+...+X10 = 20
+> >
+> > Sample drawing scheme may be with/without replacement
+> >
+> > Is there any R function to achieve this? One possibility is to
+> > employ naive trial-error approach, but this doesnt seem to be
+> > practical as it would take long time to get the final sample with desired properties.
+> >
+> > Any pointer would be greatly appreciated.
+>
+> One general way to think of this problem is that you are defining a
+> distribution on the space of all possible samples of size 10, such
+> that the probability of a sample is X if the sum is 20, and zero
+> otherwise, and you want to sample from this distribution.
+>
+> There's probably a slick method to do that for your example, but if
+> you've got a general population instead of that special one, I doubt it.
+>
+> What I would do is the following:
+>
+> Define another distribution on samples that has probabilities that
+> depend on the sum of the sample, with the highest probabilities
+> attached to ones with the correct sum, and probabilities for other
+> sums declining with distance from the sum.  For example, maybe
+>
+>   P(sum) = Y/(1 + abs(sum - 20))
+>
+> for some constant Y.
+>
+> You can use MCMC to sample from that distribution and then only keep
+> the samples where the sum is exactly equal to the target sum.  If you
+> do that, you don't need to care about the value of Y. but you do need
+> to think about how proposed moves are made, and you probably need to
+> use a different function than the example above for acceptable efficiency.
+>
+> Duncan Murdoch
+>
+> ______________________________________________
+> R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+> https://stat/
+> .ethz.ch%2Fmailman%2Flistinfo%2Fr-help&data=05%7C02%7Ctebert%40ufl.edu
+> %7C722a00e77d1343db507d08dd7b914147%7C0d4da0f84a314d76ace60a62331e1b84
+> %7C0%7C0%7C638802585985433701%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGki
+> OnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ
+> %3D%3D%7C0%7C%7C%7C&sdata=KNgaZ7e92Zfs51%2F%2B%2B9%2BQkGI5hiSj9OzhDtFz
+> iWXx2D0%3D&reserved=0
+> PLEASE do read the posting guide
+> https://www/.
+> r-project.org%2Fposting-guide.html&data=05%7C02%7Ctebert%40ufl.edu%7C7
+> 22a00e77d1343db507d08dd7b914147%7C0d4da0f84a314d76ace60a62331e1b84%7C0
+> %7C0%7C638802585985456014%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRy
+> dWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%
+> 3D%7C0%7C%7C%7C&sdata=Vhraq88ySxlq4IUEqvoeRvNdhjvliYdz7VDDvmQzmkE%3D&r
+> eserved=0 and provide commented, minimal, self-contained, reproducible
+> code.
+>
+
+        [[alternative HTML version deleted]]
+
+______________________________________________
+R-help at r-project.org mailing list -- To UNSUBSCRIBE and more, see
+https://stat.ethz.ch/mailman/listinfo/r-help
+PLEASE do read the posting guide https://www.r-project.org/posting-guide.html
+and provide commented, minimal, self-contained, reproducible code.
+
